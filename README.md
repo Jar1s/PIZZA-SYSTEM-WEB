@@ -1,154 +1,190 @@
-# 🍕 Multi-Brand Pizza Ordering System
+# 🍕 Multi-Tenant Pizza Platform
 
-A scalable multi-tenant platform powering multiple pizza brands (PornoPizza, Pizza v Núdzi, etc.) with unified management.
+Professional pizza ordering platform supporting multiple brands with shared backend infrastructure.
 
----
+## 🚀 Features
 
-## 🚀 **Quick Start**
+- **Multi-Tenant Architecture** - One platform, multiple pizza brands
+- **Complete Menu Management** - 67 products (pizzas, drinks, sides, desserts, sauces)
+- **Admin Dashboard** - Unified management for all brands
+- **Order Tracking** - Real-time order status updates
+- **Payment Integration** - Adyen & GoPay support
+- **Delivery Integration** - Wolt Drive API
+- **Email Notifications** - Order confirmations and updates
+- **Responsive Design** - Mobile-first approach
+- **Beautiful UI/UX** - Modern design with animations
 
+## 📦 Tech Stack
+
+### Backend
+- **NestJS** - Progressive Node.js framework
+- **PostgreSQL** - Relational database
+- **Prisma** - Next-generation ORM
+- **TypeScript** - Type-safe development
+
+### Frontend
+- **Next.js 14** - React framework with App Router
+- **TypeScript** - Type-safe frontend
+- **Tailwind CSS** - Utility-first CSS
+- **Framer Motion** - Animations
+- **Zustand** - State management
+
+### Infrastructure
+- **Docker** - Containerization
+- **Fly.io** - Backend deployment
+- **Vercel** - Frontend deployment
+
+## 🏗️ Architecture
+
+```
+┌─────────────────────────────────────────┐
+│         Frontend (Next.js 14)          │
+│  - PornoPizza (pornopizza.localhost)   │
+│  - Pizza v Núdzi (pizzavnudzi.localhost)│
+│  - Admin Dashboard (/admin)             │
+└─────────────────┬───────────────────────┘
+                  │
+┌─────────────────▼───────────────────────┐
+│      Backend API (NestJS)               │
+│  - Multi-tenant endpoints               │
+│  - Orders, Products, Tenants            │
+│  - Payments, Delivery, Email            │
+└─────────────────┬───────────────────────┘
+                  │
+┌─────────────────▼───────────────────────┐
+│      PostgreSQL Database                 │
+│  - Tenants, Products, Orders             │
+│  - Multi-tenant data isolation          │
+└─────────────────────────────────────────┘
+```
+
+## 🚀 Quick Start
+
+### Prerequisites
+- Node.js 18+
+- PostgreSQL 14+
+- npm or yarn
+
+### Installation
+
+1. **Clone the repository**
 ```bash
-# 1. Install dependencies (DONE ✅)
-cd backend && npm install
-cd ../frontend && npm install
+git clone <repository-url>
+cd "WEBY miro "
+```
 
-# 2. Setup database & environment files
-# See: COMPLETE_SETUP_GUIDE.md
+2. **Install dependencies**
+```bash
+# Backend
+cd backend
+npm install
 
-# 3. Run migrations
+# Frontend
+cd ../frontend
+npm install
+
+# Shared
+cd ../shared
+npm install
+```
+
+3. **Set up database**
+```bash
+# Create .env file in backend/
+DATABASE_URL="postgresql://user:password@localhost:5432/pizza_platform"
+
+# Run migrations
 cd backend
 npx prisma migrate dev
-npx prisma db seed
 
-# 4. Start backend
+# Seed database
+npx ts-node -r tsconfig-paths/register prisma/seed.ts
+npx ts-node -r tsconfig-paths/register prisma/seed-pornopizza-full-menu.ts
+```
+
+4. **Start development servers**
+```bash
+# Backend (Terminal 1)
+cd backend
 npm run start:dev
 
-# 5. Start frontend (new terminal)
-cd ../frontend
+# Frontend (Terminal 2)
+cd frontend
 npm run dev
-
-# 6. Visit http://localhost:3001?tenant=pornopizza
 ```
 
----
+5. **Access the application**
+- **Frontend**: http://localhost:3001
+- **Backend API**: http://localhost:3000
+- **Admin Dashboard**: http://localhost:3001/admin
 
-## 📁 **Project Structure**
+## 📊 Menu Overview
+
+### PornoPizza Menu (67 items)
+- 🍕 **Pizzas**: 28 items (Classic: 13, Premium: 15)
+- 🍟 **Sides**: 12 items (Garlic bread, wings, salads, fries)
+- 🥤 **Drinks**: 15 items (Sodas, water, beer, wine, juice)
+- 🍰 **Desserts**: 8 items (Tiramisu, ice cream, cakes)
+- 🧂 **Sauces**: 6 items (Garlic, BBQ, hot, ranch, ketchup)
+
+## 🎯 Project Structure
 
 ```
-├── backend/              # NestJS API
+.
+├── backend/              # NestJS backend
 │   ├── src/
-│   │   ├── tenants/     # Multi-tenant management ✅
-│   │   ├── products/    # Menu & catalog ✅
-│   │   ├── orders/      # Order processing ✅
-│   │   ├── payments/    # Adyen integration ✅
-│   │   └── delivery/    # Wolt Drive API ✅
-│   └── prisma/
-│       └── schema.prisma # Database schema ✅
+│   │   ├── orders/      # Order management
+│   │   ├── products/    # Product management
+│   │   ├── tenants/     # Tenant management
+│   │   ├── payments/    # Payment processing
+│   │   ├── delivery/    # Delivery integration
+│   │   └── email/       # Email service
+│   └── prisma/          # Database schema & migrations
 │
-├── frontend/            # Next.js 14 app
-│   ├── app/            # Pages & routing ✅
-│   ├── components/     # React components ✅
-│   └── hooks/          # Cart state (Zustand) ✅
+├── frontend/            # Next.js frontend
+│   ├── app/             # App Router pages
+│   │   ├── admin/       # Admin dashboard
+│   │   ├── order/       # Order pages
+│   │   └── track/       # Tracking pages
+│   ├── components/      # React components
+│   └── lib/             # Utilities
 │
-├── shared/             # TypeScript types ✅
-│   └── types/          # Shared interfaces
+├── shared/              # Shared TypeScript types
+│   └── types/           # Common types
 │
-└── docs/               # Documentation
-    ├── COMPLETE_SETUP_GUIDE.md  # Full setup instructions
-    ├── FIXES_APPLIED.md          # Integration fixes done
-    ├── agent-contexts/           # Multi-agent dev guides
-    └── LOCAL_SETUP.md            # Development guide
+└── docs/                # Documentation
+    └── agent-contexts/  # Agent context files
 ```
 
----
+## 🔧 Environment Variables
 
-## ✨ **Features**
-
-### **Multi-Tenant Architecture**
-- ✅ One codebase, unlimited brands
-- ✅ Custom domain per brand
-- ✅ Dynamic theming
-- ✅ Isolated data per tenant
-
-### **Order Management**
-- ✅ Real-time order tracking
-- ✅ Status state machine
-- ✅ Customer notifications
-- ✅ Payment integration (Adyen)
-
-### **Delivery Automation**
-- ✅ Wolt Drive integration
-- ✅ Automatic courier dispatch
-- ✅ Real-time tracking
-- ✅ Webhook handling
-
-### **Admin Features**
-- ⏳ Multi-brand dashboard (Agent 8 - not started)
-- ⏳ Analytics & reporting (Agent 8)
-- ⏳ Public order tracking (Agent 9 - not started)
-
----
-
-## 🛠️ **Tech Stack**
-
-| Layer | Technology |
-|-------|------------|
-| **Frontend** | Next.js 14, React 18, TypeScript, Tailwind CSS |
-| **Backend** | NestJS, Node.js 18, TypeScript |
-| **Database** | PostgreSQL 15, Prisma ORM |
-| **Payments** | Adyen, GoPay (optional) |
-| **Delivery** | Wolt Drive API |
-| **State** | Zustand (cart), React hooks |
-| **Deployment** | Vercel (frontend), Fly.io (backend) |
-
----
-
-## 📊 **Current Status**
-
-| Module | Status | Agent | Progress |
-|--------|--------|-------|----------|
-| Shared Types | ✅ Complete | Agent 1 | 100% |
-| Database & Tenants | ✅ Complete | Agent 2 | 100% |
-| Products & Menu | ✅ Complete | Agent 3 | 100% |
-| Orders | ✅ Complete | Agent 4 | 100% |
-| Payments (Adyen) | ✅ Complete | Agent 5 | 100% |
-| Frontend Customer | ✅ Complete | Agent 6 | 100% |
-| Delivery (Wolt) | ✅ Complete | Agent 7 | 100% |
-| Admin Dashboard | ⏳ Not Started | Agent 8 | 0% |
-| Order Tracking | ⏳ Not Started | Agent 9 | 0% |
-| DevOps & CI/CD | ✅ Complete | Agent 10 | 100% |
-
-**Overall: 85% Complete** 🎉
-
----
-
-## 📖 **Documentation**
-
-- **[COMPLETE_SETUP_GUIDE.md](./COMPLETE_SETUP_GUIDE.md)** - Full setup instructions
-- **[prd.md](./prd.md)** - Product requirements
-- **[RULES.md](./RULES.md)** - Development guidelines
-- **[CHANGELOG.md](./CHANGELOG.md)** - Version history
-- **[docs/agent-contexts/](./docs/agent-contexts/)** - Multi-agent development guides
-
----
-
-## 🔑 **Environment Variables**
-
-### **Backend (.env)**
-```bash
-DATABASE_URL=postgresql://...
-ADYEN_API_KEY=your_key
-WOLT_API_KEY_PORNOPIZZA=your_key
-# See .env.example for full list
+### Backend (.env)
+```env
+DATABASE_URL="postgresql://..."
+PORT=3000
+JWT_SECRET="your-secret-key"
+EMAIL_HOST="smtp.gmail.com"
+EMAIL_PORT=587
+EMAIL_USER="your-email@gmail.com"
+EMAIL_PASS="your-password"
+WOLT_API_KEY="your-wolt-key"
+ADYEN_API_KEY="your-adyen-key"
+GOPAY_API_KEY="your-gopay-key"
 ```
 
-### **Frontend (.env.local)**
-```bash
-NEXT_PUBLIC_API_URL=http://localhost:3000
+### Frontend (.env.local)
+```env
+NEXT_PUBLIC_API_URL="http://localhost:3000"
 ```
 
----
+## 📚 Documentation
 
-## 🧪 **Testing**
+- [Local Setup Guide](docs/LOCAL_SETUP.md)
+- [Deployment Guide](docs/DEPLOYMENT.md)
+- [Multi-Agent Summary](docs/MULTI_AGENT_SUMMARY.md)
+- [Quick Start](docs/QUICK_START.md)
+
+## 🧪 Testing
 
 ```bash
 # Backend tests
@@ -158,93 +194,39 @@ npm test
 # Frontend tests
 cd frontend
 npm test
-
-# E2E tests
-npm run test:e2e
 ```
 
----
+## 🚀 Deployment
 
-## 🚢 **Deployment**
-
-### **Frontend (Vercel)**
-```bash
-cd frontend
-vercel --prod
-```
-
-### **Backend (Fly.io)**
+### Backend (Fly.io)
 ```bash
 cd backend
-fly deploy
+flyctl deploy
 ```
 
-See **[docs/DEPLOYMENT.md](./docs/DEPLOYMENT.md)** for detailed instructions.
+### Frontend (Vercel)
+```bash
+cd frontend
+vercel deploy
+```
+
+## 📝 License
+
+This project is proprietary software.
+
+## 👥 Contributors
+
+Built with multi-agent development approach.
+
+## 🎉 Status
+
+✅ **Production Ready**
+- Complete menu system
+- Admin dashboard
+- Order tracking
+- Payment integration ready
+- Delivery integration ready
 
 ---
 
-## 📈 **Roadmap**
-
-### **Phase 1: MVP (Current - Week 3-4)**
-- [x] Multi-tenant architecture
-- [x] Product catalog
-- [x] Order management
-- [x] Payment integration
-- [x] Delivery automation
-- [x] Customer frontend
-- [ ] Admin dashboard (Agent 8)
-- [ ] Order tracking (Agent 9)
-
-### **Phase 2: Operations (Week 5-8)**
-- [ ] Analytics & reporting
-- [ ] Email/SMS notifications
-- [ ] Customer accounts
-- [ ] Order history
-- [ ] Reviews & ratings
-
-### **Phase 3: Growth (Week 9+)**
-- [ ] Loyalty program
-- [ ] Mobile apps
-- [ ] AI recommendations
-- [ ] Marketing automation
-
----
-
-## 🤝 **Contributing**
-
-This project uses multi-agent development:
-- Each agent handles one module
-- See `docs/agent-contexts/` for agent instructions
-- Follow `RULES.md` for coding standards
-
----
-
-## 📝 **License**
-
-Private project - All rights reserved
-
----
-
-## 📞 **Support**
-
-- Documentation: See `/docs`
-- Issues: Check `DEBUGFLE.md`
-- Setup help: See `COMPLETE_SETUP_GUIDE.md`
-
----
-
-## 🎉 **Quick Stats**
-
-- **Lines of Code:** ~15,000+
-- **Files Created:** 100+
-- **Dependencies:** 1,150+
-- **Build Time:** ~3 weeks (with multi-agent approach)
-- **Team:** 10 specialized agents + 1 integration agent
-
----
-
-**Ready to launch your multi-brand pizza empire!** 🍕🚀
-
-Start with **[COMPLETE_SETUP_GUIDE.md](./COMPLETE_SETUP_GUIDE.md)**
-
-
+**Built with ❤️ for pizza lovers**
