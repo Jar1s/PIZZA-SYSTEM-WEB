@@ -1,0 +1,139 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Tenant {
+  id              String   @id @default(cuid())
+  slug            String   @unique
+  name            String
+  domain          String?  @unique
+  subdomain       String   @unique
+  isActive        Boolean  @default(true)
+  
+  // Payment provider
+  paymentProvider String   @default("adyen")
+  
+  // JSON fields
+  theme           Json
+  paymentConfig   Json
+  deliveryConfig  Json
+  
+  // Relations
+  products        Product[]
+  orders          Order[]
+  deliveries      Delivery[]
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@map("tenants")
+}
+
+model Product {
+  id          String   @id @default(cuid())
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  
+  name        String
+  description String?
+  priceCents  Int
+  taxRate     Float    @default(20.0)
+  category    String
+  image       String?
+  modifiers   Json?
+  isActive    Boolean  @default(true)
+  
+  orderItems  OrderItem[]
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@map("products")
+  @@index([tenantId, isActive])
+  @@index([tenantId, category])
+}
+
+model Order {
+  id              String      @id @default(cuid())
+  tenantId        String
+  tenant          Tenant      @relation(fields: [tenantId], references: [id])
+  
+  status          OrderStatus @default(PENDING)
+  
+  // JSON fields
+  customer        Json
+  address         Json
+  
+  // Pricing
+  subtotalCents   Int
+  taxCents        Int
+  deliveryFeeCents Int
+  totalCents      Int
+  
+  // References
+  paymentRef      String?
+  paymentStatus   String?
+  deliveryId      String?
+  delivery        Delivery?   @relation(fields: [deliveryId], references: [id])
+  
+  items           OrderItem[]
+  
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  
+  @@map("orders")
+  @@index([tenantId, status])
+  @@index([paymentRef])
+}
+
+enum OrderStatus {
+  PENDING
+  PAID
+  PREPARING
+  READY
+  OUT_FOR_DELIVERY
+  DELIVERED
+  CANCELED
+}
+
+model OrderItem {
+  id          String  @id @default(cuid())
+  orderId     String
+  order       Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  
+  productId   String
+  product     Product @relation(fields: [productId], references: [id])
+  
+  productName String  // Snapshot
+  quantity    Int
+  priceCents  Int
+  modifiers   Json?
+  
+  @@map("order_items")
+}
+
+model Delivery {
+  id          String   @id @default(cuid())
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+  
+  provider    String   @default("wolt")
+  jobId       String?
+  status      String
+  trackingUrl String?
+  quote       Json?
+  
+  orders      Order[]
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@map("deliveries")
+  @@index([jobId])
+}
+

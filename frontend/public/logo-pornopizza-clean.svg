@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="150" viewBox="0 0 400 150">
+  <!-- Clean white background -->
+  <rect width="400" height="150" fill="#FFF"/>
+  
+  <!-- Background pizza elements (very subtle) -->
+  <g opacity="0.1">
+    <circle cx="200" cy="75" r="60" fill="none" stroke="#FF6B00" stroke-width="4"/>
+    <line x1="200" y1="15" x2="200" y2="135" stroke="#FF6B00" stroke-width="3"/>
+    <line x1="140" y1="75" x2="260" y2="75" stroke="#FF6B00" stroke-width="3"/>
+    <line x1="157" y1="33" x2="243" y2="117" stroke="#FF6B00" stroke-width="3"/>
+    <line x1="243" y1="33" x2="157" y2="117" stroke="#FF6B00" stroke-width="3"/>
+    <!-- Pepperoni dots -->
+    <circle cx="180" cy="60" r="6" fill="#C41E3A"/>
+    <circle cx="220" cy="60" r="6" fill="#C41E3A"/>
+    <circle cx="200" cy="85" r="6" fill="#C41E3A"/>
+    <circle cx="180" cy="95" r="5" fill="#C41E3A"/>
+    <circle cx="220" cy="95" r="5" fill="#C41E3A"/>
+  </g>
+  
+  <!-- Main brand text -->
+  <g id="main-text">
+    <!-- PORNO -->
+    <text x="200" y="70" font-family="Impact, Arial Black, sans-serif" font-size="56" font-weight="900" 
+          fill="#FF6B00" text-anchor="middle" letter-spacing="3">
+      PORNO
+    </text>
+    
+    <!-- PIZZA -->
+    <text x="200" y="115" font-family="Impact, Arial Black, sans-serif" font-size="56" font-weight="900" 
+          fill="#FF6B00" text-anchor="middle" letter-spacing="3">
+      PIZZA
+    </text>
+    
+    <!-- Black outline for text -->
+    <text x="200" y="70" font-family="Impact, Arial Black, sans-serif" font-size="56" font-weight="900" 
+          fill="none" stroke="#000" stroke-width="2" text-anchor="middle" letter-spacing="3">
+      PORNO
+    </text>
+    <text x="200" y="115" font-family="Impact, Arial Black, sans-serif" font-size="56" font-weight="900" 
+          fill="none" stroke="#000" stroke-width="2" text-anchor="middle" letter-spacing="3">
+      PIZZA
+    </text>
+  </g>
+  
+  <!-- Small pizza icon accent (left) -->
+  <g transform="translate(40, 50)">
+    <path d="M 0 0 L 15 22 A 12 12 0 0 1 -15 22 Z" fill="#FFD700" stroke="#FF6B00" stroke-width="2"/>
+    <circle cx="0" cy="10" r="3" fill="#C41E3A"/>
+    <circle cx="-5" cy="15" r="2.5" fill="#C41E3A"/>
+    <circle cx="5" cy="15" r="2.5" fill="#C41E3A"/>
+  </g>
+  
+  <!-- Small pizza icon accent (right) -->
+  <g transform="translate(360, 50)">
+    <path d="M 0 0 L 15 22 A 12 12 0 0 1 -15 22 Z" fill="#FFD700" stroke="#FF6B00" stroke-width="2"/>
+    <circle cx="0" cy="10" r="3" fill="#C41E3A"/>
+    <circle cx="-5" cy="15" r="2.5" fill="#C41E3A"/>
+    <circle cx="5" cy="15" r="2.5" fill="#C41E3A"/>
+  </g>
+</svg>
+
