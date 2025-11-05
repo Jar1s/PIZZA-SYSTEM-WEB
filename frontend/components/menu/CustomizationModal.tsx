@@ -164,8 +164,27 @@ export default function CustomizationModal({
                 <div>
                   <h2 className="text-3xl font-bold text-gray-900 mb-2">{displayName}</h2>
                   {displayDescription && (
-                    <p className="text-gray-600">{displayDescription}</p>
+                    <p className="text-gray-600 mb-3">{displayDescription}</p>
                   )}
+                  
+                  {/* Weight and Allergens */}
+                  {(translation.weight || translation.allergens) && (
+                    <div className="flex items-center gap-4 mb-3 text-sm text-gray-500">
+                      {translation.weight && (
+                        <div className="flex items-center gap-1">
+                          <span>⚖️</span>
+                          <span>{translation.weight}</span>
+                        </div>
+                      )}
+                      {translation.allergens && translation.allergens.length > 0 && (
+                        <div className="flex items-center gap-1">
+                          <span>⚠️</span>
+                          <span>{translation.allergens.join(', ')}</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  
                   <div className="flex items-center gap-2 mt-2">
                     <span className="text-sm text-gray-500">
                       {language === 'sk' ? 'Základná cena:' : 'Base price:'}

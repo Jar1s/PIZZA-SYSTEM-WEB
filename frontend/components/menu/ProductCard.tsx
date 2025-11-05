@@ -22,7 +22,7 @@ export function ProductCard({ product, index = 0 }: ProductCardProps) {
   
   const price = (product.priceCents / 100).toFixed(2);
   
-  // Get translated product name and description
+  // Get translated product name, description, weight and allergens
   const translation = getProductTranslation(product.name, language);
   const displayName = translation.name || product.name;
   const displayDescription = translation.description || product.description;
@@ -108,9 +108,27 @@ export function ProductCard({ product, index = 0 }: ProductCardProps) {
         </h3>
         
         {displayDescription && (
-          <p className="text-gray-600 text-sm mb-4 line-clamp-2">
+          <p className="text-gray-600 text-sm mb-3 line-clamp-2">
             {displayDescription}
           </p>
+        )}
+        
+        {/* Weight and Allergens */}
+        {(translation.weight || translation.allergens) && (
+          <div className="flex items-center gap-4 mb-4 text-xs text-gray-500">
+            {translation.weight && (
+              <div className="flex items-center gap-1">
+                <span>⚖️</span>
+                <span>{translation.weight}</span>
+              </div>
+            )}
+            {translation.allergens && translation.allergens.length > 0 && (
+              <div className="flex items-center gap-1">
+                <span>⚠️</span>
+                <span>{translation.allergens.join(', ')}</span>
+              </div>
+            )}
+          </div>
         )}
 
         {/* Price & Add Button - Pushed to bottom */}
