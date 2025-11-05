@@ -1,73 +1,23 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="450" height="180" viewBox="0 0 450 180">
-  <defs>
-    <!-- Shadow filter for text -->
-    <filter id="textShadow" x="-50%" y="-50%" width="200%" height="200%">
-      <feDropShadow dx="2" dy="2" stdDeviation="3" flood-color="#000" flood-opacity="0.3"/>
-    </filter>
-  </defs>
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200">
+  <!-- Background circle -->
+  <circle cx="100" cy="100" r="95" fill="#FF6B00" stroke="#000" stroke-width="3"/>
   
-  <!-- White background -->
-  <rect width="450" height="180" fill="#FFF"/>
+  <!-- Pizza slice shape -->
+  <path d="M 100 100 L 160 70 A 60 60 0 0 1 160 130 Z" fill="#FFD700" stroke="#8B4513" stroke-width="2"/>
   
-  <!-- BACKGROUND GRAPHICS - Pizza themed elements -->
-  <g opacity="0.25" id="background-graphics">
-    <!-- Large pizza circle in center background -->
-    <circle cx="225" cy="90" r="75" fill="#FFD700" opacity="0.4"/>
-    <circle cx="225" cy="90" r="70" fill="none" stroke="#FF6B00" stroke-width="4"/>
-    
-    <!-- Pizza slice cuts (8 slices) -->
-    <line x1="225" y1="15" x2="225" y2="165" stroke="#FF6B00" stroke-width="3"/>
-    <line x1="155" y1="90" x2="295" y2="90" stroke="#FF6B00" stroke-width="3"/>
-    <line x1="195" y1="30" x2="255" y2="150" stroke="#FF6B00" stroke-width="3"/>
-    <line x1="255" y1="30" x2="195" y2="150" stroke="#FF6B00" stroke-width="3"/>
-    <line x1="168" y1="45" x2="282" y2="135" stroke="#FF6B00" stroke-width="2.5"/>
-    <line x1="282" y1="45" x2="168" y2="135" stroke="#FF6B00" stroke-width="2.5"/>
-    <line x1="177" y1="60" x2="273" y2="120" stroke="#FF6B00" stroke-width="2.5"/>
-    <line x1="273" y1="60" x2="177" y2="120" stroke="#FF6B00" stroke-width="2.5"/>
-    
-    <!-- Pepperoni toppings scattered around -->
-    <circle cx="200" cy="70" r="8" fill="#C41E3A"/>
-    <circle cx="250" cy="70" r="8" fill="#C41E3A"/>
-    <circle cx="215" cy="95" r="7" fill="#C41E3A"/>
-    <circle cx="235" cy="95" r="7" fill="#C41E3A"/>
-    <circle cx="200" cy="115" r="8" fill="#C41E3A"/>
-    <circle cx="250" cy="115" r="8" fill="#C41E3A"/>
-    <circle cx="180" cy="85" r="6" fill="#C41E3A"/>
-    <circle cx="270" cy="85" r="6" fill="#C41E3A"/>
-    <circle cx="190" cy="105" r="7" fill="#C41E3A"/>
-    <circle cx="260" cy="105" r="7" fill="#C41E3A"/>
-    
-    <!-- Pizza slices on sides -->
-    <!-- Left slice -->
-    <path d="M 80 90 L 110 140 A 25 25 0 0 1 50 140 Z" fill="#FFD700" opacity="0.5" stroke="#FF6B00" stroke-width="2"/>
-    <circle cx="80" cy="105" r="5" fill="#C41E3A"/>
-    <circle cx="75" cy="120" r="4" fill="#C41E3A"/>
-    <circle cx="85" cy="120" r="4" fill="#C41E3A"/>
-    
-    <!-- Right slice -->
-    <path d="M 370 90 L 400 140 A 25 25 0 0 1 340 140 Z" fill="#FFD700" opacity="0.5" stroke="#FF6B00" stroke-width="2"/>
-    <circle cx="370" cy="105" r="5" fill="#C41E3A"/>
-    <circle cx="365" cy="120" r="4" fill="#C41E3A"/>
-    <circle cx="375" cy="120" r="4" fill="#C41E3A"/>
-  </g>
+  <!-- Pepperoni dots -->
+  <circle cx="140" cy="90" r="8" fill="#8B0000"/>
+  <circle cx="145" cy="110" r="8" fill="#8B0000"/>
+  <circle cx="130" cy="105" r="7" fill="#8B0000"/>
   
-  <!-- MAIN TEXT - Bold and in front -->
-  <g id="main-text" filter="url(#textShadow)">
-    <text x="225" y="100" font-family="Impact, Arial Black, sans-serif" font-size="68" font-weight="900" 
-          fill="#FF6B00" text-anchor="middle" letter-spacing="3">
-      PORNOPIZZA
-    </text>
-    
-    <!-- Text outline for definition -->
-    <text x="225" y="100" font-family="Impact, Arial Black, sans-serif" font-size="68" font-weight="900" 
-          fill="none" stroke="#000" stroke-width="3" text-anchor="middle" letter-spacing="3">
-      PORNOPIZZA
-    </text>
-  </g>
+  <!-- Text - PORNO -->
+  <text x="100" y="40" font-family="Arial Black, sans-serif" font-size="28" font-weight="bold" fill="#FFD700" text-anchor="middle" stroke="#000" stroke-width="1">PORNO</text>
   
-  <!-- Optional tagline -->
-  <text x="225" y="135" font-family="Arial, sans-serif" font-size="16" font-weight="600" 
-        fill="#555" text-anchor="middle" letter-spacing="3" opacity="0.8">
-    PREMIUM PIZZA
-  </text>
+  <!-- Text - PIZZA -->
+  <text x="100" y="175" font-family="Arial Black, sans-serif" font-size="32" font-weight="bold" fill="#FFD700" text-anchor="middle" stroke="#000" stroke-width="1">PIZZA</text>
+  
+  <!-- Decorative elements -->
+  <circle cx="30" cy="100" r="5" fill="#FFD700"/>
+  <circle cx="170" cy="100" r="5" fill="#FFD700"/>
 </svg>
+
