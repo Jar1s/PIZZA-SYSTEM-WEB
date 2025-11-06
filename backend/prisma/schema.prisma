@@ -8,87 +8,87 @@ datasource db {
 }
 
 model Tenant {
-  id              String   @id @default(cuid())
-  slug            String   @unique
-  name            String
-  domain          String?  @unique
-  subdomain       String   @unique
-  isActive        Boolean  @default(true)
-  
+  id        String  @id @default(cuid())
+  slug      String  @unique
+  name      String
+  domain    String? @unique
+  subdomain String  @unique
+  isActive  Boolean @default(true)
+
   // Payment provider
-  paymentProvider String   @default("adyen")
-  
+  paymentProvider String @default("adyen")
+
   // JSON fields
-  theme           Json
-  paymentConfig   Json
-  deliveryConfig  Json
-  
+  theme          Json
+  paymentConfig  Json
+  deliveryConfig Json
+
   // Relations
-  products        Product[]
-  orders          Order[]
-  deliveries      Delivery[]
-  
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  
+  products   Product[]
+  orders     Order[]
+  deliveries Delivery[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   @@map("tenants")
 }
 
 model Product {
-  id          String   @id @default(cuid())
-  tenantId    String
-  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  
+  id       String @id @default(cuid())
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
   name        String
   description String?
   priceCents  Int
-  taxRate     Float    @default(20.0)
+  taxRate     Float   @default(20.0)
   category    String
   image       String?
   modifiers   Json?
-  isActive    Boolean  @default(true)
-  
-  orderItems  OrderItem[]
-  
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  
-  @@map("products")
+  isActive    Boolean @default(true)
+
+  orderItems OrderItem[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   @@index([tenantId, isActive])
   @@index([tenantId, category])
+  @@map("products")
 }
 
 model Order {
-  id              String      @id @default(cuid())
-  tenantId        String
-  tenant          Tenant      @relation(fields: [tenantId], references: [id])
-  
-  status          OrderStatus @default(PENDING)
-  
+  id       String @id @default(cuid())
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id])
+
+  status OrderStatus @default(PENDING)
+
   // JSON fields
-  customer        Json
-  address         Json
-  
+  customer Json
+  address  Json
+
   // Pricing
-  subtotalCents   Int
-  taxCents        Int
+  subtotalCents    Int
+  taxCents         Int
   deliveryFeeCents Int
-  totalCents      Int
-  
+  totalCents       Int
+
   // References
-  paymentRef      String?
-  paymentStatus   String?
-  deliveryId      String?
-  delivery        Delivery?   @relation(fields: [deliveryId], references: [id])
-  
-  items           OrderItem[]
-  
-  createdAt       DateTime    @default(now())
-  updatedAt       DateTime    @updatedAt
-  
-  @@map("orders")
+  paymentRef    String?
+  paymentStatus String?
+  deliveryId    String?
+  delivery      Delivery? @relation(fields: [deliveryId], references: [id])
+
+  items OrderItem[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   @@index([tenantId, status])
   @@index([paymentRef])
+  @@map("orders")
 }
 
 enum OrderStatus {
@@ -102,39 +102,39 @@ enum OrderStatus {
 }
 
 model OrderItem {
-  id          String  @id @default(cuid())
-  orderId     String
-  order       Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  
-  productId   String
-  product     Product @relation(fields: [productId], references: [id])
-  
-  productName String  // Snapshot
+  id      String @id @default(cuid())
+  orderId String
+  order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  productId String
+  product   Product @relation(fields: [productId], references: [id])
+
+  productName String // Snapshot
   quantity    Int
   priceCents  Int
   modifiers   Json?
-  
+
   @@map("order_items")
 }
 
 model Delivery {
-  id          String   @id @default(cuid())
-  tenantId    String
-  tenant      Tenant   @relation(fields: [tenantId], references: [id])
-  
-  provider    String   @default("wolt")
+  id       String @id @default(cuid())
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id])
+
+  provider    String  @default("wolt")
   jobId       String?
   status      String
   trackingUrl String?
   quote       Json?
-  
-  orders      Order[]
-  
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  
-  @@map("deliveries")
+
+  orders Order[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   @@index([jobId])
+  @@map("deliveries")
 }
 
 enum UserRole {
@@ -143,17 +143,34 @@ enum UserRole {
 }
 
 model User {
-  id        String   @id @default(cuid())
-  username  String   @unique
-  password  String   // Hashed password
-  name      String
-  role      UserRole @default(OPERATOR)
-  isActive  Boolean  @default(true)
-  
+  id       String   @id @default(cuid())
+  username String   @unique
+  password String // Hashed password
+  name     String
+  role     UserRole @default(OPERATOR)
+  isActive Boolean  @default(true)
+
+  refreshTokens RefreshToken[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  
-  @@map("users")
+
   @@index([username])
+  @@map("users")
 }
 
+model RefreshToken {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token     String   @unique
+  expiresAt DateTime
+  isRevoked Boolean  @default(false)
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([token])
+  @@index([expiresAt])
+  @@map("refresh_tokens")
+}

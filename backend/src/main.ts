@@ -12,6 +12,11 @@ async function bootstrap() {
     console.warn('⚠️  WARNING: Using default JWT_SECRET. Change it in production!');
   }
   
+  // Validate JWT_SECRET strength
+  if (process.env.JWT_SECRET && process.env.JWT_SECRET.length < 32) {
+    console.warn('⚠️  WARNING: JWT_SECRET should be at least 32 characters long for security!');
+  }
+  
   const app = await NestFactory.create(AppModule);
   
   // Security headers
