@@ -320,6 +320,13 @@
 
 **Result:** ✅ Modifiers now visible and readable in all order views
 
+**Fix:** Added error handling for formatModifiers
+- Handle null/undefined modifiers
+- Handle string (JSON) modifiers - parse if needed
+- Handle both array and single value optionIds
+- Added try-catch for error handling
+- Prevents TypeError: e[o] is not a function
+
 ### Security Improvements Implementation
 **Change:** Implemented critical security measures
 **Files Updated:**
