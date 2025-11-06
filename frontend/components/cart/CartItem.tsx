@@ -3,6 +3,7 @@
 import { useCart } from '@/hooks/useCart';
 import Image from 'next/image';
 import { motion } from 'framer-motion';
+import { formatModifiers } from '@/lib/format-modifiers';
 
 interface CartItemProps {
   item: {
@@ -14,6 +15,7 @@ interface CartItemProps {
       image?: string | null;
     };
     quantity: number;
+    modifiers?: any;
   };
 }
 
@@ -44,6 +46,20 @@ export function CartItem({ item }: CartItemProps) {
       <div className="flex-1 min-w-0">
         <h3 className="font-semibold truncate">{item.product.name}</h3>
         <p className="text-sm text-gray-600">€{price} each</p>
+        
+        {/* Customizations/Modifiers */}
+        {(() => {
+          if (!item.modifiers) return null;
+          const modifiers = formatModifiers(item.modifiers);
+          if (modifiers.length === 0) return null;
+          return (
+            <div className="text-xs text-gray-500 mt-1 space-y-0.5">
+              {modifiers.map((mod, idx) => (
+                <div key={idx}>• {mod}</div>
+              ))}
+            </div>
+          );
+        })()}
         
         <div className="flex items-center gap-2 mt-2">
           <button

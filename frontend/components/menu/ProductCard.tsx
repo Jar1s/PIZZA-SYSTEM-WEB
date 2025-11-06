@@ -56,12 +56,13 @@ export const ProductCard = memo(function ProductCard({ product, index = 0 }: Pro
   const handleCustomizedAdd = useCallback((customizations: Record<string, string[]>, totalPrice: number) => {
     setIsAdding(true);
     // Add item with customizations and custom price
-    addItem({
-      ...product,
-      priceCents: totalPrice,
-      // Store customizations in description or a custom field
-      description: `${product.description || ''}\n[Customized]`,
-    });
+    addItem(
+      {
+        ...product,
+        priceCents: totalPrice,
+      },
+      customizations // Pass modifiers as second parameter
+    );
     
     setTimeout(() => {
       setIsAdding(false);
