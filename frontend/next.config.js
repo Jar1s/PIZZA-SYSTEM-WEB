@@ -16,6 +16,14 @@ const nextConfig = {
   transpilePackages: ['@/shared'],
   swcMinify: true,
   reactStrictMode: true,
+  // ESLint: Only fail on errors, not warnings
+  eslint: {
+    ignoreDuringBuilds: false,
+  },
+  // Treat ESLint warnings as non-blocking
+  typescript: {
+    ignoreBuildErrors: false,
+  },
   // Performance optimizations
   experimental: {
     optimizePackageImports: ['framer-motion', '@/components'],
