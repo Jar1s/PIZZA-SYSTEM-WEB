@@ -134,6 +134,22 @@
   - Period comparison (7/30/90 days)
   - Real-time data from database
 
+- **Modifiers Display in Orders 🍕**
+  - Created format-modifiers helper function
+  - Updated OrderDetails component to display modifiers
+  - Updated OrderCard component (Admin Dashboard) to display modifiers
+  - Updated Order Tracking Page to display modifiers
+  - Modifiers now show as readable text (e.g., 'Cesto: Klasické 32cm', 'Syr: Mozzarella')
+  - Replaced JSON.stringify with formatted display
+
+- **Security Improvements 🔒**
+  - JWT Secret validation (required in production)
+  - Rate limiting with @nestjs/throttler (5 req/min global, 3 login/min)
+  - Webhook signature verification (Wolt webhooks with HMAC-SHA256)
+  - Security headers with Helmet (CSP, XSS protection, etc.)
+  - Production CORS configuration (environment-based)
+  - Constant-time comparison for webhook signatures (prevents timing attacks)
+
 ## [2025-11-06] - Authentication & Development Setup
 
 ### Added

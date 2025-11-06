@@ -296,6 +296,74 @@
 
 **Result:** ✅ Professional analytics dashboard with multiple chart types
 
+### Modifiers Display Implementation
+**Change:** Fixed modifiers display in orders
+**Files Created:**
+- `frontend/lib/format-modifiers.ts` - Helper function to format modifiers
+
+**Files Updated:**
+- `frontend/components/tracking/OrderDetails.tsx` - Added modifiers display
+- `frontend/components/admin/OrderCard.tsx` - Added modifiers display
+- `frontend/app/order/[id]/page.tsx` - Added modifiers display
+
+**Features:**
+- Modifiers now display as readable text instead of JSON
+- Format: "Category: Option1, Option2" (e.g., "Cesto: Klasické 32cm", "Syr: Mozzarella")
+- Displays in Order Details, Admin Dashboard, and Order Tracking Page
+- Uses pizzaCustomizations to map IDs to names
+
+**Technical Details:**
+- Helper function maps modifier category IDs to names
+- Maps option IDs to option names
+- Handles empty/null modifiers gracefully
+- Displays as bullet list for readability
+
+**Result:** ✅ Modifiers now visible and readable in all order views
+
+### Security Improvements Implementation
+**Change:** Implemented critical security measures
+**Files Updated:**
+- `backend/src/main.ts` - JWT validation, Helmet, CORS
+- `backend/src/app.module.ts` - ThrottlerModule
+- `backend/src/auth/auth.controller.ts` - Rate limiting on login
+- `backend/src/delivery/webhooks.controller.ts` - Webhook signature verification
+
+**Security Features:**
+1. **JWT Secret Validation**
+   - Validates JWT_SECRET in production
+   - Warns if using default secret
+   - Prevents server start if missing in production
+
+2. **Rate Limiting**
+   - Global: 5 requests per minute
+   - Login endpoint: 3 attempts per minute
+   - Uses @nestjs/throttler
+   - Prevents brute force attacks
+
+3. **Webhook Signature Verification**
+   - Wolt webhooks: HMAC-SHA256 verification
+   - Constant-time comparison (prevents timing attacks)
+   - Required in production
+   - Skips in development
+
+4. **Security Headers (Helmet)**
+   - Content Security Policy (CSP)
+   - XSS protection
+   - Frame options
+   - Other security headers
+
+5. **Production CORS**
+   - Environment-based CORS configuration
+   - Production domains only in production
+   - Development domains in development
+
+**Dependencies Added:**
+- `@nestjs/throttler` - Rate limiting
+- `helmet` - Security headers
+- `@types/helmet` - TypeScript types
+
+**Result:** ✅ All critical security measures implemented
+
 ---
 
 ## [2025-11-06] - Authentication Implementation & Fixes
