@@ -31,17 +31,27 @@ export default function ProductsPage() {
       for (const tenant of tenants) {
         try {
           // Fetch all products (including inactive) for admin
-          const res = await fetch(
-            `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}/api/${tenant}/products?isActive=all`
-          );
+          const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+          const url = `${API_URL}/api/${tenant}/products?isActive=all`;
           
-          if (res.ok) {
-            const tenantProducts = await res.json();
-            allProducts.push(...tenantProducts.map((p: Product) => ({
-              ...p,
-              tenantSlug: tenant,
-            })));
+          console.log(`Fetching products from: ${url}`);
+          
+          const res = await fetch(url);
+          
+          if (!res.ok) {
+            console.error(`Failed to fetch products for ${tenant}: ${res.status} ${res.statusText}`);
+            const errorText = await res.text();
+            console.error('Error response:', errorText);
+            continue;
           }
+          
+          const tenantProducts = await res.json();
+          console.log(`Fetched ${tenantProducts.length} products for ${tenant}`);
+          
+          allProducts.push(...tenantProducts.map((p: Product) => ({
+            ...p,
+            tenantSlug: tenant,
+          })));
         } catch (error) {
           console.error(`Failed to fetch products for ${tenant}:`, error);
         }
