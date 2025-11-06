@@ -20,7 +20,6 @@ interface CartStore {
   clearCart: () => void;
   openCart: () => void;
   closeCart: () => void;
-  total: number;
 }
 
 export const useCart = create<CartStore>()(
@@ -69,16 +68,18 @@ export const useCart = create<CartStore>()(
       clearCart: () => set({ items: [] }),
       openCart: () => set({ isOpen: true }),
       closeCart: () => set({ isOpen: false }),
-      
-      get total() {
-        return get().items.reduce(
-          (sum, item) => sum + item.product.priceCents * item.quantity,
-          0
-        );
-      },
     }),
     { name: 'cart-storage' }
   )
 );
+
+// Selector for computing total
+export const useCartTotal = () => {
+  const items = useCart((state) => state.items);
+  return items.reduce(
+    (sum, item) => sum + item.product.priceCents * item.quantity,
+    0
+  );
+};
 
 

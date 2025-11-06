@@ -1,12 +1,13 @@
 'use client';
 
-import { useCart } from '@/hooks/useCart';
+import { useCart, useCartTotal } from '@/hooks/useCart';
 import { CartItem } from './CartItem';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export function Cart() {
-  const { items, total, isOpen, closeCart } = useCart();
+  const { items, isOpen, closeCart } = useCart();
+  const total = useCartTotal();
   const router = useRouter();
   
   const handleCheckout = () => {

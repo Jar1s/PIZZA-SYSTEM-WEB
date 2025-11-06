@@ -1,13 +1,14 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useCart } from '@/hooks/useCart';
+import { useCart, useCartTotal } from '@/hooks/useCart';
 import { createOrder, createPaymentSession } from '@/lib/api';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 
 export default function CheckoutPage() {
-  const { items, total } = useCart();
+  const { items } = useCart();
+  const total = useCartTotal();
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [tenant, setTenant] = useState('pornopizza');
