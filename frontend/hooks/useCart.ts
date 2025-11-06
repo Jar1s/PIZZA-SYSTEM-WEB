@@ -30,20 +30,33 @@ export const useCart = create<CartStore>()(
       
       addItem: (product, modifiers) => {
         const items = get().items;
-        const existingItem = items.find(i => i.product.id === product.id);
+        
+        // Create unique ID based on product ID and modifiers
+        // This ensures items with different customizations are treated as separate items
+        const modifiersKey = modifiers ? JSON.stringify(modifiers) : '';
+        const uniqueId = `${product.id}-${modifiersKey}`;
+        
+        // Find existing item with same product ID AND same modifiers
+        const existingItem = items.find(i => {
+          const iModifiersKey = i.modifiers ? JSON.stringify(i.modifiers) : '';
+          const iUniqueId = `${i.product.id}-${iModifiersKey}`;
+          return iUniqueId === uniqueId;
+        });
         
         if (existingItem) {
+          // Same product with same customizations - increase quantity
           set({
             items: items.map(i =>
-              i.product.id === product.id
+              i.id === existingItem.id
                 ? { ...i, quantity: i.quantity + 1 }
                 : i
             ),
             isOpen: true,
           });
         } else {
+          // New item (different product or different customizations)
           set({
-            items: [...items, { id: product.id, product, quantity: 1, modifiers }],
+            items: [...items, { id: uniqueId, product, quantity: 1, modifiers }],
             isOpen: true,
           });
         }
