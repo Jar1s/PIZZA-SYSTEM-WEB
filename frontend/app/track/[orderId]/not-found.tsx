@@ -5,7 +5,7 @@ export default function NotFound() {
         <div className="text-6xl mb-4">🔍</div>
         <h1 className="text-3xl font-bold mb-2">Order Not Found</h1>
         <p className="text-gray-600 mb-6">
-          We couldn't find an order with this ID.
+          We couldn&apos;t find an order with this ID.
         </p>
         <a
           href="/"

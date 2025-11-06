@@ -86,7 +86,7 @@ export default function OrderSuccessPage() {
                 Check Your Email
               </h3>
               <p className="text-blue-700 text-sm">
-                We've sent a confirmation email with your order details and tracking link.
+                We&apos;ve sent a confirmation email with your order details and tracking link.
               </p>
             </div>
           </div>
