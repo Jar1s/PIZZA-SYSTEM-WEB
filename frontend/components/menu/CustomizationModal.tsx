@@ -157,6 +157,7 @@ export default function CustomizationModal({
                       src={product.image}
                       alt={product.name}
                       fill
+                      sizes="96px"
                       className="object-cover"
                     />
                   </div>

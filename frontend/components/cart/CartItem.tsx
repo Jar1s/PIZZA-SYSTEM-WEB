@@ -38,6 +38,7 @@ export function CartItem({ item }: CartItemProps) {
             src={item.product.image}
             alt={item.product.name}
             fill
+            sizes="80px"
             className="object-cover rounded"
           />
         </div>
