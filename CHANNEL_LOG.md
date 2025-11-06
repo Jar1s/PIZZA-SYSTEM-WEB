@@ -2,6 +2,26 @@
 
 ## [2025-01-XX] - Current Session Changes
 
+### Maintenance Mode System
+- **Maintenance Banner Component (Admin)**
+  - Created MaintenanceBanner component with toggle switch
+  - Displays current maintenance mode status (Zapnuté/Vypnuté)
+  - Toggle switch to enable/disable maintenance mode
+  - Saves to tenant theme JSON (maintenanceMode field)
+  - File: `frontend/components/admin/MaintenanceBanner.tsx`
+
+- **Maintenance Banner on Frontend Web**
+  - Banner displays on website when maintenance mode is enabled
+  - Positioned at top of page, below Header
+  - Light orange background (#fefaf5)
+  - Orange text (#f97316): "Momentálne neprijímame nové objednávky!"
+  - Secondary text with clock icon: "Príprava na začatie práce"
+  - File: `frontend/app/page.tsx`
+
+- **Admin Dashboard Integration**
+  - MaintenanceBanner component added to admin dashboard
+  - File: `frontend/app/admin/page.tsx`
+
 ### Price & Description Updates from Menu
 - **Updated 24 Pizza Prices**
   - Margherita: 7,99 €

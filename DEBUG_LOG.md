@@ -1,5 +1,41 @@
 # Debug Log
 
+## [2025-01-XX] - Maintenance Mode System & Price Updates
+
+### Maintenance Mode System Implementation
+**Issue:** User wants maintenance banner on website controlled from admin dashboard
+**Solution:** Created maintenance mode system with toggle in admin and banner on frontend
+
+**Changes:**
+1. **MaintenanceBanner Component (Admin)**
+   - Created new component with toggle switch
+   - Loads current maintenance mode from tenant theme
+   - Toggle switch to enable/disable maintenance mode
+   - Saves maintenanceMode to tenant theme JSON
+   - Displays current status (Zapnuté/Vypnuté)
+   - File: `frontend/components/admin/MaintenanceBanner.tsx`
+
+2. **Maintenance Banner on Frontend Web**
+   - Banner displays on website when maintenance mode is enabled
+   - Positioned at top of page, below Header
+   - Light orange background (#fefaf5)
+   - Orange text (#f97316): "Momentálne neprijímame nové objednávky!"
+   - Secondary text with clock icon: "Príprava na začatie práce"
+   - File: `frontend/app/page.tsx`
+
+3. **Admin Dashboard Integration**
+   - MaintenanceBanner component added to admin dashboard
+   - File: `frontend/app/admin/page.tsx`
+
+4. **API Integration**
+   - Uses existing updateTenant endpoint
+   - Stores maintenanceMode in theme JSON field
+   - File: `frontend/lib/api.ts`
+
+**Result:** Maintenance mode can be controlled from admin dashboard, banner displays on website when enabled
+
+---
+
 ## [2025-01-XX] - Price & Description Updates
 
 ### Menu Price & Description Update

@@ -182,10 +182,48 @@ export default function HomePage() {
     );
   }
 
+  // Check maintenance mode
+  const theme = typeof tenant.theme === 'object' && tenant.theme !== null 
+    ? tenant.theme as any
+    : {};
+  const maintenanceMode = theme.maintenanceMode === true;
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header with Cart */}
       <Header tenant={tenant} />
+      
+      {/* Maintenance Banner */}
+      {maintenanceMode && (
+        <div className="bg-[#fefaf5] border-b border-orange-200">
+          <div className="container mx-auto px-4 py-4">
+            <div className="flex items-center gap-3">
+              <div className="flex-1">
+                <h2 className="text-lg font-bold text-[#f97316] mb-1">
+                  Momentálne neprijímame nové objednávky!
+                </h2>
+                <div className="flex items-center gap-2 text-gray-700">
+                  <svg
+                    className="w-4 h-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
+                  </svg>
+                  <span className="text-xs">Príprava na začatie práce</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       
       {/* Hero Section */}
       <HeroSection 
