@@ -14,6 +14,7 @@ export default function ProductsPage() {
   const [products, setProducts] = useState<ProductWithTenant[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'pornopizza' | 'pizzavnudzi'>('all');
+  const [showInactive, setShowInactive] = useState(false); // Filter for inactive products
   const [editingProduct, setEditingProduct] = useState<ProductWithTenant | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -63,8 +64,17 @@ export default function ProductsPage() {
   };
 
   const filteredProducts = products.filter(p => {
-    if (filter === 'all') return true;
-    return p.tenantSlug === filter;
+    // Filter by brand
+    if (filter !== 'all' && p.tenantSlug !== filter) {
+      return false;
+    }
+    
+    // Filter by active status
+    if (!showInactive && !p.isActive) {
+      return false;
+    }
+    
+    return true;
   });
 
   const handleEdit = (product: ProductWithTenant) => {
@@ -118,37 +128,54 @@ export default function ProductsPage() {
 
       {/* Filter */}
       <div className="mb-6">
-        <div className="flex gap-4">
-          <button
-            onClick={() => setFilter('all')}
-            className={`px-6 py-2 rounded-lg font-semibold transition-all ${
-              filter === 'all'
-                ? 'bg-blue-600 text-white shadow-lg'
-                : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-300'
-            }`}
-          >
-            All ({products.length})
-          </button>
-          <button
-            onClick={() => setFilter('pornopizza')}
-            className={`px-6 py-2 rounded-lg font-semibold transition-all ${
-              filter === 'pornopizza'
-                ? 'bg-blue-600 text-white shadow-lg'
-                : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-300'
-            }`}
-          >
-            PornoPizza ({products.filter(p => p.tenantSlug === 'pornopizza').length})
-          </button>
-          <button
-            onClick={() => setFilter('pizzavnudzi')}
-            className={`px-6 py-2 rounded-lg font-semibold transition-all ${
-              filter === 'pizzavnudzi'
-                ? 'bg-blue-600 text-white shadow-lg'
-                : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-300'
-            }`}
-          >
-            Pizza v Núdzi ({products.filter(p => p.tenantSlug === 'pizzavnudzi').length})
-          </button>
+        <div className="flex gap-4 items-center flex-wrap">
+          <div className="flex gap-4">
+            <button
+              onClick={() => setFilter('all')}
+              className={`px-6 py-2 rounded-lg font-semibold transition-all ${
+                filter === 'all'
+                  ? 'bg-blue-600 text-white shadow-lg'
+                  : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-300'
+              }`}
+            >
+              All ({products.length})
+            </button>
+            <button
+              onClick={() => setFilter('pornopizza')}
+              className={`px-6 py-2 rounded-lg font-semibold transition-all ${
+                filter === 'pornopizza'
+                  ? 'bg-blue-600 text-white shadow-lg'
+                  : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-300'
+              }`}
+            >
+              PornoPizza ({products.filter(p => p.tenantSlug === 'pornopizza').length})
+            </button>
+            <button
+              onClick={() => setFilter('pizzavnudzi')}
+              className={`px-6 py-2 rounded-lg font-semibold transition-all ${
+                filter === 'pizzavnudzi'
+                  ? 'bg-blue-600 text-white shadow-lg'
+                  : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-300'
+              }`}
+            >
+              Pizza v Núdzi ({products.filter(p => p.tenantSlug === 'pizzavnudzi').length})
+            </button>
+          </div>
+          
+          {/* Show Inactive Toggle */}
+          <div className="ml-auto flex items-center gap-2">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={showInactive}
+                onChange={(e) => setShowInactive(e.target.checked)}
+                className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+              />
+              <span className="text-sm text-gray-700 font-medium">
+                Show Inactive ({products.filter(p => !p.isActive).length})
+              </span>
+            </label>
+          </div>
         </div>
       </div>
 

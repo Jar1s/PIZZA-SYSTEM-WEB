@@ -26,11 +26,20 @@ export const productTranslations: Record<string, ProductTranslation> = {
     weight: '450g',
     allergens: ['1', '7']
   },
+  'Margharita': {
+    name: { sk: 'Pizza Margharita', en: 'Pizza Margharita' },
+    description: {
+      sk: 'Paradajkový základ, mozzarella',
+      en: 'Tomato base, mozzarella'
+    },
+    weight: '450g',
+    allergens: ['1', '7']
+  },
   'Capri': {
     name: { sk: 'Pizza Capri', en: 'Pizza Capri' },
     description: {
-      sk: 'Čerstvé paradajky, buvolia mozzarella, cherry paradajky, bazalka',
-      en: 'Fresh tomatoes, buffalo mozzarella, cherry tomatoes, basil'
+      sk: 'Paradajkový základ, mozzarella, šunka, kukurica, šampiňóny',
+      en: 'Tomato base, mozzarella, ham, corn, mushrooms'
     },
     weight: '550g',
     allergens: ['1', '7']
@@ -38,17 +47,17 @@ export const productTranslations: Record<string, ProductTranslation> = {
   'Fregata': {
     name: { sk: 'Pizza Fregata', en: 'Pizza Fregata' },
     description: {
-      sk: 'Krevety, mušle, cesnak, biele víno',
-      en: 'Shrimp, mussels, garlic, white wine'
+      sk: 'Paradajkový základ, mozzarella, niva, šampiňóny, cibuľa, olivy, vajce',
+      en: 'Tomato base, mozzarella, blue cheese, mushrooms, onion, olives, egg'
     },
     weight: '550g',
-    allergens: ['1', '3', '7']
+    allergens: ['1', '3', '7'] // lepok, vajíčka, mlieko
   },
   'Gazdovská': {
     name: { sk: 'Pizza Gazdovská', en: 'Pizza Country Style' },
     description: {
-      sk: 'Slanina, cibuľa, paprika, farmársky syr',
-      en: 'Bacon, onions, peppers, farm cheese'
+      sk: 'Paradajkový základ, mozzarella, slanina, cibuľa, šampiňóny, saláma',
+      en: 'Tomato base, mozzarella, bacon, onion, mushrooms, salami'
     },
     weight: '450g',
     allergens: ['1', '7']
@@ -56,8 +65,8 @@ export const productTranslations: Record<string, ProductTranslation> = {
   'Pivárska': {
     name: { sk: 'Pizza Pivárska', en: 'Pizza Beer Lovers' },
     description: {
-      sk: 'Klobása, cibuľa, horčičná omáčka',
-      en: 'Sausage, onions, mustard sauce'
+      sk: 'Paradajkový základ, mozzarella, saláma, slanina, klobása, cibuľa, niva',
+      en: 'Tomato base, mozzarella, salami, bacon, sausage, onion, blue cheese'
     },
     weight: '450g',
     allergens: ['1', '7']
@@ -74,8 +83,8 @@ export const productTranslations: Record<string, ProductTranslation> = {
   'Prosciutto': {
     name: { sk: 'Pizza Prosciutto', en: 'Pizza Prosciutto' },
     description: {
-      sk: 'Talianska šunka, mozzarella, paradajkový základ, rukola',
-      en: 'Italian ham, mozzarella, tomato base, arugula'
+      sk: 'Paradajkový základ, mozzarella, šunka',
+      en: 'Tomato base, mozzarella, ham'
     },
     weight: '500g',
     allergens: ['1', '7']
@@ -83,8 +92,8 @@ export const productTranslations: Record<string, ProductTranslation> = {
   'Quattro Formaggi': {
     name: { sk: 'Pizza Quattro Formaggi', en: 'Pizza Quattro Formaggi' },
     description: {
-      sk: 'Mozzarella, gorgonzola, parmezán, kozí syr',
-      en: 'Mozzarella, gorgonzola, parmesan, goat cheese'
+      sk: 'Paradajkový základ, mozzarella, údený syr, niva, parmezán',
+      en: 'Tomato base, mozzarella, smoked cheese, blue cheese, parmesan'
     },
     weight: '550g',
     allergens: ['1', '7']
@@ -92,8 +101,8 @@ export const productTranslations: Record<string, ProductTranslation> = {
   'Quattro Formaggi Bianco': {
     name: { sk: 'Pizza Quattro Formaggi Bianco', en: 'Pizza Quattro Formaggi Bianco' },
     description: {
-      sk: 'Mozzarella, gorgonzola, parmezán, kozí syr, smotanový základ',
-      en: 'Mozzarella, gorgonzola, parmesan, goat cheese, cream base'
+      sk: 'Smetanový základ, mozzarella, údený syr, niva, parmezán',
+      en: 'Cream base, mozzarella, smoked cheese, blue cheese, parmesan'
     },
     weight: '450g',
     allergens: ['1', '7']
@@ -101,8 +110,8 @@ export const productTranslations: Record<string, ProductTranslation> = {
   'Tonno': {
     name: { sk: 'Pizza Tuniaková', en: 'Pizza Tonno' },
     description: {
-      sk: 'Tuniak, červená cibuľa, kapary, olivy, mozzarella',
-      en: 'Tuna, red onions, capers, olives, mozzarella'
+      sk: 'Paradajkový základ, mozzarella, tuniak, cibuľa',
+      en: 'Tomato base, mozzarella, tuna, onion'
     },
     weight: '550g',
     allergens: ['1', '4', '7']
@@ -112,17 +121,17 @@ export const productTranslations: Record<string, ProductTranslation> = {
   'Basil Pesto Premium': {
     name: { sk: 'Pizza Bazila Pesto', en: 'Pizza Basil Pesto' },
     description: {
-      sk: 'Bazalkové pesto, cherry paradajky, mozzarella, parmezán',
-      en: 'Basil pesto, cherry tomatoes, mozzarella, parmesan'
+      sk: 'Paradajkový základ, mozzarella, bazalkové pesto, šunka, ricotta, paradajky, parmezán',
+      en: 'Tomato base, mozzarella, basil pesto, ham, ricotta, tomatoes, parmesan'
     },
     weight: '450g',
-    allergens: ['1', '7']
+    allergens: ['1', '7', '8'] // lepok, mlieko, orechy
   },
   'Bon Salami': {
     name: { sk: 'Pizza Bon Salami', en: 'Pizza Bon Salami' },
     description: {
-      sk: 'Saláma, olivy, cesnak, mozzarella',
-      en: 'Salami, olives, garlic, mozzarella'
+      sk: 'Paradajkový základ, mozzarella, saláma',
+      en: 'Tomato base, mozzarella, salami'
     },
     weight: '500g',
     allergens: ['1', '7']
@@ -130,8 +139,8 @@ export const productTranslations: Record<string, ProductTranslation> = {
   'Calimero': {
     name: { sk: 'Pizza Calimero', en: 'Pizza Calimero' },
     description: {
-      sk: 'Kuracie prsia, šampiňóny, smotanový základ, mozzarella',
-      en: 'Chicken breast, mushrooms, cream base, mozzarella'
+      sk: 'Paradajkový základ, mozzarella, šunka, kukurica',
+      en: 'Tomato base, mozzarella, ham, corn'
     },
     weight: '550g',
     allergens: ['1', '7']
@@ -139,8 +148,8 @@ export const productTranslations: Record<string, ProductTranslation> = {
   'Da Vinci': {
     name: { sk: 'Pizza Da Vinci', en: 'Pizza Da Vinci' },
     description: {
-      sk: 'Talianska šunka, artičoky, rukola, parmezán',
-      en: 'Italian ham, artichokes, arugula, parmesan'
+      sk: 'Paradajkový základ, mozzarella, šunka, slanina, niva, olivy',
+      en: 'Tomato base, mozzarella, ham, bacon, blue cheese, olives'
     },
     weight: '550g',
     allergens: ['1', '7']
@@ -148,8 +157,8 @@ export const productTranslations: Record<string, ProductTranslation> = {
   'Diavola Premium': {
     name: { sk: 'Pizza Diavola', en: 'Pizza Diavola' },
     description: {
-      sk: 'Pikantná saláma, chilli, cesnak, mozzarella',
-      en: 'Spicy salami, chilli, garlic, mozzarella'
+      sk: 'Paradajkový základ, chilli, mozzarella, pikantná saláma, baranie rohy, jalapenos',
+      en: 'Tomato base, chilli, mozzarella, spicy salami, pickled peppers, jalapeños'
     },
     weight: '550g',
     allergens: ['1', '7']
@@ -157,8 +166,8 @@ export const productTranslations: Record<string, ProductTranslation> = {
   'Hawaii Premium': {
     name: { sk: 'Pizza Hawai', en: 'Pizza Hawaii' },
     description: {
-      sk: 'Šunka, ananás, mozzarella, paradajkový základ',
-      en: 'Ham, pineapple, mozzarella, tomato base'
+      sk: 'Paradajkový základ, mozzarella, šunka, ananás',
+      en: 'Tomato base, mozzarella, ham, pineapple'
     },
     weight: '550g',
     allergens: ['1', '7']
@@ -166,17 +175,17 @@ export const productTranslations: Record<string, ProductTranslation> = {
   'Mayday Special': {
     name: { sk: 'Pizza Mayday', en: 'Pizza Mayday' },
     description: {
-      sk: 'Špeciálna zmes mäsa, zeleniny a prémiových ingrediencií',
-      en: 'Special mix of meats, vegetables and premium ingredients'
+      sk: 'Paradajkový základ, mozzarella, šunka, slanina, kukurica, vajce',
+      en: 'Tomato base, mozzarella, ham, bacon, corn, egg'
     },
     weight: '550g',
-    allergens: ['1', '7']
+    allergens: ['1', '7', '3'] // lepok, mlieko, vajce
   },
   'Honey Chilli': {
     name: { sk: 'Pizza Med-Chilli', en: 'Pizza Honey Chilli' },
     description: {
-      sk: 'Medovo-chilli základ, kuracie prsia, mozzarella',
-      en: 'Honey-chilli base, chicken breast, mozzarella'
+      sk: 'Paradajkový základ, chilli, mozzarella, med, kur.prsia, ananás, oregáno',
+      en: 'Tomato base, chilli, mozzarella, honey, chicken breast, pineapple, oregano'
     },
     weight: '450g',
     allergens: ['1', '7']
@@ -184,8 +193,8 @@ export const productTranslations: Record<string, ProductTranslation> = {
   'Picante': {
     name: { sk: 'Pizza Picante', en: 'Pizza Picante' },
     description: {
-      sk: 'Pikantná saláma, chilli, paprika, mozzarella',
-      en: 'Spicy salami, chilli, peppers, mozzarella'
+      sk: 'Paradajkový základ, mozzarella, pikantná saláma, jalapenos',
+      en: 'Tomato base, mozzarella, spicy salami, jalapeños'
     },
     weight: '520g',
     allergens: ['1', '7']
@@ -193,8 +202,8 @@ export const productTranslations: Record<string, ProductTranslation> = {
   'Pollo Crema': {
     name: { sk: 'Pizza Pollo crema', en: 'Pizza Pollo Crema' },
     description: {
-      sk: 'Kuracie prsia, šampiňóny, smotanový základ, mozzarella',
-      en: 'Chicken breast, mushrooms, cream base, mozzarella'
+      sk: 'Smetanový základ, mozzarella, kur.prsia, niva, kukurica, brokolica',
+      en: 'Cream base, mozzarella, chicken breast, blue cheese, corn, broccoli'
     },
     weight: '550g',
     allergens: ['1', '7']
@@ -202,8 +211,8 @@ export const productTranslations: Record<string, ProductTranslation> = {
   'Prosciutto Crudo Premium': {
     name: { sk: 'Pizza Prosciutto Crudo', en: 'Pizza Prosciutto Crudo' },
     description: {
-      sk: 'Prosciutto di Parma, burrata, cherry paradajky, rukola',
-      en: 'Prosciutto di Parma, burrata, cherry tomatoes, arugula'
+      sk: 'Paradajkový základ, mozzarella, prosciutto crudo, cherry paradajky, rukola, parmezán',
+      en: 'Tomato base, mozzarella, prosciutto crudo, cherry tomatoes, arugula, parmesan'
     },
     weight: '550g',
     allergens: ['1', '7']
@@ -211,8 +220,8 @@ export const productTranslations: Record<string, ProductTranslation> = {
   'Prosciutto Funghi': {
     name: { sk: 'Pizza Prosciutto Funghi', en: 'Pizza Prosciutto Funghi' },
     description: {
-      sk: 'Talianska šunka, zmiešané šampiňóny, truhľový olej, mozzarella',
-      en: 'Italian ham, mixed mushrooms, truffle oil, mozzarella'
+      sk: 'Paradajkový základ, mozzarella, šunka, šampiňóny',
+      en: 'Tomato base, mozzarella, ham, mushrooms'
     },
     weight: '530g',
     allergens: ['1', '7']
@@ -220,8 +229,8 @@ export const productTranslations: Record<string, ProductTranslation> = {
   'Provinciale': {
     name: { sk: 'Pizza Provinciale', en: 'Pizza Provinciale' },
     description: {
-      sk: 'Brie, vlašské orechy, med, karamelizovaná cibuľa',
-      en: 'Brie, walnuts, honey, caramelized onions'
+      sk: 'Paradajkový základ, mozzarella, šunka, slanina, kukurica, baranie rohy',
+      en: 'Tomato base, mozzarella, ham, bacon, corn, pickled peppers'
     },
     weight: '450g',
     allergens: ['1', '7']
@@ -229,8 +238,8 @@ export const productTranslations: Record<string, ProductTranslation> = {
   'Quattro Stagioni': {
     name: { sk: 'Pizza Quattro Stagioni', en: 'Pizza Quattro Stagioni' },
     description: {
-      sk: 'Šunka, šampiňóny, artičoky, olivy',
-      en: 'Ham, mushrooms, artichokes, olives'
+      sk: 'Paradajkový základ, mozzarella, šunka, šampiňóny, olivy, artičoky',
+      en: 'Tomato base, mozzarella, ham, mushrooms, olives, artichokes'
     },
     weight: '550g',
     allergens: ['1', '7']
@@ -238,8 +247,8 @@ export const productTranslations: Record<string, ProductTranslation> = {
   'Vegetariana Premium': {
     name: { sk: 'Pizza Vegetariana', en: 'Pizza Vegetariana' },
     description: {
-      sk: 'Grilovaná zelenina, sušené paradajky, feta, olivy, pesto',
-      en: 'Grilled vegetables, sun-dried tomatoes, feta, olives, pesto'
+      sk: 'Paradajkový základ, mozzarella, brokolica, kukurica, šampiňóny, baby špenát',
+      en: 'Tomato base, mozzarella, broccoli, corn, mushrooms, baby spinach'
     },
     weight: '550g',
     allergens: ['1', '7']

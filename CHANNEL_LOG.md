@@ -2,6 +2,27 @@
 
 ## [2025-01-XX] - Current Session Changes
 
+### Price & Description Updates from Menu
+- **Updated 24 Pizza Prices**
+  - Margherita: 7,99 €
+  - Prosciutto: 9,99 €
+  - Bon Salami: 9,99 €
+  - All other pizzas: 10,99 € (except Basil Pesto Premium and Prosciutto Crudo Premium: 11,99 €)
+  - File: `backend/prisma/update-prices-descriptions.ts`
+
+- **Updated Pizza Descriptions**
+  - Updated all pizza descriptions to match Mayday Pizza menu
+  - Changed from generic descriptions to specific ingredient lists
+  - Format: "Paradajkový základ, mozzarella, [ingredients]"
+  - Files: `frontend/lib/product-translations.ts`, `backend/prisma/update-prices-descriptions.ts`
+
+- **Updated Allergen Codes**
+  - Mayday: Added allergen 3 (vajce) - now has 1, 7, 3
+  - Basil Pesto Premium: Added allergen 8 (orechy) - now has 1, 7, 8
+  - File: `frontend/lib/product-translations.ts`
+
+## [2025-01-XX] - Previous Session Changes
+
 ### Performance Optimizations
 - **Dynamic Imports (Code Splitting)**
   - CustomizationModal now lazy loaded (only loads when needed)

@@ -1,5 +1,37 @@
 # Debug Log
 
+## [2025-01-XX] - Price & Description Updates
+
+### Menu Price & Description Update
+**Issue:** User provided menu images with correct prices and descriptions
+**Solution:** Updated all pizza prices and descriptions to match Mayday Pizza menu
+
+**Changes:**
+1. **Price Updates**
+   - Created script to update 24 pizzas with correct prices
+   - Margherita: 7,99 € (was 7,90 €)
+   - Prosciutto: 9,99 € (was 9,90 €)
+   - Bon Salami: 9,99 € (was 13,90 €)
+   - Most pizzas: 10,99 € (was various prices)
+   - Basil Pesto Premium: 11,99 € (was 12,90 €)
+   - Prosciutto Crudo Premium: 11,99 € (was 14,90 €)
+   - File: `backend/prisma/update-prices-descriptions.ts`
+
+2. **Description Updates**
+   - Updated all descriptions to match menu format
+   - Changed from generic to specific ingredient lists
+   - Example: "Paradajkový základ, mozzarella, šunka, ananás" instead of "Ham, pineapple, mozzarella, tomato base"
+   - Files: `frontend/lib/product-translations.ts`, `backend/prisma/update-prices-descriptions.ts`
+
+3. **Allergen Updates**
+   - Mayday: Added allergen 3 (vajce) - now 1, 7, 3
+   - Basil Pesto Premium: Added allergen 8 (orechy) - now 1, 7, 8
+   - File: `frontend/lib/product-translations.ts`
+
+**Result:** All 24 pizzas updated with correct prices and descriptions from menu
+
+---
+
 ## [2025-01-XX] - Current Session Debug & Fixes
 
 ### Performance Optimization Debug
