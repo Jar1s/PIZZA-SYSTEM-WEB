@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import {
   LineChart,
   Line,
@@ -46,15 +46,7 @@ export default function AnalyticsPage() {
   const [loading, setLoading] = useState(true);
   const [timeRange, setTimeRange] = useState<'7' | '30' | '90'>('30');
 
-  useEffect(() => {
-    fetchAnalytics();
-    
-    // Auto-refresh every 30 seconds
-    const interval = setInterval(fetchAnalytics, 30000);
-    return () => clearInterval(interval);
-  }, [timeRange]);
-
-  const fetchAnalytics = async () => {
+  const fetchAnalytics = useCallback(async () => {
     try {
       setLoading(true);
       const days = timeRange;
@@ -65,14 +57,25 @@ export default function AnalyticsPage() {
         const data = await res.json();
         setAnalytics(data);
       } else {
-        console.error('Failed to fetch analytics');
+        const errorText = await res.text();
+        console.error('Failed to fetch analytics:', res.status, errorText);
+        setAnalytics(null);
       }
     } catch (error) {
       console.error('Failed to fetch analytics:', error);
+      setAnalytics(null);
     } finally {
       setLoading(false);
     }
-  };
+  }, [timeRange]);
+
+  useEffect(() => {
+    fetchAnalytics();
+    
+    // Auto-refresh every 30 seconds
+    const interval = setInterval(fetchAnalytics, 30000);
+    return () => clearInterval(interval);
+  }, [fetchAnalytics]);
 
   if (loading && !analytics) {
     return (
