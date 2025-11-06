@@ -80,17 +80,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const refreshAccessToken = async () => {
-    const refreshTokenValue = localStorage.getItem('refresh_token');
-    if (!refreshTokenValue) {
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+    const isProduction = process.env.NODE_ENV === 'production';
+    
+    // In production, refresh token is in HttpOnly cookie
+    // In development, get it from localStorage
+    const refreshTokenValue = isProduction 
+      ? 'cookie' // Placeholder - actual token is in HttpOnly cookie
+      : localStorage.getItem('refresh_token');
+    
+    if (!refreshTokenValue && !isProduction) {
       throw new Error('No refresh token available');
     }
 
-    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
-    
     const response = await fetch(`${API_URL}/api/auth/refresh`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ refresh_token: refreshTokenValue }),
+      credentials: 'include', // Include cookies for HttpOnly tokens
+      body: JSON.stringify({ 
+        refresh_token: isProduction 
+          ? undefined // Don't send in body, it's in cookie
+          : refreshTokenValue 
+      }),
     });
 
     if (!response.ok) {
@@ -126,6 +137,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const response = await fetch(`${API_URL}/api/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      credentials: 'include', // Include cookies for HttpOnly tokens
       body: JSON.stringify({ username, password }),
     });
 
@@ -137,9 +149,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const data = await response.json();
     
     // Store tokens and user
-    localStorage.setItem('auth_token', data.access_token);
-    if (data.refresh_token) {
-      localStorage.setItem('refresh_token', data.refresh_token);
+    // In production, tokens are in HttpOnly cookies, but we still store in localStorage for development
+    const isProduction = process.env.NODE_ENV === 'production';
+    
+    if (!isProduction) {
+      // Development: Store in localStorage
+      localStorage.setItem('auth_token', data.access_token);
+      if (data.refresh_token) {
+        localStorage.setItem('refresh_token', data.refresh_token);
+      }
+    } else {
+      // Production: Tokens are in HttpOnly cookies, but we still need access_token for Authorization header
+      if (data.access_token) {
+        localStorage.setItem('auth_token', data.access_token); // Still needed for Authorization header
+      }
     }
     localStorage.setItem('auth_user', JSON.stringify(data.user));
     
@@ -147,7 +170,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     
     // Set up automatic token refresh
     if (data.refresh_token) {
-      setupTokenRefresh(data.refresh_token);
+      // In production, refresh token is in HttpOnly cookie
+      if (!isProduction) {
+        localStorage.setItem('refresh_token', data.refresh_token);
+      }
+      setupTokenRefresh(data.refresh_token || 'cookie'); // Use 'cookie' as placeholder in production
     }
   };
 
@@ -166,6 +193,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${token}`,
           },
+          credentials: 'include', // Include cookies for HttpOnly tokens
           body: JSON.stringify({ refresh_token: refreshToken }),
         });
       } catch (error) {
