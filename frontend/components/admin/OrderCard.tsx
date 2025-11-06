@@ -2,6 +2,7 @@
 
 import { Order, OrderStatus } from '@/shared';
 import { useState } from 'react';
+import { formatModifiers } from '@/lib/format-modifiers';
 
 interface OrderCardProps {
   order: Order;
@@ -95,12 +96,25 @@ export function OrderCard({ order, onStatusUpdate }: OrderCardProps) {
           
           <div className="col-span-2">
             <div className="font-semibold mb-2">Items</div>
-            {order.items.map((item, i) => (
-              <div key={i} className="flex justify-between">
-                <span>{item.quantity}x {item.productName}</span>
-                <span>€{(item.priceCents * item.quantity / 100).toFixed(2)}</span>
-              </div>
-            ))}
+            {order.items.map((item, i) => {
+              const modifiers = formatModifiers(item.modifiers);
+              
+              return (
+                <div key={i} className="mb-3 pb-3 border-b last:border-b-0">
+                  <div className="flex justify-between">
+                    <span className="font-medium">{item.quantity}x {item.productName}</span>
+                    <span>€{(item.priceCents * item.quantity / 100).toFixed(2)}</span>
+                  </div>
+                  {modifiers.length > 0 && (
+                    <div className="text-xs text-gray-500 mt-1 ml-4 space-y-0.5">
+                      {modifiers.map((mod, idx) => (
+                        <div key={idx}>• {mod}</div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
             
             <div className="mt-2 pt-2 border-t flex justify-between font-semibold">
               <span>Total</span>

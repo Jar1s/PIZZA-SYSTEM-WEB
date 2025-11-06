@@ -1,17 +1,49 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
+import helmet from 'helmet';
 
 async function bootstrap() {
+  // Validate JWT_SECRET in production
+  if (process.env.NODE_ENV === 'production' && !process.env.JWT_SECRET) {
+    throw new Error('❌ JWT_SECRET environment variable is required in production!');
+  }
+  
+  if (!process.env.JWT_SECRET || process.env.JWT_SECRET === 'your-secret-key-change-in-production') {
+    console.warn('⚠️  WARNING: Using default JWT_SECRET. Change it in production!');
+  }
+  
   const app = await NestFactory.create(AppModule);
+  
+  // Security headers
+  app.use(helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        styleSrc: ["'self'", "'unsafe-inline'"],
+        scriptSrc: ["'self'"],
+        imgSrc: ["'self'", "data:", "https:"],
+      },
+    },
+    crossOriginEmbedderPolicy: false,
+  }));
   
   // Enable CORS for frontend
   app.enableCors({
-    origin: [
-      'http://localhost:3001',
-      'http://localhost:3000',
-      'http://pornopizza.localhost:3001',
-      'http://pizzavnudzi.localhost:3001',
-    ],
+    origin: process.env.NODE_ENV === 'production'
+      ? [
+          process.env.FRONTEND_URL || 'https://pornopizza.sk',
+          'https://pornopizza.sk',
+          'https://www.pornopizza.sk',
+          'https://pizzavnudzi.sk',
+          'https://www.pizzavnudzi.sk',
+          // Add admin domain if needed
+        ]
+      : [
+          'http://localhost:3001',
+          'http://localhost:3000',
+          'http://pornopizza.localhost:3001',
+          'http://pizzavnudzi.localhost:3001',
+        ],
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'x-tenant'],

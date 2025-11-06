@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import { motion } from 'framer-motion';
+import { formatModifiers } from '@/lib/format-modifiers';
 
 interface OrderItem {
   id: string;
@@ -257,11 +258,16 @@ export default function OrderTrackingPage() {
                   <p className="font-medium text-gray-800">
                     {item.quantity}x {item.productName}
                   </p>
-                  {item.modifiers && Object.keys(item.modifiers).length > 0 && (
-                    <p className="text-sm text-gray-500">
-                      Extras: {JSON.stringify(item.modifiers)}
-                    </p>
-                  )}
+                  {(() => {
+                    const modifiers = formatModifiers(item.modifiers);
+                    return modifiers.length > 0 && (
+                      <div className="text-sm text-gray-500 mt-1 space-y-0.5">
+                        {modifiers.map((mod, idx) => (
+                          <div key={idx}>• {mod}</div>
+                        ))}
+                      </div>
+                    );
+                  })()}
                 </div>
                 <p className="font-semibold text-gray-700">
                   €{((item.priceCents * item.quantity) / 100).toFixed(2)}

@@ -1,4 +1,6 @@
 import { Module } from '@nestjs/common';
+import { APP_GUARD } from '@nestjs/core';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { PrismaModule } from './prisma/prisma.module';
 import { TenantsModule } from './tenants/tenants.module';
 import { ProductsModule } from './products/products.module';
@@ -11,6 +13,10 @@ import { AnalyticsModule } from './analytics/analytics.module';
 
 @Module({
   imports: [
+    ThrottlerModule.forRoot([{
+      ttl: 60000, // 1 minute
+      limit: 5, // 5 requests per minute
+    }]),
     PrismaModule,
     TenantsModule,
     ProductsModule,
@@ -22,7 +28,12 @@ import { AnalyticsModule } from './analytics/analytics.module';
     AnalyticsModule,
   ],
   controllers: [],
-  providers: [],
+  providers: [
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
+  ],
 })
 export class AppModule {}
 

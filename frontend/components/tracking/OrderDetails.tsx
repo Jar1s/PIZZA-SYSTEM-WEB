@@ -1,6 +1,7 @@
 'use client';
 
 import { Order } from '@/shared';
+import { formatModifiers } from '@/lib/format-modifiers';
 
 interface OrderDetailsProps {
   order: Order;
@@ -17,17 +18,30 @@ export function OrderDetails({ order }: OrderDetailsProps) {
       {/* Items */}
       <div className="mb-6">
         <h3 className="font-semibold mb-2">Items</h3>
-        <div className="space-y-2">
-          {order.items.map((item: any, i: number) => (
-            <div key={i} className="flex justify-between">
-              <span>
-                {item.quantity}x {item.productName}
-              </span>
-              <span className="font-semibold">
-                €{(item.priceCents * item.quantity / 100).toFixed(2)}
-              </span>
-            </div>
-          ))}
+        <div className="space-y-3">
+          {order.items.map((item: any, i: number) => {
+            const modifiers = formatModifiers(item.modifiers);
+            
+            return (
+              <div key={i} className="flex justify-between items-start">
+                <div className="flex-1">
+                  <div className="font-medium text-gray-800">
+                    {item.quantity}x {item.productName}
+                  </div>
+                  {modifiers.length > 0 && (
+                    <div className="text-sm text-gray-500 mt-1 space-y-0.5">
+                      {modifiers.map((mod, idx) => (
+                        <div key={idx}>• {mod}</div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <span className="font-semibold text-gray-700 ml-4">
+                  €{(item.priceCents * item.quantity / 100).toFixed(2)}
+                </span>
+              </div>
+            );
+          })}
         </div>
       </div>
       
