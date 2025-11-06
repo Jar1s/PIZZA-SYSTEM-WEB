@@ -154,17 +154,17 @@ export function BrandSettingsModal({
                       <div 
                         className="w-16 h-16 rounded border-2 border-gray-300"
                         style={{ 
-                          backgroundColor: (typeof tenant.theme === 'object' && tenant.theme !== null 
+                          backgroundColor: (tenant.theme && typeof tenant.theme === 'object' && 'primaryColor' in tenant.theme
                             ? (tenant.theme as any).primaryColor 
-                            : tenant.theme?.primaryColor) || '#FF6B00' 
+                            : '#FF6B00')
                         }}
                       />
                       <div className="flex-1">
                         <input
                           type="text"
-                          value={(typeof tenant.theme === 'object' && tenant.theme !== null 
+                          value={(tenant.theme && typeof tenant.theme === 'object' && 'primaryColor' in tenant.theme
                             ? (tenant.theme as any).primaryColor 
-                            : tenant.theme?.primaryColor) || '#FF6B00'}
+                            : '#FF6B00')}
                           disabled
                           className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100"
                         />
@@ -181,17 +181,17 @@ export function BrandSettingsModal({
                       <div 
                         className="w-16 h-16 rounded border-2 border-gray-300"
                         style={{ 
-                          backgroundColor: (typeof tenant.theme === 'object' && tenant.theme !== null 
+                          backgroundColor: (tenant.theme && typeof tenant.theme === 'object' && 'secondaryColor' in tenant.theme
                             ? (tenant.theme as any).secondaryColor 
-                            : tenant.theme?.secondaryColor) || '#000000' 
+                            : '#000000')
                         }}
                       />
                       <div className="flex-1">
                         <input
                           type="text"
-                          value={(typeof tenant.theme === 'object' && tenant.theme !== null 
+                          value={(tenant.theme && typeof tenant.theme === 'object' && 'secondaryColor' in tenant.theme
                             ? (tenant.theme as any).secondaryColor 
-                            : tenant.theme?.secondaryColor) || '#000000'}
+                            : '#000000')}
                           disabled
                           className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100"
                         />

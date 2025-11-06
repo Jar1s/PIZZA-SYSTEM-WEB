@@ -1,16 +1,18 @@
 'use client';
 
-import { Order } from '@pizza-ecosystem/shared';
+import { Order } from '@/shared';
 
 interface DeliveryInfoProps {
   order: Order;
 }
 
 export function DeliveryInfo({ order }: DeliveryInfoProps) {
-  // In real implementation, fetch delivery details from API
-  const delivery = order.delivery as any;
+  // In real implementation, fetch delivery details from API using order.deliveryId
+  if (!order.deliveryId) return null;
   
-  if (!delivery) return null;
+  // TODO: Fetch delivery details from API when needed
+  // For now, return null if no deliveryId
+  return null;
 
   return (
     <div className="bg-white rounded-lg shadow-md p-6 mb-6">

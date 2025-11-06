@@ -75,9 +75,11 @@ export default function BrandsPage() {
               <div 
                 className="h-24 flex items-center justify-center"
                 style={{ 
-                  backgroundColor: (typeof tenant.theme === 'object' && tenant.theme !== null 
+                  backgroundColor: (tenant.theme && typeof tenant.theme === 'object' && 'primaryColor' in tenant.theme
                     ? (tenant.theme as any).primaryColor 
-                    : tenant.theme?.primaryColor) || '#FF6B00' 
+                    : (typeof tenant.theme === 'object' && tenant.theme !== null && 'primaryColor' in tenant.theme
+                      ? (tenant.theme as any).primaryColor
+                      : null)) || '#FF6B00' 
                 }}
               >
                 <h2 className="text-3xl font-bold text-white">{tenant.name}</h2>
@@ -105,9 +107,9 @@ export default function BrandsPage() {
                         <div 
                           className="w-10 h-10 rounded border-2 border-gray-200"
                           style={{ 
-                            backgroundColor: (typeof tenant.theme === 'object' && tenant.theme !== null 
+                            backgroundColor: (tenant.theme && typeof tenant.theme === 'object' && 'primaryColor' in tenant.theme
                               ? (tenant.theme as any).primaryColor 
-                              : tenant.theme?.primaryColor) || '#FF6B00' 
+                              : '#FF6B00')
                           }}
                         />
                         <span className="text-xs text-gray-600">Primary</span>
@@ -116,9 +118,9 @@ export default function BrandsPage() {
                         <div 
                           className="w-10 h-10 rounded border-2 border-gray-200"
                           style={{ 
-                            backgroundColor: (typeof tenant.theme === 'object' && tenant.theme !== null 
+                            backgroundColor: (tenant.theme && typeof tenant.theme === 'object' && 'secondaryColor' in tenant.theme
                               ? (tenant.theme as any).secondaryColor 
-                              : tenant.theme?.secondaryColor) || '#000000' 
+                              : '#000000')
                           }}
                         />
                         <span className="text-xs text-gray-600">Secondary</span>

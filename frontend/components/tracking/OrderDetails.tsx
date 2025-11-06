@@ -1,6 +1,6 @@
 'use client';
 
-import { Order } from '@pizza-ecosystem/shared';
+import { Order } from '@/shared';
 
 interface OrderDetailsProps {
   order: Order;
