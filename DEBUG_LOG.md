@@ -1,6 +1,173 @@
 # Debug Log
 
-## 2025-11-06 - Order Display & KPI Updates
+## [2025-01-XX] - Current Session Debug & Fixes
+
+### Performance Optimization Debug
+**Issue:** Website loading slowly
+**Solution:** Implemented comprehensive performance optimizations
+
+**Changes:**
+1. **Dynamic Import for CustomizationModal**
+   - Problem: CustomizationModal loaded even when not needed
+   - Solution: Used `dynamic()` from Next.js for lazy loading
+   - Result: Reduced initial bundle size
+   - File: `frontend/components/menu/ProductCard.tsx`
+
+2. **React.memo for ProductCard**
+   - Problem: ProductCard re-rendering unnecessarily
+   - Solution: Wrapped with React.memo
+   - Result: Reduced re-renders when parent updates
+   - File: `frontend/components/menu/ProductCard.tsx`
+
+3. **Memoization of Computed Values**
+   - Problem: Values recalculated on every render
+   - Solution: Used useMemo for productsByCategory, filteredProducts, categoryCounts, etc.
+   - Result: Better performance, fewer recalculations
+   - Files: `frontend/app/page.tsx`, `frontend/components/menu/ProductCard.tsx`
+
+4. **Font Loading Optimization**
+   - Problem: Font blocking render
+   - Solution: Added `display: 'swap'` and `preload: true`
+   - Result: Faster FCP, immediate fallback font
+   - File: `frontend/app/layout.tsx`
+
+5. **Next.js Config Optimizations**
+   - Problem: Large bundle size
+   - Solution: Added `optimizePackageImports`, disabled source maps
+   - Result: Smaller production bundle
+   - File: `frontend/next.config.js`
+
+### 404 Page Debug
+**Issue:** No custom 404 page
+**Solution:** Created professional 404 page
+
+**Implementation:**
+- Created `frontend/app/not-found.tsx`
+- Added magnifying glass icon with metallic gradient
+- Bilingual support (SK/EN)
+- Tenant theme integration
+- Framer Motion animations
+- Router navigation to home
+
+**Translations Added:**
+- SK: "404: Stránka nenájdená", "Späť na domov"
+- EN: "404: Page Not Found", "Back to Home"
+- File: `frontend/lib/translations.ts`
+
+### CORS Error Debug
+**Issue:** CORS policy blocking requests from localhost:3001 to localhost:3000
+**Error:** "Access to fetch at 'http://localhost:3000/api/...' has been blocked by CORS policy"
+
+**Solution:**
+1. Updated CORS configuration in `backend/src/main.ts`
+   - Changed from `origin: true` to explicit whitelist
+   - Added: localhost:3001, pornopizza.localhost:3001, pizzavnudzi.localhost:3001
+   - Added methods: GET, POST, PUT, PATCH, DELETE, OPTIONS
+   - Added allowedHeaders: Content-Type, Authorization, x-tenant
+   - Enabled credentials
+
+2. Restarted backend server to apply changes
+
+**Result:** CORS errors resolved, API calls working
+
+### API Fetch Syntax Error
+**Issue:** Using server-side fetch syntax (`next: { revalidate }`) in client component
+**Error:** API calls failing silently
+
+**Solution:**
+- Changed from `next: { revalidate: 3600 }` to `cache: 'no-store'`
+- Added Content-Type headers
+- Better error handling with error messages
+- File: `frontend/lib/api.ts`
+
+**Result:** API calls working correctly in client components
+
+### Favicon 404 Error
+**Issue:** Favicon not found at `/favicons/pornopizza.ico`
+**Error:** "Failed to load resource: :3001/favicons/pornopizza.ico:1 the server responded with a status of 404"
+
+**Solution:**
+1. Created script to update database favicon paths
+2. Changed from `/favicons/pornopizza.ico` to `/favicon.ico`
+3. Updated both pornopizza and pizzavnudzi tenants
+4. File: `backend/prisma/fix-favicon.ts`
+
+**Result:** Favicon 404 error resolved
+
+### Loading State Issue
+**Issue:** Page stuck in loading state (skeleton loaders)
+**Problem:** API calls failing, error not displayed
+
+**Solution:**
+1. Fixed API fetch syntax (see above)
+2. Added error state to homepage
+3. Added error UI with "Try again" button
+4. Added console logging for debugging
+5. Better error messages in SK
+6. File: `frontend/app/page.tsx`
+
+**Result:** Page now shows error messages if API fails, or loads successfully
+
+### Menu Products Removal
+**Issue:** User wanted to remove 12 unwanted products from menu
+**Solution:**
+1. Created script to deactivate SIDES products
+2. Deactivated all 12 SIDES category products:
+   - Ciabatta so šunkou a syrom
+   - Mozzarella sticks 6ks
+   - Chicken Wings 16ks
+   - Chicken Wings 8ks
+   - Cesnaková bageta so syrom
+   - Cesnaková bageta
+   - Caprese šalát
+   - Frytky
+   - Sladké zemiakové frytky
+   - Olivy s cesnakom
+   - Caesar šalát
+   - Zeleninový šalát
+3. File: `backend/prisma/remove-unwanted-products.ts`
+
+**Result:** 12 SIDES products deactivated, menu cleaned up
+
+### Category Count Display
+**Issue:** User wanted to remove product count from category buttons
+**Change:** Removed `({categoryCounts[category]})` from button display
+**File:** `frontend/app/page.tsx`
+
+**Result:** Cleaner category buttons without counts
+
+### SAUCES Category Label
+**Issue:** User wanted "Omáčky" label for SAUCES category
+**Solution:**
+1. Added `sauces: 'Omáčky'` to SK translations
+2. Added `sauces: 'Sauces'` to EN translations
+3. Added SAUCES to categoryLabels
+4. Files: `frontend/lib/translations.ts`, `frontend/app/page.tsx`
+
+**Result:** SAUCES category now displays "Omáčky" in Slovak
+
+### Empty Categories Display
+**Issue:** Categories with 0 products still displayed
+**Solution:** Added check to skip categories with 0 products
+- `if (categoryCounts[category] === 0) return null`
+- File: `frontend/app/page.tsx`
+
+**Result:** Cleaner menu, only categories with products displayed
+
+### Allergen Display Format
+**Issue:** User wanted allergen info next to weight, not below, in single line
+**Change:** 
+- Removed tooltip hover functionality
+- Display allergens directly in modal
+- Format: "number - description" in single line
+- Positioned next to weight (flex layout)
+- File: `frontend/components/menu/CustomizationModal.tsx`
+
+**Result:** Allergens displayed inline with weight, single line format
+
+---
+
+## [2025-11-06] - Order Display & KPI Updates
 
 ### Order Display Improvements
 **Change:** Updated OrderList refresh interval
@@ -22,9 +189,36 @@
 - Created DEBUG_LOG.md
 - All future changes will be documented here
 
+### Analytics System Implementation
+**Change:** Built complete analytics system
+**Files Created:**
+- `backend/src/analytics/analytics.service.ts` - Core analytics logic
+- `backend/src/analytics/analytics.controller.ts` - API endpoints
+- `backend/src/analytics/analytics.module.ts` - NestJS module
+- `frontend/app/admin/analytics/page.tsx` - Updated with real data fetching
+
+**Features:**
+- Calculates revenue, orders, average order value from actual database
+- Period comparison (current vs previous period)
+- Top products by revenue (aggregates from order items)
+- Orders by day visualization
+- Supports 7/30/90 day ranges
+- Aggregates data from all active tenants
+
+**API Endpoints:**
+- `GET /api/analytics/all?days=30` - Analytics for all tenants
+- `GET /api/analytics/:tenantSlug?days=30` - Analytics for specific tenant
+
+**Technical Details:**
+- Uses Prisma to query orders with date ranges
+- Calculates previous period metrics for comparison
+- Aggregates product sales from order items
+- Handles empty data gracefully
+- Frontend auto-refreshes every 30 seconds
+
 ---
 
-## 2025-11-06 - Authentication Implementation & Fixes
+## [2025-11-06] - Authentication Implementation & Fixes
 
 ### Issues Fixed
 
@@ -135,11 +329,14 @@
 ✅ **Working:**
 - Backend runs on port 3000
 - Frontend runs on port 3001
-- Authentication deactivated for development
-- Orders display on dashboard
-- Real-time order updates (5s polling)
-- Real KPI calculation from orders
-- Admin dashboard fully accessible
+- CORS configured correctly
+- API calls working
+- Error handling implemented
+- Performance optimizations applied
+- 404 page implemented
+- Menu cleaned up (12 SIDES products removed)
+- Category display improved
+- Allergen display format updated
 
 ✅ **Development Mode:**
 - Auto-login with admin user
@@ -152,4 +349,3 @@
 2. Remove dev mode auto-login
 3. Re-enable middleware
 4. Re-enable ProtectedRoute checks
-

@@ -1,77 +1,117 @@
-# Changelog
+# Channel Log
 
-## [2025-01-XX] - Performance Optimizations & UI Improvements
+## [2025-01-XX] - Current Session Changes
 
 ### Performance Optimizations
 - **Dynamic Imports (Code Splitting)**
-  - CustomizationModal lazy loaded (reduces initial bundle size)
+  - CustomizationModal now lazy loaded (only loads when needed)
+  - Reduced initial bundle size
   - File: `frontend/components/menu/ProductCard.tsx`
 
 - **React.memo Implementation**
-  - ProductCard wrapped with React.memo (reduces re-renders)
+  - ProductCard wrapped with React.memo
+  - Reduces unnecessary re-renders
   - File: `frontend/components/menu/ProductCard.tsx`
 
-- **Memoization**
-  - All computed values memoized with useMemo
+- **useMemo/useCallback Optimization**
+  - All computed values memoized
   - Functions memoized with useCallback
+  - Category counts and labels memoized
   - Files: `frontend/app/page.tsx`, `frontend/components/menu/ProductCard.tsx`
 
 - **Font Optimization**
-  - Inter font with `display: 'swap'` and `preload: true`
+  - Inter font with `display: 'swap'`
+  - Preload enabled for faster loading
   - Better FCP (First Contentful Paint)
   - File: `frontend/app/layout.tsx`
 
-- **Next.js Config**
+- **Next.js Config Optimizations**
   - `optimizePackageImports` for framer-motion
   - `productionBrowserSourceMaps: false`
   - `standalone` output mode
   - File: `frontend/next.config.js`
 
-### Added
-- **404 Page**
-  - Custom 404 page with magnifying glass icon
+### 404 Page Implementation
+- **Custom 404 Page**
+  - Created professional 404 page with magnifying glass icon
   - Bilingual support (SK/EN)
   - Tenant theme integration
+  - Animations with Framer Motion
   - File: `frontend/app/not-found.tsx`
 
-### Fixed
+- **404 Translations**
+  - Added SK: "404: Stránka nenájdená"
+  - Added EN: "404: Page Not Found"
+  - Added "Back to Home" translations
+  - File: `frontend/lib/translations.ts`
+
+### CORS & API Fixes
 - **CORS Configuration**
-  - Explicit origin whitelist for localhost:3001
+  - Explicit origin whitelist (localhost:3001, pornopizza.localhost:3001, pizzavnudzi.localhost:3001)
   - Added methods and allowedHeaders
+  - Credentials enabled
   - File: `backend/src/main.ts`
 
-- **API Fetch Syntax**
-  - Fixed client-side fetch syntax (`cache: 'no-store'` instead of `next: { revalidate }`)
+- **API Fetch Syntax Fix**
+  - Changed from `next: { revalidate }` (server-side) to `cache: 'no-store'` (client-side)
   - Added Content-Type headers
+  - Better error messages
   - File: `frontend/lib/api.ts`
 
 - **Error Handling**
-  - Added error state and UI to homepage
+  - Added error state to homepage
+  - Error UI with "Try again" button
   - Console logging for debugging
+  - Better error messages in SK
   - File: `frontend/app/page.tsx`
 
-- **Favicon Path**
+- **Favicon Path Fix**
   - Updated database favicon paths from `/favicons/pornopizza.ico` to `/favicon.ico`
+  - Fixed 404 favicon error
   - File: `backend/prisma/fix-favicon.ts`
 
-### Changed
-- **Category Display**
-  - Removed product count from category buttons
-  - Hide categories with 0 products
-  - SAUCES category displays "Omáčky" in Slovak
+### Menu & Category Updates
+- **Removed 12 SIDES Products**
+  - Deactivated all SIDES category products
+  - Removed: Ciabatta, Mozzarella sticks, Chicken Wings, Cesnaková bageta, Saláty, Frytky, etc.
+  - File: `backend/prisma/remove-unwanted-products.ts`
+
+- **Category Count Removal**
+  - Removed product count display from category buttons
+  - Changed from: `{categoryLabels[category]} ({categoryCounts[category]})`
+  - To: `{categoryLabels[category]}`
   - File: `frontend/app/page.tsx`
 
-- **Allergen Display**
-  - Changed from tooltip to direct display in modal
+- **Added "Omáčky" Label**
+  - SAUCES category now displays "Omáčky" in SK
+  - Added translations for sauces
+  - File: `frontend/lib/translations.ts`, `frontend/app/page.tsx`
+
+- **Hide Empty Categories**
+  - Categories with 0 products no longer display
+  - Added check: `if (categoryCounts[category] === 0) return null`
+  - Cleaner menu UI
+  - File: `frontend/app/page.tsx`
+
+### Allergen Display Updates
+- **Allergen Format Change**
+  - Changed from tooltip on hover to direct display in modal
   - Format: "number - description" in single line
-  - Positioned next to weight
+  - Displayed next to weight (not below)
   - File: `frontend/components/menu/CustomizationModal.tsx`
 
-### Removed
-- **12 SIDES Products**
-  - Deactivated all SIDES category products
-  - Removed: Ciabatta, Mozzarella sticks, Chicken Wings, Saláty, Frytky, etc.
-  - File: `backend/prisma/remove-unwanted-products.ts`
+### Files Modified
+- `frontend/components/menu/ProductCard.tsx` - Performance optimizations, dynamic import
+- `frontend/app/page.tsx` - Error handling, memoization, empty category filtering
+- `frontend/app/layout.tsx` - Font optimization
+- `frontend/app/not-found.tsx` - New 404 page
+- `frontend/lib/api.ts` - API fetch syntax fix
+- `frontend/lib/translations.ts` - Added 404 and sauces translations
+- `frontend/next.config.js` - Performance optimizations
+- `frontend/components/menu/CustomizationModal.tsx` - Allergen display format
+- `backend/src/main.ts` - CORS configuration
+- `backend/prisma/fix-favicon.ts` - Favicon path fix
+- `backend/prisma/remove-unwanted-products.ts` - Remove SIDES products
 
 ---
 
@@ -92,25 +132,6 @@
   - Created CHANGELOG.md for tracking all changes
   - Created DEBUG_LOG.md for detailed debug information
   - All changes are now documented in these files
-
-- **Git Backup**
-  - Pushed all changes to GitHub repository
-  - Commit: "feat: Authentication system, dev mode setup, order display fixes"
-  - Repository: https://github.com/Jar1s/PIZZA-SYSTEM-WEB.git
-
-- **Analytics Dashboard**
-  - Implemented full analytics system with real data
-  - Backend Analytics Service for calculating metrics
-  - Analytics API endpoints (all tenants and per-tenant)
-  - Frontend Analytics Page with real-time data
-  - Features:
-    - Total Revenue with period comparison (% change)
-    - Total Orders with period comparison
-    - Average Order Value with period comparison
-    - Top 5 Products by revenue
-    - Orders by Day chart (bar visualization)
-    - Time range selector (7/30/90 days)
-    - Auto-refresh every 30 seconds
 
 ## [2025-11-06] - Authentication & Development Setup
 
@@ -205,3 +226,4 @@
 - Edit brand modal
 - Brand settings modal
 - Theme color management
+

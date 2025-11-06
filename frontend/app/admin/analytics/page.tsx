@@ -1,59 +1,54 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { ProtectedRoute } from '@/components/admin/ProtectedRoute';
+// import { ProtectedRoute } from '@/components/admin/ProtectedRoute'; // Disabled for development
 
 interface AnalyticsData {
   totalRevenue: number;
   totalOrders: number;
   averageOrderValue: number;
+  revenueChange: number;
+  ordersChange: number;
+  avgOrderValueChange: number;
   topProducts: Array<{
-    name: string;
+    productId: string;
+    productName: string;
     sales: number;
     revenue: number;
   }>;
   ordersByDay: Array<{
     date: string;
     orders: number;
+    revenue: number;
   }>;
 }
 
 export default function AnalyticsPage() {
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [timeRange, setTimeRange] = useState<'7d' | '30d' | '90d'>('30d');
+  const [timeRange, setTimeRange] = useState<'7' | '30' | '90'>('30');
 
   useEffect(() => {
     fetchAnalytics();
+    
+    // Auto-refresh every 30 seconds
+    const interval = setInterval(fetchAnalytics, 30000);
+    return () => clearInterval(interval);
   }, [timeRange]);
 
   const fetchAnalytics = async () => {
     try {
       setLoading(true);
-      // Mock data for now - in production this would fetch from API
-      const mockData: AnalyticsData = {
-        totalRevenue: 45678,
-        totalOrders: 234,
-        averageOrderValue: 1952,
-        topProducts: [
-          { name: 'Margherita', sales: 45, revenue: 35550 },
-          { name: 'Pepperoni', sales: 38, revenue: 33820 },
-          { name: 'Quattro Formaggi', sales: 32, revenue: 34880 },
-          { name: 'Prosciutto', sales: 28, revenue: 27720 },
-          { name: 'Diavola', sales: 24, revenue: 22800 },
-        ],
-        ordersByDay: [
-          { date: '2025-10-30', orders: 12 },
-          { date: '2025-10-31', orders: 15 },
-          { date: '2025-11-01', orders: 18 },
-          { date: '2025-11-02', orders: 14 },
-          { date: '2025-11-03', orders: 20 },
-          { date: '2025-11-04', orders: 16 },
-          { date: '2025-11-05', orders: 22 },
-        ],
-      };
+      const days = timeRange;
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
       
-      setAnalytics(mockData);
+      const res = await fetch(`${API_URL}/api/analytics/all?days=${days}`);
+      if (res.ok) {
+        const data = await res.json();
+        setAnalytics(data);
+      } else {
+        console.error('Failed to fetch analytics');
+      }
     } catch (error) {
       console.error('Failed to fetch analytics:', error);
     } finally {
@@ -61,12 +56,29 @@ export default function AnalyticsPage() {
     }
   };
 
-  if (loading) {
-    return <div className="p-8 text-center">Loading analytics...</div>;
+  if (loading && !analytics) {
+    return (
+      <div className="flex items-center justify-center p-12">
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-t-4 border-b-4 border-blue-600"></div>
+          <p className="mt-4 text-gray-700">Loading analytics...</p>
+        </div>
+      </div>
+    );
   }
 
   if (!analytics) {
-    return <div className="p-8 text-center text-gray-500">No data available</div>;
+    return (
+      <div className="p-8 text-center text-gray-500">
+        <p>No analytics data available</p>
+        <button
+          onClick={fetchAnalytics}
+          className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+        >
+          Retry
+        </button>
+      </div>
+    );
   }
 
   return (
@@ -78,9 +90,9 @@ export default function AnalyticsPage() {
         {/* Time Range Selector */}
         <div className="flex gap-2">
           <button
-            onClick={() => setTimeRange('7d')}
-            className={`px-4 py-2 rounded-lg font-semibold ${
-              timeRange === '7d'
+            onClick={() => setTimeRange('7')}
+            className={`px-4 py-2 rounded-lg font-semibold transition-colors ${
+              timeRange === '7'
                 ? 'bg-blue-600 text-white'
                 : 'bg-white text-gray-700 hover:bg-gray-100'
             }`}
@@ -88,9 +100,9 @@ export default function AnalyticsPage() {
             Last 7 Days
           </button>
           <button
-            onClick={() => setTimeRange('30d')}
-            className={`px-4 py-2 rounded-lg font-semibold ${
-              timeRange === '30d'
+            onClick={() => setTimeRange('30')}
+            className={`px-4 py-2 rounded-lg font-semibold transition-colors ${
+              timeRange === '30'
                 ? 'bg-blue-600 text-white'
                 : 'bg-white text-gray-700 hover:bg-gray-100'
             }`}
@@ -98,9 +110,9 @@ export default function AnalyticsPage() {
             Last 30 Days
           </button>
           <button
-            onClick={() => setTimeRange('90d')}
-            className={`px-4 py-2 rounded-lg font-semibold ${
-              timeRange === '90d'
+            onClick={() => setTimeRange('90')}
+            className={`px-4 py-2 rounded-lg font-semibold transition-colors ${
+              timeRange === '90'
                 ? 'bg-blue-600 text-white'
                 : 'bg-white text-gray-700 hover:bg-gray-100'
             }`}
@@ -117,15 +129,17 @@ export default function AnalyticsPage() {
           <div className="text-3xl font-bold text-green-600">
             €{(analytics.totalRevenue / 100).toFixed(2)}
           </div>
-          <div className="text-sm text-gray-500 mt-1">↑ 12% from last period</div>
+          <div className={`text-sm mt-1 ${analytics.revenueChange >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+            {analytics.revenueChange >= 0 ? '↗' : '↘'} {analytics.revenueChange > 0 ? '+' : ''}{analytics.revenueChange}% from last period
+          </div>
         </div>
 
         <div className="bg-white rounded-lg shadow p-6">
           <div className="text-sm text-gray-600 mb-2">Total Orders</div>
-          <div className="text-3xl font-bold text-blue-600">
-            {analytics.totalOrders}
+          <div className="text-3xl font-bold text-blue-600">{analytics.totalOrders}</div>
+          <div className={`text-sm mt-1 ${analytics.ordersChange >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
+            {analytics.ordersChange >= 0 ? '↗' : '↘'} {analytics.ordersChange > 0 ? '+' : ''}{analytics.ordersChange}% from last period
           </div>
-          <div className="text-sm text-gray-500 mt-1">↑ 8% from last period</div>
         </div>
 
         <div className="bg-white rounded-lg shadow p-6">
@@ -133,7 +147,9 @@ export default function AnalyticsPage() {
           <div className="text-3xl font-bold text-purple-600">
             €{(analytics.averageOrderValue / 100).toFixed(2)}
           </div>
-          <div className="text-sm text-gray-500 mt-1">↑ 5% from last period</div>
+          <div className={`text-sm mt-1 ${analytics.avgOrderValueChange >= 0 ? 'text-purple-600' : 'text-red-600'}`}>
+            {analytics.avgOrderValueChange >= 0 ? '↗' : '↘'} {analytics.avgOrderValueChange > 0 ? '+' : ''}{analytics.avgOrderValueChange}% from last period
+          </div>
         </div>
       </div>
 
@@ -141,72 +157,70 @@ export default function AnalyticsPage() {
         {/* Top Products */}
         <div className="bg-white rounded-lg shadow p-6">
           <h2 className="text-xl font-bold mb-4">Top Products</h2>
-          <div className="space-y-4">
-            {analytics.topProducts.map((product, index) => (
-              <div key={product.name} className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold">
-                    {index + 1}
+          {analytics.topProducts.length > 0 ? (
+            <div className="space-y-4">
+              {analytics.topProducts.map((product, index) => (
+                <div key={product.productId || index} className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold">
+                      {index + 1}
+                    </div>
+                    <div>
+                      <div className="font-semibold">{product.productName}</div>
+                      <div className="text-sm text-gray-500">{product.sales} sales</div>
+                    </div>
                   </div>
-                  <div>
-                    <div className="font-semibold">{product.name}</div>
-                    <div className="text-sm text-gray-500">{product.sales} sales</div>
+                  <div className="text-right">
+                    <div className="font-bold">€{(product.revenue / 100).toFixed(2)}</div>
                   </div>
                 </div>
-                <div className="text-right">
-                  <div className="font-bold">€{(product.revenue / 100).toFixed(2)}</div>
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center text-gray-500 py-8">
+              <p>No product data available</p>
+            </div>
+          )}
         </div>
 
         {/* Orders by Day */}
         <div className="bg-white rounded-lg shadow p-6">
           <h2 className="text-xl font-bold mb-4">Orders by Day</h2>
-          <div className="space-y-3">
-            {analytics.ordersByDay.map((day) => {
-              const maxOrders = Math.max(...analytics.ordersByDay.map(d => d.orders));
-              const percentage = (day.orders / maxOrders) * 100;
-              
-              return (
-                <div key={day.date}>
-                  <div className="flex justify-between text-sm mb-1">
-                    <span className="text-gray-600">
-                      {new Date(day.date).toLocaleDateString('en-US', { 
-                        month: 'short', 
-                        day: 'numeric' 
-                      })}
-                    </span>
-                    <span className="font-semibold">{day.orders} orders</span>
+          {analytics.ordersByDay.length > 0 ? (
+            <div className="space-y-3">
+              {analytics.ordersByDay.map((day) => {
+                const maxOrders = Math.max(...analytics.ordersByDay.map(d => d.orders), 1);
+                const percentage = maxOrders > 0 ? (day.orders / maxOrders) * 100 : 0;
+                
+                return (
+                  <div key={day.date}>
+                    <div className="flex justify-between text-sm mb-1">
+                      <span className="text-gray-600">
+                        {new Date(day.date).toLocaleDateString('en-US', { 
+                          month: 'short', 
+                          day: 'numeric' 
+                        })}
+                      </span>
+                      <span className="font-semibold">{day.orders} orders</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div
+                        className="bg-blue-600 h-2 rounded-full transition-all"
+                        style={{ width: `${percentage}%` }}
+                      />
+                    </div>
                   </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div
-                      className="bg-blue-600 h-2 rounded-full transition-all"
-                      style={{ width: `${percentage}%` }}
-                    />
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="text-center text-gray-500 py-8">
+              <p>No order data available</p>
+            </div>
+          )}
         </div>
       </div>
-
-      {/* Additional Metrics */}
-      <div className="mt-6 bg-yellow-50 border border-yellow-200 rounded-lg p-6">
-        <div className="flex items-center gap-3">
-          <span className="text-3xl">📊</span>
-          <div>
-            <h3 className="font-bold text-yellow-900">Analytics in Development</h3>
-            <p className="text-sm text-yellow-700">
-              More detailed analytics and charts coming soon. Currently showing mock data for demonstration.
-            </p>
-          </div>
-        </div>
-      </div>
-      </div>
+    </div>
     // </ProtectedRoute> // Disabled for development
   );
 }
-
