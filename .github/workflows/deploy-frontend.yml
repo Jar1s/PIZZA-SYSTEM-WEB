@@ -52,7 +52,7 @@ jobs:
           fi
       
       - name: Deploy to Vercel
-        if: github.ref == 'refs/heads/main' && secrets.VERCEL_TOKEN != ''
+        if: github.ref == 'refs/heads/main'
         uses: amondnet/vercel-action@v20
         continue-on-error: true
         with:
