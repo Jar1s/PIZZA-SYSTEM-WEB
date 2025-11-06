@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Product } from '@/shared';
 import { pizzaCustomizations, CustomizationOption } from '@/lib/customization-options';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { getProductTranslation } from '@/lib/product-translations';
+import { getProductTranslation, getAllergenDescription } from '@/lib/product-translations';
 import Image from 'next/image';
 
 interface CustomizationModalProps {
@@ -169,7 +169,7 @@ export default function CustomizationModal({
                   
                   {/* Weight and Allergens */}
                   {(translation.weight || translation.allergens) && (
-                    <div className="flex items-center gap-4 mb-3 text-sm text-gray-500">
+                    <div className="flex items-center gap-4 mb-3 text-sm text-gray-500 flex-wrap">
                       {translation.weight && (
                         <div className="flex items-center gap-1">
                           <span>⚖️</span>
@@ -177,9 +177,21 @@ export default function CustomizationModal({
                         </div>
                       )}
                       {translation.allergens && translation.allergens.length > 0 && (
-                        <div className="flex items-center gap-1">
+                        <div className="flex items-center gap-1 flex-wrap">
                           <span>⚠️</span>
-                          <span>{translation.allergens.join(', ')}</span>
+                          <span className="font-semibold">
+                            {language === 'sk' ? 'Alergény:' : 'Allergens:'}
+                          </span>
+                          <span className="text-xs italic text-gray-600">
+                            {translation.allergens.map((code, index) => (
+                              <span key={code}>
+                                <span className="font-semibold">{code}</span>
+                                {' - '}
+                                <span>{getAllergenDescription(code, language)}</span>
+                                {index < translation.allergens!.length - 1 && ', '}
+                              </span>
+                            ))}
+                          </span>
                         </div>
                       )}
                     </div>

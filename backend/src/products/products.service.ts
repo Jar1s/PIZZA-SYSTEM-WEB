@@ -11,7 +11,7 @@ export class ProductsService {
     category?: string;
     isActive?: boolean;
   }): Promise<Product[]> {
-    return this.prisma.product.findMany({
+    const products = await this.prisma.product.findMany({
       where: {
         tenantId,
         ...(filters?.category && { category: filters.category }),
@@ -21,7 +21,8 @@ export class ProductsService {
         { category: 'asc' },
         { name: 'asc' },
       ],
-    }) as Promise<Product[]>;
+    });
+    return products as any as Product[];
   }
 
   async getProductById(id: string): Promise<Product> {
@@ -33,23 +34,25 @@ export class ProductsService {
       throw new NotFoundException(`Product ${id} not found`);
     }
 
-    return product as Product;
+    return product as any as Product;
   }
 
   async createProduct(tenantId: string, data: CreateProductDto): Promise<Product> {
-    return this.prisma.product.create({
+    const product = await this.prisma.product.create({
       data: {
         ...data,
         tenantId,
-      },
-    }) as Promise<Product>;
+      } as any,
+    });
+    return product as any as Product;
   }
 
   async updateProduct(id: string, data: UpdateProductDto): Promise<Product> {
-    return this.prisma.product.update({
+    const product = await this.prisma.product.update({
       where: { id },
-      data,
-    }) as Promise<Product>;
+      data: data as any,
+    });
+    return product as any as Product;
   }
 
   async deleteProduct(id: string): Promise<void> {
@@ -60,17 +63,18 @@ export class ProductsService {
 
   async bulkImportProducts(tenantId: string, products: CreateProductDto[]): Promise<number> {
     const result = await this.prisma.product.createMany({
-      data: products.map(p => ({ ...p, tenantId })),
+      data: products.map(p => ({ ...p, tenantId })) as any,
     });
     return result.count;
   }
 
   async getProductsByIds(ids: string[]): Promise<Product[]> {
-    return this.prisma.product.findMany({
+    const products = await this.prisma.product.findMany({
       where: {
         id: { in: ids },
       },
-    }) as Promise<Product[]>;
+    });
+    return products as any as Product[];
   }
 }
 

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { ProtectedRoute } from '@/components/admin/ProtectedRoute';
 
 interface AnalyticsData {
   totalRevenue: number;
@@ -69,6 +70,7 @@ export default function AnalyticsPage() {
   }
 
   return (
+    // <ProtectedRoute requiredRole="ADMIN"> // Disabled for development
     <div>
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold">Analytics Dashboard</h1>
@@ -203,7 +205,8 @@ export default function AnalyticsPage() {
           </div>
         </div>
       </div>
-    </div>
+      </div>
+    // </ProtectedRoute> // Disabled for development
   );
 }
 

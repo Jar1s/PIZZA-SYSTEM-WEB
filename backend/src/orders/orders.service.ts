@@ -106,7 +106,7 @@ export class OrdersService {
       throw new NotFoundException(`Order ${id} not found`);
     }
 
-    return order as Order;
+    return order as any as Order;
   }
 
   async getOrders(tenantId: string, filters?: {
@@ -114,7 +114,7 @@ export class OrdersService {
     startDate?: Date;
     endDate?: Date;
   }): Promise<Order[]> {
-    return this.prisma.order.findMany({
+    const orders = await this.prisma.order.findMany({
       where: {
         tenantId,
         ...(filters?.status && { status: filters.status }),
@@ -131,11 +131,12 @@ export class OrdersService {
       orderBy: {
         createdAt: 'desc',
       },
-    }) as Promise<Order[]>;
+    });
+    return orders as any as Order[];
   }
 
   async updatePaymentRef(orderId: string, paymentRef: string, paymentStatus: string): Promise<Order> {
-    return this.prisma.order.update({
+    const order = await this.prisma.order.update({
       where: { id: orderId },
       data: {
         paymentRef,
@@ -144,17 +145,19 @@ export class OrdersService {
       include: {
         items: true,
       },
-    }) as Promise<Order>;
+    });
+    return order as any as Order;
   }
 
   async updateDeliveryRef(orderId: string, deliveryId: string): Promise<Order> {
-    return this.prisma.order.update({
+    const order = await this.prisma.order.update({
       where: { id: orderId },
       data: { deliveryId },
       include: {
         items: true,
       },
-    }) as Promise<Order>;
+    });
+    return order as any as Order;
   }
 
   async getOrderByPaymentRef(paymentRef: string): Promise<Order | null> {
@@ -165,7 +168,7 @@ export class OrdersService {
       },
     });
 
-    return order as Order | null;
+    return order ? (order as any as Order) : null;
   }
 }
 

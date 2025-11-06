@@ -36,6 +36,7 @@ export const translations = {
     soups: 'Polievky',
     drinks: 'Nápoje',
     desserts: 'Dezerty',
+    sauces: 'Omáčky',
     
     // Product Card
     add: 'Pridať',
@@ -63,6 +64,11 @@ export const translations = {
     loading: 'Načítavam...',
     error: 'Chyba',
     close: 'Zavrieť',
+    
+    // 404 Page
+    notFoundTitle: '404: Stránka nenájdená',
+    notFoundDescription: 'Stránka, ktorú hľadáte, neexistuje.',
+    backToHome: 'Späť na domov',
   },
   
   en: {
@@ -96,6 +102,7 @@ export const translations = {
     soups: 'Soups',
     drinks: 'Drinks',
     desserts: 'Desserts',
+    sauces: 'Sauces',
     
     // Product Card
     add: 'Add',
@@ -123,6 +130,11 @@ export const translations = {
     loading: 'Loading...',
     error: 'Error',
     close: 'Close',
+    
+    // 404 Page
+    notFoundTitle: '404: Page Not Found',
+    notFoundDescription: 'The page you\'re looking for doesn\'t exist.',
+    backToHome: 'Back to Home',
   },
 };
 

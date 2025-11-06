@@ -32,7 +32,7 @@ export const productTranslations: Record<string, ProductTranslation> = {
       sk: 'Čerstvé paradajky, buvolia mozzarella, cherry paradajky, bazalka',
       en: 'Fresh tomatoes, buffalo mozzarella, cherry tomatoes, basil'
     },
-    weight: '450g',
+    weight: '550g',
     allergens: ['1', '7']
   },
   'Fregata': {
@@ -41,7 +41,7 @@ export const productTranslations: Record<string, ProductTranslation> = {
       sk: 'Krevety, mušle, cesnak, biele víno',
       en: 'Shrimp, mussels, garlic, white wine'
     },
-    weight: '450g',
+    weight: '550g',
     allergens: ['1', '3', '7']
   },
   'Gazdovská': {
@@ -77,7 +77,7 @@ export const productTranslations: Record<string, ProductTranslation> = {
       sk: 'Talianska šunka, mozzarella, paradajkový základ, rukola',
       en: 'Italian ham, mozzarella, tomato base, arugula'
     },
-    weight: '450g',
+    weight: '500g',
     allergens: ['1', '7']
   },
   'Quattro Formaggi': {
@@ -86,7 +86,7 @@ export const productTranslations: Record<string, ProductTranslation> = {
       sk: 'Mozzarella, gorgonzola, parmezán, kozí syr',
       en: 'Mozzarella, gorgonzola, parmesan, goat cheese'
     },
-    weight: '450g',
+    weight: '550g',
     allergens: ['1', '7']
   },
   'Quattro Formaggi Bianco': {
@@ -104,7 +104,7 @@ export const productTranslations: Record<string, ProductTranslation> = {
       sk: 'Tuniak, červená cibuľa, kapary, olivy, mozzarella',
       en: 'Tuna, red onions, capers, olives, mozzarella'
     },
-    weight: '450g',
+    weight: '550g',
     allergens: ['1', '4', '7']
   },
   
@@ -124,7 +124,7 @@ export const productTranslations: Record<string, ProductTranslation> = {
       sk: 'Saláma, olivy, cesnak, mozzarella',
       en: 'Salami, olives, garlic, mozzarella'
     },
-    weight: '450g',
+    weight: '500g',
     allergens: ['1', '7']
   },
   'Calimero': {
@@ -133,7 +133,7 @@ export const productTranslations: Record<string, ProductTranslation> = {
       sk: 'Kuracie prsia, šampiňóny, smotanový základ, mozzarella',
       en: 'Chicken breast, mushrooms, cream base, mozzarella'
     },
-    weight: '450g',
+    weight: '550g',
     allergens: ['1', '7']
   },
   'Da Vinci': {
@@ -142,7 +142,7 @@ export const productTranslations: Record<string, ProductTranslation> = {
       sk: 'Talianska šunka, artičoky, rukola, parmezán',
       en: 'Italian ham, artichokes, arugula, parmesan'
     },
-    weight: '450g',
+    weight: '550g',
     allergens: ['1', '7']
   },
   'Diavola Premium': {
@@ -151,7 +151,7 @@ export const productTranslations: Record<string, ProductTranslation> = {
       sk: 'Pikantná saláma, chilli, cesnak, mozzarella',
       en: 'Spicy salami, chilli, garlic, mozzarella'
     },
-    weight: '450g',
+    weight: '550g',
     allergens: ['1', '7']
   },
   'Hawaii Premium': {
@@ -160,7 +160,7 @@ export const productTranslations: Record<string, ProductTranslation> = {
       sk: 'Šunka, ananás, mozzarella, paradajkový základ',
       en: 'Ham, pineapple, mozzarella, tomato base'
     },
-    weight: '450g',
+    weight: '550g',
     allergens: ['1', '7']
   },
   'Mayday Special': {
@@ -169,7 +169,7 @@ export const productTranslations: Record<string, ProductTranslation> = {
       sk: 'Špeciálna zmes mäsa, zeleniny a prémiových ingrediencií',
       en: 'Special mix of meats, vegetables and premium ingredients'
     },
-    weight: '450g',
+    weight: '550g',
     allergens: ['1', '7']
   },
   'Honey Chilli': {
@@ -187,7 +187,7 @@ export const productTranslations: Record<string, ProductTranslation> = {
       sk: 'Pikantná saláma, chilli, paprika, mozzarella',
       en: 'Spicy salami, chilli, peppers, mozzarella'
     },
-    weight: '450g',
+    weight: '520g',
     allergens: ['1', '7']
   },
   'Pollo Crema': {
@@ -196,7 +196,7 @@ export const productTranslations: Record<string, ProductTranslation> = {
       sk: 'Kuracie prsia, šampiňóny, smotanový základ, mozzarella',
       en: 'Chicken breast, mushrooms, cream base, mozzarella'
     },
-    weight: '450g',
+    weight: '550g',
     allergens: ['1', '7']
   },
   'Prosciutto Crudo Premium': {
@@ -205,7 +205,7 @@ export const productTranslations: Record<string, ProductTranslation> = {
       sk: 'Prosciutto di Parma, burrata, cherry paradajky, rukola',
       en: 'Prosciutto di Parma, burrata, cherry tomatoes, arugula'
     },
-    weight: '450g',
+    weight: '550g',
     allergens: ['1', '7']
   },
   'Prosciutto Funghi': {
@@ -214,7 +214,7 @@ export const productTranslations: Record<string, ProductTranslation> = {
       sk: 'Talianska šunka, zmiešané šampiňóny, truhľový olej, mozzarella',
       en: 'Italian ham, mixed mushrooms, truffle oil, mozzarella'
     },
-    weight: '450g',
+    weight: '530g',
     allergens: ['1', '7']
   },
   'Provinciale': {
@@ -232,7 +232,7 @@ export const productTranslations: Record<string, ProductTranslation> = {
       sk: 'Šunka, šampiňóny, artičoky, olivy',
       en: 'Ham, mushrooms, artichokes, olives'
     },
-    weight: '450g',
+    weight: '550g',
     allergens: ['1', '7']
   },
   'Vegetariana Premium': {
@@ -241,7 +241,7 @@ export const productTranslations: Record<string, ProductTranslation> = {
       sk: 'Grilovaná zelenina, sušené paradajky, feta, olivy, pesto',
       en: 'Grilled vegetables, sun-dried tomatoes, feta, olives, pesto'
     },
-    weight: '450g',
+    weight: '550g',
     allergens: ['1', '7']
   },
   
@@ -352,6 +352,24 @@ export const productTranslations: Record<string, ProductTranslation> = {
     allergens: ['1', '3', '7']
   },
 };
+
+/**
+ * Allergen descriptions
+ */
+export const allergenDescriptions: Record<string, { sk: string; en: string }> = {
+  '1': { sk: 'Obilniny obsahujúce lepok', en: 'Cereals containing gluten' },
+  '3': { sk: 'Vajcia', en: 'Eggs' },
+  '4': { sk: 'Ryby', en: 'Fish' },
+  '7': { sk: 'Mlieko', en: 'Milk' },
+  '10': { sk: 'Ryby a výrobky z rýb', en: 'Fish and fish products' },
+};
+
+/**
+ * Get allergen description
+ */
+export function getAllergenDescription(allergenCode: string, language: 'sk' | 'en'): string {
+  return allergenDescriptions[allergenCode]?.[language] || allergenCode;
+}
 
 /**
  * Get translated product name and description

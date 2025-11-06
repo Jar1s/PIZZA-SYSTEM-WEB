@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import { getProducts, getTenant } from '@/lib/api';
 import { Product, Tenant } from '@/shared';
 import { ProductCard } from '@/components/menu/ProductCard';
@@ -19,11 +19,13 @@ export default function HomePage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [tenant, setTenant] = useState<Tenant | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>('all');
 
   useEffect(() => {
     const loadData = async () => {
       try {
+        setError(null);
         // Get tenant slug from hostname
         const hostname = window.location.hostname;
         let tenantSlug = 'pornopizza'; // default
@@ -38,14 +40,20 @@ export default function HomePage() {
           tenantSlug = params.get('tenant') || 'pornopizza';
         }
         
+        console.log('Loading data for tenant:', tenantSlug);
+        
         const [productsData, tenantData] = await Promise.all([
           getProducts(tenantSlug),
           getTenant(tenantSlug),
         ]);
+        
+        console.log('Data loaded:', { products: productsData.length, tenant: tenantData.name });
+        
         setProducts(productsData);
         setTenant(tenantData);
-      } catch (error) {
+      } catch (error: any) {
         console.error('Failed to load data:', error);
+        setError(error.message || 'Failed to load data. Please check if backend is running on http://localhost:3000');
       } finally {
         setLoading(false);
       }
@@ -54,32 +62,38 @@ export default function HomePage() {
     loadData();
   }, []);
 
-  // Group products by category
-  const productsByCategory = products.reduce((acc, product) => {
-    const category = product.category || 'OTHER';
-    if (!acc[category]) {
-      acc[category] = [];
-    }
-    acc[category].push(product);
-    return acc;
-  }, {} as Record<string, Product[]>);
+  // Group products by category (memoized)
+  const productsByCategory = useMemo(() => {
+    return products.reduce((acc, product) => {
+      const category = product.category || 'OTHER';
+      if (!acc[category]) {
+        acc[category] = [];
+      }
+      acc[category].push(product);
+      return acc;
+    }, {} as Record<string, Product[]>);
+  }, [products]);
 
-  // Get filtered products
-  const filteredProducts = categoryFilter === 'all' 
-    ? products 
-    : products.filter(p => p.category === categoryFilter);
+  // Get filtered products (memoized)
+  const filteredProducts = useMemo(() => {
+    return categoryFilter === 'all' 
+      ? products 
+      : products.filter(p => p.category === categoryFilter);
+  }, [products, categoryFilter]);
 
-  // Category counts
-  const categoryCounts = {
+  // Category counts (memoized)
+  const categoryCounts = useMemo<Record<CategoryFilter, number>>(() => ({
     all: products.length,
     PIZZA: productsByCategory.PIZZA?.length || 0,
     STANGLE: productsByCategory.STANGLE?.length || 0,
     SOUPS: productsByCategory.SOUPS?.length || 0,
     DRINKS: productsByCategory.DRINKS?.length || 0,
     DESSERTS: productsByCategory.DESSERTS?.length || 0,
-  };
+    SIDES: productsByCategory.SIDES?.length || 0,
+    SAUCES: productsByCategory.SAUCES?.length || 0,
+  }), [products.length, productsByCategory]);
 
-  // Category emoji map
+  // Category emoji map (static)
   const categoryEmoji: Record<string, string> = {
     all: '🍕',
     PIZZA: '🍕',
@@ -89,23 +103,31 @@ export default function HomePage() {
     DESSERTS: '🍰',
   };
 
-  // Category labels
-  const categoryLabels: Record<string, string> = {
+  // Category labels (memoized)
+  const categoryLabels = useMemo<Record<string, string>>(() => ({
     all: t.allMenu,
     PIZZA: t.pizzas,
     STANGLE: t.stangle,
     SOUPS: t.soups,
     DRINKS: t.drinks,
     DESSERTS: t.desserts,
-  };
+    SAUCES: t.sauces,
+  }), [t]);
 
   // Category display order (pizzas first!)
   const categoryOrder = ['PIZZA', 'STANGLE', 'SOUPS', 'DRINKS', 'DESSERTS'];
   
-  // Get ordered categories that have products
-  const orderedCategories = categoryOrder.filter(cat => productsByCategory[cat]?.length > 0);
+  // Get ordered categories that have products (memoized)
+  const orderedCategories = useMemo(() => {
+    return categoryOrder.filter(cat => productsByCategory[cat]?.length > 0);
+  }, [productsByCategory]);
 
-  if (loading || !tenant) {
+  // Memoize category filter handler
+  const handleCategoryFilter = useCallback((category: CategoryFilter) => {
+    setCategoryFilter(category);
+  }, []);
+
+  if (loading) {
     return (
       <div className="min-h-screen bg-gray-50">
         <div className="h-[600px] bg-gray-300 animate-pulse" />
@@ -115,6 +137,46 @@ export default function HomePage() {
               <ProductSkeleton key={i} />
             ))}
           </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+        <div className="bg-white rounded-2xl shadow-lg p-8 max-w-md w-full text-center">
+          <div className="text-6xl mb-4">😕</div>
+          <h2 className="text-2xl font-bold text-gray-800 mb-4">Nepodarilo sa načítať dáta</h2>
+          <p className="text-gray-600 mb-6 text-sm">{error}</p>
+          <button
+            onClick={() => {
+              setLoading(true);
+              setError(null);
+              window.location.reload();
+            }}
+            className="px-6 py-3 bg-orange-600 text-white rounded-lg hover:bg-orange-700 font-semibold"
+          >
+            Skúsiť znova
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!tenant) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+        <div className="bg-white rounded-2xl shadow-lg p-8 max-w-md w-full text-center">
+          <div className="text-6xl mb-4">⚠️</div>
+          <h2 className="text-2xl font-bold text-gray-800 mb-4">Tenant nenájdený</h2>
+          <p className="text-gray-600 mb-6 text-sm">Nepodarilo sa načítať informácie o tenantovi.</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-6 py-3 bg-orange-600 text-white rounded-lg hover:bg-orange-700 font-semibold"
+          >
+            Obnoviť stránku
+          </button>
         </div>
       </div>
     );
@@ -155,21 +217,26 @@ export default function HomePage() {
           viewport={{ once: true }}
           className="flex flex-wrap justify-center gap-3 mb-12"
         >
-          {(Object.keys(categoryCounts) as CategoryFilter[]).map((category) => (
-            <button
-              key={category}
-              onClick={() => setCategoryFilter(category)}
-              className={`px-6 py-3 rounded-lg font-bold transition-all ${
-                categoryFilter === category
-                  ? 'text-white shadow-lg scale-105'
-                  : 'bg-white text-gray-700 hover:bg-gray-100 shadow'
-              }`}
-              style={categoryFilter === category ? { backgroundColor: tenant.theme.primaryColor } : {}}
-            >
-              <span className="mr-2">{categoryEmoji[category]}</span>
-              {categoryLabels[category]} ({categoryCounts[category]})
-            </button>
-          ))}
+          {(Object.keys(categoryCounts) as CategoryFilter[]).map((category) => {
+            // Skip categories with 0 products
+            if (categoryCounts[category] === 0) return null;
+            
+            return (
+              <button
+                key={category}
+                onClick={() => handleCategoryFilter(category)}
+                className={`px-6 py-3 rounded-lg font-bold transition-all ${
+                  categoryFilter === category
+                    ? 'text-white shadow-lg scale-105'
+                    : 'bg-white text-gray-700 hover:bg-gray-100 shadow'
+                }`}
+                style={categoryFilter === category ? { backgroundColor: tenant.theme.primaryColor } : {}}
+              >
+                <span className="mr-2">{categoryEmoji[category]}</span>
+                {categoryLabels[category]}
+              </button>
+            );
+          })}
         </motion.div>
 
         {/* Products by Category */}

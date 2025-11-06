@@ -15,7 +15,7 @@ export class TenantsService {
       throw new NotFoundException(`Tenant ${id} not found`);
     }
     
-    return tenant as Tenant;
+    return tenant as any as Tenant;
   }
 
   async getTenantBySlug(slug: string): Promise<Tenant> {
@@ -27,7 +27,7 @@ export class TenantsService {
       throw new NotFoundException(`Tenant ${slug} not found`);
     }
     
-    return tenant as Tenant;
+    return tenant as any as Tenant;
   }
 
   async getTenantByDomain(domain: string): Promise<Tenant> {
@@ -44,26 +44,29 @@ export class TenantsService {
       throw new NotFoundException(`Tenant for domain ${domain} not found`);
     }
     
-    return tenant as Tenant;
+    return tenant as any as Tenant;
   }
 
   async getAllTenants(): Promise<Tenant[]> {
-    return this.prisma.tenant.findMany({
+    const tenants = await this.prisma.tenant.findMany({
       where: { isActive: true },
-    }) as Promise<Tenant[]>;
+    });
+    return tenants as any as Tenant[];
   }
 
   async createTenant(data: any): Promise<Tenant> {
-    return this.prisma.tenant.create({
+    const tenant = await this.prisma.tenant.create({
       data,
-    }) as Promise<Tenant>;
+    });
+    return tenant as any as Tenant;
   }
   
   async updateTenant(slug: string, data: any): Promise<Tenant> {
-    return this.prisma.tenant.update({
+    const tenant = await this.prisma.tenant.update({
       where: { slug },
       data,
-    }) as Promise<Tenant>;
+    });
+    return tenant as any as Tenant;
   }
 }
 

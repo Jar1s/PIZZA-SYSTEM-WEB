@@ -3,9 +3,15 @@ import { Inter } from 'next/font/google';
 import './globals.css';
 import { headers } from 'next/headers';
 import { getTenant } from '@/lib/api';
-import { LanguageProvider } from '@/contexts/LanguageContext';
+import { Providers } from '@/components/Providers';
 
-const inter = Inter({ subsets: ['latin'] });
+// Optimize font loading with display swap and preload
+const inter = Inter({ 
+  subsets: ['latin'],
+  display: 'swap', // Show fallback font immediately, swap when loaded
+  preload: true,
+  variable: '--font-inter',
+});
 
 export async function generateMetadata(): Promise<Metadata> {
   const headersList = await headers();
@@ -62,9 +68,9 @@ export default async function RootLayout({
         }} />
       </head>
       <body className={inter.className}>
-        <LanguageProvider>
+        <Providers>
           {children}
-        </LanguageProvider>
+        </Providers>
       </body>
     </html>
   );

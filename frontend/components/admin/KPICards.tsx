@@ -18,15 +18,56 @@ export function KPICards() {
   });
 
   useEffect(() => {
-    // TODO: Fetch real KPIs from API
-    // For now, mock data
-    setKpis({
-      totalRevenue: 45678,
-      totalOrders: 234,
-      averageTicket: 1950,
-      activeOrders: 12,
-    });
+    fetchKPIs();
+    
+    // Poll for updates every 5 seconds
+    const interval = setInterval(fetchKPIs, 5000);
+    return () => clearInterval(interval);
   }, []);
+
+  const fetchKPIs = async () => {
+    try {
+      // Fetch from all tenants
+      const tenants = ['pornopizza', 'pizzavnudzi'];
+      let totalRevenue = 0;
+      let totalOrders = 0;
+      let activeOrders = 0;
+      
+      for (const tenant of tenants) {
+        const res = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}/api/${tenant}/orders`
+        );
+        
+        if (res.ok) {
+          const orders = await res.json();
+          totalOrders += orders.length;
+          
+          // Calculate revenue from delivered/paid orders
+          const revenueOrders = orders.filter((o: any) => 
+            o.status === 'DELIVERED' || o.status === 'PAID' || o.status === 'PREPARING' || 
+            o.status === 'READY' || o.status === 'OUT_FOR_DELIVERY'
+          );
+          totalRevenue += revenueOrders.reduce((sum: number, o: any) => sum + (o.totalCents || 0), 0);
+          
+          // Count active orders (not delivered or canceled)
+          activeOrders += orders.filter((o: any) => 
+            o.status !== 'DELIVERED' && o.status !== 'CANCELED'
+          ).length;
+        }
+      }
+      
+      const averageTicket = totalOrders > 0 ? Math.round(totalRevenue / totalOrders) : 0;
+      
+      setKpis({
+        totalRevenue,
+        totalOrders,
+        averageTicket,
+        activeOrders,
+      });
+    } catch (error) {
+      console.error('Failed to fetch KPIs:', error);
+    }
+  };
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">

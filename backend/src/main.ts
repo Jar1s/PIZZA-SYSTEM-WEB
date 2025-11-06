@@ -6,8 +6,15 @@ async function bootstrap() {
   
   // Enable CORS for frontend
   app.enableCors({
-    origin: true,
+    origin: [
+      'http://localhost:3001',
+      'http://localhost:3000',
+      'http://pornopizza.localhost:3001',
+      'http://pizzavnudzi.localhost:3001',
+    ],
     credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'x-tenant'],
   });
   
   const port = process.env.PORT || 3000;

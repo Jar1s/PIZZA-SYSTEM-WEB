@@ -18,8 +18,8 @@ export function OrderList() {
   useEffect(() => {
     fetchOrders();
     
-    // Poll for updates every 10 seconds
-    const interval = setInterval(fetchOrders, 10000);
+    // Poll for updates every 5 seconds (faster refresh for development)
+    const interval = setInterval(fetchOrders, 5000);
     return () => clearInterval(interval);
   }, [filters]);
 

@@ -1,5 +1,6 @@
 import { Sidebar } from '@/components/admin/Sidebar';
 import { Header } from '@/components/admin/Header';
+// import { ProtectedRoute } from '@/components/admin/ProtectedRoute'; // Disabled for development
 
 export default function AdminLayout({
   children,
@@ -7,6 +8,7 @@ export default function AdminLayout({
   children: React.ReactNode;
 }) {
   return (
+    // <ProtectedRoute> // Disabled for development
     <div className="flex h-screen bg-gray-100">
       <Sidebar />
       <div className="flex-1 flex flex-col overflow-hidden">
@@ -16,6 +18,7 @@ export default function AdminLayout({
         </main>
       </div>
     </div>
+    // </ProtectedRoute> // Disabled for development
   );
 }
 

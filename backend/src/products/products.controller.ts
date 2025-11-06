@@ -26,11 +26,21 @@ export class ProductsController {
   async getProducts(
     @Param('tenantSlug') tenantSlug: string,
     @Query('category') category?: string,
+    @Query('isActive') isActive?: string,
   ) {
     const tenant = await this.tenantsService.getTenantBySlug(tenantSlug);
+    
+    // Parse isActive query param
+    let isActiveFilter: boolean | undefined = true; // Default to active only
+    if (isActive === 'false') {
+      isActiveFilter = false;
+    } else if (isActive === 'all' || isActive === 'undefined') {
+      isActiveFilter = undefined; // Return all products
+    }
+    
     return this.productsService.getProducts(tenant.id, {
       category,
-      isActive: true,
+      isActive: isActiveFilter,
     });
   }
 

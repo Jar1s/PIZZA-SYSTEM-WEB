@@ -16,6 +16,14 @@ const nextConfig = {
   transpilePackages: ['@/shared'],
   swcMinify: true,
   reactStrictMode: true,
+  // Performance optimizations
+  experimental: {
+    optimizePackageImports: ['framer-motion', '@/components'],
+  },
+  // Optimize production builds
+  productionBrowserSourceMaps: false,
+  // Enable static optimization
+  output: 'standalone',
 }
 
 module.exports = nextConfig

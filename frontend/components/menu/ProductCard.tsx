@@ -6,31 +6,38 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { getProductTranslation } from '@/lib/product-translations';
 import Image from 'next/image';
 import { motion } from 'framer-motion';
-import { useState } from 'react';
-import CustomizationModal from './CustomizationModal';
+import { useState, useMemo, useCallback, memo } from 'react';
+import dynamic from 'next/dynamic';
+
+// Lazy load CustomizationModal (only loads when needed)
+const CustomizationModal = dynamic(() => import('./CustomizationModal'), {
+  loading: () => null,
+  ssr: false,
+});
 
 interface ProductCardProps {
   product: Product;
   index?: number;
 }
 
-export function ProductCard({ product, index = 0 }: ProductCardProps) {
+export const ProductCard = memo(function ProductCard({ product, index = 0 }: ProductCardProps) {
   const { addItem } = useCart();
   const { t, language } = useLanguage();
   const [isAdding, setIsAdding] = useState(false);
   const [showCustomization, setShowCustomization] = useState(false);
   
-  const price = (product.priceCents / 100).toFixed(2);
+  // Memoize computed values
+  const price = useMemo(() => (product.priceCents / 100).toFixed(2), [product.priceCents]);
   
   // Get translated product name, description, weight and allergens
-  const translation = getProductTranslation(product.name, language);
-  const displayName = translation.name || product.name;
-  const displayDescription = translation.description || product.description;
+  const translation = useMemo(() => getProductTranslation(product.name, language), [product.name, language]);
+  const displayName = useMemo(() => translation.name || product.name, [translation.name, product.name]);
+  const displayDescription = useMemo(() => translation.description || product.description, [translation.description, product.description]);
   
   // Check if product is a pizza that needs customization
-  const isPizza = product.category === 'PIZZA';
+  const isPizza = useMemo(() => product.category === 'PIZZA', [product.category]);
   
-  const handleAddToCart = async () => {
+  const handleAddToCart = useCallback(() => {
     if (isPizza) {
       // Open customization modal for pizzas
       setShowCustomization(true);
@@ -44,9 +51,9 @@ export function ProductCard({ product, index = 0 }: ProductCardProps) {
         setIsAdding(false);
       }, 800);
     }
-  };
+  }, [isPizza, addItem, product]);
 
-  const handleCustomizedAdd = (customizations: Record<string, string[]>, totalPrice: number) => {
+  const handleCustomizedAdd = useCallback((customizations: Record<string, string[]>, totalPrice: number) => {
     setIsAdding(true);
     // Add item with customizations and custom price
     addItem({
@@ -59,7 +66,7 @@ export function ProductCard({ product, index = 0 }: ProductCardProps) {
     setTimeout(() => {
       setIsAdding(false);
     }, 800);
-  };
+  }, [addItem, product]);
   
   return (
     <motion.div
@@ -176,6 +183,6 @@ export function ProductCard({ product, index = 0 }: ProductCardProps) {
       )}
     </motion.div>
   );
-}
+});
 
 

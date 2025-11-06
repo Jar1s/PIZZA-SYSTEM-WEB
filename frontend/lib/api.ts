@@ -4,19 +4,31 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
 
 export async function getTenant(slug: string): Promise<Tenant> {
   const res = await fetch(`${API_URL}/api/tenants/${slug}`, {
-    next: { revalidate: 3600 }, // Cache 1 hour
+    cache: 'no-store', // Client-side fetch, no cache
+    headers: {
+      'Content-Type': 'application/json',
+    },
   });
   
-  if (!res.ok) throw new Error('Tenant not found');
+  if (!res.ok) {
+    const errorText = await res.text();
+    throw new Error(`Tenant not found: ${errorText}`);
+  }
   return res.json();
 }
 
 export async function getProducts(tenantSlug: string): Promise<Product[]> {
   const res = await fetch(`${API_URL}/api/${tenantSlug}/products`, {
-    next: { revalidate: 60 }, // Cache 60s
+    cache: 'no-store', // Client-side fetch, no cache
+    headers: {
+      'Content-Type': 'application/json',
+    },
   });
   
-  if (!res.ok) throw new Error('Failed to fetch products');
+  if (!res.ok) {
+    const errorText = await res.text();
+    throw new Error(`Failed to fetch products: ${errorText}`);
+  }
   return res.json();
 }
 
@@ -27,6 +39,37 @@ export async function getCategories(tenantSlug: string): Promise<string[]> {
   
   if (!res.ok) throw new Error('Failed to fetch categories');
   return res.json();
+}
+
+export async function getProductById(productId: string): Promise<Product> {
+  // Need to find which tenant this product belongs to
+  // For admin, we can try all tenants or get from product
+  const res = await fetch(`${API_URL}/api/pornopizza/products/${productId}`);
+  if (!res.ok) {
+    const res2 = await fetch(`${API_URL}/api/pizzavnudzi/products/${productId}`);
+    if (!res2.ok) throw new Error('Product not found');
+    return res2.json();
+  }
+  return res.json();
+}
+
+export async function updateProduct(tenantSlug: string, productId: string, data: Partial<Product>): Promise<Product> {
+  const res = await fetch(`${API_URL}/api/${tenantSlug}/products/${productId}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  
+  if (!res.ok) throw new Error('Failed to update product');
+  return res.json();
+}
+
+export async function deleteProduct(tenantSlug: string, productId: string): Promise<void> {
+  const res = await fetch(`${API_URL}/api/${tenantSlug}/products/${productId}`, {
+    method: 'DELETE',
+  });
+  
+  if (!res.ok) throw new Error('Failed to delete product');
 }
 
 export async function createOrder(tenantSlug: string, orderData: any): Promise<Order> {
@@ -60,3 +103,34 @@ export async function getOrder(orderId: string): Promise<Order> {
   return res.json();
 }
 
+// Tenant/Brand management
+export async function getAllTenants(): Promise<Tenant[]> {
+  const res = await fetch(`${API_URL}/api/tenants`, {
+    cache: 'no-store',
+  });
+  
+  if (!res.ok) throw new Error('Failed to fetch tenants');
+  return res.json();
+}
+
+export async function updateTenant(tenantSlug: string, data: Partial<Tenant>): Promise<Tenant> {
+  const res = await fetch(`${API_URL}/api/tenants/${tenantSlug}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  
+  if (!res.ok) throw new Error('Failed to update tenant');
+  return res.json();
+}
+
+export async function createTenant(data: Partial<Tenant>): Promise<Tenant> {
+  const res = await fetch(`${API_URL}/api/tenants`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  
+  if (!res.ok) throw new Error('Failed to create tenant');
+  return res.json();
+}

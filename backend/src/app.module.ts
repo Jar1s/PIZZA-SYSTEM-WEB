@@ -5,6 +5,8 @@ import { ProductsModule } from './products/products.module';
 import { OrdersModule } from './orders/orders.module';
 import { PaymentsModule } from './payments/payments.module';
 import { DeliveryModule } from './delivery/delivery.module';
+import { EmailModule } from './email/email.module';
+import { AuthModule } from './auth/auth.module';
 
 @Module({
   imports: [
@@ -14,6 +16,8 @@ import { DeliveryModule } from './delivery/delivery.module';
     OrdersModule,
     PaymentsModule,
     DeliveryModule,
+    EmailModule,
+    AuthModule,
   ],
   controllers: [],
   providers: [],
