@@ -30,8 +30,8 @@ const nextConfig = {
   },
   // Optimize production builds
   productionBrowserSourceMaps: false,
-  // Enable static optimization
-  output: 'standalone',
+  // Disable standalone output for development
+  // output: 'standalone',
 }
 
 module.exports = nextConfig
