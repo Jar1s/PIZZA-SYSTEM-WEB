@@ -42,7 +42,7 @@ jobs:
         env:
           NEXT_PUBLIC_API_URL: ${{ secrets.API_URL }}
         
-      - name: Deploy to Vercel
+      - name: Check Vercel Secrets
         if: github.ref == 'refs/heads/main'
         run: |
           if [ -z "${{ secrets.VERCEL_TOKEN }}" ]; then
@@ -50,7 +50,11 @@ jobs:
             echo "To enable deployment, add VERCEL_TOKEN, VERCEL_ORG_ID, and VERCEL_PROJECT_ID to GitHub Secrets."
             exit 0
           fi
+      
+      - name: Deploy to Vercel
+        if: github.ref == 'refs/heads/main' && secrets.VERCEL_TOKEN != ''
         uses: amondnet/vercel-action@v20
+        continue-on-error: true
         with:
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
           vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
