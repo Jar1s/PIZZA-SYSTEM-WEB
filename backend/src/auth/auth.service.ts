@@ -139,6 +139,20 @@ export class AuthService {
     return { message: 'Logged out from all devices successfully' };
   }
 
+  // Cleanup expired refresh tokens (should be called periodically)
+  async cleanupExpiredTokens() {
+    const deleted = await this.prisma.refreshToken.deleteMany({
+      where: {
+        OR: [
+          { expiresAt: { lt: new Date() } },
+          { isRevoked: true },
+        ],
+      },
+    });
+
+    return { deleted: deleted.count };
+  }
+
   async validateUserById(userId: string) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
