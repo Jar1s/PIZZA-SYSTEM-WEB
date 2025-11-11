@@ -11,11 +11,27 @@ if (!fs.existsSync(mainJsPath)) {
 
 let content = fs.readFileSync(mainJsPath, 'utf8');
 
-// Check if module-alias is already added
-if (!content.includes("module-alias/register")) {
-  // Add module-alias setup after "use strict"
-  // Use addPath instead of addAlias to avoid interfering with node_modules resolution
-  const aliasSetup = `const path = require('path');
+// Check if module resolution fix is already added
+const hasModuleFix = content.includes('@pizza-ecosystem/shared') && 
+                     content.includes('Module._resolveFilename');
+
+if (!hasModuleFix) {
+  // Add module resolution fix after "use strict"
+  // Check if path is already required
+  const hasPath = content.includes("const path = require('path');") || 
+                  content.includes('const path = require("path");');
+  
+  const aliasSetup = hasPath 
+    ? `const Module = require('module');
+const originalResolveFilename = Module._resolveFilename;
+Module._resolveFilename = function(request, parent, isMain, options) {
+  if (request === '@pizza-ecosystem/shared') {
+    return path.join(__dirname, 'shared', 'index.js');
+  }
+  return originalResolveFilename.call(this, request, parent, isMain, options);
+};
+`
+    : `const path = require('path');
 const Module = require('module');
 const originalResolveFilename = Module._resolveFilename;
 Module._resolveFilename = function(request, parent, isMain, options) {
