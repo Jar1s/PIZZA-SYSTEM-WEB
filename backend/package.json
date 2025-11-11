@@ -6,7 +6,7 @@
   "scripts": {
     "prebuild": "rimraf dist",
     "build": "nest build",
-    "postbuild": "if [ -d dist/backend/src ]; then cp -r dist/backend/src/* dist/ 2>/dev/null || true; cp -r dist/shared dist/ 2>/dev/null || true; fi && if [ -f dist/shared/index.js ]; then sed -i '' 's/require(\"\\.\\/types\\/\\([^.]*\\)\\.types\")/require(\"\\\\.\\/types\\/\\1.types.js\")/g' dist/shared/index.js && sed -i '' 's/require(\"\\.\\/contracts\\/api-endpoints\")/require(\"\\\\.\\/contracts\\/api-endpoints.js\")/g' dist/shared/index.js; fi && find dist -name '*.js' -type f -exec sed -i '' 's|require(\"[^\"]*shared/index\\.ts\")|require(\"@pizza-ecosystem/shared\")|g' {} \\; && find dist -name '*.js' -type f -exec sed -i '' 's|require(\"[^\"]*shared/index\")|require(\"@pizza-ecosystem/shared\")|g' {} \\; && find dist -name '*.js' -type f -exec sed -i '' 's|require(\"\\.\\./shared\")|require(\"@pizza-ecosystem/shared\")|g' {} \\; && find dist -name '*.js' -type f -exec sed -i '' 's|require(\"\\.\\./\\.\\./shared\")|require(\"@pizza-ecosystem/shared\")|g' {} \\; && node fix-main.js",
+    "postbuild": "node fix-shared-imports.js && node fix-main.js",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "nest start",
     "start:dev": "npm run build && node dist/main.js",
