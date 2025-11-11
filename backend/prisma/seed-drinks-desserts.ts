@@ -25,81 +25,90 @@ async function seedDrinksAndDesserts() {
     },
   ];
 
-  // DRINKS - Popular options
+  // DRINKS - Only products from images
   const drinks = [
     {
-      name: 'Coca-Cola 0.33L',
-      description: 'Classic Coca-Cola in a can',
-      priceCents: 250,
-      image: null,
-      category: 'DRINKS',
-    },
-    {
-      name: 'Coca-Cola 0.5L',
-      description: 'Classic Coca-Cola in a bottle',
-      priceCents: 350,
-      image: null,
-      category: 'DRINKS',
-    },
-    {
-      name: 'Coca-Cola Zero 0.33L',
-      description: 'Zero sugar Coca-Cola in a can',
-      priceCents: 250,
-      image: null,
-      category: 'DRINKS',
-    },
-    {
-      name: 'Fanta Orange 0.33L',
-      description: 'Refreshing orange soda in a can',
-      priceCents: 250,
-      image: null,
-      category: 'DRINKS',
-    },
-    {
-      name: 'Sprite 0.33L',
-      description: 'Lemon-lime refreshment in a can',
-      priceCents: 250,
-      image: null,
-      category: 'DRINKS',
-    },
-    {
-      name: 'Water 0.5L',
+      name: 'Bonaqua Nesýtená 1,5l',
       description: 'Still mineral water',
-      priceCents: 200,
+      priceCents: 214,
       image: null,
       category: 'DRINKS',
     },
     {
-      name: 'Sparkling Water 0.5L',
+      name: 'Bonaqua Sýtená 1,5l',
       description: 'Sparkling mineral water',
-      priceCents: 200,
+      priceCents: 214,
       image: null,
       category: 'DRINKS',
     },
     {
-      name: 'Ice Tea Peach 0.33L',
-      description: 'Refreshing peach ice tea',
-      priceCents: 250,
+      name: 'Kofola 2l',
+      description: 'Classic Kofola',
+      priceCents: 315,
       image: null,
       category: 'DRINKS',
     },
     {
-      name: 'Ice Tea Lemon 0.33L',
-      description: 'Refreshing lemon ice tea',
-      priceCents: 250,
+      name: 'Pepsi 1l',
+      description: 'Classic Pepsi',
+      priceCents: 265,
       image: null,
       category: 'DRINKS',
     },
     {
-      name: 'Orange Juice 0.25L',
-      description: '100% orange juice',
-      priceCents: 300,
+      name: 'Pepsi Zero 1l',
+      description: 'Zero sugar Pepsi',
+      priceCents: 265,
+      image: null,
+      category: 'DRINKS',
+    },
+    {
+      name: 'Sprite 1l',
+      description: 'Lemon-lime Sprite',
+      priceCents: 265,
+      image: null,
+      category: 'DRINKS',
+    },
+    {
+      name: 'Fanta 1l',
+      description: 'Orange Fanta',
+      priceCents: 265,
+      image: null,
+      category: 'DRINKS',
+    },
+    {
+      name: 'Coca Cola 1l',
+      description: 'Classic Coca-Cola',
+      priceCents: 265,
+      image: null,
+      category: 'DRINKS',
+    },
+    {
+      name: 'Cola Zero 1l',
+      description: 'Zero sugar Coca-Cola',
+      priceCents: 265,
       image: null,
       category: 'DRINKS',
     },
   ];
 
   const allItems = [...desserts, ...drinks];
+  
+  // First, deactivate all existing DRINKS products that are not in our list
+  const drinkNames = drinks.map(d => d.name);
+  await prisma.product.updateMany({
+    where: {
+      tenantId: pornopizza.id,
+      category: 'DRINKS',
+      name: {
+        notIn: drinkNames,
+      },
+    },
+    data: {
+      isActive: false,
+    },
+  });
+  console.log('📝 Deactivated other DRINKS products');
   
   for (const item of allItems) {
     // Check if item already exists

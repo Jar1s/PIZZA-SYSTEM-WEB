@@ -4,36 +4,50 @@ import { useCart, useCartTotal } from '@/hooks/useCart';
 import { CartItem } from './CartItem';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useEffect } from 'react';
 
 export function Cart() {
   const { items, isOpen, closeCart } = useCart();
   const total = useCartTotal();
   const router = useRouter();
   
+  // Debug logging
+  useEffect(() => {
+    console.log('Cart component - isOpen changed:', isOpen, 'items:', items.length);
+  }, [isOpen, items.length]);
+  
   const handleCheckout = () => {
     closeCart();
     router.push('/checkout');
   };
   
+  // Always render the container, but conditionally show content
+  if (!isOpen) return null;
+  
   return (
-    <AnimatePresence>
-      {isOpen && (
-        <>
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={closeCart}
-            className="fixed inset-0 bg-black bg-opacity-50 z-50"
-          />
-          
-          <motion.div
-            initial={{ x: '100%' }}
-            animate={{ x: 0 }}
-            exit={{ x: '100%' }}
-            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-            className="fixed right-0 top-0 h-full w-full max-w-md bg-white shadow-xl p-6 z-50 flex flex-col"
-          >
+    <>
+      <div
+        onClick={closeCart}
+        className="fixed inset-0 bg-black bg-opacity-50 z-[1000]"
+        style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}
+      />
+      
+      <motion.div
+        initial={{ x: '100%' }}
+        animate={{ x: 0 }}
+        exit={{ x: '100%' }}
+        transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+        className="fixed right-0 top-0 h-full w-full max-w-md bg-white shadow-xl p-6 z-[1000] flex flex-col"
+        style={{ 
+          position: 'fixed',
+          top: 0,
+          right: 0,
+          height: '100vh',
+          width: '100%',
+          maxWidth: '28rem',
+          zIndex: 1000,
+        }}
+      >
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-2xl font-bold">Your Cart</h2>
               <button
@@ -74,9 +88,7 @@ export function Cart() {
               </>
             )}
           </motion.div>
-        </>
-      )}
-    </AnimatePresence>
+    </>
   );
 }
 

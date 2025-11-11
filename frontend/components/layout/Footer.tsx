@@ -78,6 +78,19 @@ export const Footer = ({ tenantName, primaryColor }: FooterProps) => {
 
         <div className="border-t border-gray-800 mt-8 pt-8 text-center text-gray-400 text-sm">
           <p>© {new Date().getFullYear()} {tenantName}. {t.allRightsReserved}</p>
+          <div className="mt-2 flex justify-center gap-4 flex-wrap">
+            <a href="/cookies" className="hover:text-white transition underline">
+              {t.cookiePolicy || 'Zásady používania súborov cookie'}
+            </a>
+            <span>|</span>
+            <a href="/terms" className="hover:text-white transition underline">
+              {t.termsOfService || 'Obchodné podmienky'}
+            </a>
+            <span>|</span>
+            <a href="/privacy" className="hover:text-white transition underline">
+              {t.privacyPolicy || 'Zásady ochrany osobných údajov'}
+            </a>
+          </div>
         </div>
       </div>
     </footer>

@@ -5,9 +5,10 @@ import { useCart, useCartTotal } from '@/hooks/useCart';
 import { createOrder, createPaymentSession } from '@/lib/api';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
+import { formatModifiers } from '@/lib/format-modifiers';
 
 export default function CheckoutPage() {
-  const { items } = useCart();
+  const { items, clearCart } = useCart();
   const total = useCartTotal();
   const router = useRouter();
   const [loading, setLoading] = useState(false);
@@ -69,7 +70,17 @@ export default function CheckoutPage() {
       // }
     } catch (error) {
       console.error('Checkout error:', error);
-      alert('Failed to process order. Please try again.');
+      const errorMessage = error instanceof Error ? error.message : 'Failed to process order';
+      
+      // Check if it's a product validation error
+      if (errorMessage.includes('not found') || errorMessage.includes('inactive')) {
+        alert('Some items in your cart are no longer available. Please refresh the page and add items again.');
+        // Clear cart and redirect
+        clearCart();
+        router.push('/');
+      } else {
+        alert(`Failed to process order: ${errorMessage}. Please try again.`);
+      }
     } finally {
       setLoading(false);
     }
@@ -94,12 +105,26 @@ export default function CheckoutPage() {
           {/* Order Summary */}
           <div className="mb-8 pb-8 border-b">
             <h2 className="text-xl font-semibold mb-4">Order Summary</h2>
-            {items.map(item => (
-              <div key={item.id} className="flex justify-between mb-2">
-                <span>{item.product.name} x {item.quantity}</span>
-                <span>€{((item.product.priceCents * item.quantity) / 100).toFixed(2)}</span>
-              </div>
-            ))}
+            {items.map(item => {
+              const modifiers = formatModifiers(item.modifiers);
+              return (
+                <div key={item.id} className="mb-4 pb-4 border-b last:border-b-0">
+                  <div className="flex justify-between items-start mb-1">
+                    <div className="flex-1">
+                      <div className="font-semibold">{item.product.name} x {item.quantity}</div>
+                      {modifiers.length > 0 && (
+                        <div className="text-sm text-gray-600 mt-1 space-y-0.5">
+                          {modifiers.map((mod, idx) => (
+                            <div key={idx} className="text-xs">• {mod}</div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    <span className="font-semibold ml-4">€{((item.product.priceCents * item.quantity) / 100).toFixed(2)}</span>
+                  </div>
+                </div>
+              );
+            })}
             <div className="flex justify-between text-xl font-bold mt-4 pt-4 border-t">
               <span>Total:</span>
               <span>€{(total / 100).toFixed(2)}</span>

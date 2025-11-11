@@ -79,7 +79,10 @@ export async function createOrder(tenantSlug: string, orderData: any): Promise<O
     body: JSON.stringify(orderData),
   });
   
-  if (!res.ok) throw new Error('Failed to create order');
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({ message: 'Failed to create order' }));
+    throw new Error(errorData.message || 'Failed to create order');
+  }
   return res.json();
 }
 

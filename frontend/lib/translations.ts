@@ -59,6 +59,9 @@ export const translations = {
     contact: 'Kontakt',
     followUs: 'Sledujte nás',
     allRightsReserved: 'Všetky práva vyhradené.',
+    cookiePolicy: 'Zásady používania súborov cookie',
+    termsOfService: 'Obchodné podmienky',
+    privacyPolicy: 'Zásady ochrany osobných údajov',
     
     // Common
     loading: 'Načítavam...',
@@ -125,6 +128,9 @@ export const translations = {
     contact: 'Contact',
     followUs: 'Follow Us',
     allRightsReserved: 'All rights reserved.',
+    cookiePolicy: 'Cookie Policy',
+    termsOfService: 'Terms of Service',
+    privacyPolicy: 'Privacy Policy',
     
     // Common
     loading: 'Loading...',

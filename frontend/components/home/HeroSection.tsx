@@ -12,9 +12,9 @@ interface HeroSectionProps {
 export const HeroSection = ({ tenantName, primaryColor }: HeroSectionProps) => {
   const { t } = useLanguage();
   return (
-    <section className="relative h-[600px] overflow-hidden">
+    <section className="relative h-[600px] overflow-hidden" style={{ position: 'relative', zIndex: 10 }}>
       {/* Background Image */}
-      <div className="absolute inset-0 z-0">
+      <div className="absolute inset-0 z-0" style={{ position: 'absolute', zIndex: 0 }}>
         <Image
           src="/images/hero/pizza-hero.jpg"
           alt="Delicious pizza"

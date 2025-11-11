@@ -1,6 +1,7 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import helmet from 'helmet';
+import { ValidationPipe } from '@nestjs/common';
 
 async function bootstrap() {
   // Validate JWT_SECRET in production
@@ -18,6 +19,12 @@ async function bootstrap() {
   }
   
   const app = await NestFactory.create(AppModule);
+  
+  // Global error handler for better debugging
+  app.useGlobalPipes(new ValidationPipe({
+    whitelist: true,
+    transform: true,
+  }));
   
   // Security headers
   app.use(helmet({

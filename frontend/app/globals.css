@@ -156,4 +156,38 @@ section[id] {
   scroll-margin-top: 80px;
 }
 
+/* Skin Tone Background - Simple solid color */
+.bg-skin-tone {
+  background-color: #F5E6D3;
+  position: relative;
+}
+
+
+/* Ensure header and interactive elements are above overlays */
+header.bg-skin-tone {
+  position: sticky !important;
+  z-index: 1000 !important;
+  isolation: isolate;
+}
+
+header.bg-skin-tone * {
+  position: relative;
+  z-index: 1;
+}
+
+header.bg-skin-tone button {
+  z-index: 1001 !important;
+  position: relative !important;
+  pointer-events: auto !important;
+}
+
+
+/* Alternative: Subtle texture pattern */
+.bg-skin-texture {
+  background-color: #F5E6D3;
+  background-image: 
+    radial-gradient(circle at 2px 2px, rgba(0, 0, 0, 0.03) 1px, transparent 0);
+  background-size: 20px 20px;
+}
+
 

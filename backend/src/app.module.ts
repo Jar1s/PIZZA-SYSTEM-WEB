@@ -15,7 +15,7 @@ import { AnalyticsModule } from './analytics/analytics.module';
   imports: [
     ThrottlerModule.forRoot([{
       ttl: 60000, // 1 minute
-      limit: 5, // 5 requests per minute
+      limit: process.env.NODE_ENV === 'production' ? 100 : 1000, // 100 req/min in prod, 1000 in dev
     }]),
     PrismaModule,
     TenantsModule,
@@ -29,10 +29,11 @@ import { AnalyticsModule } from './analytics/analytics.module';
   ],
   controllers: [],
   providers: [
-    {
+    // Only enable throttling in production
+    ...(process.env.NODE_ENV === 'production' ? [{
       provide: APP_GUARD,
       useClass: ThrottlerGuard,
-    },
+    }] : []),
   ],
 })
 export class AppModule {}

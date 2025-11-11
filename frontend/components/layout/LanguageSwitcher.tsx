@@ -12,9 +12,10 @@ export default function LanguageSwitcher() {
         onClick={() => setLanguage('sk')}
         className={`px-4 py-2 rounded-md text-sm font-bold transition-all ${
           language === 'sk'
-            ? 'bg-orange-500 text-white shadow-md'
+            ? 'text-white shadow-md'
             : 'text-gray-700 hover:bg-gray-200'
         }`}
+        style={language === 'sk' ? { backgroundColor: 'var(--color-primary)' } : {}}
       >
         SK
       </button>
@@ -22,9 +23,10 @@ export default function LanguageSwitcher() {
         onClick={() => setLanguage('en')}
         className={`px-4 py-2 rounded-md text-sm font-bold transition-all ${
           language === 'en'
-            ? 'bg-orange-500 text-white shadow-md'
+            ? 'text-white shadow-md'
             : 'text-gray-700 hover:bg-gray-200'
         }`}
+        style={language === 'en' ? { backgroundColor: 'var(--color-primary)' } : {}}
       >
         EN
       </button>

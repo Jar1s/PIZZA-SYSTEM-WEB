@@ -1,6 +1,6 @@
 'use client';
 
-import { Product } from '@/shared';
+import { Product, Tenant } from '@/shared';
 import { useCart } from '@/hooks/useCart';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { getProductTranslation } from '@/lib/product-translations';
@@ -25,6 +25,15 @@ export const ProductCard = memo(function ProductCard({ product, index = 0 }: Pro
   const { t, language } = useLanguage();
   const [isAdding, setIsAdding] = useState(false);
   const [showCustomization, setShowCustomization] = useState(false);
+  
+  // Check if PornoPizza for skin tone background - we need to get tenant from context or prop
+  // For now, check hostname as fallback
+  const isPornopizza = useMemo(() => {
+    if (typeof window !== 'undefined') {
+      return window.location.hostname.includes('pornopizza');
+    }
+    return false;
+  }, []);
   
   // Memoize computed values
   const price = useMemo(() => (product.priceCents / 100).toFixed(2), [product.priceCents]);
@@ -75,7 +84,9 @@ export const ProductCard = memo(function ProductCard({ product, index = 0 }: Pro
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: '-50px' }}
       transition={{ duration: 0.3, delay: Math.min(index * 0.03, 0.5) }}
-      className="group relative bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-2xl transition-all duration-300 flex flex-col h-full"
+      className={`group relative rounded-2xl shadow-lg overflow-hidden hover:shadow-2xl transition-all duration-300 flex flex-col h-full ${
+        isPornopizza ? 'bg-skin-tone relative' : 'bg-white'
+      }`}
     >
       {/* Image Container */}
       <div className="relative h-64 overflow-hidden bg-gray-100 flex-shrink-0">
@@ -110,37 +121,43 @@ export const ProductCard = memo(function ProductCard({ product, index = 0 }: Pro
       </div>
 
       {/* Content */}
-      <div className="p-6 flex flex-col flex-grow">
-        <h3 className="text-2xl font-bold mb-2 text-gray-900 group-hover:text-primary transition-colors">
-          {displayName}
-        </h3>
+      <div className="p-6 flex flex-col flex-grow min-h-[280px]">
+        {/* Product Name - Fixed height to align descriptions */}
+        <div className="h-16 mb-2 flex items-start">
+          <h3 className="text-2xl font-bold text-gray-900 group-hover:text-primary transition-colors">
+            {displayName}
+          </h3>
+        </div>
         
-        {displayDescription && (
-          <p className="text-gray-600 text-sm mb-3 line-clamp-2">
-            {displayDescription}
-          </p>
-        )}
+        {/* Description - Fixed height for consistent alignment */}
+        <div className="h-12 mb-3">
+          {displayDescription && (
+            <p className="text-gray-600 text-sm line-clamp-2">
+              {displayDescription}
+            </p>
+          )}
+        </div>
         
-        {/* Weight and Allergens */}
-        {(translation.weight || translation.allergens) && (
-          <div className="flex items-center gap-4 mb-4 text-xs text-gray-500">
-            {translation.weight && (
-              <div className="flex items-center gap-1">
-                <span>⚖️</span>
-                <span>{translation.weight}</span>
-              </div>
-            )}
-            {translation.allergens && translation.allergens.length > 0 && (
-              <div className="flex items-center gap-1">
-                <span>⚠️</span>
-                <span>{translation.allergens.join(', ')}</span>
-              </div>
-            )}
-          </div>
-        )}
+        {/* Spacer to push content to bottom */}
+        <div className="flex-grow"></div>
 
-        {/* Price & Add Button - Pushed to bottom */}
-        <div className="flex items-center justify-between mt-auto">
+        {/* Weight and Allergens - Just above price */}
+        <div className="flex items-center gap-4 mb-2 text-xs text-gray-500 h-5">
+          {translation.weight && (
+            <div className="flex items-center gap-1">
+              <span>⚖️</span>
+              <span>{translation.weight}</span>
+            </div>
+          )}
+          {translation.allergens && translation.allergens.length > 0 && (
+            <div className="flex items-center gap-1">
+              <span>{translation.allergens.join(', ')}</span>
+            </div>
+          )}
+        </div>
+
+        {/* Price & Add Button - Always at bottom */}
+        <div className="flex items-center justify-between">
           <div className="text-3xl font-bold" style={{ color: 'var(--color-primary)' }}>
             €{price}
           </div>
@@ -162,9 +179,7 @@ export const ProductCard = memo(function ProductCard({ product, index = 0 }: Pro
                 ✓ {t.added}
               </span>
             ) : (
-              <span className="flex items-center gap-2">
-                🛒 {t.add}
-              </span>
+              <span>{t.add}</span>
             )}
           </motion.button>
         </div>

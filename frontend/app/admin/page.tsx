@@ -1,3 +1,5 @@
+'use client';
+
 import { OrderList } from '@/components/admin/OrderList';
 import { KPICards } from '@/components/admin/KPICards';
 import { MaintenanceBanner } from '@/components/admin/MaintenanceBanner';

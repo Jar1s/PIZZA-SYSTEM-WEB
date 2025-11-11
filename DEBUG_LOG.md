@@ -1,5 +1,75 @@
 # Debug Log
 
+## [2025-01-XX] - Primary Color Update & Skin Tone Background
+
+### Primary Color Update for PornoPizza
+**Issue:** User feels orange color is not right for accents and text
+**Solution:** Changed primary color from orange to crimson red for better "porn feeling"
+
+**Changes:**
+1. **Color Update**
+   - Changed from `#FF6B00` (Orange) to `#DC143C` (Crimson Red)
+   - More appropriate for PornoPizza brand identity
+   - Better contrast and "porn feeling"
+   - File: `backend/prisma/update-pornopizza-color.ts`
+
+2. **Database Update**
+   - Updated tenant theme in database
+   - Primary color now used for all accents, buttons, and text highlights
+
+3. **Language Switcher Fix**
+   - Changed from hardcoded `bg-orange-500` to `var(--color-primary)`
+   - Now uses tenant primary color dynamically
+   - File: `frontend/components/layout/LanguageSwitcher.tsx`
+
+**Result:** PornoPizza now uses crimson red (#DC143C) instead of orange for better brand identity. Language switcher now uses primary color dynamically.
+
+---
+
+## [2025-01-XX] - Skin Tone Background & Maintenance Mode
+
+### Skin Tone Background for PornoPizza (Inspired by React Bits)
+**Issue:** User wants PornoPizza website to have "porn feeling" with skin tone background instead of white. Later updated to darker tone for more contrast. User suggested adding pattern/texture instead of just solid color. User shared React Bits repo for design inspiration.
+**Solution:** Changed background colors to warm skin tone (#F5E6D3) with animated diagonal pattern for PornoPizza only, inspired by React Bits design patterns
+
+**Changes:**
+1. **Animated CSS Pattern Classes (Inspired by React Bits)**
+   - Added `.bg-skin-tone` class with animated diagonal pattern
+   - Repeating linear gradients at 45° and -45° angles with infinite animation
+   - Subtle dots texture overlay
+   - Animated gradient overlay for depth (radial gradients)
+   - Smooth animations: `bgShift` (20s) and `gradientShift` (15s)
+   - Alternative `.bg-skin-texture` class with radial pattern
+   - File: `frontend/app/globals.css`
+
+2. **Page Background**
+   - Changed from `bg-gray-50` to `bg-skin-tone` class for PornoPizza
+   - Updated from solid color to pattern for more visual interest
+   - Conditional based on tenant slug/hostname
+   - File: `frontend/app/page.tsx`
+
+3. **Header Background**
+   - Changed from `bg-white` to `bg-skin-tone` class for PornoPizza
+   - Updated from solid color to pattern
+   - Detects PornoPizza from hostname or tenant slug
+   - File: `frontend/components/layout/Header.tsx`
+
+4. **Product Cards**
+   - Changed from `bg-white` to `bg-skin-tone` class for PornoPizza
+   - Updated from solid color to pattern
+   - Detects PornoPizza from hostname
+   - File: `frontend/components/menu/ProductCard.tsx`
+
+5. **Category Filter Buttons**
+   - Changed from `bg-white` to `bg-skin-tone` class for PornoPizza
+   - Updated from solid color to pattern
+   - Conditional styling based on tenant
+   - File: `frontend/app/page.tsx`
+
+**Result:** PornoPizza website now has warm skin tone background (#F5E6D3) with animated diagonal pattern and gradient overlays instead of solid color, giving it more "porn feeling" and visual interest. Design inspired by React Bits animated components library.
+
+---
+
 ## [2025-01-XX] - Maintenance Mode System & Price Updates
 
 ### Maintenance Mode System Implementation

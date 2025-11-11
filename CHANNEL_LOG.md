@@ -2,6 +2,48 @@
 
 ## [2025-01-XX] - Current Session Changes
 
+### Primary Color Update for PornoPizza
+- **Changed Primary Color**
+  - Old: #FF6B00 (Orange)
+  - New: #DC143C (Crimson Red)
+  - Better "porn feeling" for PornoPizza brand
+  - File: `backend/prisma/update-pornopizza-color.ts`
+
+- **Language Switcher Color Fix**
+  - Changed from hardcoded `bg-orange-500` to `var(--color-primary)`
+  - Now uses tenant primary color dynamically
+  - File: `frontend/components/layout/LanguageSwitcher.tsx`
+
+### Skin Tone Background for PornoPizza (Inspired by React Bits)
+- **Animated CSS Pattern Classes**
+  - Added `.bg-skin-tone` class with animated diagonal pattern
+  - Repeating linear gradients with infinite animation
+  - Subtle dots texture overlay
+  - Animated gradient overlay for depth
+  - Smooth, subtle animations (20s and 15s cycles)
+  - Alternative `.bg-skin-texture` class available
+  - File: `frontend/app/globals.css`
+
+- **Page Background**
+  - PornoPizza: Changed from white/gray to warm skin tone with pattern (#F5E6D3 with diagonal pattern)
+  - Other tenants: Keep white/gray background
+  - File: `frontend/app/page.tsx`
+
+- **Header Background**
+  - PornoPizza: Changed from white to warm skin tone with pattern (#F5E6D3 with diagonal pattern)
+  - Other tenants: Keep white background
+  - File: `frontend/components/layout/Header.tsx`
+
+- **Product Cards**
+  - PornoPizza: Changed from white to warm skin tone with pattern (#F5E6D3 with diagonal pattern)
+  - Other tenants: Keep white background
+  - File: `frontend/components/menu/ProductCard.tsx`
+
+- **Category Filter Buttons**
+  - PornoPizza: Changed from white to warm skin tone with pattern (#F5E6D3 with diagonal pattern)
+  - Other tenants: Keep white background
+  - File: `frontend/app/page.tsx`
+
 ### Maintenance Mode System
 - **Maintenance Banner Component (Admin)**
   - Created MaintenanceBanner component with toggle switch

@@ -18,3 +18,9 @@ export interface PaymentWebhook {
 export type PaymentProvider = 'adyen' | 'gopay' | 'gpwebpay';
 
 
+
+
+
+
+
+

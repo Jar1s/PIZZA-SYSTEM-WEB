@@ -40,6 +40,10 @@ export function CartItem({ item }: CartItemProps) {
             fill
             sizes="80px"
             className="object-cover rounded"
+            onError={(e) => {
+              console.error('Failed to load cart item image:', item.product.image);
+              e.currentTarget.style.display = 'none';
+            }}
           />
         </div>
       )}

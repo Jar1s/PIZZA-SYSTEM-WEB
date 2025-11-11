@@ -11,13 +11,21 @@ interface HeaderProps {
 }
 
 export function Header({ tenant }: HeaderProps) {
-  const { items, openCart } = useCart();
+  const { items, openCart, isOpen } = useCart();
   const { t } = useLanguage();
   const itemCount = items.reduce((sum, item) => sum + item.quantity, 0);
   
+  // Check if PornoPizza for skin tone background - use tenant data directly
+  const isPornopizza = tenant.slug === 'pornopizza' || tenant.subdomain === 'pornopizza' || tenant.name?.toLowerCase().includes('pornopizza');
+  
+  const headerClass = isPornopizza ? 'bg-skin-tone relative' : 'bg-white';
+  
   return (
-    <header className="sticky top-0 z-40 bg-white shadow-md">
-      <div className="container mx-auto px-4 py-4 flex items-center justify-between">
+    <header 
+      className={`sticky top-0 z-[100] shadow-md ${headerClass}`}
+      style={{ position: 'sticky', zIndex: 100 }}
+    >
+      <div className="container mx-auto px-4 py-4 flex items-center justify-between relative" style={{ zIndex: 100 }}>
         <div className="flex items-center gap-4">
           {tenant.theme.logo && (
             <Image
@@ -35,15 +43,24 @@ export function Header({ tenant }: HeaderProps) {
           )}
         </div>
         
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-4 relative z-50">
           <LanguageSwitcher />
           
           <button
-            onClick={openCart}
-            className="relative flex items-center gap-2 px-4 py-2 rounded-lg transition-colors hover:opacity-90"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              console.log('Cart button clicked, isOpen before:', isOpen);
+              openCart();
+              console.log('openCart called');
+            }}
+            className="relative flex items-center gap-2 px-4 py-2 rounded-lg transition-colors hover:opacity-90 cursor-pointer"
             style={{ 
               backgroundColor: 'var(--color-primary)',
-              color: 'white'
+              color: 'white',
+              zIndex: 1000,
+              position: 'relative',
+              pointerEvents: 'auto'
             }}
           >
             <svg

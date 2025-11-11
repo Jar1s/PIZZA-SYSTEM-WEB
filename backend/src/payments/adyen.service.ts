@@ -56,9 +56,12 @@ export class AdyenService {
   }
 
   parseWebhook(notification: any) {
+    // Handle both boolean and string success values from Adyen
+    const success = notification.success === true || notification.success === 'true';
+    
     return {
       eventType: notification.eventCode,
-      success: notification.success === 'true',
+      success,
       paymentRef: notification.pspReference,
       merchantReference: notification.merchantReference, // This is orderId
       amount: notification.amount?.value,

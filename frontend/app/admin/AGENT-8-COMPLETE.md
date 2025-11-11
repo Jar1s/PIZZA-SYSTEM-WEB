@@ -114,3 +114,9 @@ npm run dev
 - KPI calculations should be moved to backend for accuracy
 - Consider adding role-based access control for production
 
+
+
+
+
+
+

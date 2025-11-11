@@ -79,10 +79,16 @@ export const useCart = create<CartStore>()(
       },
       
       clearCart: () => set({ items: [] }),
-      openCart: () => set({ isOpen: true }),
+      openCart: () => {
+        console.log('openCart called');
+        set({ isOpen: true });
+      },
       closeCart: () => set({ isOpen: false }),
     }),
-    { name: 'cart-storage' }
+    { 
+      name: 'cart-storage',
+      partialize: (state) => ({ items: state.items }), // Only persist items, not isOpen
+    }
   )
 );
 

@@ -37,8 +37,9 @@ export function OrderList() {
         if (filters.startDate) params.set('startDate', filters.startDate);
         if (filters.endDate) params.set('endDate', filters.endDate);
         
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
         const res = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/api/${tenant}/orders?${params}`
+          `${API_URL}/api/${tenant}/orders?${params}`
         );
         
         if (res.ok) {
@@ -67,8 +68,9 @@ export function OrderList() {
       if (!order) return;
       
       // TODO: Need tenant slug from order - update API to include it
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/pornopizza/orders/${orderId}/status`,
+        `${API_URL}/api/pornopizza/orders/${orderId}/status`,
         {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },

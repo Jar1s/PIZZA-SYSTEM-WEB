@@ -188,8 +188,14 @@ export default function HomePage() {
     : {};
   const maintenanceMode = theme.maintenanceMode === true;
 
+  // Get tenant slug for conditional styling - use tenant data directly
+  const isPornopizza = tenant.slug === 'pornopizza' || tenant.subdomain === 'pornopizza' || tenant.name?.toLowerCase().includes('pornopizza');
+  
+  // Skin tone background for PornoPizza, white for others - darker for more contrast
+  const backgroundClass = isPornopizza ? 'bg-skin-tone' : 'bg-gray-50'; // Warmer, darker skin tone with animated pattern
+
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className={`${backgroundClass}`} style={isPornopizza ? { minHeight: '100vh', position: 'relative' } : {}}>
       {/* Header with Cart */}
       <Header tenant={tenant} />
       
@@ -266,9 +272,12 @@ export default function HomePage() {
                 className={`px-6 py-3 rounded-lg font-bold transition-all ${
                   categoryFilter === category
                     ? 'text-white shadow-lg scale-105'
-                    : 'bg-white text-gray-700 hover:bg-gray-100 shadow'
+                    : 'text-gray-700 hover:bg-gray-100 shadow bg-white'
                 }`}
-                style={categoryFilter === category ? { backgroundColor: tenant.theme.primaryColor } : {}}
+                style={categoryFilter === category 
+                  ? { backgroundColor: tenant.theme.primaryColor }
+                  : {}
+                }
               >
                 <span className="mr-2">{categoryEmoji[category]}</span>
                 {categoryLabels[category]}
