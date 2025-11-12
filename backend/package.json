@@ -44,6 +44,7 @@
     "bcryptjs": "^3.0.3",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.2",
+    "google-auth-library": "^10.5.0",
     "helmet": "^8.1.0",
     "iterare": "^1.2.1",
     "libphonenumber-js": "^1.12.26",
@@ -51,7 +52,8 @@
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
     "reflect-metadata": "^0.1.13",
-    "rxjs": "^7.8.1"
+    "rxjs": "^7.8.1",
+    "twilio": "^5.10.5"
   },
   "devDependencies": {
     "@nestjs/cli": "^10.0.0",

@@ -137,3 +137,129 @@ export async function createTenant(data: Partial<Tenant>): Promise<Tenant> {
   if (!res.ok) throw new Error('Failed to create tenant');
   return res.json();
 }
+
+// SMS Verification API functions
+export async function sendSmsCode(phoneNumber: string, userId: string): Promise<void> {
+  const res = await fetch(`${API_URL}/api/auth/send-sms-code`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ phoneNumber, userId }),
+  });
+  
+  if (!res.ok) {
+    const error = await res.json();
+    throw new Error(error.message || 'Failed to send SMS code');
+  }
+}
+
+export async function verifySmsCode(phoneNumber: string, code: string, userId: string): Promise<any> {
+  const res = await fetch(`${API_URL}/api/auth/verify-sms`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include', // Include cookies for HttpOnly tokens
+    body: JSON.stringify({ phoneNumber, code, userId }),
+  });
+  
+  if (!res.ok) {
+    const error = await res.json();
+    throw new Error(error.message || 'Invalid SMS code');
+  }
+  
+  // Store tokens if returned
+  const data = await res.json();
+  const isProduction = process.env.NODE_ENV === 'production';
+  
+  if (data.access_token) {
+    if (!isProduction) {
+      localStorage.setItem('auth_token', data.access_token);
+      if (data.refresh_token) {
+        localStorage.setItem('refresh_token', data.refresh_token);
+      }
+    } else {
+      // Production: Tokens are in HttpOnly cookies, but we still need access_token for Authorization header
+      localStorage.setItem('auth_token', data.access_token);
+    }
+    if (data.user) {
+      localStorage.setItem('auth_user', JSON.stringify(data.user));
+    }
+  }
+  
+  return data;
+}
+
+// Customer Authentication API functions
+export async function checkEmailExists(email: string): Promise<boolean> {
+  const res = await fetch(`${API_URL}/api/auth/customer/check-email`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email }),
+  });
+  
+  if (!res.ok) {
+    throw new Error('Failed to check email');
+  }
+  
+  const data = await res.json();
+  return data.exists;
+}
+
+export async function registerCustomer(email: string, password: string, name: string): Promise<any> {
+  const res = await fetch(`${API_URL}/api/auth/customer/register`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify({ email, password, name }),
+  });
+  
+  if (!res.ok) {
+    const error = await res.json();
+    throw new Error(error.message || 'Registration failed');
+  }
+  
+  return res.json();
+}
+
+export async function loginCustomer(email: string, password: string): Promise<any> {
+  const res = await fetch(`${API_URL}/api/auth/customer/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify({ email, password }),
+  });
+  
+  if (!res.ok) {
+    const error = await res.json();
+    throw new Error(error.message || 'Login failed');
+  }
+  
+  return res.json();
+}
+
+export async function sendCustomerSmsCode(phone: string, userId: string): Promise<void> {
+  const res = await fetch(`${API_URL}/api/auth/customer/send-sms-code`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ phone, userId }),
+  });
+  
+  if (!res.ok) {
+    const error = await res.json();
+    throw new Error(error.message || 'Failed to send SMS code');
+  }
+}
+
+export async function verifyCustomerPhone(phone: string, code: string, userId: string): Promise<any> {
+  const res = await fetch(`${API_URL}/api/auth/customer/verify-sms`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify({ phone, code, userId }),
+  });
+  
+  if (!res.ok) {
+    const error = await res.json();
+    throw new Error(error.message || 'Invalid SMS code');
+  }
+  
+  return res.json();
+}

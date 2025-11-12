@@ -15,7 +15,7 @@ export interface PaymentWebhook {
   raw: Record<string, any>;
 }
 
-export type PaymentProvider = 'adyen' | 'gopay' | 'gpwebpay';
+export type PaymentProvider = 'adyen' | 'gopay' | 'gpwebpay' | 'wepay';
 
 
 

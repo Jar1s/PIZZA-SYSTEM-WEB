@@ -13,6 +13,12 @@ export interface RefreshTokenDto {
   refresh_token: string;
 }
 
+export interface LoginWithSmsDto {
+  username: string;
+  password: string;
+  phone: string;
+}
+
 export interface JwtPayload {
   userId: string;
   username: string;
@@ -29,13 +35,23 @@ export class AuthService {
   async validateUser(username: string, password: string): Promise<any> {
     const user = await this.prisma.user.findUnique({
       where: { username },
+      select: {
+        id: true,
+        username: true,
+        password: true,
+        name: true,
+        role: true,
+        isActive: true,
+        phone: true,
+        phoneVerified: true,
+      } as any,
     });
 
     if (!user || !user.isActive) {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    const isPasswordValid = await bcrypt.compare(password, user.password);
+    const isPasswordValid = await bcrypt.compare(password, (user as any).password);
     if (!isPasswordValid) {
       throw new UnauthorizedException('Invalid credentials');
     }
@@ -46,6 +62,15 @@ export class AuthService {
 
   async login(loginDto: LoginDto) {
     const user = await this.validateUser(loginDto.username, loginDto.password);
+
+    // Check if SMS verification is needed
+    if (!user.phone || !user.phoneVerified) {
+      return {
+        needsSmsVerification: true,
+        userId: user.id,
+        phoneNumber: user.phone || null,
+      };
+    }
 
     const payload: JwtPayload = {
       userId: user.id,
@@ -162,14 +187,182 @@ export class AuthService {
         name: true,
         role: true,
         isActive: true,
-      },
+        phone: true,
+        phoneVerified: true,
+      } as any,
     });
 
     if (!user || !user.isActive) {
       return null;
     }
 
-    return user;
+    return user as any; // Type assertion to include phone fields
+  }
+
+  /**
+   * Find user by username
+   */
+  async findUserByUsername(username: string) {
+    return await this.prisma.user.findUnique({
+      where: { username },
+      select: {
+        id: true,
+        username: true,
+        name: true,
+        role: true,
+        phone: true,
+        phoneVerified: true,
+        isActive: true,
+      } as any,
+    });
+  }
+
+  /**
+   * Login with SMS verification
+   * Requires username, password, and verified phone number
+   */
+  async loginWithSmsVerification(loginDto: LoginWithSmsDto) {
+    // Validate username and password first
+    const user = await this.validateUser(loginDto.username, loginDto.password);
+
+    // Format phone number (same as SMS service)
+    const formatPhoneNumber = (phone: string): string => {
+      let cleaned = phone.replace(/\D/g, '');
+      if (!cleaned.startsWith('421') && cleaned.length === 9) {
+        cleaned = '421' + cleaned;
+      }
+      if (!cleaned.startsWith('+')) {
+        cleaned = '+' + cleaned;
+      }
+      return cleaned;
+    };
+
+    const formattedPhone = formatPhoneNumber(loginDto.phone);
+
+    // Verify phone matches user's phone (if user has phone)
+    if (user.phone) {
+      const userFormattedPhone = formatPhoneNumber(user.phone);
+      if (userFormattedPhone !== formattedPhone) {
+        throw new BadRequestException('Phone number does not match user account');
+      }
+    } else {
+      // If user doesn't have phone, update it
+      await this.prisma.user.update({
+        where: { id: user.id },
+        data: { phone: formattedPhone, phoneVerified: true } as any,
+      });
+    }
+
+    // Generate tokens
+    const payload: JwtPayload = {
+      userId: user.id,
+      username: user.username,
+      role: user.role,
+    };
+
+    const access_token = this.jwtService.sign(payload);
+    const refreshToken = crypto.randomBytes(32).toString('hex');
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 7); // 7 days
+
+    // Store refresh token
+    await this.prisma.refreshToken.create({
+      data: {
+        userId: user.id,
+        token: refreshToken,
+        expiresAt,
+      },
+    });
+
+    // Mark phone as verified if not already
+    if (!user.phoneVerified) {
+      await this.prisma.user.update({
+        where: { id: user.id },
+        data: { phoneVerified: true } as any,
+      });
+    }
+
+    return {
+      access_token,
+      refresh_token: refreshToken,
+      user: {
+        id: user.id,
+        username: user.username,
+        name: user.name,
+        role: user.role,
+      },
+    };
+  }
+
+  /**
+   * Update user phone number
+   */
+  async updateUserPhone(userId: string, phone: string) {
+    // Format phone number
+    const formatPhoneNumber = (phone: string): string => {
+      let cleaned = phone.replace(/\D/g, '');
+      if (!cleaned.startsWith('421') && cleaned.length === 9) {
+        cleaned = '421' + cleaned;
+      }
+      if (!cleaned.startsWith('+')) {
+        cleaned = '+' + cleaned;
+      }
+      return cleaned;
+    };
+
+    const formattedPhone = formatPhoneNumber(phone);
+
+    // Check if phone is already used by another user
+    const existingUser = await this.prisma.user.findUnique({
+      where: { phone: formattedPhone } as any,
+    });
+
+    if (existingUser && existingUser.id !== userId) {
+      throw new BadRequestException('Phone number is already in use');
+    }
+
+    // Update user phone and mark as unverified
+    const user = await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        phone: formattedPhone,
+        phoneVerified: false,
+      } as any,
+      select: {
+        id: true,
+        username: true,
+        name: true,
+        phone: true,
+        phoneVerified: true,
+      } as any,
+    });
+
+    return {
+      message: 'Phone number updated successfully. Please verify it.',
+      user,
+    };
+  }
+
+  /**
+   * Mark phone as verified
+   */
+  async markPhoneAsVerified(userId: string) {
+    const user = await this.prisma.user.update({
+      where: { id: userId },
+      data: { phoneVerified: true } as any,
+      select: {
+        id: true,
+        username: true,
+        name: true,
+        phone: true,
+        phoneVerified: true,
+      } as any,
+    });
+
+    return {
+      message: 'Phone number verified successfully',
+      user,
+    };
   }
 }
 

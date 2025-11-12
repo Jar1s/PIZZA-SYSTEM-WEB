@@ -3,7 +3,10 @@ import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
+import { CustomerAuthService } from './customer-auth.service';
+import { CustomerAuthController } from './customer-auth.controller';
 import { JwtStrategy } from './jwt.strategy';
+import { SmsService } from './sms.service';
 import { PrismaModule } from '../prisma/prisma.module';
 
 @Module({
@@ -15,9 +18,9 @@ import { PrismaModule } from '../prisma/prisma.module';
       signOptions: { expiresIn: '1h' }, // Short-lived access token (improved security)
     }),
   ],
-  providers: [AuthService, JwtStrategy],
-  controllers: [AuthController],
-  exports: [AuthService],
+  providers: [AuthService, CustomerAuthService, JwtStrategy, SmsService],
+  controllers: [AuthController, CustomerAuthController],
+  exports: [AuthService, CustomerAuthService, SmsService],
 })
 export class AuthModule {}
 

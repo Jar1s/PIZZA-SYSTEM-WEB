@@ -5,6 +5,7 @@
 - Webhook handler with HMAC signature verification
 - Payment → Order status automation (PENDING → PAID)
 - GoPay service placeholder (can be implemented later)
+- **WePay service integration (placeholder with mock support)**
 - Full error handling and logging
 
 ## Files Created
@@ -13,9 +14,15 @@ backend/src/payments/
 ├── payments.module.ts           ✅ Module with OrdersModule & TenantsModule dependencies
 ├── adyen.service.ts             ✅ Adyen payment session & webhook parsing
 ├── gopay.service.ts             ✅ GoPay placeholder implementation
+├── wepay.service.ts             ✅ WePay integration (placeholder with mock support)
 ├── payments.service.ts          ✅ Payment orchestration & order status sync
 ├── payments.controller.ts       ✅ POST /api/payments/session endpoint
-└── webhooks.controller.ts       ✅ Webhook handlers for Adyen & GoPay
+└── webhooks.controller.ts       ✅ Webhook handlers for Adyen, GoPay & WePay
+
+frontend/app/checkout/
+├── page.tsx                     ✅ Updated with payment session integration
+├── mock-payment/page.tsx        ✅ Mock payment page for testing
+└── return/page.tsx             ✅ Payment return handler
 ```
 
 ## API Endpoints
@@ -35,6 +42,11 @@ backend/src/payments/
   - Placeholder for GoPay integration
   - Returns `OK`
 
+- **POST /api/webhooks/wepay** → WePay webhook handler
+  - Verifies HMAC signature (production only)
+  - Updates order status based on payment result
+  - Returns `{ status: 'accepted' }`
+
 ## Environment Variables
 
 Add to `backend/.env`:
@@ -50,6 +62,13 @@ ADYEN_HMAC_KEY=your_hmac_key_for_webhooks
 GOPAY_GOID=your_gopay_id
 GOPAY_CLIENT_ID=your_client_id
 GOPAY_CLIENT_SECRET=your_client_secret
+
+# WePay Configuration (Optional - for production)
+WEPAY_CLIENT_ID=your_client_id
+WEPAY_CLIENT_SECRET=your_client_secret
+WEPAY_ACCOUNT_ID=your_account_id
+WEPAY_ENVIRONMENT=sandbox  # or production
+WEPAY_HMAC_KEY=your_webhook_hmac_key
 ```
 
 ## How It Works
@@ -76,6 +95,12 @@ GOPAY_CLIENT_SECRET=your_client_secret
   - Basic structure in place
   - Needs OAuth2 implementation
   - Similar webhook flow to Adyen
+
+- **WePay** (Placeholder with mock support)
+  - Service structure implemented
+  - Mock redirect URL in development mode
+  - Webhook handler ready
+  - Can be completed when credentials available
 
 ## Adyen Test Cards (TEST Environment)
 

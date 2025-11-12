@@ -13,9 +13,12 @@ interface User {
 interface AuthContextType {
   user: User | null;
   loading: boolean;
-  login: (username: string, password: string) => Promise<void>;
+  login: (username: string, password: string) => Promise<void | { needsSmsVerification: boolean; userId: string; phoneNumber: string | null }>;
   logout: () => Promise<void>;
   refreshAccessToken: () => Promise<void>;
+  sendSmsCode: (phone: string, username?: string) => Promise<void>;
+  loginWithSmsVerification: (username: string, password: string, phone: string, code: string) => Promise<void>;
+  setUser: (user: User | null) => void;
   isAdmin: boolean;
   isOperator: boolean;
 }
@@ -148,6 +151,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const data = await response.json();
     
+    // Check if SMS verification is needed
+    if (data.needsSmsVerification) {
+      return {
+        needsSmsVerification: true,
+        userId: data.userId,
+        phoneNumber: data.phoneNumber,
+      };
+    }
+    
     // Store tokens and user
     // In production, tokens are in HttpOnly cookies, but we still store in localStorage for development
     const isProduction = process.env.NODE_ENV === 'production';
@@ -213,6 +225,87 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const sendSmsCode = async (phone: string, username?: string) => {
+    // DEV MODE: Skip SMS in development
+    if (process.env.NODE_ENV === 'development') {
+      return;
+    }
+
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+    
+    const response = await fetch(`${API_URL}/api/auth/sms/send-code`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ phone, username }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || 'Failed to send SMS code');
+    }
+
+    return await response.json();
+  };
+
+  const loginWithSmsVerification = async (username: string, password: string, phone: string, code: string) => {
+    // DEV MODE: Auto-login for development
+    if (process.env.NODE_ENV === 'development') {
+      const devUser: User = {
+        id: 'dev-admin',
+        username: username || 'admin',
+        name: username === 'operator' ? 'Dev Operator' : 'Dev Admin',
+        role: username === 'operator' ? 'OPERATOR' : 'ADMIN',
+      };
+      setUser(devUser);
+      return;
+    }
+
+    // PRODUCTION: Real login with SMS verification
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+    
+    const response = await fetch(`${API_URL}/api/auth/sms/verify-code`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include', // Include cookies for HttpOnly tokens
+      body: JSON.stringify({ username, password, phone, code }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || 'SMS verification failed');
+    }
+
+    const data = await response.json();
+    
+    // Store tokens and user
+    const isProduction = process.env.NODE_ENV === 'production';
+    
+    if (!isProduction) {
+      // Development: Store in localStorage
+      localStorage.setItem('auth_token', data.access_token);
+      if (data.refresh_token) {
+        localStorage.setItem('refresh_token', data.refresh_token);
+      }
+    } else {
+      // Production: Tokens are in HttpOnly cookies, but we still need access_token for Authorization header
+      if (data.access_token) {
+        localStorage.setItem('auth_token', data.access_token);
+      }
+    }
+    localStorage.setItem('auth_user', JSON.stringify(data.user));
+    
+    setUser(data.user);
+    
+    // Set up automatic token refresh
+    if (data.refresh_token) {
+      if (!isProduction) {
+        localStorage.setItem('refresh_token', data.refresh_token);
+      }
+      setupTokenRefresh(data.refresh_token || 'cookie');
+    }
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -221,6 +314,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         login,
         logout,
         refreshAccessToken,
+        sendSmsCode,
+        loginWithSmsVerification,
+        setUser,
         isAdmin: user?.role === 'ADMIN',
         isOperator: user?.role === 'OPERATOR',
       }}

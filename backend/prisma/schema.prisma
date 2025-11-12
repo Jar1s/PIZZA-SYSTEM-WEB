@@ -140,22 +140,31 @@ model Delivery {
 enum UserRole {
   ADMIN
   OPERATOR
+  CUSTOMER
 }
 
 model User {
-  id       String   @id @default(cuid())
-  username String   @unique
-  password String // Hashed password
-  name     String
-  role     UserRole @default(OPERATOR)
-  isActive Boolean  @default(true)
+  id            String   @id @default(cuid())
+  username      String?  @unique // Optional for customers (they use email)
+  password      String? // Optional for OAuth users
+  name          String
+  email         String?  @unique // Email for customer login
+  googleId      String?  @unique // Google OAuth ID
+  appleId       String?  @unique // Apple OAuth ID
+  phone         String?  @unique // Phone number for SMS verification
+  phoneVerified Boolean  @default(false) // Whether phone is verified
+  role          UserRole @default(OPERATOR)
+  isActive      Boolean  @default(true)
 
-  refreshTokens RefreshToken[]
+  refreshTokens        RefreshToken[]
+  smsVerificationCodes SmsVerificationCode[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([username])
+  @@index([email])
+  @@index([phone])
   @@map("users")
 }
 
@@ -173,4 +182,22 @@ model RefreshToken {
   @@index([token])
   @@index([expiresAt])
   @@map("refresh_tokens")
+}
+
+model SmsVerificationCode {
+  id        String   @id @default(cuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  phone     String // Phone number (can be used before user exists)
+  code      String // 6-digit verification code
+  expiresAt DateTime // Code expires in 10 minutes
+  isUsed    Boolean  @default(false)
+  attempts  Int      @default(0) // Number of verification attempts
+
+  createdAt DateTime @default(now())
+
+  @@index([phone])
+  @@index([code])
+  @@index([expiresAt])
+  @@map("sms_verification_codes")
 }

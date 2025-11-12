@@ -18,7 +18,22 @@ export function Cart() {
   
   const handleCheckout = () => {
     closeCart();
-    router.push('/checkout');
+    
+    // Get tenant from URL or default
+    const hostname = window.location.hostname;
+    let tenantSlug = 'pornopizza'; // default
+    
+    if (hostname.includes('pornopizza')) {
+      tenantSlug = 'pornopizza';
+    } else if (hostname.includes('pizzavnudzi')) {
+      tenantSlug = 'pizzavnudzi';
+    } else if (hostname.includes('localhost')) {
+      const params = new URLSearchParams(window.location.search);
+      tenantSlug = params.get('tenant') || 'pornopizza';
+    }
+    
+    // Redirect to login page (user must authenticate before checkout)
+    router.push(`/auth/login?tenant=${tenantSlug}`);
   };
   
   // Always render the container, but conditionally show content
