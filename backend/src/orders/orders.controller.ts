@@ -6,6 +6,7 @@ import {
   Param, 
   Body, 
   Query,
+  NotFoundException,
 } from '@nestjs/common';
 import { OrdersService } from './orders.service';
 import { OrderStatusService } from './order-status.service';
@@ -13,7 +14,7 @@ import { TenantsService } from '../tenants/tenants.service';
 import { CreateOrderDto, UpdateOrderStatusDto } from './dto';
 import { OrderStatus } from '@pizza-ecosystem/shared';
 
-@Controller('api/:tenantSlug/orders')
+@Controller(':tenantSlug/orders')
 export class OrdersController {
   constructor(
     private ordersService: OrdersService,
@@ -26,6 +27,13 @@ export class OrdersController {
     @Param('tenantSlug') tenantSlug: string,
     @Body() data: CreateOrderDto,
   ) {
+    // Skip reserved paths that should be handled by other controllers
+    // IMPORTANT: Order matters - check specific paths first, then generic ones
+    const reservedPaths = ['tenants', 'track', 'customer', 'customers', 'my-account', 'account', 'me', 'user', 'users', 'auth', 'payments', 'delivery', 'webhooks', 'analytics'];
+    if (reservedPaths.includes(tenantSlug.toLowerCase())) {
+      throw new NotFoundException(`Route not found`);
+    }
+    
     const tenant = await this.tenantsService.getTenantBySlug(tenantSlug);
     return this.ordersService.createOrder(tenant.id, data);
   }
@@ -37,6 +45,13 @@ export class OrdersController {
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string,
   ) {
+    // Skip reserved paths that should be handled by other controllers
+    // IMPORTANT: Order matters - check specific paths first, then generic ones
+    const reservedPaths = ['tenants', 'track', 'customer', 'customers', 'my-account', 'account', 'me', 'user', 'users', 'auth', 'payments', 'delivery', 'webhooks', 'analytics'];
+    if (reservedPaths.includes(tenantSlug.toLowerCase())) {
+      throw new NotFoundException(`Route not found`);
+    }
+    
     const tenant = await this.tenantsService.getTenantBySlug(tenantSlug);
     return this.ordersService.getOrders(tenant.id, {
       status,
@@ -61,15 +76,27 @@ export class OrdersController {
 }
 
 // Public tracking endpoint
-@Controller('api/track')
+@Controller('track')
 export class TrackingController {
   constructor(private ordersService: OrdersService) {}
 
   @Get(':orderId')
   async trackOrder(@Param('orderId') orderId: string) {
-    return this.ordersService.getOrderById(orderId);
+    console.log('[TrackingController] trackOrder called with orderId:', orderId);
+    try {
+      const order = await this.ordersService.getOrderById(orderId);
+      console.log('[TrackingController] Order found:', order?.id);
+      return order;
+    } catch (error) {
+      console.error('[TrackingController] Error getting order:', error);
+      throw error;
+    }
   }
 }
+
+
+
+
 
 
 

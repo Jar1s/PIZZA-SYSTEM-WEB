@@ -1,7 +1,7 @@
 import { Controller, Get, Param, Query, Post, Body, Patch } from '@nestjs/common';
 import { TenantsService } from './tenants.service';
 
-@Controller('api/tenants')
+@Controller('tenants')
 export class TenantsController {
   constructor(private tenantsService: TenantsService) {}
 
@@ -17,7 +17,15 @@ export class TenantsController {
 
   @Get(':slug')
   async getTenant(@Param('slug') slug: string) {
-    return this.tenantsService.getTenantBySlug(slug);
+    console.log('[TenantsController] getTenant called with slug:', slug);
+    try {
+      const tenant = await this.tenantsService.getTenantBySlug(slug);
+      console.log('[TenantsController] Tenant found:', tenant?.name);
+      return tenant;
+    } catch (error) {
+      console.error('[TenantsController] Error getting tenant:', error);
+      throw error;
+    }
   }
 
   @Post()
@@ -30,6 +38,10 @@ export class TenantsController {
     return this.tenantsService.updateTenant(slug, data);
   }
 }
+
+
+
+
 
 
 

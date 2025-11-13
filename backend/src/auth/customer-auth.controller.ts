@@ -4,7 +4,7 @@ import { Response } from 'express';
 import { CustomerAuthService, RegisterDto, LoginDto } from './customer-auth.service';
 import { SmsService } from './sms.service';
 
-@Controller('api/auth/customer')
+@Controller('auth/customer')
 export class CustomerAuthController {
   constructor(
     private customerAuthService: CustomerAuthService,
@@ -222,9 +222,13 @@ export class CustomerAuthController {
             redirectUrl = verifyUrl;
           }
         } else {
-          // Always redirect to checkout after successful OAuth login
-          const checkoutTenant = tenant || 'pornopizza';
-          redirectUrl = `/checkout?tenant=${checkoutTenant}`;
+          // Redirect to returnUrl if exists, otherwise to checkout
+          if (returnUrl) {
+            redirectUrl = returnUrl;
+          } else {
+            const checkoutTenant = tenant || 'pornopizza';
+            redirectUrl = `/checkout?tenant=${checkoutTenant}`;
+          }
         }
         
         console.log('Google OAuth callback - redirecting to oauth-callback with redirect:', redirectUrl, 'needsSmsVerification:', result.needsSmsVerification);

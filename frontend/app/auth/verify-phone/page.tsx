@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useCustomerAuth } from '@/contexts/CustomerAuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { sendCustomerSmsCode } from '@/lib/api';
+import { validateReturnUrl } from '@/lib/validate-return-url';
 
 export default function VerifyPhonePage() {
   const { t } = useLanguage();
@@ -68,11 +69,28 @@ export default function VerifyPhonePage() {
       await verifyPhone(phone, code, userId);
       // Wait a bit for state to update
       await new Promise(resolve => setTimeout(resolve, 500));
-      // Always redirect to checkout after successful SMS verification
+      // Decode returnUrl if it's encoded
+      let finalReturnUrl = returnUrl;
+      if (returnUrl) {
+        try {
+          finalReturnUrl = decodeURIComponent(returnUrl);
+        } catch (e) {
+          // If decoding fails, use original
+          finalReturnUrl = returnUrl;
+        }
+      }
+      // Validate returnUrl to prevent open redirect attacks
+      const validatedReturnUrl = finalReturnUrl ? validateReturnUrl(finalReturnUrl) : null;
+      // Redirect to returnUrl if exists and valid, otherwise to account page (not checkout)
       const tenant = getTenantFromUrl();
-      console.log('SMS verification successful - redirecting to checkout:', `/checkout?tenant=${tenant}`);
+      const redirectUrl = validatedReturnUrl || `/account?tenant=${tenant}`;
+      console.log('SMS verification successful - redirecting to:', redirectUrl);
+      // Clear any OAuth redirect flags that might interfere
+      if (typeof window !== 'undefined') {
+        sessionStorage.removeItem('oauth_redirect');
+      }
       // Use window.location for full page reload to ensure state is loaded
-      window.location.href = `/checkout?tenant=${tenant}`;
+      window.location.href = redirectUrl;
     } catch (err: any) {
       setError(err.message || 'Invalid SMS code');
     } finally {

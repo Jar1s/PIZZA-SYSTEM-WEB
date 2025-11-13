@@ -136,3 +136,7 @@ Každý agent vytvorí completion súbor:
 
 **Všetko je pripravené! Stačí skopírovať prompty a začať implementáciu.** 🚀
 
+
+
+
+

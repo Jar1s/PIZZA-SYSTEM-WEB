@@ -8,9 +8,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <AuthProvider>
       <CustomerAuthProvider>
-        <LanguageProvider>
-          {children}
-        </LanguageProvider>
+      <LanguageProvider>
+        {children}
+      </LanguageProvider>
       </CustomerAuthProvider>
     </AuthProvider>
   );

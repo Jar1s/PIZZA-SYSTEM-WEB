@@ -7,6 +7,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { getTenant, checkEmailExists } from '@/lib/api';
 import { Tenant } from '@/shared';
 import Image from 'next/image';
+import { validateReturnUrl } from '@/lib/validate-return-url';
 
 type Step = 'email' | 'password' | 'register';
 
@@ -30,17 +31,36 @@ export default function CustomerLoginPage() {
         const hostname = window.location.hostname;
         let tenantSlug = 'pornopizza';
         
+        // Get tenant and returnUrl from URL params (works for all environments)
+        const params = new URLSearchParams(window.location.search);
+        const urlParam = params.get('returnUrl');
+        if (urlParam) {
+          // Validate returnUrl to prevent open redirect attacks
+          const validatedUrl = validateReturnUrl(urlParam);
+          if (validatedUrl) {
+            setReturnUrl(validatedUrl);
+            // Write validated returnUrl to sessionStorage.oauth_requested_returnUrl
+            if (typeof window !== 'undefined') {
+              sessionStorage.setItem('oauth_requested_returnUrl', validatedUrl);
+            }
+          } else {
+            console.warn('Invalid returnUrl ignored:', urlParam);
+            // Clear the key if invalid
+            if (typeof window !== 'undefined') {
+              sessionStorage.removeItem('oauth_requested_returnUrl');
+            }
+          }
+        }
+        
         if (hostname.includes('pornopizza')) {
           tenantSlug = 'pornopizza';
         } else if (hostname.includes('pizzavnudzi')) {
           tenantSlug = 'pizzavnudzi';
         } else if (hostname.includes('localhost')) {
-          const params = new URLSearchParams(window.location.search);
           tenantSlug = params.get('tenant') || 'pornopizza';
-          const url = params.get('returnUrl');
-          if (url) {
-            setReturnUrl(url);
-          }
+        } else {
+          // For other domains, try to get tenant from URL params
+          tenantSlug = params.get('tenant') || 'pornopizza';
         }
         
         const tenantData = await getTenant(tenantSlug);
@@ -83,14 +103,19 @@ export default function CustomerLoginPage() {
       
       if (result.needsSmsVerification) {
         const verifyUrl = `/auth/verify-phone?userId=${result.userId}`;
-        // Always add tenant to verify URL, redirect to checkout after verification
         const currentTenant = tenant?.slug || 'pornopizza';
-        router.push(`${verifyUrl}&tenant=${currentTenant}`);
+        // Add returnUrl to verify-phone if it exists
+        const verifyParams = new URLSearchParams({ tenant: currentTenant });
+        if (returnUrl) {
+          verifyParams.set('returnUrl', returnUrl);
+        }
+        router.push(`${verifyUrl}&${verifyParams.toString()}`);
       } else {
-        // Always redirect to checkout after successful login
-        const currentTenant = tenant?.slug || 'pornopizza';
+        // Redirect to returnUrl if exists and valid, otherwise to checkout
+        const validatedReturnUrl = returnUrl ? validateReturnUrl(returnUrl) : null;
+        const redirectUrl = validatedReturnUrl || `/checkout?tenant=${tenant?.slug || 'pornopizza'}`;
         // Use window.location for full page reload to ensure state is loaded
-        window.location.href = `/checkout?tenant=${currentTenant}`;
+        window.location.href = redirectUrl;
       }
     } catch (err: any) {
       setError(err.message || 'Login failed');
@@ -109,14 +134,19 @@ export default function CustomerLoginPage() {
       
       if (result.needsSmsVerification) {
         const verifyUrl = `/auth/verify-phone?userId=${result.userId}`;
-        // Always add tenant to verify URL, redirect to checkout after verification
         const currentTenant = tenant?.slug || 'pornopizza';
-        router.push(`${verifyUrl}&tenant=${currentTenant}`);
+        // Add returnUrl to verify-phone if it exists
+        const verifyParams = new URLSearchParams({ tenant: currentTenant });
+        if (returnUrl) {
+          verifyParams.set('returnUrl', returnUrl);
+        }
+        router.push(`${verifyUrl}&${verifyParams.toString()}`);
       } else {
-        // Always redirect to checkout after successful login
-        const currentTenant = tenant?.slug || 'pornopizza';
+        // Redirect to returnUrl if exists and valid, otherwise to checkout
+        const validatedReturnUrl = returnUrl ? validateReturnUrl(returnUrl) : null;
+        const redirectUrl = validatedReturnUrl || `/checkout?tenant=${tenant?.slug || 'pornopizza'}`;
         // Use window.location for full page reload to ensure state is loaded
-        window.location.href = `/checkout?tenant=${currentTenant}`;
+        window.location.href = redirectUrl;
       }
     } catch (err: any) {
       setError(err.message || 'Registration failed');
@@ -126,7 +156,8 @@ export default function CustomerLoginPage() {
   };
 
   const handleGoogleLogin = () => {
-    loginWithGoogle();
+    // Pass sanitized returnUrl to loginWithGoogle
+    loginWithGoogle(returnUrl || undefined);
   };
 
   const handleAppleLogin = () => {

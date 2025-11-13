@@ -5,11 +5,13 @@ import { CartItem } from './CartItem';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useEffect } from 'react';
+import { useCustomerAuth } from '@/contexts/CustomerAuthContext';
 
 export function Cart() {
   const { items, isOpen, closeCart } = useCart();
   const total = useCartTotal();
   const router = useRouter();
+  const { user, loading: authLoading } = useCustomerAuth();
   
   // Debug logging
   useEffect(() => {
@@ -32,8 +34,19 @@ export function Cart() {
       tenantSlug = params.get('tenant') || 'pornopizza';
     }
     
-    // Redirect to login page (user must authenticate before checkout)
-    router.push(`/auth/login?tenant=${tenantSlug}`);
+    // Check if user is authenticated
+    // Check both context user and localStorage (context might not be loaded yet)
+    const token = typeof window !== 'undefined' ? localStorage.getItem('customer_auth_token') : null;
+    const storedUser = typeof window !== 'undefined' ? localStorage.getItem('customer_auth_user') : null;
+    const isAuthenticated = !!(user || (token && storedUser));
+    
+    if (isAuthenticated) {
+      // User is logged in, go directly to checkout
+      router.push(`/checkout?tenant=${tenantSlug}`);
+    } else {
+      // User is not logged in, redirect to login with returnUrl
+      router.push(`/auth/login?tenant=${tenantSlug}&returnUrl=${encodeURIComponent(`/checkout?tenant=${tenantSlug}`)}`);
+    }
   };
   
   // Always render the container, but conditionally show content

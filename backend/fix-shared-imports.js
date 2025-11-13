@@ -103,11 +103,34 @@ if (fs.existsSync(backendSrc)) {
   }
 }
 
-// Copy shared to dist if needed
+// Create shared/index.js stub if it doesn't exist
+const sharedDest = path.join(__dirname, 'dist', 'shared');
+const sharedIndexFile = path.join(sharedDest, 'index.js');
+if (!fs.existsSync(sharedIndexFile)) {
+  // Ensure parent directory exists
+  if (!fs.existsSync(sharedDest)) {
+    fs.mkdirSync(sharedDest, { recursive: true });
+  }
+  // Create stub file
+  const stubContent = `module.exports = {
+  OrderStatus: {
+    PENDING: "PENDING",
+    CONFIRMED: "CONFIRMED",
+    PREPARING: "PREPARING",
+    READY: "READY",
+    OUT_FOR_DELIVERY: "OUT_FOR_DELIVERY",
+    DELIVERED: "DELIVERED",
+    CANCELED: "CANCELED"
+  }
+};`;
+  fs.writeFileSync(sharedIndexFile, stubContent, 'utf8');
+  console.log('✅ Created shared/index.js stub');
+}
+
+// Copy shared to dist if needed (if shared exists in dist from build)
 const sharedSrc = path.join(distDir, 'shared');
 try {
   if (fs.existsSync(sharedSrc) && fs.statSync(sharedSrc).isDirectory()) {
-    const sharedDest = path.join(__dirname, 'dist', 'shared');
     if (fs.existsSync(sharedDest)) {
       fs.rmSync(sharedDest, { recursive: true, force: true });
     }

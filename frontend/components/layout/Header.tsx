@@ -3,6 +3,8 @@
 import { Tenant } from '@/shared';
 import { useCart } from '@/hooks/useCart';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useCustomerAuth } from '@/contexts/CustomerAuthContext';
+import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import LanguageSwitcher from './LanguageSwitcher';
 
@@ -13,7 +15,20 @@ interface HeaderProps {
 export function Header({ tenant }: HeaderProps) {
   const { items, openCart, isOpen } = useCart();
   const { t } = useLanguage();
+  const { user } = useCustomerAuth();
+  const router = useRouter();
   const itemCount = items.reduce((sum, item) => sum + item.quantity, 0);
+  
+  // Get tenant from URL or use prop
+  const getTenantSlug = () => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      return params.get('tenant') || tenant.slug || 'pornopizza';
+    }
+    return tenant.slug || 'pornopizza';
+  };
+  
+  const tenantSlug = getTenantSlug();
   
   // Check if PornoPizza for skin tone background - use tenant data directly
   const isPornopizza = tenant.slug === 'pornopizza' || tenant.subdomain === 'pornopizza' || tenant.name?.toLowerCase().includes('pornopizza');
@@ -45,6 +60,70 @@ export function Header({ tenant }: HeaderProps) {
         
         <div className="flex items-center gap-4 relative z-50">
           <LanguageSwitcher />
+          
+          {/* User Account Button */}
+          {user ? (
+            <button
+              onClick={() => {
+                router.push(`/account?tenant=${tenantSlug}`);
+              }}
+              className="flex items-center justify-center w-10 h-10 rounded-lg transition-colors hover:opacity-90 cursor-pointer bg-white border border-gray-200"
+              style={{ 
+                zIndex: 1000,
+                position: 'relative',
+                pointerEvents: 'auto'
+              }}
+              title="Moje konto"
+            >
+              <svg
+                className="w-6 h-6"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                style={{ color: '#333' }}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                />
+              </svg>
+            </button>
+          ) : (
+            <button
+              onClick={() => {
+                const returnUrl = `/account?tenant=${tenantSlug}`;
+                // Store returnUrl in sessionStorage.oauth_requested_returnUrl BEFORE pushing
+                if (typeof window !== 'undefined') {
+                  sessionStorage.setItem('oauth_requested_returnUrl', returnUrl);
+                }
+                router.push(`/auth/login?tenant=${tenantSlug}&returnUrl=${encodeURIComponent(returnUrl)}`);
+              }}
+              className="flex items-center justify-center w-10 h-10 rounded-lg transition-colors hover:opacity-90 cursor-pointer bg-white border border-gray-200"
+              style={{ 
+                zIndex: 1000,
+                position: 'relative',
+                pointerEvents: 'auto'
+              }}
+              title="Prihlásiť sa"
+            >
+              <svg
+                className="w-6 h-6"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                style={{ color: '#333' }}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                />
+              </svg>
+            </button>
+          )}
           
           <button
             onClick={(e) => {

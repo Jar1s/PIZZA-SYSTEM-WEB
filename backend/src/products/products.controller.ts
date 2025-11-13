@@ -8,13 +8,14 @@ import {
   Body, 
   Query,
   UseGuards,
+  NotFoundException,
 } from '@nestjs/common';
 import { ProductsService } from './products.service';
 import { CategoriesService } from './categories.service';
 import { TenantsService } from '../tenants/tenants.service';
 import { CreateProductDto, UpdateProductDto } from './dto';
 
-@Controller('api/:tenantSlug/products')
+@Controller(':tenantSlug/products')
 export class ProductsController {
   constructor(
     private productsService: ProductsService,
@@ -28,6 +29,13 @@ export class ProductsController {
     @Query('category') category?: string,
     @Query('isActive') isActive?: string,
   ) {
+    // Skip reserved paths that should be handled by other controllers
+    // IMPORTANT: Order matters - check specific paths first, then generic ones
+    const reservedPaths = ['tenants', 'track', 'customer', 'customers', 'my-account', 'account', 'me', 'user', 'users', 'auth', 'payments', 'delivery', 'webhooks', 'analytics'];
+    if (reservedPaths.includes(tenantSlug.toLowerCase())) {
+      throw new NotFoundException(`Route not found`);
+    }
+    
     const tenant = await this.tenantsService.getTenantBySlug(tenantSlug);
     
     // Parse isActive query param

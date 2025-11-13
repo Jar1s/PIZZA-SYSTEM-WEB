@@ -185,6 +185,7 @@ export class AuthService {
         id: true,
         username: true,
         name: true,
+        email: true,
         role: true,
         isActive: true,
         phone: true,
@@ -196,7 +197,7 @@ export class AuthService {
       return null;
     }
 
-    return user as any; // Type assertion to include phone fields
+    return user as any; // Type assertion to include phone and email fields
   }
 
   /**

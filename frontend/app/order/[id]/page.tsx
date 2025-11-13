@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { formatModifiers } from '@/lib/format-modifiers';
 
@@ -86,7 +86,9 @@ const statusOrder = ['PENDING', 'PAID', 'PREPARING', 'READY', 'OUT_FOR_DELIVERY'
 
 export default function OrderTrackingPage() {
   const params = useParams();
+  const searchParams = useSearchParams();
   const orderId = params.id as string;
+  const tenant = searchParams.get('tenant') || 'pornopizza'; // Default tenant
   
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
@@ -97,12 +99,13 @@ export default function OrderTrackingPage() {
     // Poll for updates every 30 seconds
     const interval = setInterval(fetchOrder, 30000);
     return () => clearInterval(interval);
-  }, [orderId]);
+  }, [orderId, tenant]);
 
   const fetchOrder = async () => {
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
-      const response = await fetch(`${apiUrl}/api/track/${orderId}`);
+      // Use tenant-specific endpoint instead of track endpoint
+      const response = await fetch(`${apiUrl}/api/${tenant}/orders/${orderId}`);
       
       if (!response.ok) {
         throw new Error('Order not found');

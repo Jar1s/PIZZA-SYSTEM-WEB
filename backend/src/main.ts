@@ -20,6 +20,9 @@ async function bootstrap() {
   
   const app = await NestFactory.create(AppModule);
   
+  // Set global prefix for all routes
+  app.setGlobalPrefix('api');
+  
   // Global error handler for better debugging
   app.useGlobalPipes(new ValidationPipe({
     whitelist: true,

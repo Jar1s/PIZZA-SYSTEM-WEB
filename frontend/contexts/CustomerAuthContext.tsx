@@ -15,7 +15,7 @@ interface CustomerAuthContextType {
   loading: boolean;
   register: (email: string, password: string, name: string) => Promise<{ needsSmsVerification: boolean; userId: string }>;
   login: (email: string, password: string) => Promise<{ needsSmsVerification: boolean; userId: string }>;
-  loginWithGoogle: () => Promise<void>;
+  loginWithGoogle: (returnUrlOverride?: string) => Promise<void>;
   loginWithApple: () => Promise<void>;
   verifyPhone: (phone: string, code: string, userId: string) => Promise<void>;
   logout: () => Promise<void>;
@@ -30,21 +30,50 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
 
   useEffect(() => {
-    // Check for stored token on mount
-    const token = localStorage.getItem('customer_auth_token');
-    const storedUser = localStorage.getItem('customer_auth_user');
+    // Function to load user from localStorage
+    const loadUser = () => {
+      const token = localStorage.getItem('customer_auth_token');
+      const storedUser = localStorage.getItem('customer_auth_user');
 
-    if (token && storedUser) {
-      try {
-        setUser(JSON.parse(storedUser));
-      } catch (e) {
-        localStorage.removeItem('customer_auth_token');
-        localStorage.removeItem('customer_auth_refresh_token');
-        localStorage.removeItem('customer_auth_user');
+      if (token && storedUser) {
+        try {
+          setUser(JSON.parse(storedUser));
+        } catch (e) {
+          localStorage.removeItem('customer_auth_token');
+          localStorage.removeItem('customer_auth_refresh_token');
+          localStorage.removeItem('customer_auth_user');
+          setUser(null);
+        }
+      } else {
+        setUser(null);
       }
-    }
+      setLoading(false);
+    };
 
-    setLoading(false);
+    // Load user on mount
+    loadUser();
+
+    // Listen for storage changes (when OAuth callback updates localStorage)
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'customer_auth_user' || e.key === 'customer_auth_token') {
+        console.log('CustomerAuthContext - storage changed, reloading user');
+        loadUser();
+      }
+    };
+
+    // Listen for custom event (dispatched by OAuth callback in same window)
+    const handleCustomStorage = () => {
+      console.log('CustomerAuthContext - custom storage event, reloading user');
+      loadUser();
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('customerAuthUpdate', handleCustomStorage);
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('customerAuthUpdate', handleCustomStorage);
+    };
   }, []);
 
   const register = async (email: string, password: string, name: string) => {
@@ -125,23 +154,35 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
     };
   };
 
-  const loginWithGoogle = async () => {
+  const loginWithGoogle = async (returnUrlOverride?: string) => {
     const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
     
-    // Get tenant from current page
+    // Get tenant and returnUrl from current page
     const searchParams = new URLSearchParams(window.location.search);
     const tenant = searchParams.get('tenant') || 'pornopizza';
+    const returnUrlFromQuery = searchParams.get('returnUrl') || undefined;
     
-    // Get returnUrl from current page if on checkout
-    const currentPath = window.location.pathname;
-    const returnUrl = currentPath === '/checkout' 
-      ? `${currentPath}?${searchParams.toString()}`
-      : undefined;
+    // Build effectiveReturnUrl from override, query param, or sessionStorage
+    let effectiveReturnUrl: string | undefined;
+    if (returnUrlOverride) {
+      effectiveReturnUrl = returnUrlOverride;
+    } else if (returnUrlFromQuery) {
+      effectiveReturnUrl = returnUrlFromQuery;
+    } else if (typeof window !== 'undefined') {
+      const storedReturnUrl = sessionStorage.getItem('oauth_requested_returnUrl');
+      if (storedReturnUrl) {
+        effectiveReturnUrl = storedReturnUrl;
+      }
+    }
     
-    // Build state with returnUrl and tenant
+    // Build state with effectiveReturnUrl and tenant
     const state: { returnUrl?: string; tenant?: string } = {};
-    if (returnUrl) {
-      state.returnUrl = returnUrl;
+    if (effectiveReturnUrl) {
+      state.returnUrl = effectiveReturnUrl;
+      // Keep session key in sync so callback can read it later
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem('oauth_requested_returnUrl', effectiveReturnUrl);
+      }
     }
     state.tenant = tenant;
     
@@ -155,17 +196,17 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
   const loginWithApple = async () => {
     const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
     
-    // Get returnUrl from current page if on checkout
-    const currentPath = window.location.pathname;
+    // Get tenant and returnUrl from current page
     const searchParams = new URLSearchParams(window.location.search);
-    const returnUrl = currentPath === '/checkout' 
-      ? `${currentPath}?${searchParams.toString()}`
-      : undefined;
+    const tenant = searchParams.get('tenant') || 'pornopizza';
+    const returnUrl = searchParams.get('returnUrl') || undefined;
     
     // Redirect to Apple OAuth (placeholder - will show error)
-    const appleUrl = returnUrl
-      ? `${API_URL}/api/auth/customer/apple?returnUrl=${encodeURIComponent(returnUrl)}`
-      : `${API_URL}/api/auth/customer/apple`;
+    const appleUrlParams = new URLSearchParams({ tenant });
+    if (returnUrl) {
+      appleUrlParams.set('returnUrl', returnUrl);
+    }
+    const appleUrl = `${API_URL}/api/auth/customer/apple?${appleUrlParams.toString()}`;
     
     try {
       const response = await fetch(appleUrl, {

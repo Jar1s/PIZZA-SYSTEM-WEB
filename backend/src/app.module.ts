@@ -10,6 +10,8 @@ import { DeliveryModule } from './delivery/delivery.module';
 import { EmailModule } from './email/email.module';
 import { AuthModule } from './auth/auth.module';
 import { AnalyticsModule } from './analytics/analytics.module';
+import { CustomerModule } from './customer/customer.module';
+import { TrackingModule } from './tracking/tracking.module';
 
 @Module({
   imports: [
@@ -19,12 +21,14 @@ import { AnalyticsModule } from './analytics/analytics.module';
     }]),
     PrismaModule,
     TenantsModule,
+    AuthModule,
+    CustomerModule, // Register CustomerModule BEFORE OrdersModule to avoid route conflicts
+    TrackingModule, // Register TrackingModule BEFORE ProductsModule and OrdersModule to avoid route conflicts
     ProductsModule,
     OrdersModule,
     PaymentsModule,
     DeliveryModule,
     EmailModule,
-    AuthModule,
     AnalyticsModule,
   ],
   controllers: [],
