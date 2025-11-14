@@ -69,3 +69,7 @@ docker-compose.override.yml
 # Prisma
 prisma/migrations/
 
+# Backups
+backups/
+*.zip
+
