@@ -16,6 +16,17 @@ export interface ProductTranslation {
 }
 
 export const productTranslations: Record<string, ProductTranslation> = {
+  // Build Your Own Pizza
+  'Vyskladaj si vlastnú pizzu': {
+    name: { sk: 'Vyskladaj si vlastnú pizzu', en: 'Build Your Own Pizza' },
+    description: {
+      sk: 'Vytvor si vlastnú pizzu podľa svojich predstáv. Vyber si cesto, syr, základ a prílohy.',
+      en: 'Create your own pizza according to your preferences. Choose dough, cheese, base sauce and toppings.'
+    },
+    weight: '450g',
+    allergens: ['1', '7'] // Depends on selections
+  },
+  
   // Classic Pizzas - Presné informácie z Mayday Pizza
   'Margherita': {
     name: { sk: 'Pizza Margherita', en: 'Pizza Margherita' },

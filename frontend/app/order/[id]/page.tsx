@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useParams, useSearchParams } from 'next/navigation';
+import { useState, useEffect, useCallback } from 'react';
+import { useParams, useSearchParams, useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { formatModifiers } from '@/lib/format-modifiers';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface OrderItem {
   id: string;
@@ -87,6 +88,8 @@ const statusOrder = ['PENDING', 'PAID', 'PREPARING', 'READY', 'OUT_FOR_DELIVERY'
 export default function OrderTrackingPage() {
   const params = useParams();
   const searchParams = useSearchParams();
+  const router = useRouter();
+  const { t } = useLanguage();
   const orderId = params.id as string;
   const tenant = searchParams.get('tenant') || 'pornopizza'; // Default tenant
   
@@ -94,14 +97,7 @@ export default function OrderTrackingPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    fetchOrder();
-    // Poll for updates every 30 seconds
-    const interval = setInterval(fetchOrder, 30000);
-    return () => clearInterval(interval);
-  }, [orderId, tenant]);
-
-  const fetchOrder = async () => {
+  const fetchOrder = useCallback(async () => {
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
       // Use tenant-specific endpoint instead of track endpoint
@@ -119,7 +115,14 @@ export default function OrderTrackingPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [orderId, tenant]);
+
+  useEffect(() => {
+    fetchOrder();
+    // Poll for updates every 30 seconds
+    const interval = setInterval(fetchOrder, 30000);
+    return () => clearInterval(interval);
+  }, [fetchOrder]);
 
   if (loading) {
     return (
@@ -168,6 +171,23 @@ export default function OrderTrackingPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 to-red-50 py-12 px-4">
       <div className="max-w-4xl mx-auto">
+        
+        {/* Back Button */}
+        <motion.div
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          className="mb-6"
+        >
+          <button
+            onClick={() => router.push(`/?tenant=${tenant}`)}
+            className="flex items-center gap-2 text-gray-600 hover:text-gray-800 transition-colors"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+            <span className="font-medium">{t.back}</span>
+          </button>
+        </motion.div>
         
         {/* Header */}
         <motion.div

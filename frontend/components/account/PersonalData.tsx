@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useCustomerAuth } from '@/contexts/CustomerAuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -11,7 +11,7 @@ interface PersonalDataProps {
 }
 
 export default function PersonalData({ tenant }: PersonalDataProps) {
-  const { user, loading: authLoading } = useCustomerAuth();
+  const { user, loading: authLoading, setUser } = useCustomerAuth();
   const { t } = useLanguage();
   const router = useRouter();
   const [editing, setEditing] = useState<string | null>(null);
@@ -21,21 +21,12 @@ export default function PersonalData({ tenant }: PersonalDataProps) {
     phone: '',
   });
 
-  useEffect(() => {
-    // Wait for auth to load and user to be available before fetching profile
-    if (authLoading || !user) {
-      return;
-    }
-    fetchPersonalData();
-  }, [authLoading, user]);
-
-  const fetchPersonalData = async () => {
+  const fetchPersonalData = useCallback(async () => {
     try {
       const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
       const token = localStorage.getItem('customer_auth_token');
       
-      if (!token) {
-        console.error('No authentication token found');
+      if (!token || !user) {
         return;
       }
       
@@ -53,15 +44,39 @@ export default function PersonalData({ tenant }: PersonalDataProps) {
           email: data.email || user?.email || '',
           phone: data.phone || '',
         });
+        
+        // Update user in context and localStorage with fetched data
+        if (user && setUser) {
+          const updatedUser = {
+            ...user,
+            name: data.name || user.name,
+            email: data.email || user.email,
+            phone: data.phone || user.phone,
+            phoneVerified: data.phoneVerified !== undefined ? data.phoneVerified : user.phoneVerified,
+          };
+          setUser(updatedUser);
+          localStorage.setItem('customer_auth_user', JSON.stringify(updatedUser));
+        }
       } else if (res.status === 401) {
-        console.error('Unauthorized - token may be expired');
+        // Token expired or invalid - clear it
+        localStorage.removeItem('customer_auth_token');
+        localStorage.removeItem('customer_auth_refresh_token');
+        localStorage.removeItem('customer_auth_user');
       } else {
         console.error('Failed to fetch personal data:', res.status, res.statusText);
       }
     } catch (error) {
       console.error('Failed to fetch personal data:', error);
     }
-  };
+  }, [user]);
+
+  useEffect(() => {
+    // Wait for auth to load and user to be available before fetching profile
+    if (authLoading || !user) {
+      return;
+    }
+    fetchPersonalData();
+  }, [authLoading, user, fetchPersonalData]);
 
   const handleSave = async (field: string) => {
     try {
@@ -85,6 +100,19 @@ export default function PersonalData({ tenant }: PersonalDataProps) {
       if (res.ok) {
         const data = await res.json();
         setEditing(null);
+        
+        // Update user in context and localStorage with new data
+        if (user) {
+          const updatedUser = {
+            ...user,
+            name: data.name || user.name,
+            email: data.email || user.email,
+            phone: data.phone || user.phone,
+            phoneVerified: data.phoneVerified !== undefined ? data.phoneVerified : user.phoneVerified,
+          };
+          setUser(updatedUser);
+          localStorage.setItem('customer_auth_user', JSON.stringify(updatedUser));
+        }
         
         // If phone was changed, send SMS code and redirect to verification
         if (field === 'phone' && data.needsVerification && user?.id) {

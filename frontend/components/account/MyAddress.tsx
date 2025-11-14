@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useCustomerAuth } from '@/contexts/CustomerAuthContext';
 import AddressAutocomplete from './AddressAutocomplete';
@@ -36,26 +36,15 @@ export default function MyAddress({ tenant }: MyAddressProps) {
   });
   const [showMapPicker, setShowMapPicker] = useState(false);
 
-  useEffect(() => {
-    // Wait for auth to load and user to be available before fetching addresses
-    if (authLoading || !user) {
-      return;
-    }
-    fetchAddresses();
-  }, [authLoading, user]);
-
-  const fetchAddresses = async () => {
+  const fetchAddresses = useCallback(async () => {
     try {
       const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
       const token = localStorage.getItem('customer_auth_token');
       
-      if (!token) {
-        console.error('[MyAddress] No authentication token found');
+      if (!token || !user) {
         setLoading(false);
         return;
       }
-      
-      console.log('[MyAddress] Fetching addresses with token:', token.substring(0, 20) + '...');
       
       const res = await fetch(`${API_URL}/api/customer/account/addresses`, {
         headers: {
@@ -64,28 +53,38 @@ export default function MyAddress({ tenant }: MyAddressProps) {
         },
       });
 
-      console.log('[MyAddress] Response status:', res.status);
-
       if (res.ok) {
         const data = await res.json();
-        console.log('[MyAddress] Received addresses:', data.addresses?.length || 0);
         setAddresses(data.addresses || []);
       } else if (res.status === 401) {
-        console.error('[MyAddress] Unauthorized - token may be expired');
-        const errorData = await res.json().catch(() => ({}));
-        console.error('[MyAddress] Error data:', errorData);
-        // Don't redirect here, let the account page handle it
+        // Token expired or invalid - clear it and let auth context handle logout
+        localStorage.removeItem('customer_auth_token');
+        localStorage.removeItem('customer_auth_refresh_token');
+        localStorage.removeItem('customer_auth_user');
+        setAddresses([]);
       } else {
         console.error('[MyAddress] Failed to fetch addresses:', res.status, res.statusText);
-        const errorData = await res.text().catch(() => '');
-        console.error('[MyAddress] Error response:', errorData);
       }
     } catch (error) {
       console.error('[MyAddress] Failed to fetch addresses:', error);
     } finally {
       setLoading(false);
     }
-  };
+  }, [user]);
+
+  useEffect(() => {
+    // Wait for auth to load and user to be available before fetching addresses
+    if (authLoading) {
+      return;
+    }
+    
+    if (!user) {
+      setLoading(false);
+      return;
+    }
+    
+    fetchAddresses();
+  }, [authLoading, user, fetchAddresses]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

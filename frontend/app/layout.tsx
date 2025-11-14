@@ -55,7 +55,7 @@ export default async function RootLayout({
   }
   
   return (
-    <html lang="sk">
+    <html lang="sk" suppressHydrationWarning>
       <head>
         <link rel="icon" href={tenantData.theme.favicon || '/favicon.ico'} />
         <style dangerouslySetInnerHTML={{
@@ -67,7 +67,7 @@ export default async function RootLayout({
           `
         }} />
       </head>
-      <body className={inter.className}>
+      <body className={inter.className} suppressHydrationWarning>
         <Providers>
           {children}
         </Providers>

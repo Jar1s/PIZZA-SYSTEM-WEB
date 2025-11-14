@@ -2,6 +2,7 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import helmet from 'helmet';
 import { ValidationPipe } from '@nestjs/common';
+import { Request, Response, NextFunction } from 'express';
 
 async function bootstrap() {
   // Validate JWT_SECRET in production
@@ -19,6 +20,27 @@ async function bootstrap() {
   }
   
   const app = await NestFactory.create(AppModule);
+  
+  // Handle root route before setting global prefix
+  app.use((req: Request, res: Response, next: NextFunction) => {
+    if (req.path === '/' && req.method === 'GET') {
+      return res.json({
+        message: 'Backend API is running',
+        version: '1.0.0',
+        timestamp: new Date().toISOString(),
+        endpoints: {
+          health: '/api/health',
+          tenants: '/api/tenants',
+          products: '/api/:tenantSlug/products',
+          orders: '/api/:tenantSlug/orders',
+          auth: '/api/auth',
+          customer: '/api/customer',
+        },
+        note: 'All endpoints are prefixed with /api',
+      });
+    }
+    next();
+  });
   
   // Set global prefix for all routes
   app.setGlobalPrefix('api');

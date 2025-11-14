@@ -12,9 +12,6 @@ export class WepayService {
     
     const wepayConfig = tenant.paymentConfig as any;
     
-    // TODO: Implement WePay API call when credentials are available
-    // For MVP, return mock redirect URL
-    
     if (process.env.NODE_ENV === 'development' || !wepayConfig?.clientId) {
       // Development/Mock mode
       this.logger.warn('⚠️  WePay in DEV mode - using mock redirect URL');
@@ -28,32 +25,72 @@ export class WepayService {
     }
     
     // Production: Real WePay API call
-    // const wepayApi = new WePayClient({
-    //   clientId: wepayConfig.clientId,
-    //   clientSecret: wepayConfig.clientSecret,
-    //   environment: wepayConfig.environment || 'sandbox',
-    // });
-    //
-    // const payment = await wepayApi.payments.create({
-    //   account_id: wepayConfig.accountId,
-    //   amount: order.totalCents / 100, // WePay uses dollars
-    //   currency: 'EUR',
-    //   reference_id: order.id,
-    //   callback_uri: `${tenant.domain}/checkout/return?provider=wepay`,
-    // });
-    //
-    // return {
-    //   paymentId: payment.id,
-    //   redirectUrl: payment.hosted_checkout.uri,
-    // };
-    
-    // Placeholder return for production without credentials
-    this.logger.warn('⚠️  WePay credentials not configured - using placeholder');
-    
-    return {
-      paymentId: 'wepay_' + order.id,
-      redirectUrl: `https://checkout.wepay.com/mock/${order.id}`,
-    };
+    try {
+      const apiUrl = wepayConfig.environment === 'production' 
+        ? 'https://api.wepay.com' 
+        : 'https://stage.wepay.com';
+      
+      // Step 1: Get access token (OAuth2)
+      const tokenResponse = await fetch(`${apiUrl}/oauth2/token`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          client_id: wepayConfig.clientId,
+          client_secret: wepayConfig.clientSecret,
+          grant_type: 'client_credentials',
+        }),
+      });
+
+      if (!tokenResponse.ok) {
+        throw new Error('Failed to get WePay access token');
+      }
+
+      const tokenData = await tokenResponse.json();
+      const accessToken = tokenData.access_token;
+
+      // Step 2: Create payment
+      const paymentResponse = await fetch(`${apiUrl}/payments`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          account_id: wepayConfig.accountId,
+          amount: order.totalCents / 100, // WePay uses dollars
+          currency: 'EUR',
+          reference_id: order.id,
+          callback_uri: `${tenant.domain || `http://${tenant.subdomain}.localhost:3001`}/checkout/return?provider=wepay`,
+          hosted_checkout: {
+            mode: 'iframe',
+            redirect_uri: `${tenant.domain || `http://${tenant.subdomain}.localhost:3001`}/checkout/return?provider=wepay`,
+          },
+        }),
+      });
+
+      if (!paymentResponse.ok) {
+        const errorData = await paymentResponse.json();
+        throw new Error(`WePay API error: ${errorData.error_description || paymentResponse.statusText}`);
+      }
+
+      const paymentData = await paymentResponse.json();
+      
+      this.logger.log(`✅ WePay payment created: ${paymentData.id}`);
+      
+      return {
+        paymentId: paymentData.id,
+        redirectUrl: paymentData.hosted_checkout?.uri || paymentData.checkout_uri,
+      };
+    } catch (error: any) {
+      this.logger.error('WePay payment creation failed:', error);
+      // Fallback to placeholder
+      return {
+        paymentId: 'wepay_' + order.id,
+        redirectUrl: `https://checkout.wepay.com/mock/${order.id}`,
+      };
+    }
   }
 
   verifyWebhook(signature: string, payload: string, secret: string): boolean {

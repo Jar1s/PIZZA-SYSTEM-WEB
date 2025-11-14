@@ -246,34 +246,220 @@ export class CustomerAuthController {
    * Apple OAuth redirect
    */
   @Get('apple')
-  async appleRedirect(@Res() res: Response) {
-    // TODO: Implement Apple OAuth redirect
-    // For now, return JSON error that frontend can handle
-    return res.status(400).json({
-      message: 'Apple OAuth is not yet implemented. Please use email/password login.',
-      error: 'Not Implemented',
-      statusCode: 400,
-    });
-    
-    // Example production code:
-    // const appleAuthUrl = generateAppleAuthUrl();
-    // res.redirect(appleAuthUrl);
+  async appleRedirect(
+    @Res() res: Response,
+    @Query('returnUrl') returnUrl?: string,
+    @Query('tenant') tenant?: string,
+    @Query('state') state?: string,
+  ) {
+    const clientId = process.env.APPLE_CLIENT_ID || process.env.APPLE_SERVICE_ID;
+    const backendUrl = process.env.BACKEND_URL || process.env.API_URL || 'http://localhost:3000';
+    const redirectUri = process.env.APPLE_REDIRECT_URI || 
+      `${backendUrl}/api/auth/customer/apple/callback`;
+
+    if (!clientId) {
+      return res.status(400).json({
+        message: 'Apple OAuth is not configured. Please set APPLE_CLIENT_ID or APPLE_SERVICE_ID in environment variables.',
+        error: 'Not Configured',
+        statusCode: 400,
+      });
+    }
+
+    // Use state from query if provided, otherwise generate from returnUrl and tenant
+    let stateParam = state;
+    if (!stateParam) {
+      const stateData: { returnUrl?: string; tenant?: string } = {};
+      if (returnUrl) stateData.returnUrl = returnUrl;
+      if (tenant) stateData.tenant = tenant;
+      if (Object.keys(stateData).length > 0) {
+        stateParam = Buffer.from(JSON.stringify(stateData)).toString('base64');
+      }
+    }
+
+    const scopes = ['name', 'email'];
+    const appleAuthUrl = `https://appleid.apple.com/auth/authorize?` +
+      `client_id=${encodeURIComponent(clientId)}&` +
+      `redirect_uri=${encodeURIComponent(redirectUri)}&` +
+      `response_type=code&` +
+      `response_mode=form_post&` +
+      `scope=${encodeURIComponent(scopes.join(' '))}&` +
+      (stateParam ? `state=${encodeURIComponent(stateParam)}&` : '');
+
+    res.redirect(appleAuthUrl);
   }
 
   /**
    * Apple OAuth callback
+   * Note: Apple uses POST for callback, not GET
    */
-  @Get('apple/callback')
-  async appleCallback(@Query('code') code: string, @Res() res: Response) {
-    // TODO: Implement Apple OAuth callback
-    // For now, return error
-    throw new BadRequestException('Apple OAuth not yet implemented');
-    
-    // Example production code:
-    // const appleToken = await exchangeCodeForToken(code);
-    // const result = await this.customerAuthService.loginWithApple(appleToken);
-    // // Set cookies and redirect
-    // res.redirect('/');
+  @Post('apple/callback')
+  async appleCallback(
+    @Body() body: { code?: string; state?: string; user?: string; id_token?: string },
+    @Res() res: Response,
+  ) {
+    const { code, state: stateParam, user: userParam, id_token } = body;
+
+    if (!code && !id_token) {
+      return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3001'}/auth/login?error=no_code`);
+    }
+
+    try {
+      const clientId = process.env.APPLE_CLIENT_ID || process.env.APPLE_SERVICE_ID;
+      const teamId = process.env.APPLE_TEAM_ID;
+      const keyId = process.env.APPLE_KEY_ID;
+      const privateKey = process.env.APPLE_PRIVATE_KEY;
+      const backendUrl = process.env.BACKEND_URL || process.env.API_URL || 'http://localhost:3000';
+      const redirectUri = process.env.APPLE_REDIRECT_URI || 
+        `${backendUrl}/api/auth/customer/apple/callback`;
+
+      if (!clientId || !teamId || !keyId || !privateKey) {
+        return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3001'}/auth/login?error=not_configured`);
+      }
+
+      let idToken = id_token;
+
+      // If we have code, exchange it for tokens
+      if (code && !idToken) {
+        // Generate client secret (JWT)
+        const jwt = require('jsonwebtoken');
+        // Note: jsonwebtoken needs to be installed: npm install jsonwebtoken @types/jsonwebtoken
+        const clientSecret = jwt.sign(
+          {
+            iss: teamId,
+            iat: Math.floor(Date.now() / 1000),
+            exp: Math.floor(Date.now() / 1000) + 3600, // 1 hour
+            aud: 'https://appleid.apple.com',
+            sub: clientId,
+          },
+          privateKey.replace(/\\n/g, '\n'),
+          {
+            algorithm: 'ES256',
+            keyid: keyId,
+          }
+        );
+
+        // Exchange code for tokens
+        const tokenResponse = await fetch('https://appleid.apple.com/auth/token', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+          body: new URLSearchParams({
+            client_id: clientId,
+            client_secret: clientSecret,
+            code,
+            grant_type: 'authorization_code',
+            redirect_uri: redirectUri,
+          }),
+        });
+
+        if (!tokenResponse.ok) {
+          const error = await tokenResponse.text();
+          console.error('Apple token exchange error:', error);
+          return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3001'}/auth/login?error=token_exchange_failed`);
+        }
+
+        const tokenData = await tokenResponse.json();
+        idToken = tokenData.id_token;
+
+        if (!idToken) {
+          return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3001'}/auth/login?error=no_token`);
+        }
+      }
+
+      // Parse user info from userParam if provided (only on first login)
+      let userInfo: { name?: { firstName?: string; lastName?: string }; email?: string } | null = null;
+      if (userParam) {
+        try {
+          userInfo = JSON.parse(userParam);
+        } catch (e) {
+          console.warn('Failed to parse Apple user parameter:', e);
+        }
+      }
+
+      // Login with Apple using id_token and user info
+      const result = await this.customerAuthService.loginWithApple(idToken, userInfo);
+
+      // Set HttpOnly cookies in production
+      if (process.env.NODE_ENV === 'production') {
+        res.cookie('access_token', result.access_token, {
+          httpOnly: true,
+          secure: true,
+          sameSite: 'strict',
+          maxAge: 60 * 60 * 1000, // 1 hour
+          path: '/',
+        });
+
+        res.cookie('refresh_token', result.refresh_token, {
+          httpOnly: true,
+          secure: true,
+          sameSite: 'strict',
+          maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+          path: '/',
+        });
+      }
+
+      // Parse returnUrl from state if provided
+      let returnUrl: string | undefined;
+      let tenant: string | undefined;
+      if (stateParam) {
+        try {
+          const decoded = JSON.parse(Buffer.from(stateParam, 'base64').toString());
+          if (decoded.returnUrl) {
+            returnUrl = decoded.returnUrl;
+          }
+          if (decoded.tenant) {
+            tenant = decoded.tenant;
+          }
+        } catch (e) {
+          // Invalid state, use default
+        }
+      }
+
+      // Always redirect to oauth-callback to store tokens, then redirect to appropriate page
+      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3001';
+      
+      // Store tokens in localStorage via JavaScript redirect
+      const tokens = {
+        access_token: result.access_token,
+        refresh_token: result.refresh_token,
+        user: result.user,
+        needsSmsVerification: result.needsSmsVerification,
+      };
+      
+      // Encode tokens for URL (will be stored in localStorage on frontend)
+      const tokensParam = Buffer.from(JSON.stringify(tokens)).toString('base64');
+      
+      let redirectUrl: string;
+      if (result.needsSmsVerification) {
+        // If SMS verification needed, redirect to verify-phone page
+        const verifyUrl = `/auth/verify-phone?userId=${result.user.id}`;
+        if (returnUrl) {
+          redirectUrl = `${verifyUrl}&returnUrl=${encodeURIComponent(returnUrl)}`;
+        } else if (tenant) {
+          redirectUrl = `${verifyUrl}&tenant=${tenant}`;
+        } else {
+          redirectUrl = verifyUrl;
+        }
+      } else {
+        // Redirect to returnUrl if exists, otherwise to checkout
+        if (returnUrl) {
+          redirectUrl = returnUrl;
+        } else {
+          const checkoutTenant = tenant || 'pornopizza';
+          redirectUrl = `/checkout?tenant=${checkoutTenant}`;
+        }
+      }
+      
+      console.log('Apple OAuth callback - redirecting to oauth-callback with redirect:', redirectUrl, 'needsSmsVerification:', result.needsSmsVerification);
+      
+      // Redirect to a page that will store tokens in localStorage and then redirect
+      res.redirect(`${frontendUrl}/auth/oauth-callback?tokens=${encodeURIComponent(tokensParam)}&redirect=${encodeURIComponent(redirectUrl)}`);
+    } catch (error: any) {
+      console.error('Apple OAuth callback error:', error);
+      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3001';
+      res.redirect(`${frontendUrl}/auth/login?error=${encodeURIComponent(error.message || 'oauth_failed')}`);
+    }
   }
 
   /**

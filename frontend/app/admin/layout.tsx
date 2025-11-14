@@ -1,3 +1,5 @@
+'use client';
+
 import { Sidebar } from '@/components/admin/Sidebar';
 import { Header } from '@/components/admin/Header';
 // import { ProtectedRoute } from '@/components/admin/ProtectedRoute'; // Disabled for development

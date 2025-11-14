@@ -64,7 +64,7 @@ export default function HomePage() {
 
   // Group products by category (memoized)
   const productsByCategory = useMemo(() => {
-    return products.reduce((acc, product) => {
+    const grouped = products.reduce((acc, product) => {
       const category = product.category || 'OTHER';
       if (!acc[category]) {
         acc[category] = [];
@@ -72,6 +72,26 @@ export default function HomePage() {
       acc[category].push(product);
       return acc;
     }, {} as Record<string, Product[]>);
+    
+    // Sort products within each category
+    // "Vyskladaj si vlastnú pizzu" should be first in PIZZA category
+    Object.keys(grouped).forEach(category => {
+      grouped[category].sort((a, b) => {
+        // Special handling for PIZZA category
+        if (category === 'PIZZA') {
+          const aIsBuildYourOwn = a.name === 'Vyskladaj si vlastnú pizzu' || a.name === 'Build Your Own Pizza';
+          const bIsBuildYourOwn = b.name === 'Vyskladaj si vlastnú pizzu' || b.name === 'Build Your Own Pizza';
+          
+          if (aIsBuildYourOwn && !bIsBuildYourOwn) return -1;
+          if (!aIsBuildYourOwn && bIsBuildYourOwn) return 1;
+        }
+        
+        // Default: sort by name
+        return a.name.localeCompare(b.name);
+      });
+    });
+    
+    return grouped;
   }, [products]);
 
   // Get filtered products (memoized)
@@ -115,12 +135,12 @@ export default function HomePage() {
   }), [t]);
 
   // Category display order (pizzas first!)
-  const categoryOrder = ['PIZZA', 'STANGLE', 'SOUPS', 'DRINKS', 'DESSERTS'];
+  const categoryOrder = useMemo(() => ['PIZZA', 'STANGLE', 'SOUPS', 'DRINKS', 'DESSERTS'], []);
   
   // Get ordered categories that have products (memoized)
   const orderedCategories = useMemo(() => {
     return categoryOrder.filter(cat => productsByCategory[cat]?.length > 0);
-  }, [productsByCategory]);
+  }, [productsByCategory, categoryOrder]);
 
   // Memoize category filter handler
   const handleCategoryFilter = useCallback((category: CategoryFilter) => {
@@ -236,6 +256,46 @@ export default function HomePage() {
         tenantName={tenant.name} 
         primaryColor={tenant.theme.primaryColor} 
       />
+
+      {/* Best Sellers Section */}
+      {productsByCategory.PIZZA && productsByCategory.PIZZA.length > 0 && (() => {
+        // Filter out "Vyskladaj si vlastnú pizzu" from Best Sellers
+        const bestSellerPizzas = productsByCategory.PIZZA.filter(
+          p => p.name !== 'Vyskladaj si vlastnú pizzu' && p.name !== 'Build Your Own Pizza'
+        ).slice(0, 4);
+        
+        if (bestSellerPizzas.length === 0) return null;
+        
+        return (
+          <section className="container mx-auto px-4 py-16" style={{ position: 'relative', zIndex: 10 }}>
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              className="text-center mb-12"
+            >
+              <h2 className="text-5xl font-bold mb-4" style={{ color: tenant.theme.primaryColor }}>
+                {t.bestSellersTitle}
+              </h2>
+              <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+                {t.bestSellersSubtitle}
+              </p>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.1 }}
+              className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6"
+            >
+              {bestSellerPizzas.map((product, index) => (
+                <ProductCard key={product.id} product={product} index={index} />
+              ))}
+            </motion.div>
+          </section>
+        );
+      })()}
 
       {/* Menu Section */}
       <section id="menu" className="container mx-auto px-4 py-16">

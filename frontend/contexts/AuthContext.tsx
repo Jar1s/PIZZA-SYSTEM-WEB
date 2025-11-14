@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
+import { useCart } from '@/hooks/useCart';
 
 interface User {
   id: string;
@@ -29,6 +30,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
+  const { clearCart } = useCart();
 
   useEffect(() => {
     // DEV MODE: Auto-login with admin user for development
@@ -176,6 +178,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         localStorage.setItem('auth_token', data.access_token); // Still needed for Authorization header
       }
     }
+    // Check if user changed (for cart clearing)
+    const previousUserId = user?.id;
+    const newUserId = data.user.id;
+    if (previousUserId && previousUserId !== newUserId) {
+      clearCart(); // Clear cart if user switched
+    }
+    
     localStorage.setItem('auth_user', JSON.stringify(data.user));
     
     setUser(data.user);
@@ -191,6 +200,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const logout = async () => {
+    // Clear cart when logging out
+    clearCart();
+    
     const refreshToken = localStorage.getItem('refresh_token');
     
     // Revoke refresh token on backend
@@ -213,7 +225,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     }
     
-    // Clear local storage
+    // Clear local storage (but keep cookie settings - they are per user and should persist)
     localStorage.removeItem('auth_token');
     localStorage.removeItem('refresh_token');
     localStorage.removeItem('auth_user');
@@ -293,6 +305,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         localStorage.setItem('auth_token', data.access_token);
       }
     }
+    // Check if user changed (for cart clearing)
+    const previousUserId = user?.id;
+    const newUserId = data.user.id;
+    if (previousUserId && previousUserId !== newUserId) {
+      clearCart(); // Clear cart if user switched
+    }
+    
     localStorage.setItem('auth_user', JSON.stringify(data.user));
     
     setUser(data.user);

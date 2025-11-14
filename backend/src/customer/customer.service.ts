@@ -100,6 +100,7 @@ export class CustomerService {
       name: user.name,
       email: user.email || '',
       phone: user.phone || '',
+      phoneVerified: user.phoneVerified || false,
     };
   }
 
@@ -131,13 +132,13 @@ export class CustomerService {
     let phoneAlreadyVerified = false;
     
     if (phoneChanged) {
-      const existingUser = await this.prisma.user.findUnique({
+      const existingUser = (await this.prisma.user.findUnique({
         where: { phone: data.phone } as any,
         select: {
           id: true,
           phoneVerified: true,
         } as any,
-      });
+      })) as unknown as { id: string; phoneVerified: boolean } | null;
       
       if (existingUser && existingUser.id !== userId) {
         throw new BadRequestException('Phone number is already taken');

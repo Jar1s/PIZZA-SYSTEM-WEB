@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useCustomerAuth } from '@/contexts/CustomerAuthContext';
@@ -17,26 +17,16 @@ export default function OrderHistory({ tenant }: OrderHistoryProps) {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    // Wait for auth to load and user to be available before fetching orders
-    if (authLoading || !user) {
-      return;
-    }
-    fetchOrders();
-  }, [authLoading, user]);
-
-  const fetchOrders = async () => {
+  const fetchOrders = useCallback(async () => {
     try {
       const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
       const token = localStorage.getItem('customer_auth_token');
       
-      if (!token) {
-        console.error('[OrderHistory] No authentication token found');
+      if (!token || !user) {
         setLoading(false);
         return;
       }
       
-      console.log('[OrderHistory] Fetching orders from:', `${API_URL}/api/customer/account/orders`);
       const res = await fetch(`${API_URL}/api/customer/account/orders`, {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -44,25 +34,38 @@ export default function OrderHistory({ tenant }: OrderHistoryProps) {
         },
       });
 
-      console.log('[OrderHistory] Response status:', res.status);
       if (res.ok) {
         const data = await res.json();
-        console.log('[OrderHistory] Received orders:', data.orders?.length || 0);
         setOrders(data.orders || []);
       } else if (res.status === 401) {
-        console.error('[OrderHistory] Unauthorized - token may be expired');
-        const errorData = await res.json().catch(() => ({}));
-        console.error('[OrderHistory] Error data:', errorData);
+        // Token expired or invalid - clear it and let auth context handle logout
+        localStorage.removeItem('customer_auth_token');
+        localStorage.removeItem('customer_auth_refresh_token');
+        localStorage.removeItem('customer_auth_user');
+        setOrders([]);
       } else {
-        const errorData = await res.text().catch(() => '');
-        console.error('[OrderHistory] Failed to fetch orders:', res.status, res.statusText, errorData);
+        console.error('[OrderHistory] Failed to fetch orders:', res.status, res.statusText);
       }
     } catch (error) {
       console.error('[OrderHistory] Failed to fetch orders:', error);
     } finally {
       setLoading(false);
     }
-  };
+  }, [user]);
+
+  useEffect(() => {
+    // Wait for auth to load and user to be available before fetching orders
+    if (authLoading) {
+      return;
+    }
+    
+    if (!user) {
+      setLoading(false);
+      return;
+    }
+    
+    fetchOrders();
+  }, [authLoading, user, fetchOrders]);
 
   // Show loading if auth is loading, user is not available, or orders are being fetched
   if (authLoading || !user || loading) {

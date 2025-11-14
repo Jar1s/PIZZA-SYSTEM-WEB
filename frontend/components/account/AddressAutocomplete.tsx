@@ -23,53 +23,7 @@ export default function AddressAutocomplete({ value, onChange, onSelectFromMap }
   const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
-    // Load Google Maps API
-    const loadGoogleMaps = () => {
-      if (window.google && window.google.maps && window.google.maps.places) {
-        setIsLoaded(true);
-        setTimeout(() => initializeAutocomplete(), 100);
-        return;
-      }
-
-      // Check if script already exists
-      const existingScript = document.querySelector('script[src*="maps.googleapis.com"]');
-      if (existingScript) {
-        // Script exists, wait for it to load
-        const checkGoogle = setInterval(() => {
-          if (window.google && window.google.maps && window.google.maps.places) {
-            clearInterval(checkGoogle);
-            setIsLoaded(true);
-            setTimeout(() => initializeAutocomplete(), 100);
-          }
-        }, 100);
-        return;
-      }
-
-      const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
-      if (!apiKey) {
-        console.error('Google Maps API key is not set. Please add NEXT_PUBLIC_GOOGLE_MAPS_API_KEY to .env.local');
-        return;
-      }
-
-      const script = document.createElement('script');
-      script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places&language=sk`;
-      script.async = true;
-      script.defer = true;
-      script.onerror = () => {
-        console.error('Failed to load Google Maps API. Check your API key and restrictions.');
-        setIsLoaded(false);
-      };
-      script.onload = () => {
-        setIsLoaded(true);
-        setTimeout(() => initializeAutocomplete(), 100);
-      };
-      document.head.appendChild(script);
-    };
-
-    loadGoogleMaps();
-  }, []);
-
-  const initializeAutocomplete = () => {
+    const initializeAutocomplete = () => {
     if (!inputRef.current || !window.google?.maps?.places) return;
 
     // Bratislava bounds
@@ -142,7 +96,53 @@ export default function AddressAutocomplete({ value, onChange, onSelectFromMap }
         });
       }
     });
-  };
+    };
+
+    // Load Google Maps API
+    const loadGoogleMaps = () => {
+      if (window.google && window.google.maps && window.google.maps.places) {
+        setIsLoaded(true);
+        setTimeout(() => initializeAutocomplete(), 100);
+        return;
+      }
+
+      // Check if script already exists
+      const existingScript = document.querySelector('script[src*="maps.googleapis.com"]');
+      if (existingScript) {
+        // Script exists, wait for it to load
+        const checkGoogle = setInterval(() => {
+          if (window.google && window.google.maps && window.google.maps.places) {
+            clearInterval(checkGoogle);
+            setIsLoaded(true);
+            setTimeout(() => initializeAutocomplete(), 100);
+          }
+        }, 100);
+        return;
+      }
+
+      const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+      if (!apiKey) {
+        console.error('Google Maps API key is not set. Please add NEXT_PUBLIC_GOOGLE_MAPS_API_KEY to .env.local');
+        return;
+      }
+
+      const script = document.createElement('script');
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places&language=sk`;
+      script.async = true;
+      script.defer = true;
+      script.onerror = () => {
+        console.error('Failed to load Google Maps API. Check your API key and restrictions.');
+        setIsLoaded(false);
+      };
+      script.onload = () => {
+        setIsLoaded(true);
+        setTimeout(() => initializeAutocomplete(), 100);
+      };
+      document.head.appendChild(script);
+    };
+
+    loadGoogleMaps();
+  }, [onChange]);
 
   return (
     <div className="relative">

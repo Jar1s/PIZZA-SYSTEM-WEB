@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 
 interface MapPickerProps {
@@ -28,112 +28,7 @@ export default function MapPicker({ isOpen, onClose, onSelect, initialLocation }
     initialLocation || { lat: 48.1486, lng: 17.1077 } // Bratislava default
   );
 
-  useEffect(() => {
-    if (!isOpen) return;
-
-    // Load Google Maps API
-    const loadGoogleMaps = () => {
-      if (window.google && window.google.maps) {
-        setIsLoaded(true);
-        setTimeout(() => initializeMap(), 100);
-        return;
-      }
-
-      // Check if script already exists
-      const existingScript = document.querySelector('script[src*="maps.googleapis.com"]');
-      if (existingScript) {
-        // Script exists, wait for it to load
-        const checkGoogle = setInterval(() => {
-          if (window.google && window.google.maps) {
-            clearInterval(checkGoogle);
-            setIsLoaded(true);
-            setTimeout(() => initializeMap(), 100);
-          }
-        }, 100);
-        return;
-      }
-
-      const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
-      if (!apiKey) {
-        console.error('Google Maps API key is not set. Please add NEXT_PUBLIC_GOOGLE_MAPS_API_KEY to .env.local');
-        return;
-      }
-
-      const script = document.createElement('script');
-      script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places,geometry&language=sk`;
-      script.async = true;
-      script.defer = true;
-      script.onerror = () => {
-        console.error('Failed to load Google Maps API. Check your API key and restrictions.');
-        setIsLoaded(false);
-      };
-      script.onload = () => {
-        setIsLoaded(true);
-        setTimeout(() => initializeMap(), 100);
-      };
-      
-      document.head.appendChild(script);
-    };
-
-    loadGoogleMaps();
-  }, [isOpen]);
-
-  const initializeMap = () => {
-    if (!mapRef.current || !window.google?.maps) return;
-
-    // Bratislava bounds
-    const bratislavaBounds = new window.google.maps.LatLngBounds(
-      new window.google.maps.LatLng(48.05, 16.95), // Southwest
-      new window.google.maps.LatLng(48.25, 17.25)  // Northeast
-    );
-
-    // Initialize map with restrictions
-    const map = new window.google.maps.Map(mapRef.current, {
-      center: currentLocation,
-      zoom: 13,
-      mapTypeControl: false,
-      streetViewControl: false,
-      fullscreenControl: true,
-      restriction: {
-        latLngBounds: bratislavaBounds,
-        strictBounds: false, // Allow slight overflow for better UX
-      },
-    });
-
-    mapInstanceRef.current = map;
-    geocoderRef.current = new window.google.maps.Geocoder();
-
-    // Create marker
-    const marker = new window.google.maps.Marker({
-      map,
-      position: currentLocation,
-      draggable: true,
-      animation: window.google.maps.Animation.DROP,
-    });
-
-    markerRef.current = marker;
-
-    // Update address when marker is dragged
-    marker.addListener('dragend', () => {
-      const position = marker.getPosition();
-      if (position) {
-        updateAddressFromPosition(position.lat(), position.lng());
-      }
-    });
-
-    // Update address when map is clicked
-    map.addListener('click', (e: any) => {
-      const lat = e.latLng.lat();
-      const lng = e.latLng.lng();
-      marker.setPosition({ lat, lng });
-      updateAddressFromPosition(lat, lng);
-    });
-
-    // Get initial address
-    updateAddressFromPosition(currentLocation.lat, currentLocation.lng);
-  };
-
-  const updateAddressFromPosition = (lat: number, lng: number) => {
+  const updateAddressFromPosition = useCallback((lat: number, lng: number) => {
     if (!geocoderRef.current || !window.google?.maps) return;
 
     // Check if position is within Bratislava bounds
@@ -199,9 +94,78 @@ export default function MapPicker({ isOpen, onClose, onSelect, initialLocation }
         }
       }
     );
-  };
+  }, []);
 
-  const handleConfirm = () => {
+  const initializeMap = useCallback(() => {
+    if (!mapRef.current || !window.google?.maps) return;
+    
+    // Don't re-initialize if map already exists
+    if (mapInstanceRef.current) {
+      // Just update marker position if location changed
+      if (markerRef.current && currentLocation) {
+        markerRef.current.setPosition(currentLocation);
+        mapInstanceRef.current.setCenter(currentLocation);
+        updateAddressFromPosition(currentLocation.lat, currentLocation.lng);
+      }
+      return;
+    }
+
+    // Get current location from state (will be initialLocation or default)
+    const location = currentLocation;
+
+    // Bratislava bounds
+    const bratislavaBounds = new window.google.maps.LatLngBounds(
+      new window.google.maps.LatLng(48.05, 16.95), // Southwest
+      new window.google.maps.LatLng(48.25, 17.25)  // Northeast
+    );
+
+    // Initialize map with restrictions
+    const map = new window.google.maps.Map(mapRef.current, {
+      center: location,
+      zoom: 13,
+      mapTypeControl: false,
+      streetViewControl: false,
+      fullscreenControl: true,
+      restriction: {
+        latLngBounds: bratislavaBounds,
+        strictBounds: false, // Allow slight overflow for better UX
+      },
+    });
+
+    mapInstanceRef.current = map;
+    geocoderRef.current = new window.google.maps.Geocoder();
+
+    // Create marker
+    const marker = new window.google.maps.Marker({
+      map,
+      position: location,
+      draggable: true,
+      animation: window.google.maps.Animation.DROP,
+    });
+
+    markerRef.current = marker;
+
+    // Update address when marker is dragged
+    marker.addListener('dragend', () => {
+      const position = marker.getPosition();
+      if (position) {
+        updateAddressFromPosition(position.lat(), position.lng());
+      }
+    });
+
+    // Update address when map is clicked
+    map.addListener('click', (e: any) => {
+      const lat = e.latLng.lat();
+      const lng = e.latLng.lng();
+      marker.setPosition({ lat, lng });
+      updateAddressFromPosition(lat, lng);
+    });
+
+    // Get initial address
+    updateAddressFromPosition(location.lat, location.lng);
+  }, [currentLocation, updateAddressFromPosition]); // Keep currentLocation but check if map exists first
+
+  const handleConfirm = useCallback(() => {
     if (!selectedAddress || selectedAddress.includes('musí byť v Bratislave') || !markerRef.current) {
       alert('Prosím, vyberte adresu v Bratislave.');
       return;
@@ -283,7 +247,71 @@ export default function MapPicker({ isOpen, onClose, onSelect, initialLocation }
         }
       );
     }
-  };
+  }, [selectedAddress, onSelect, onClose]);
+
+  useEffect(() => {
+    if (!isOpen) {
+      // Clean up when modal closes
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current = null;
+        markerRef.current = null;
+        geocoderRef.current = null;
+        setIsLoaded(false);
+      }
+      return;
+    }
+
+    // Update currentLocation if initialLocation changes
+    if (initialLocation) {
+      setCurrentLocation(initialLocation);
+    }
+
+    // Load Google Maps API
+    const loadGoogleMaps = () => {
+      if (window.google && window.google.maps) {
+        setIsLoaded(true);
+        setTimeout(() => initializeMap(), 100);
+        return;
+      }
+
+      // Check if script already exists
+      const existingScript = document.querySelector('script[src*="maps.googleapis.com"]');
+      if (existingScript) {
+        // Script exists, wait for it to load
+        const checkGoogle = setInterval(() => {
+          if (window.google && window.google.maps) {
+            clearInterval(checkGoogle);
+            setIsLoaded(true);
+            setTimeout(() => initializeMap(), 100);
+          }
+        }, 100);
+        return;
+      }
+
+      const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+      if (!apiKey) {
+        console.error('Google Maps API key is not set. Please add NEXT_PUBLIC_GOOGLE_MAPS_API_KEY to .env.local');
+        return;
+      }
+
+      const script = document.createElement('script');
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places,geometry&language=sk`;
+      script.async = true;
+      script.defer = true;
+      script.onerror = () => {
+        console.error('Failed to load Google Maps API. Check your API key and restrictions.');
+        setIsLoaded(false);
+      };
+      script.onload = () => {
+        setIsLoaded(true);
+        setTimeout(() => initializeMap(), 100);
+      };
+      
+      document.head.appendChild(script);
+    };
+
+    loadGoogleMaps();
+  }, [isOpen, initializeMap]); // Removed initialLocation from dependencies
 
   if (!isOpen) return null;
 

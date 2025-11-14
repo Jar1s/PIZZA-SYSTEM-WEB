@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Product } from '@/shared';
 import { pizzaCustomizations, CustomizationOption } from '@/lib/customization-options';
@@ -30,21 +30,7 @@ export default function CustomizationModal({
   const displayName = translation.name || product.name;
   const displayDescription = translation.description || product.description;
 
-  // Initialize with default selections for required categories
-  useEffect(() => {
-    if (isOpen) {
-      const defaults: Record<string, string[]> = {};
-      pizzaCustomizations.forEach(category => {
-        if (category.required && category.options.length > 0) {
-          defaults[category.id] = [category.options[0].id];
-        }
-      });
-      setSelections(defaults);
-      calculateTotal(defaults);
-    }
-  }, [isOpen, product]);
-
-  const calculateTotal = (currentSelections: Record<string, string[]>) => {
+  const calculateTotal = useCallback((currentSelections: Record<string, string[]>) => {
     let additionalCost = 0;
     
     Object.entries(currentSelections).forEach(([categoryId, optionIds]) => {
@@ -60,7 +46,21 @@ export default function CustomizationModal({
     });
 
     setTotalPrice(product.priceCents + additionalCost);
-  };
+  }, [product.priceCents]);
+
+  // Initialize with default selections for required categories
+  useEffect(() => {
+    if (isOpen) {
+      const defaults: Record<string, string[]> = {};
+      pizzaCustomizations.forEach(category => {
+        if (category.required && category.options.length > 0) {
+          defaults[category.id] = [category.options[0].id];
+        }
+      });
+      setSelections(defaults);
+      calculateTotal(defaults);
+    }
+  }, [isOpen, product, calculateTotal]);
 
   const handleOptionToggle = (categoryId: string, optionId: string) => {
     const category = pizzaCustomizations.find(c => c.id === categoryId);

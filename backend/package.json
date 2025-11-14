@@ -6,7 +6,7 @@
   "scripts": {
     "prebuild": "rimraf dist",
     "build": "nest build",
-    "postbuild": "node fix-shared-imports.js && node fix-main.js",
+    "postbuild": "node build-shared.js && node fix-shared-imports.js && node fix-main.js",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "nest start",
     "start:dev": "npm run build && node dist/main.js",
@@ -37,6 +37,7 @@
     "@nestjs/passport": "^11.0.5",
     "@nestjs/platform-express": "^10.0.0",
     "@nestjs/throttler": "^6.4.0",
+    "@pizza-ecosystem/shared": "file:../shared",
     "@prisma/client": "^5.0.0",
     "@types/bcryptjs": "^2.4.6",
     "@types/nodemailer": "^7.0.3",

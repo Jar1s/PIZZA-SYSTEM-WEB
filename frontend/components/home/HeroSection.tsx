@@ -41,7 +41,7 @@ export const HeroSection = ({ tenantName, primaryColor }: HeroSectionProps) => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1, duration: 0.4 }}
-            className="text-6xl font-bold mb-6 leading-tight"
+            className="text-6xl font-bold mb-6 leading-tight whitespace-nowrap"
           >
             {t.heroTitle} <span style={{ color: primaryColor }}>{tenantName}</span>
           </motion.h1>
@@ -59,7 +59,6 @@ export const HeroSection = ({ tenantName, primaryColor }: HeroSectionProps) => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3, duration: 0.4 }}
-            className="flex gap-4"
           >
             <button
               onClick={() => {
@@ -79,24 +78,6 @@ export const HeroSection = ({ tenantName, primaryColor }: HeroSectionProps) => {
               style={{ backgroundColor: primaryColor, color: 'white' }}
             >
               {t.orderNow} 🍕
-            </button>
-            <button
-              onClick={() => {
-                const menuElement = document.getElementById('menu');
-                if (menuElement) {
-                  const headerHeight = 80; // Height of sticky header
-                  const elementPosition = menuElement.getBoundingClientRect().top;
-                  const offsetPosition = elementPosition + window.pageYOffset - headerHeight;
-                  
-                  window.scrollTo({
-                    top: offsetPosition,
-                    behavior: 'smooth'
-                  });
-                }
-              }}
-              className="px-8 py-4 rounded-lg font-bold text-lg bg-white/20 backdrop-blur-sm border-2 border-white hover:bg-white/30 transition-all"
-            >
-              {t.viewMenu}
             </button>
           </motion.div>
 

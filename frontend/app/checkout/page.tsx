@@ -23,7 +23,7 @@ export default function CheckoutPage() {
   const { items, clearCart } = useCart();
   const total = useCartTotal();
   const router = useRouter();
-  const { user, loading: authLoading } = useCustomerAuth();
+  const { user, loading: authLoading, setUser } = useCustomerAuth();
   const [loading, setLoading] = useState(false);
   const [tenant, setTenant] = useState('pornopizza');
   const [addresses, setAddresses] = useState<Address[]>([]);
@@ -254,12 +254,49 @@ export default function CheckoutPage() {
     }
   }, [items, router, tenant, user, authLoading]);
   
-  // Fetch addresses when user is loaded
+  // Fetch addresses and update user profile when user is loaded
   useEffect(() => {
     if (user) {
       fetchAddresses();
+      fetchUserProfile(); // Fetch latest user profile to get phone number
     }
   }, [user]);
+
+  const fetchUserProfile = async () => {
+    try {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+      const token = localStorage.getItem('customer_auth_token');
+      
+      if (!token || !user) {
+        return;
+      }
+      
+      const res = await fetch(`${API_URL}/api/customer/account/profile`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        // Update user in context and localStorage with latest profile data
+        if (setUser) {
+          const updatedUser = {
+            ...user,
+            name: data.name || user.name,
+            email: data.email || user.email,
+            phone: data.phone || user.phone,
+            phoneVerified: data.phoneVerified !== undefined ? data.phoneVerified : user.phoneVerified,
+          };
+          setUser(updatedUser);
+          localStorage.setItem('customer_auth_user', JSON.stringify(updatedUser));
+        }
+      }
+    } catch (error) {
+      console.error('Failed to fetch user profile:', error);
+    }
+  };
 
   const fetchAddresses = async () => {
     try {
@@ -283,13 +320,23 @@ export default function CheckoutPage() {
         const fetchedAddresses = data.addresses || [];
         setAddresses(fetchedAddresses);
         
-        // Select primary address or first address
-        const primaryAddress = fetchedAddresses.find((addr: Address) => addr.isPrimary);
-        if (primaryAddress) {
-          setSelectedAddressId(primaryAddress.id);
-        } else if (fetchedAddresses.length > 0) {
-          setSelectedAddressId(fetchedAddresses[0].id);
-        }
+        // Only set default address if no address is currently selected
+        // or if the currently selected address no longer exists
+        setSelectedAddressId((currentId) => {
+          // If an address is already selected and it still exists, keep it
+          if (currentId && fetchedAddresses.find((addr: Address) => addr.id === currentId)) {
+            return currentId;
+          }
+          
+          // Otherwise, select primary address or first address
+          const primaryAddress = fetchedAddresses.find((addr: Address) => addr.isPrimary);
+          if (primaryAddress) {
+            return primaryAddress.id;
+          } else if (fetchedAddresses.length > 0) {
+            return fetchedAddresses[0].id;
+          }
+          return null;
+        });
       }
     } catch (error) {
       console.error('Failed to fetch addresses:', error);
@@ -338,7 +385,7 @@ export default function CheckoutPage() {
         customer: {
           name: user.name || 'Customer',
           email: user.email.trim().toLowerCase(), // Normalize email for consistent matching
-          phone: '', // Phone can be empty or from user profile if available
+          phone: user.phone || '', // Use phone from user profile if available
         },
         address: {
           street: selectedAddress.street,
@@ -547,6 +594,21 @@ export default function CheckoutPage() {
             <div className="space-y-2 text-gray-700">
               <div><strong>Name:</strong> {user.name || 'N/A'}</div>
               <div><strong>Email:</strong> {user.email || 'N/A'}</div>
+              {user.phone && (
+                <div>
+                  <strong>Phone:</strong> {user.phone}
+                  {user.phoneVerified && (
+                    <span className="ml-2 text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
+                      ✓ Verified
+                    </span>
+                  )}
+                </div>
+              )}
+              {!user.phone && (
+                <div className="text-sm text-gray-500 italic">
+                  Phone number not provided
+                </div>
+              )}
             </div>
           </div>
           
@@ -558,6 +620,9 @@ export default function CheckoutPage() {
                 {addresses.map((address) => (
                   <label
                     key={address.id}
+                    onClick={() => {
+                      setSelectedAddressId(address.id);
+                    }}
                     className={`flex items-start p-4 border-2 rounded-lg cursor-pointer transition-colors ${
                       selectedAddressId === address.id
                         ? 'border-orange-500 bg-orange-50'
@@ -569,8 +634,13 @@ export default function CheckoutPage() {
                       name="address"
                       value={address.id}
                       checked={selectedAddressId === address.id}
-                      onChange={() => setSelectedAddressId(address.id)}
-                      className="mt-1 mr-3"
+                      onChange={() => {
+                        setSelectedAddressId(address.id);
+                      }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                      }}
+                      className="mt-1 mr-3 cursor-pointer"
                     />
                     <div className="flex-1">
                       <div className="font-semibold">

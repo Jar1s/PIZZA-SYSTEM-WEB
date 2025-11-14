@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { Order, OrderStatus } from '@/shared';
 import { OrderCard } from './OrderCard';
 import { OrderFilters } from './OrderFilters';
@@ -14,18 +14,37 @@ export function OrderList() {
     endDate: '',
   });
   const [loading, setLoading] = useState(true);
+  const [tenantIdToSlug, setTenantIdToSlug] = useState<Record<string, string>>({});
 
-  useEffect(() => {
-    fetchOrders();
+  // Cache tenant ID to slug mapping
+  const fetchTenantMapping = useCallback(async () => {
+    const tenants = ['pornopizza', 'pizzavnudzi'];
+    const mapping: Record<string, string> = {};
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
     
-    // Poll for updates every 5 seconds (faster refresh for development)
-    const interval = setInterval(fetchOrders, 5000);
-    return () => clearInterval(interval);
-  }, [filters]);
+    for (const tenantSlug of tenants) {
+      try {
+        const res = await fetch(`${API_URL}/api/tenants/${tenantSlug}`);
+        if (res.ok) {
+          const tenantData = await res.json();
+          mapping[tenantData.id] = tenantSlug;
+        }
+      } catch (e) {
+        console.error(`Failed to fetch tenant ${tenantSlug}:`, e);
+      }
+    }
+    
+    setTenantIdToSlug(mapping);
+  }, []);
 
-  const fetchOrders = async () => {
+  const fetchOrders = useCallback(async () => {
     try {
       setLoading(true);
+      
+      // Fetch tenant mapping if not cached
+      if (Object.keys(tenantIdToSlug).length === 0) {
+        await fetchTenantMapping();
+      }
       
       // Fetch from all tenants
       const tenants = ['pornopizza', 'pizzavnudzi'];
@@ -59,7 +78,15 @@ export function OrderList() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [filters, tenantIdToSlug, fetchTenantMapping]);
+
+  useEffect(() => {
+    fetchOrders();
+    
+    // Poll for updates every 5 seconds (faster refresh for development)
+    const interval = setInterval(fetchOrders, 5000);
+    return () => clearInterval(interval);
+  }, [fetchOrders]);
 
   const handleStatusUpdate = async (orderId: string, newStatus: OrderStatus) => {
     try {
@@ -67,10 +94,12 @@ export function OrderList() {
       const order = orders.find(o => o.id === orderId);
       if (!order) return;
       
-      // TODO: Need tenant slug from order - update API to include it
+      // Get tenant slug from cached mapping
+      const orderTenantSlug = tenantIdToSlug[order.tenantId] || 'pornopizza';
+      
       const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
       const res = await fetch(
-        `${API_URL}/api/pornopizza/orders/${orderId}/status`,
+        `${API_URL}/api/${orderTenantSlug}/orders/${orderId}/status`,
         {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },

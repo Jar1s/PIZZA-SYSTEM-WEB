@@ -2,11 +2,14 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
+import { useCart } from '@/hooks/useCart';
 
 interface CustomerUser {
   id: string;
   email: string;
   name: string;
+  phone?: string;
+  phoneVerified?: boolean;
   role: 'CUSTOMER';
 }
 
@@ -28,6 +31,7 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<CustomerUser | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
+  const { clearCart } = useCart();
 
   useEffect(() => {
     // Function to load user from localStorage
@@ -37,15 +41,33 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
 
       if (token && storedUser) {
         try {
-          setUser(JSON.parse(storedUser));
+          const newUser = JSON.parse(storedUser);
+          // Check if user changed (for cart clearing) - compare with current state
+          setUser((prevUser) => {
+            if (prevUser && prevUser.id !== newUser.id) {
+              clearCart(); // Clear cart if user switched
+            }
+            return newUser;
+          });
         } catch (e) {
           localStorage.removeItem('customer_auth_token');
           localStorage.removeItem('customer_auth_refresh_token');
           localStorage.removeItem('customer_auth_user');
-          setUser(null);
+          setUser((prevUser) => {
+            if (prevUser) {
+              clearCart(); // Clear cart when user is removed
+            }
+            return null;
+          });
         }
       } else {
-        setUser(null);
+        // User logged out - clear cart
+        setUser((prevUser) => {
+          if (prevUser) {
+            clearCart();
+          }
+          return null;
+        });
       }
       setLoading(false);
     };
@@ -93,6 +115,13 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
 
     const data = await response.json();
 
+    // Check if user changed (for cart clearing)
+    const previousUserId = user?.id;
+    const newUserId = data.user.id;
+    if (previousUserId && previousUserId !== newUserId) {
+      clearCart(); // Clear cart if user switched
+    }
+
     // Store tokens and user
     const isProduction = process.env.NODE_ENV === 'production';
 
@@ -131,6 +160,13 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
     }
 
     const data = await response.json();
+
+    // Check if user changed (for cart clearing)
+    const previousUserId = user?.id;
+    const newUserId = data.user.id;
+    if (previousUserId && previousUserId !== newUserId) {
+      clearCart(); // Clear cart if user switched
+    }
 
     // Store tokens and user
     const isProduction = process.env.NODE_ENV === 'production';
@@ -193,40 +229,43 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
     window.location.href = googleUrl;
   };
 
-  const loginWithApple = async () => {
+  const loginWithApple = async (returnUrlOverride?: string) => {
     const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
     
     // Get tenant and returnUrl from current page
     const searchParams = new URLSearchParams(window.location.search);
     const tenant = searchParams.get('tenant') || 'pornopizza';
-    const returnUrl = searchParams.get('returnUrl') || undefined;
+    const returnUrlFromQuery = searchParams.get('returnUrl') || undefined;
     
-    // Redirect to Apple OAuth (placeholder - will show error)
-    const appleUrlParams = new URLSearchParams({ tenant });
-    if (returnUrl) {
-      appleUrlParams.set('returnUrl', returnUrl);
+    // Build effectiveReturnUrl from override, query param, or sessionStorage
+    let effectiveReturnUrl: string | undefined;
+    if (returnUrlOverride) {
+      effectiveReturnUrl = returnUrlOverride;
+    } else if (returnUrlFromQuery) {
+      effectiveReturnUrl = returnUrlFromQuery;
+    } else if (typeof window !== 'undefined') {
+      const storedReturnUrl = sessionStorage.getItem('oauth_requested_returnUrl');
+      if (storedReturnUrl) {
+        effectiveReturnUrl = storedReturnUrl;
+      }
     }
-    const appleUrl = `${API_URL}/api/auth/customer/apple?${appleUrlParams.toString()}`;
     
-    try {
-      const response = await fetch(appleUrl, {
-        method: 'GET',
-        credentials: 'include',
-      });
-      
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Apple OAuth not yet implemented');
+    // Build state with effectiveReturnUrl and tenant
+    const state: { returnUrl?: string; tenant?: string } = {};
+    if (effectiveReturnUrl) {
+      state.returnUrl = effectiveReturnUrl;
+      // Keep session key in sync so callback can read it later
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem('oauth_requested_returnUrl', effectiveReturnUrl);
       }
-      
-      // If redirect URL is returned, redirect to it
-      const data = await response.json();
-      if (data.redirectUrl) {
-        window.location.href = data.redirectUrl;
-      }
-    } catch (error: any) {
-      alert(error.message || 'Apple OAuth is not yet implemented. Please use email/password login.');
     }
+    state.tenant = tenant;
+    
+    // Redirect to Apple OAuth with state (use btoa for browser base64 encoding)
+    const stateParam = btoa(JSON.stringify(state));
+    const appleUrl = `${API_URL}/api/auth/customer/apple?tenant=${encodeURIComponent(tenant)}&state=${encodeURIComponent(stateParam)}`;
+    
+    window.location.href = appleUrl;
   };
 
   const verifyPhone = async (phone: string, code: string, userId: string) => {
@@ -245,6 +284,13 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
     }
 
     const data = await response.json();
+
+    // Check if user changed (for cart clearing)
+    const previousUserId = user?.id;
+    const newUserId = data.user.id;
+    if (previousUserId && previousUserId !== newUserId) {
+      clearCart(); // Clear cart if user switched
+    }
 
     // Update tokens and user
     const isProduction = process.env.NODE_ENV === 'production';
@@ -267,7 +313,10 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
   };
 
   const logout = async () => {
-    // Clear local storage
+    // Clear cart when logging out
+    clearCart();
+    
+    // Clear local storage (but keep cookie settings - they are per user and should persist)
     localStorage.removeItem('customer_auth_token');
     localStorage.removeItem('customer_auth_refresh_token');
     localStorage.removeItem('customer_auth_user');

@@ -17,13 +17,17 @@ export const translations = {
     viewMenu: 'Zobraziť menu',
     
     // Hero Stats
-    deliveryTime: '30 Minút',
+    deliveryTime: '90 Minút',
     deliveryLabel: 'Čas doručenia',
     pizzasCount: '28+ Pizz',
     pizzasLabel: 'Na výber',
     rating: '4.8/5',
     ratingLabel: 'Hodnotenie zákazníkov',
     scrollToExplore: 'Posúvaj pre viac',
+    
+    // Best Sellers Section
+    bestSellersTitle: 'Najpredávanejšie',
+    bestSellersSubtitle: 'Naše najobľúbenejšie pizze, ktoré si zákazníci najčastejšie objednávajú',
     
     // Menu Section
     menuTitle: 'Naše Kompletné Menu',
@@ -96,6 +100,8 @@ export const translations = {
     changePhoneNumber: 'Zmeniť telefónne číslo',
     phoneRequired: 'Telefónne číslo je povinné',
     codeRequired: 'Overovací kód je povinný',
+    codeSentTo: 'Kód bol odoslaný na',
+    verify: 'Overiť',
     
     // Customer Auth
     customerLogin: 'Prihláste sa',
@@ -130,18 +136,9 @@ export const translations = {
     phoneDescription: 'Zadajte telefónne číslo pre budúce potvrdenia objednávok',
     phoneNumber: 'Telefónne číslo',
     phonePlaceholder: '900 123 456',
-    sendCode: 'Odoslať kód',
-    sending: 'Odosielam...',
-    enterCode: 'Zadajte 6-miestny kód',
-    codeSentTo: 'Kód bol odoslaný na',
-    verify: 'Overiť',
-    verifying: 'Overujem...',
-    resendCodeIn: 'Znovu odoslať kód za',
-    resendCode: 'Znovu odoslať kód',
     
     // Account Management
     myAccount: 'Moje konto',
-    orderHistory: 'História objednávok',
     myAddress: 'Moja adresa',
     settingsAndPersonalData: 'Nastavenia a osobné údaje',
     logout: 'Odhlásiť sa',
@@ -150,11 +147,8 @@ export const translations = {
     addressDescription: 'Popis k adrese',
     addressDescriptionPlaceholder: 'Číslo bytu, Poschodie, Číslo vchodu',
     setAsPrimary: 'Nastaviť ako primárnu adresu',
-    add: 'Pridať',
     addAddress: 'Pridať adresu',
-    phone: 'Telefón',
     email: 'E-mail',
-    name: 'Meno',
     edit: 'Upraviť',
     save: 'Uložiť',
     cancel: 'Zrušiť',
@@ -186,13 +180,17 @@ export const translations = {
     viewMenu: 'View Menu',
     
     // Hero Stats
-    deliveryTime: '30 Minutes',
+    deliveryTime: '90 Minutes',
     deliveryLabel: 'Delivery Time',
     pizzasCount: '28+ Pizzas',
     pizzasLabel: 'To Choose From',
     rating: '4.8/5',
     ratingLabel: 'Customer Rating',
     scrollToExplore: 'Scroll to explore',
+    
+    // Best Sellers Section
+    bestSellersTitle: 'Best Sellers',
+    bestSellersSubtitle: 'Our most popular pizzas that customers order most often',
     
     // Menu Section
     menuTitle: 'Our Complete Menu',
@@ -265,7 +263,6 @@ export const translations = {
     addressDescription: 'Address description',
     addressDescriptionPlaceholder: 'Apartment number, Floor, Entrance number',
     setAsPrimary: 'Set as primary address',
-    add: 'Add',
     addAddress: 'Add Address',
     phone: 'Phone',
     email: 'Email',
@@ -299,6 +296,8 @@ export const translations = {
     changePhoneNumber: 'Change phone number',
     phoneRequired: 'Phone number is required',
     codeRequired: 'Verification code is required',
+    codeSentTo: 'Code sent to',
+    verify: 'Verify',
     
     // Customer Auth
     customerLogin: 'Sign In',
@@ -315,7 +314,6 @@ export const translations = {
     login: 'Sign In',
     loggingIn: 'Signing in...',
     back: 'Back',
-    name: 'Name',
     namePlaceholder: 'Your name',
     register: 'Register',
     registering: 'Registering...',
@@ -326,21 +324,11 @@ export const translations = {
     fasterPaymentDesc: 'Save your payment details for faster orders',
     additionalFeatures: 'Additional features',
     additionalFeaturesDesc: 'Access to exclusive offers and features',
-    orderHistory: 'Access to order history',
     orderHistoryDesc: 'Track all your orders in one place',
     completeRegistration: 'Complete Registration',
-    phone: 'Phone',
     phoneDescription: 'Enter your phone number for future order confirmations',
     phoneNumber: 'Phone number',
     phonePlaceholder: '900 123 456',
-    sendCode: 'Send Code',
-    sending: 'Sending...',
-    enterCode: 'Enter 6-digit code',
-    codeSentTo: 'Code sent to',
-    verify: 'Verify',
-    verifying: 'Verifying...',
-    resendCodeIn: 'Resend code in',
-    resendCode: 'Resend code',
   },
 };
 

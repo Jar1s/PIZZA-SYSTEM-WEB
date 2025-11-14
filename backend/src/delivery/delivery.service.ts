@@ -94,6 +94,26 @@ export class DeliveryService {
     return delivery;
   }
 
+  async getDeliveryById(id: string) {
+    const delivery = await this.prisma.delivery.findUnique({
+      where: { id },
+      include: {
+        orders: {
+          select: {
+            id: true,
+            status: true,
+          },
+        },
+      },
+    });
+
+    if (!delivery) {
+      throw new BadRequestException('Delivery not found');
+    }
+
+    return delivery;
+  }
+
   async handleWoltWebhook(webhookData: any) {
     const { delivery_id, status, courier } = webhookData;
 

@@ -12,6 +12,7 @@ import { AuthModule } from './auth/auth.module';
 import { AnalyticsModule } from './analytics/analytics.module';
 import { CustomerModule } from './customer/customer.module';
 import { TrackingModule } from './tracking/tracking.module';
+import { AppController } from './app.controller';
 
 @Module({
   imports: [
@@ -31,7 +32,7 @@ import { TrackingModule } from './tracking/tracking.module';
     EmailModule,
     AnalyticsModule,
   ],
-  controllers: [],
+  controllers: [AppController],
   providers: [
     // Only enable throttling in production
     ...(process.env.NODE_ENV === 'production' ? [{

@@ -1,13 +1,25 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
+import { useCookieSettings } from '@/hooks/useCookieSettings';
 
 export default function CookiePolicyPage() {
   const { language } = useLanguage();
   const router = useRouter();
   const isSlovak = language === 'sk';
+  const [showCookieModal, setShowCookieModal] = useState(false);
+  const { settings: cookieSettings, updateSettings, isLoaded } = useCookieSettings();
+  const [localSettings, setLocalSettings] = useState(cookieSettings);
+  
+  // Update local settings when cookieSettings change
+  useEffect(() => {
+    if (isLoaded) {
+      setLocalSettings(cookieSettings);
+    }
+  }, [isLoaded, cookieSettings]);
 
   return (
     <div className="min-h-screen bg-gray-50 py-12">
@@ -246,10 +258,7 @@ export default function CookiePolicyPage() {
                   : 'You can change your cookie settings by clicking on this button:'}
               </p>
               <button
-                onClick={() => {
-                  // TODO: Implement cookie settings modal
-                  alert(isSlovak ? 'Funkcia nastavení súborov cookie bude čoskoro dostupná.' : 'Cookie settings feature will be available soon.');
-                }}
+                onClick={() => setShowCookieModal(true)}
                 className="px-6 py-3 rounded-lg text-white font-semibold"
                 style={{ backgroundColor: 'var(--color-primary)' }}
               >
@@ -259,6 +268,147 @@ export default function CookiePolicyPage() {
           </div>
         </motion.div>
       </div>
+
+      {/* Cookie Settings Modal */}
+      {showCookieModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+          >
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-2xl font-bold" style={{ color: 'var(--color-primary)' }}>
+                  {isSlovak ? 'Nastavenia súborov cookie' : 'Cookie Settings'}
+                </h2>
+                <button
+                  onClick={() => setShowCookieModal(false)}
+                  className="text-gray-500 hover:text-gray-700"
+                  aria-label={isSlovak ? 'Zavrieť' : 'Close'}
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              <div className="space-y-6 mb-6">
+                {/* Necessary Cookies */}
+                <div className="border-b pb-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <div>
+                      <h3 className="font-semibold text-lg">
+                        {isSlovak ? 'Nevyhnutné súbory cookie' : 'Necessary Cookies'}
+                      </h3>
+                      <p className="text-sm text-gray-600">
+                        {isSlovak
+                          ? 'Tieto súbory cookie sú nevyhnutné pre fungovanie stránky a nemôžu byť vypnuté.'
+                          : 'These cookies are necessary for the website to function and cannot be disabled.'}
+                      </p>
+                    </div>
+                    <div className="ml-4">
+                      <input
+                        type="checkbox"
+                        checked={cookieSettings.necessary}
+                        disabled
+                        className="w-5 h-5"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Analytics Cookies */}
+                <div className="border-b pb-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <div>
+                      <h3 className="font-semibold text-lg">
+                        {isSlovak ? 'Analytické súbory cookie' : 'Analytics Cookies'}
+                      </h3>
+                      <p className="text-sm text-gray-600">
+                        {isSlovak
+                          ? 'Pomáhajú nám pochopiť, ako návštevníci používajú našu stránku.'
+                          : 'Help us understand how visitors use our website.'}
+                      </p>
+                    </div>
+                    <div className="ml-4">
+                      <label className="relative inline-flex items-center cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={localSettings.analytics}
+                          onChange={(e) =>
+                            setLocalSettings({ ...localSettings, analytics: e.target.checked })
+                          }
+                          className="sr-only peer"
+                        />
+                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                      </label>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Marketing Cookies */}
+                <div className="border-b pb-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <div>
+                      <h3 className="font-semibold text-lg">
+                        {isSlovak ? 'Marketingové súbory cookie' : 'Marketing Cookies'}
+                      </h3>
+                      <p className="text-sm text-gray-600">
+                        {isSlovak
+                          ? 'Používajú sa na zobrazovanie relevantných reklám a sledovanie kampaní.'
+                          : 'Used to display relevant ads and track campaigns.'}
+                      </p>
+                    </div>
+                    <div className="ml-4">
+                      <label className="relative inline-flex items-center cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={localSettings.marketing}
+                          onChange={(e) =>
+                            setLocalSettings({ ...localSettings, marketing: e.target.checked })
+                          }
+                          className="sr-only peer"
+                        />
+                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                      </label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex gap-4">
+                <button
+                  onClick={() => {
+                    try {
+                      updateSettings({
+                        analytics: localSettings.analytics,
+                        marketing: localSettings.marketing,
+                      });
+                      setShowCookieModal(false);
+                      // Reload page to apply settings
+                      window.location.reload();
+                    } catch (error) {
+                      console.error('Failed to save cookie settings:', error);
+                      alert(isSlovak ? 'Chyba pri ukladaní nastavení' : 'Error saving settings');
+                    }
+                  }}
+                  className="flex-1 px-6 py-3 rounded-lg text-white font-semibold"
+                  style={{ backgroundColor: 'var(--color-primary)' }}
+                >
+                  {isSlovak ? 'Uložiť nastavenia' : 'Save Settings'}
+                </button>
+                <button
+                  onClick={() => setShowCookieModal(false)}
+                  className="px-6 py-3 rounded-lg border border-gray-300 font-semibold hover:bg-gray-50"
+                >
+                  {isSlovak ? 'Zrušiť' : 'Cancel'}
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      )}
     </div>
   );
 }
