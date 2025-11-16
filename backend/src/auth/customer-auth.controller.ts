@@ -636,6 +636,7 @@ export class CustomerAuthController {
       
       // Redirect to oauth-callback which will read cookies and store in localStorage
       res.redirect(`${frontendUrl}/auth/oauth-callback?redirect=${encodeURIComponent(redirectUrl)}`);
+      }
     } catch (error: any) {
       console.error('Apple OAuth callback error:', error);
       const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3001';
