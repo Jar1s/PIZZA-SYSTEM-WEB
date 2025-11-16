@@ -168,6 +168,15 @@ WOLT_DRIVE_MERCHANT_ID=your_merchant_id
 JWT_SECRET=your_jwt_secret_here
 ```
 
+### SMS Verification (Twilio - Optional)
+```bash
+TWILIO_ACCOUNT_SID=ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+TWILIO_AUTH_TOKEN=your_auth_token_here
+TWILIO_PHONE_NUMBER=+421XXXXXXXXX  # E.164 format
+```
+
+**Note:** If Twilio is not configured, SMS codes will be logged to console in development mode. See [MOBILE-VERIFICATION-GUIDE.md](../MOBILE-VERIFICATION-GUIDE.md) for setup instructions.
+
 ## 🔒 Security
 
 - CORS enabled for frontend integration

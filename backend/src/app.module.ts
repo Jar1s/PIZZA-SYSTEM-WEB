@@ -12,6 +12,7 @@ import { AuthModule } from './auth/auth.module';
 import { AnalyticsModule } from './analytics/analytics.module';
 import { CustomerModule } from './customer/customer.module';
 import { TrackingModule } from './tracking/tracking.module';
+import { UploadModule } from './upload/upload.module';
 import { AppController } from './app.controller';
 
 @Module({
@@ -31,6 +32,7 @@ import { AppController } from './app.controller';
     DeliveryModule,
     EmailModule,
     AnalyticsModule,
+    UploadModule,
   ],
   controllers: [AppController],
   providers: [

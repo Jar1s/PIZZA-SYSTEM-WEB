@@ -1,14 +1,18 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { Order, OrderStatus } from '@pizza-ecosystem/shared';
 import { CreateOrderDto } from './dto';
 import { EmailService } from '../email/email.service';
+import { StoryousService } from '../storyous/storyous.service';
 
 @Injectable()
 export class OrdersService {
+  private readonly logger = new Logger(OrdersService.name);
+  
   constructor(
     private prisma: PrismaService,
     private emailService: EmailService,
+    private storyousService: StoryousService,
   ) {}
 
   async createOrder(tenantId: string, data: CreateOrderDto): Promise<Order> {
@@ -90,6 +94,31 @@ export class OrdersService {
       tenantDomain,
     );
 
+    // Send order to Storyous immediately (if enabled)
+    try {
+      const storyousConfig = (tenant as any).storyousConfig as any;
+      
+      if (storyousConfig?.enabled && storyousConfig?.merchantId && storyousConfig?.placeId) {
+        const storyousResult = await this.storyousService.createOrder(
+          order as any,
+          storyousConfig.merchantId,
+          storyousConfig.placeId
+        );
+        
+        // Save Storyous order ID
+        if (storyousResult?.id) {
+          await this.prisma.order.update({
+            where: { id: order.id },
+            data: { storyousOrderId: storyousResult.id },
+          });
+          this.logger.log(`✅ Order ${order.id} synchronized to Storyous: ${storyousResult.id}`);
+        }
+      }
+    } catch (error: any) {
+      // Log but don't fail order creation
+      this.logger.error(`⚠️ Failed to sync order ${order.id} to Storyous:`, error.message);
+    }
+
     return order as any as Order;
   }
 
@@ -114,25 +143,95 @@ export class OrdersService {
     startDate?: Date;
     endDate?: Date;
   }): Promise<Order[]> {
+    // Build createdAt filter properly - combine both bounds if both are provided
+    const createdAtFilter: { gte?: Date; lte?: Date } = {};
+    if (filters?.startDate) {
+      createdAtFilter.gte = filters.startDate;
+    }
+    if (filters?.endDate) {
+      createdAtFilter.lte = filters.endDate;
+    }
+
     const orders = await this.prisma.order.findMany({
       where: {
         tenantId,
         ...(filters?.status && { status: filters.status }),
-        ...(filters?.startDate && {
-          createdAt: { gte: filters.startDate },
-        }),
-        ...(filters?.endDate && {
-          createdAt: { lte: filters.endDate },
-        }),
+        ...(Object.keys(createdAtFilter).length > 0 && { createdAt: createdAtFilter }),
       },
       include: {
         items: true,
+        delivery: true,
       },
       orderBy: {
         createdAt: 'desc',
       },
     });
     return orders as any as Order[];
+  }
+
+  async syncOrderToStoryous(orderId: string): Promise<{ success: boolean; storyousOrderId?: string; message: string }> {
+    const order = await this.prisma.order.findUnique({
+      where: { id: orderId },
+      include: {
+        items: true,
+        tenant: true,
+      },
+    });
+
+    if (!order) {
+      throw new NotFoundException(`Order ${orderId} not found`);
+    }
+
+    // Check if already synced
+    if ((order as any).storyousOrderId) {
+      return {
+        success: true,
+        storyousOrderId: (order as any).storyousOrderId,
+        message: 'Order already synced to Storyous',
+      };
+    }
+
+    try {
+      const tenant = order.tenant;
+      const storyousConfig = (tenant as any).storyousConfig as any;
+      
+      if (!storyousConfig?.enabled || !storyousConfig?.merchantId || !storyousConfig?.placeId) {
+        return {
+          success: false,
+          message: 'Storyous is not configured for this tenant',
+        };
+      }
+
+      const storyousResult = await this.storyousService.createOrder(
+        order as any,
+        storyousConfig.merchantId,
+        storyousConfig.placeId
+      );
+      
+      if (storyousResult?.id) {
+        await this.prisma.order.update({
+          where: { id: orderId },
+          data: { storyousOrderId: storyousResult.id },
+        });
+        this.logger.log(`✅ Order ${orderId} manually synced to Storyous: ${storyousResult.id}`);
+        return {
+          success: true,
+          storyousOrderId: storyousResult.id,
+          message: 'Order synced to Storyous successfully',
+        };
+      }
+
+      return {
+        success: false,
+        message: 'Storyous API did not return order ID',
+      };
+    } catch (error: any) {
+      this.logger.error(`❌ Failed to sync order ${orderId} to Storyous:`, error.message);
+      return {
+        success: false,
+        message: error.message || 'Failed to sync order to Storyous',
+      };
+    }
   }
 
   async updatePaymentRef(orderId: string, paymentRef: string, paymentStatus: string): Promise<Order> {

@@ -73,6 +73,14 @@ export class OrdersController {
     await this.orderStatusService.updateStatus(id, data.status);
     return { message: 'Status updated' };
   }
+
+  @Post(':id/sync-storyous')
+  async syncToStoryous(
+    @Param('tenantSlug') tenantSlug: string,
+    @Param('id') id: string,
+  ) {
+    return this.ordersService.syncOrderToStoryous(id);
+  }
 }
 
 // Public tracking endpoint

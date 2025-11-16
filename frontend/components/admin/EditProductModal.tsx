@@ -36,9 +36,12 @@ export function EditProductModal({
     category: 'PIZZA',
     image: '',
     isActive: true,
+    isBestSeller: false,
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
 
   useEffect(() => {
     if (product) {
@@ -49,10 +52,59 @@ export function EditProductModal({
         category: product.category || 'PIZZA',
         image: product.image || '',
         isActive: product.isActive !== undefined ? product.isActive : true,
+        isBestSeller: product.isBestSeller !== undefined ? product.isBestSeller : false,
       });
+      setImagePreview(product.image || null);
+      setImageFile(null);
       setError(null);
     }
   }, [product]);
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        setError('Please select an image file');
+        return;
+      }
+      
+      // Validate file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        setError('Image size must be less than 5MB');
+        return;
+      }
+
+      setImageFile(file);
+      setError(null);
+      
+      // Create preview
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const uploadImage = async (file: File): Promise<string> => {
+    const formData = new FormData();
+    formData.append('image', file);
+    
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+    const res = await fetch(`${API_URL}/api/upload/image`, {
+      method: 'POST',
+      body: formData,
+    });
+    
+    if (!res.ok) {
+      const error = await res.json().catch(() => ({ message: 'Failed to upload image' }));
+      throw new Error(error.message || 'Failed to upload image');
+    }
+    
+    const data = await res.json();
+    return data.url;
+  };
 
   if (!isOpen || !product) return null;
 
@@ -62,13 +114,21 @@ export function EditProductModal({
     setError(null);
 
     try {
+      let imageUrl = formData.image;
+      
+      // Upload image if file is selected
+      if (imageFile) {
+        imageUrl = await uploadImage(imageFile);
+      }
+
       await updateProduct(tenantSlug, product.id, {
         name: formData.name,
         description: formData.description || null,
         priceCents: Math.round(formData.price * 100), // Convert euros to cents
         category: formData.category,
-        image: formData.image || null,
+        image: imageUrl || null,
         isActive: formData.isActive,
+        isBestSeller: formData.isBestSeller,
       });
       
       onUpdate();
@@ -174,18 +234,38 @@ export function EditProductModal({
                   </select>
                 </div>
 
-                {/* Image URL */}
+                {/* Image Upload */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Image URL
+                    Product Image
                   </label>
-                  <input
-                    type="text"
-                    value={formData.image}
-                    onChange={(e) => setFormData({ ...formData, image: e.target.value })}
-                    placeholder="/images/pizzas/classic/margherita.jpg"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
+                  <div className="space-y-2">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleImageChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                    {imagePreview && (
+                      <div className="mt-2">
+                        <img 
+                          src={imagePreview} 
+                          alt="Preview" 
+                          className="h-32 w-32 object-cover rounded-md border border-gray-300"
+                        />
+                      </div>
+                    )}
+                    <input
+                      type="text"
+                      value={formData.image}
+                      onChange={(e) => {
+                        setFormData({ ...formData, image: e.target.value });
+                        setImagePreview(e.target.value || null);
+                      }}
+                      placeholder="Or enter image URL"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
                 </div>
 
                 {/* Active Status */}
@@ -199,6 +279,20 @@ export function EditProductModal({
                   />
                   <label htmlFor="isActive" className="ml-2 block text-sm text-gray-900">
                     Active (visible to customers)
+                  </label>
+                </div>
+
+                {/* Best Seller */}
+                <div className="flex items-center">
+                  <input
+                    type="checkbox"
+                    id="isBestSeller"
+                    checked={formData.isBestSeller}
+                    onChange={(e) => setFormData({ ...formData, isBestSeller: e.target.checked })}
+                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                  />
+                  <label htmlFor="isBestSeller" className="ml-2 block text-sm text-gray-900">
+                    Best Seller
                   </label>
                 </div>
               </div>

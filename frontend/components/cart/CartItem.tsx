@@ -1,6 +1,7 @@
 'use client';
 
 import { useCart } from '@/hooks/useCart';
+import { useLanguage } from '@/contexts/LanguageContext';
 import Image from 'next/image';
 import { motion } from 'framer-motion';
 import { formatModifiers } from '@/lib/format-modifiers';
@@ -21,6 +22,7 @@ interface CartItemProps {
 
 export function CartItem({ item }: CartItemProps) {
   const { updateQuantity, removeItem } = useCart();
+  const { t } = useLanguage();
   const price = (item.product.priceCents / 100).toFixed(2);
   const total = ((item.product.priceCents * item.quantity) / 100).toFixed(2);
   
@@ -50,7 +52,7 @@ export function CartItem({ item }: CartItemProps) {
       
       <div className="flex-1 min-w-0">
         <h3 className="font-semibold truncate">{item.product.name}</h3>
-        <p className="text-sm text-gray-600">€{price} each</p>
+        <p className="text-sm text-gray-600">€{price} {t.each}</p>
         
         {/* Customizations/Modifiers */}
         {(() => {
@@ -87,7 +89,7 @@ export function CartItem({ item }: CartItemProps) {
             onClick={() => removeItem(item.id)}
             className="ml-auto text-red-500 hover:text-red-700 text-sm font-semibold"
           >
-            Remove
+            {t.remove}
           </button>
         </div>
       </div>

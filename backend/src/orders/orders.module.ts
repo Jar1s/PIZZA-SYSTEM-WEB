@@ -6,9 +6,10 @@ import { PrismaModule } from '../prisma/prisma.module';
 import { TenantsModule } from '../tenants/tenants.module';
 import { EmailModule } from '../email/email.module';
 import { AuthModule } from '../auth/auth.module';
+import { StoryousModule } from '../storyous/storyous.module';
 
 @Module({
-  imports: [PrismaModule, TenantsModule, EmailModule, AuthModule],
+  imports: [PrismaModule, TenantsModule, EmailModule, AuthModule, StoryousModule],
   controllers: [OrdersController],
   providers: [OrdersService, OrderStatusService],
   exports: [OrdersService, OrderStatusService],

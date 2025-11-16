@@ -3,6 +3,7 @@
 import { Product, Tenant } from '@/shared';
 import { useCart } from '@/hooks/useCart';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useToastContext } from '@/contexts/ToastContext';
 import { getProductTranslation } from '@/lib/product-translations';
 import Image from 'next/image';
 import { motion } from 'framer-motion';
@@ -23,8 +24,10 @@ interface ProductCardProps {
 export const ProductCard = memo(function ProductCard({ product, index = 0 }: ProductCardProps) {
   const { addItem } = useCart();
   const { t, language } = useLanguage();
+  const toast = useToastContext();
   const [isAdding, setIsAdding] = useState(false);
   const [showCustomization, setShowCustomization] = useState(false);
+  const [imageError, setImageError] = useState(false);
   
   // Check if PornoPizza for skin tone background - we need to get tenant from context or prop
   // For now, check hostname as fallback
@@ -54,13 +57,14 @@ export const ProductCard = memo(function ProductCard({ product, index = 0 }: Pro
       // Direct add for non-pizza items
       setIsAdding(true);
       addItem(product);
+      toast.success(`${displayName} pridané do košíka!`);
       
       // Visual feedback
       setTimeout(() => {
         setIsAdding(false);
       }, 800);
     }
-  }, [isPizza, addItem, product]);
+  }, [isPizza, addItem, product, toast, displayName]);
 
   const handleCustomizedAdd = useCallback((customizations: Record<string, string[]>, totalPrice: number) => {
     setIsAdding(true);
@@ -72,11 +76,12 @@ export const ProductCard = memo(function ProductCard({ product, index = 0 }: Pro
       },
       customizations // Pass modifiers as second parameter
     );
+    toast.success(`${displayName} pridané do košíka!`);
     
     setTimeout(() => {
       setIsAdding(false);
     }, 800);
-  }, [addItem, product]);
+  }, [addItem, product, toast, displayName]);
   
   return (
     <motion.div
@@ -90,7 +95,7 @@ export const ProductCard = memo(function ProductCard({ product, index = 0 }: Pro
     >
       {/* Image Container */}
       <div className="relative h-64 overflow-hidden bg-gray-100 flex-shrink-0">
-        {product.image ? (
+        {product.image && !imageError ? (
           <>
             <Image
               src={product.image}
@@ -101,6 +106,7 @@ export const ProductCard = memo(function ProductCard({ product, index = 0 }: Pro
               placeholder="blur"
               blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDABsSFBcUERsXFhceHBsgKEIrKCUlKFE6PTBCYFVlZF9VXVtqeJmBanGQc1tdhbWGkJ6jq62rZ4C8ybqmx5moq6T/2wBDARweHigjKE4rK06kbl1upKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKT/wAARCAAIAAoDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAb/xAAhEAACAQMDBQAAAAAAAAAAAAABAgMABAUGIWEREiMxUf/EABUBAQEAAAAAAAAAAAAAAAAAAAMF/8QAGhEAAgIDAAAAAAAAAAAAAAAAAAECEgMRkf/aAAwDAQACEQMRAD8AltJagyeH0AthI5xdrLcNM91BF5pX2HaH9bcfaSXWGaRmknyJckliyjqTzSlT54b6bk+h0R//2Q=="
               className="object-cover group-hover:scale-110 transition-transform duration-500"
+              onError={() => setImageError(true)}
             />
             
             {/* Overlay on Hover */}

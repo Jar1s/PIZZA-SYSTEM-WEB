@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Order, Tenant } from '@pizza-ecosystem/shared';
+import * as crypto from 'crypto';
 
 @Injectable()
 export class GopayService {
@@ -99,11 +100,43 @@ export class GopayService {
     }
   }
 
-  verifyWebhook(signature: string, payload: string): boolean {
+  verifyWebhook(signature: string, payload: string, clientSecret?: string): boolean {
     // GoPay signature verification
-    // GoPay uses HMAC-SHA256 similar to Adyen
-    // TODO: Implement proper verification
-    return true;
+    // GoPay uses HMAC-SHA256 with client secret
+    
+    if (process.env.NODE_ENV === 'development') {
+      this.logger.warn('⚠️  GoPay webhook verification skipped in DEV mode');
+      return true; // Skip verification in dev
+    }
+
+    // Get client secret from parameter or env
+    const secret = clientSecret || process.env.GOPAY_CLIENT_SECRET;
+
+    if (!secret) {
+      this.logger.warn('⚠️  GoPay client secret not configured - rejecting webhook');
+      return false; // Reject if not configured in production
+    }
+
+    if (!signature) {
+      this.logger.warn('⚠️  GoPay webhook missing signature header');
+      return false;
+    }
+
+    // GoPay uses HMAC-SHA256, signature is hex-encoded
+    const hmac = crypto.createHmac('sha256', secret);
+    hmac.update(payload);
+    const calculatedSignature = hmac.digest('hex');
+
+    // Use timing-safe comparison to prevent timing attacks
+    try {
+      return crypto.timingSafeEqual(
+        Buffer.from(signature),
+        Buffer.from(calculatedSignature)
+      );
+    } catch (error) {
+      this.logger.error('GoPay signature verification error:', error);
+      return false;
+    }
   }
 
   parseWebhook(data: any) {

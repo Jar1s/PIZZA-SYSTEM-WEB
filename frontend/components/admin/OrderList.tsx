@@ -1,20 +1,33 @@
 'use client';
 
-import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { Order, OrderStatus } from '@/shared';
 import { OrderCard } from './OrderCard';
 import { OrderFilters } from './OrderFilters';
 
-export function OrderList() {
+interface OrderListProps {
+  todayOnly?: boolean;
+}
+
+// Get today's date in YYYY-MM-DD format
+const getTodayDate = () => {
+  const today = new Date();
+  return today.toISOString().split('T')[0];
+};
+
+export function OrderList({ todayOnly = false }: OrderListProps = {}) {
+
   const [orders, setOrders] = useState<Order[]>([]);
   const [filters, setFilters] = useState({
     tenantSlug: 'all',
     status: 'all',
-    startDate: '',
-    endDate: '',
+    startDate: todayOnly ? getTodayDate() : '',
+    endDate: todayOnly ? getTodayDate() : '',
   });
   const [loading, setLoading] = useState(true);
   const [tenantIdToSlug, setTenantIdToSlug] = useState<Record<string, string>>({});
+  const [expandedOrders, setExpandedOrders] = useState<Set<string>>(new Set());
+  const isInitialLoad = useRef(true);
 
   // Cache tenant ID to slug mapping
   const fetchTenantMapping = useCallback(async () => {
@@ -38,23 +51,38 @@ export function OrderList() {
   }, []);
 
   const fetchOrders = useCallback(async () => {
+    // Save scroll position before update
+    const scrollPosition = window.scrollY;
+    const isInitial = isInitialLoad.current;
+    
     try {
-      setLoading(true);
+      // Only show loading on initial load, not on auto-refresh
+      if (isInitial) {
+        setLoading(true);
+      }
       
       // Fetch tenant mapping if not cached
       if (Object.keys(tenantIdToSlug).length === 0) {
         await fetchTenantMapping();
       }
       
-      // Fetch from all tenants
-      const tenants = ['pornopizza', 'pizzavnudzi'];
+      // Determine which tenants to fetch from based on filter
+      const tenantsToFetch = filters.tenantSlug === 'all' 
+        ? ['pornopizza', 'pizzavnudzi']
+        : [filters.tenantSlug];
+      
+      // If todayOnly, always use today's date
+      const todayDate = getTodayDate();
+      const startDate = todayOnly ? todayDate : filters.startDate;
+      const endDate = todayOnly ? todayDate : filters.endDate;
+      
       const allOrders: Order[] = [];
       
-      for (const tenant of tenants) {
+      for (const tenant of tenantsToFetch) {
         const params = new URLSearchParams();
         if (filters.status !== 'all') params.set('status', filters.status);
-        if (filters.startDate) params.set('startDate', filters.startDate);
-        if (filters.endDate) params.set('endDate', filters.endDate);
+        if (startDate) params.set('startDate', startDate);
+        if (endDate) params.set('endDate', endDate);
         
         const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
         const res = await fetch(
@@ -73,12 +101,35 @@ export function OrderList() {
       );
       
       setOrders(allOrders);
+      
+      // Restore scroll position after update (only if not initial load)
+      if (!isInitial) {
+        // Use setTimeout to ensure React has finished rendering
+        setTimeout(() => {
+          window.scrollTo({
+            top: scrollPosition,
+            behavior: 'auto' // Instant scroll, no animation
+          });
+        }, 0);
+      }
+      
+      // Mark initial load as complete
+      if (isInitial) {
+        isInitialLoad.current = false;
+      }
     } catch (error) {
       console.error('Failed to fetch orders:', error);
     } finally {
-      setLoading(false);
+      if (isInitial) {
+        setLoading(false);
+      }
     }
-  }, [filters, tenantIdToSlug, fetchTenantMapping]);
+  }, [filters, tenantIdToSlug, fetchTenantMapping, todayOnly]);
+
+  // Reset initial load when filters change
+  useEffect(() => {
+    isInitialLoad.current = true;
+  }, [filters]);
 
   useEffect(() => {
     fetchOrders();
@@ -119,7 +170,13 @@ export function OrderList() {
     <div className="bg-white rounded-lg shadow">
       <div className="p-6 border-b">
         <h2 className="text-2xl font-bold">Orders</h2>
-        <OrderFilters filters={filters} onChange={setFilters} />
+        {todayOnly ? (
+          <div className="mt-4 text-sm text-gray-600">
+            Showing orders from today ({new Date().toLocaleDateString('sk-SK')})
+          </div>
+        ) : (
+          <OrderFilters filters={filters} onChange={setFilters} />
+        )}
       </div>
       
       {loading ? (
@@ -131,6 +188,18 @@ export function OrderList() {
               key={order.id}
               order={order}
               onStatusUpdate={handleStatusUpdate}
+              isExpanded={expandedOrders.has(order.id)}
+              onToggleExpand={(orderId) => {
+                setExpandedOrders(prev => {
+                  const next = new Set(prev);
+                  if (next.has(orderId)) {
+                    next.delete(orderId);
+                  } else {
+                    next.add(orderId);
+                  }
+                  return next;
+                });
+              }}
             />
           ))}
           

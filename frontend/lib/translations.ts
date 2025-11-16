@@ -9,6 +9,12 @@ export const translations = {
     // Navigation & Header
     cart: 'Košík',
     items: 'položiek',
+    yourCart: 'Váš košík',
+    each: 'za kus',
+    remove: 'Odstrániť',
+    checkout: 'Pokračovať k platbe',
+    total: 'Celkom',
+    emptyCart: 'Váš košík je prázdny',
     
     // Hero Section
     heroTitle: 'Vitajte v',
@@ -32,6 +38,7 @@ export const translations = {
     // Menu Section
     menuTitle: 'Naše Kompletné Menu',
     menuSubtitle: 'Od pravej talianskej pizze až po lahodné dezerty a osviežujúce nápoje',
+    searchProducts: 'Vyhľadať produkty...',
     
     // Categories
     allMenu: 'Celé Menu',
@@ -166,12 +173,33 @@ export const translations = {
     selectOnMap: 'Vybrať na mape',
     cannotFindAddress: 'Neviete nájsť adresu?',
     youCanSelectOnMap: 'Môžete si vybrať adresu na mape',
+    
+    // Order Success
+    orderConfirmed: 'Objednávka potvrdená!',
+    thankYouForOrder: 'Ďakujeme za vašu objednávku!',
+    orderNumberLabel: 'Objednávka',
+    checkYourEmail: 'Skontrolujte váš email',
+    emailConfirmationSent: 'Poslali sme potvrdzovací email s detailmi objednávky a odkazom na sledovanie.',
+    trackYourOrder: 'Sledovať objednávku',
+    copyLink: 'Kopírovať odkaz',
+    linkCopied: 'Odkaz skopírovaný do schránky!',
+    redirectingToTracking: 'Presmerovanie na stránku sledovania za',
+    seconds: 'sekúnd',
+    trackOrderNow: 'Sledovať objednávku teraz',
+    backToMenu: 'Späť na menu',
+    questionsContact: 'Otázky? Kontaktujte nás na telefónnom čísle alebo emaile, ktorý ste poskytli s objednávkou.',
   },
   
   en: {
     // Navigation & Header
     cart: 'Cart',
     items: 'items',
+    yourCart: 'Your Cart',
+    each: 'each',
+    remove: 'Remove',
+    checkout: 'Checkout',
+    total: 'Total',
+    emptyCart: 'Your cart is empty',
     
     // Hero Section  
     heroTitle: 'Welcome to',
@@ -195,6 +223,7 @@ export const translations = {
     // Menu Section
     menuTitle: 'Our Complete Menu',
     menuSubtitle: 'From authentic Italian pizzas to delicious desserts and refreshing drinks',
+    searchProducts: 'Search products...',
     
     // Categories
     allMenu: 'Full Menu',
@@ -328,6 +357,21 @@ export const translations = {
     completeRegistration: 'Complete Registration',
     phoneDescription: 'Enter your phone number for future order confirmations',
     phoneNumber: 'Phone number',
+    
+    // Order Success
+    orderConfirmed: 'Order Confirmed!',
+    thankYouForOrder: 'Thank you for your order!',
+    orderNumberLabel: 'Order',
+    checkYourEmail: 'Check Your Email',
+    emailConfirmationSent: 'We\'ve sent a confirmation email with your order details and tracking link.',
+    trackYourOrder: 'Track Your Order',
+    copyLink: 'Copy Link',
+    linkCopied: 'Tracking link copied to clipboard!',
+    redirectingToTracking: 'Redirecting to tracking page in',
+    seconds: 'seconds',
+    trackOrderNow: 'Track Order Now',
+    backToMenu: 'Back to Menu',
+    questionsContact: 'Questions? Contact us at the phone number or email you provided with your order.',
     phonePlaceholder: '900 123 456',
   },
 };

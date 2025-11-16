@@ -111,6 +111,27 @@ export default function CustomerLoginPage() {
         }
         router.push(`${verifyUrl}&${verifyParams.toString()}`);
       } else {
+        // Ensure user is stored in localStorage before redirect
+        // The login function already does this, but we verify it here
+        const storedUser = localStorage.getItem('customer_auth_user');
+        const storedToken = localStorage.getItem('customer_auth_token');
+        
+        if (!storedUser || !storedToken) {
+          console.error('Login succeeded but user data not found in localStorage');
+          setError('Prihlásenie bolo úspešné, ale nepodarilo sa uložiť údaje. Skúste to znova.');
+          setLoading(false);
+          return;
+        }
+        
+        // Dispatch custom event to notify context that user was just logged in
+        // This helps context reload user state after redirect
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new Event('customerAuthUpdate'));
+        }
+        
+        // Small delay to ensure localStorage is written and event is dispatched
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
         // Redirect to returnUrl if exists and valid, otherwise to checkout
         const validatedReturnUrl = returnUrl ? validateReturnUrl(returnUrl) : null;
         const redirectUrl = validatedReturnUrl || `/checkout?tenant=${tenant?.slug || 'pornopizza'}`;

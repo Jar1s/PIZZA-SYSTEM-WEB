@@ -9,6 +9,7 @@ export interface Product {
   image: string | null;
   modifiers: Modifier[] | null;
   isActive: boolean;
+  isBestSeller: boolean;
   createdAt: Date;
   updatedAt: Date;
 }

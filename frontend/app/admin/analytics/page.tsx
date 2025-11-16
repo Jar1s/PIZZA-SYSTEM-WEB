@@ -1,21 +1,23 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
-import {
-  LineChart,
-  Line,
-  BarChart,
-  Bar,
-  PieChart,
-  Pie,
-  Cell,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
-} from 'recharts';
+import { useEffect, useState, useCallback, Suspense } from 'react';
+import dynamic from 'next/dynamic';
+
+// Lazy load recharts for code splitting (large library)
+const LineChart = dynamic(() => import('recharts').then(mod => mod.LineChart), { ssr: false });
+const Line = dynamic(() => import('recharts').then(mod => mod.Line), { ssr: false });
+const BarChart = dynamic(() => import('recharts').then(mod => mod.BarChart), { ssr: false });
+const Bar = dynamic(() => import('recharts').then(mod => mod.Bar), { ssr: false });
+const PieChart = dynamic(() => import('recharts').then(mod => mod.PieChart), { ssr: false });
+const Pie = dynamic(() => import('recharts').then(mod => mod.Pie), { ssr: false });
+const Cell = dynamic(() => import('recharts').then(mod => mod.Cell), { ssr: false });
+const XAxis = dynamic(() => import('recharts').then(mod => mod.XAxis), { ssr: false });
+const YAxis = dynamic(() => import('recharts').then(mod => mod.YAxis), { ssr: false });
+const CartesianGrid = dynamic(() => import('recharts').then(mod => mod.CartesianGrid), { ssr: false });
+const Tooltip = dynamic(() => import('recharts').then(mod => mod.Tooltip), { ssr: false });
+const Legend = dynamic(() => import('recharts').then(mod => mod.Legend), { ssr: false });
+const ResponsiveContainer = dynamic(() => import('recharts').then(mod => mod.ResponsiveContainer), { ssr: false });
+
 // import { ProtectedRoute } from '@/components/admin/ProtectedRoute'; // Disabled for development
 
 interface AnalyticsData {
@@ -39,12 +41,28 @@ interface AnalyticsData {
   ordersByStatus: Record<string, number>;
 }
 
-const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899'];
+// Color mapping for order statuses - vibrant and meaningful colors
+// Handle both underscore and space variations
+const STATUS_COLORS: Record<string, string> = {
+  'PENDING': '#F59E0B',           // Amber/Orange - waiting
+  'PAID': '#3B82F6',              // Blue - payment confirmed
+  'PREPARING': '#F97316',         // Bright Orange - in progress
+  'READY': '#10B981',             // Green - ready
+  'OUT_FOR_DELIVERY': '#A855F7', // Vibrant Purple - on the way
+  'OUT FOR DELIVERY': '#A855F7',  // Handle space in name
+  'OUT FOR_DELIVERY': '#A855F7', // Handle mixed format
+  'DELIVERED': '#059669',         // Dark green - completed
+  'CANCELED': '#DC2626',          // Bright Red - cancelled
+};
+
+// Fallback colors for other data
+const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#06B6D4', '#84CC16'];
 
 export default function AnalyticsPage() {
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [timeRange, setTimeRange] = useState<'7' | '30' | '90'>('30');
+  const [selectedTenant, setSelectedTenant] = useState<'all' | 'pornopizza' | 'pizzavnudzi'>('all');
 
   const fetchAnalytics = useCallback(async () => {
     try {
@@ -52,7 +70,12 @@ export default function AnalyticsPage() {
       const days = timeRange;
       const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
       
-      const res = await fetch(`${API_URL}/api/analytics/all?days=${days}`);
+      // Fetch analytics based on selected tenant
+      const endpoint = selectedTenant === 'all' 
+        ? `${API_URL}/api/analytics/all?days=${days}`
+        : `${API_URL}/api/analytics/${selectedTenant}?days=${days}`;
+      
+      const res = await fetch(endpoint);
       if (res.ok) {
         const data = await res.json();
         setAnalytics(data);
@@ -67,7 +90,7 @@ export default function AnalyticsPage() {
     } finally {
       setLoading(false);
     }
-  }, [timeRange]);
+  }, [timeRange, selectedTenant]);
 
   useEffect(() => {
     fetchAnalytics();
@@ -122,19 +145,45 @@ export default function AnalyticsPage() {
 
   const statusChartData = Object.entries(analytics.ordersByStatus)
     .filter(([_, count]) => count > 0)
-    .map(([status, count]) => ({
-      name: status.replace('_', ' '),
-      value: count,
-    }));
+    .map(([status, count], index) => {
+      const displayName = status.replace(/_/g, ' '); // Replace all underscores
+      // Normalize status key for lookup
+      const normalizedStatus = status.toUpperCase().trim();
+      // Try to find color - check exact match first, then variations
+      let color = STATUS_COLORS[normalizedStatus] || 
+                  STATUS_COLORS[status] || 
+                  STATUS_COLORS[displayName.toUpperCase()] || 
+                  STATUS_COLORS[displayName] || 
+                  COLORS[index % COLORS.length]; // Use different color for each if not found
+      
+      return {
+        name: displayName,
+        value: count,
+        color: color,
+      };
+    });
 
   return (
     // <ProtectedRoute requiredRole="ADMIN"> // Disabled for development
     <div>
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex justify-between items-center mb-6 flex-wrap gap-4">
         <h1 className="text-3xl font-bold">Analytics Dashboard</h1>
         
-        {/* Time Range Selector */}
-        <div className="flex gap-2">
+        {/* Filters */}
+        <div className="flex gap-2 items-center flex-wrap">
+          {/* Tenant Filter */}
+          <select
+            value={selectedTenant}
+            onChange={(e) => setSelectedTenant(e.target.value as 'all' | 'pornopizza' | 'pizzavnudzi')}
+            className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="all">All Brands</option>
+            <option value="pornopizza">PornoPizza</option>
+            <option value="pizzavnudzi">Pizza v Núdzi</option>
+          </select>
+          
+          {/* Time Range Selector */}
+          <div className="flex gap-2">
           <button
             onClick={() => setTimeRange('7')}
             className={`px-4 py-2 rounded-lg font-semibold transition-colors ${
@@ -165,6 +214,7 @@ export default function AnalyticsPage() {
           >
             Last 90 Days
           </button>
+          </div>
         </div>
       </div>
 
@@ -293,9 +343,10 @@ export default function AnalyticsPage() {
                   fill="#8884d8"
                   dataKey="value"
                 >
-                  {statusChartData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
+                  {statusChartData.map((entry: any, index: number) => {
+                    const fillColor = entry.color || COLORS[index % COLORS.length];
+                    return <Cell key={`cell-${index}`} fill={fillColor} />;
+                  })}
                 </Pie>
                 <Tooltip />
                 <Legend />
@@ -309,9 +360,37 @@ export default function AnalyticsPage() {
         </div>
       </div>
 
+      {/* Additional Statistics */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div className="bg-white rounded-lg shadow p-6">
+          <div className="text-sm text-gray-600 mb-2">Orders per Day (Avg)</div>
+          <div className="text-2xl font-bold text-blue-600">
+            {analytics.ordersByDay.length > 0 
+              ? (analytics.totalOrders / analytics.ordersByDay.length).toFixed(1)
+              : '0'}
+          </div>
+        </div>
+        <div className="bg-white rounded-lg shadow p-6">
+          <div className="text-sm text-gray-600 mb-2">Revenue per Day (Avg)</div>
+          <div className="text-2xl font-bold text-green-600">
+            €{analytics.ordersByDay.length > 0 
+              ? ((analytics.totalRevenue / analytics.ordersByDay.length) / 100).toFixed(2)
+              : '0.00'}
+          </div>
+        </div>
+        <div className="bg-white rounded-lg shadow p-6">
+          <div className="text-sm text-gray-600 mb-2">Top Product Revenue Share</div>
+          <div className="text-2xl font-bold text-purple-600">
+            {analytics.topProducts.length > 0 && analytics.totalRevenue > 0
+              ? ((analytics.topProducts[0].revenue / analytics.totalRevenue) * 100).toFixed(1)
+              : '0'}%
+          </div>
+        </div>
+      </div>
+
       {/* Top Products Table */}
       <div className="bg-white rounded-lg shadow p-6">
-        <h2 className="text-xl font-bold mb-4">Top Products</h2>
+        <h2 className="text-xl font-bold mb-4">Top Products by Revenue</h2>
         {analytics.topProducts.length > 0 ? (
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">

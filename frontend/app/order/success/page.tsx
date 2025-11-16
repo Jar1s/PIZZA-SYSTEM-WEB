@@ -3,16 +3,41 @@
 import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
+import { getTenant } from '@/lib/api';
+import { Tenant } from '@/shared';
+import { useLanguage } from '@/contexts/LanguageContext';
+import { useToastContext } from '@/contexts/ToastContext';
+import { Header } from '@/components/layout/Header';
 
 export default function OrderSuccessPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const orderId = searchParams.get('orderId');
+  const tenantSlug = searchParams.get('tenant') || 'pornopizza';
   const [countdown, setCountdown] = useState(5);
+  const [tenant, setTenant] = useState<Tenant | null>(null);
+  const [loading, setLoading] = useState(true);
+  const { t } = useLanguage();
+  const toast = useToastContext();
+
+  useEffect(() => {
+    const loadTenant = async () => {
+      try {
+        const tenantData = await getTenant(tenantSlug);
+        setTenant(tenantData);
+      } catch (error) {
+        console.error('Failed to load tenant:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadTenant();
+  }, [tenantSlug]);
 
   useEffect(() => {
     if (!orderId) {
-      router.push('/');
+      router.push(`/?tenant=${tenantSlug}`);
       return;
     }
 
@@ -20,7 +45,7 @@ export default function OrderSuccessPage() {
     const interval = setInterval(() => {
       setCountdown((prev) => {
         if (prev <= 1) {
-          router.push(`/order/${orderId}`);
+          router.push(`/order/${orderId}?tenant=${tenantSlug}`);
           return 0;
         }
         return prev - 1;
@@ -28,18 +53,41 @@ export default function OrderSuccessPage() {
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [orderId, router]);
+  }, [orderId, router, tenantSlug]);
+
+  if (loading || !tenant) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-4xl mb-4">⏳</div>
+          <p className="text-gray-600">{t.loading}</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!orderId) {
     return null;
   }
 
   const orderNumber = orderId.slice(0, 8).toUpperCase();
-  const trackingUrl = `${window.location.origin}/order/${orderId}`;
+  const trackingUrl = typeof window !== 'undefined' 
+    ? `${window.location.origin}/order/${orderId}?tenant=${tenantSlug}`
+    : '';
+
+  // Get tenant theme
+  const theme = typeof tenant.theme === 'object' && tenant.theme !== null 
+    ? tenant.theme as any
+    : {};
+  const primaryColor = theme.primaryColor || '#DC143C';
+  const isPornopizza = tenant.slug === 'pornopizza' || tenant.subdomain === 'pornopizza' || tenant.name?.toLowerCase().includes('pornopizza');
+  const backgroundClass = isPornopizza ? 'bg-skin-tone' : 'bg-gray-50';
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-50 flex items-center justify-center p-4">
-      <motion.div
+    <div className={`min-h-screen ${backgroundClass}`} style={isPornopizza ? { minHeight: '100vh', position: 'relative' } : {}}>
+      <Header tenant={tenant} />
+      <div className="flex items-center justify-center p-4 pt-24">
+        <motion.div
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.5 }}
@@ -62,13 +110,13 @@ export default function OrderSuccessPage() {
           transition={{ delay: 0.4 }}
         >
           <h1 className="text-4xl font-bold text-gray-800 mb-4">
-            Order Confirmed! 🎉
+            {t.orderConfirmed} 🎉
           </h1>
           <p className="text-xl text-gray-600 mb-2">
-            Thank you for your order!
+            {t.thankYouForOrder}
           </p>
           <p className="text-lg text-gray-500 mb-8">
-            Order #{orderNumber}
+            {t.orderNumberLabel} #{orderNumber}
           </p>
         </motion.div>
 
@@ -77,16 +125,20 @@ export default function OrderSuccessPage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.6 }}
-          className="bg-blue-50 border-l-4 border-blue-500 rounded-lg p-6 mb-8 text-left"
+          className="rounded-lg p-6 mb-8 text-left border-l-4"
+          style={{ 
+            backgroundColor: `${primaryColor}15`,
+            borderLeftColor: primaryColor,
+          }}
         >
           <div className="flex items-start gap-3">
             <div className="text-3xl">📧</div>
             <div>
-              <h3 className="font-semibold text-blue-900 mb-1">
-                Check Your Email
+              <h3 className="font-semibold mb-1" style={{ color: primaryColor }}>
+                {t.checkYourEmail}
               </h3>
-              <p className="text-blue-700 text-sm">
-                We&apos;ve sent a confirmation email with your order details and tracking link.
+              <p className="text-sm" style={{ color: `${primaryColor}DD` }}>
+                {t.emailConfirmationSent}
               </p>
             </div>
           </div>
@@ -99,18 +151,23 @@ export default function OrderSuccessPage() {
           transition={{ delay: 0.8 }}
           className="bg-gray-50 rounded-lg p-6 mb-8"
         >
-          <h3 className="font-semibold text-gray-800 mb-3">Track Your Order</h3>
+          <h3 className="font-semibold text-gray-800 mb-3">{t.trackYourOrder}</h3>
           <div className="bg-white border border-gray-200 rounded-lg p-3 mb-4">
             <code className="text-sm text-gray-600 break-all">{trackingUrl}</code>
           </div>
           <button
             onClick={() => {
-              navigator.clipboard.writeText(trackingUrl);
-              alert('Tracking link copied to clipboard!');
+              if (typeof window !== 'undefined' && navigator.clipboard) {
+                navigator.clipboard.writeText(trackingUrl);
+                toast.success(t.linkCopied);
+              }
             }}
-            className="text-blue-600 hover:text-blue-700 font-medium text-sm"
+            className="font-medium text-sm transition-colors"
+            style={{ color: primaryColor }}
+            onMouseEnter={(e) => e.currentTarget.style.opacity = '0.8'}
+            onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
           >
-            📋 Copy Link
+            📋 {t.copyLink}
           </button>
         </motion.div>
 
@@ -122,14 +179,15 @@ export default function OrderSuccessPage() {
           className="mb-6"
         >
           <p className="text-gray-500 text-sm mb-4">
-            Redirecting to tracking page in {countdown} seconds...
+            {t.redirectingToTracking} {countdown} {t.seconds}...
           </p>
           <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
             <motion.div
               initial={{ width: '100%' }}
               animate={{ width: '0%' }}
               transition={{ duration: 5, ease: 'linear' }}
-              className="h-full bg-green-500"
+              className="h-full"
+              style={{ backgroundColor: primaryColor }}
             />
           </div>
         </motion.div>
@@ -142,16 +200,19 @@ export default function OrderSuccessPage() {
           className="flex flex-col sm:flex-row gap-4 justify-center"
         >
           <button
-            onClick={() => router.push(`/order/${orderId}`)}
-            className="bg-green-500 hover:bg-green-600 text-white font-semibold px-8 py-3 rounded-lg transition-colors"
+            onClick={() => router.push(`/order/${orderId}?tenant=${tenantSlug}`)}
+            className="text-white font-semibold px-8 py-3 rounded-lg transition-all hover:scale-105 shadow-lg"
+            style={{ backgroundColor: primaryColor }}
+            onMouseEnter={(e) => e.currentTarget.style.opacity = '0.9'}
+            onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
           >
-            Track Order Now
+            {t.trackOrderNow}
           </button>
           <button
-            onClick={() => router.push('/')}
+            onClick={() => router.push(`/?tenant=${tenantSlug}`)}
             className="bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold px-8 py-3 rounded-lg transition-colors"
           >
-            Back to Menu
+            {t.backToMenu}
           </button>
         </motion.div>
 
@@ -160,13 +221,14 @@ export default function OrderSuccessPage() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 1.4 }}
-          className="mt-8 pt-8 border-t"
+          className="mt-8 pt-8 border-t border-gray-200"
         >
           <p className="text-gray-500 text-sm">
-            Questions? Contact us at the phone number or email you provided with your order.
+            {t.questionsContact}
           </p>
         </motion.div>
       </motion.div>
+      </div>
     </div>
   );
 }

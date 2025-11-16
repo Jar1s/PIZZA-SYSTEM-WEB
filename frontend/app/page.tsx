@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useState, useMemo, useCallback } from 'react';
+import { useEffect, useState, useMemo, useCallback, Suspense } from 'react';
+import dynamic from 'next/dynamic';
 import { getProducts, getTenant } from '@/lib/api';
 import { Product, Tenant } from '@/shared';
 import { ProductCard } from '@/components/menu/ProductCard';
@@ -8,14 +9,20 @@ import { ProductSkeleton } from '@/components/menu/ProductSkeleton';
 import { HeroSection } from '@/components/home/HeroSection';
 import { Footer } from '@/components/layout/Footer';
 import { Header } from '@/components/layout/Header';
-import { Cart } from '@/components/cart/Cart';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useToastContext } from '@/contexts/ToastContext';
 import { motion } from 'framer-motion';
+
+// Lazy load Cart component (only loads when needed)
+const Cart = dynamic(() => import('@/components/cart/Cart').then(mod => ({ default: mod.Cart })), {
+  ssr: false,
+});
 
 type CategoryFilter = 'all' | 'PIZZA' | 'SIDES' | 'DRINKS' | 'DESSERTS' | 'SAUCES';
 
 export default function HomePage() {
   const { t } = useLanguage();
+  const toast = useToastContext();
   const [products, setProducts] = useState<Product[]>([]);
   const [tenant, setTenant] = useState<Tenant | null>(null);
   const [loading, setLoading] = useState(true);
@@ -53,7 +60,9 @@ export default function HomePage() {
         setTenant(tenantData);
       } catch (error: any) {
         console.error('Failed to load data:', error);
-        setError(error.message || 'Failed to load data. Please check if backend is running on http://localhost:3000');
+        const errorMessage = error.message || 'Nepodarilo sa načítať dáta. Skontrolujte, či beží backend na http://localhost:3000';
+        setError(errorMessage);
+        toast.error(errorMessage);
       } finally {
         setLoading(false);
       }
@@ -170,12 +179,39 @@ export default function HomePage() {
           <h2 className="text-2xl font-bold text-gray-800 mb-4">Nepodarilo sa načítať dáta</h2>
           <p className="text-gray-600 mb-6 text-sm">{error}</p>
           <button
-            onClick={() => {
+            onClick={async () => {
               setLoading(true);
               setError(null);
-              window.location.reload();
+              try {
+                const hostname = window.location.hostname;
+                let tenantSlug = 'pornopizza';
+                
+                if (hostname.includes('pornopizza')) {
+                  tenantSlug = 'pornopizza';
+                } else if (hostname.includes('pizzavnudzi')) {
+                  tenantSlug = 'pizzavnudzi';
+                } else if (hostname.includes('localhost')) {
+                  const params = new URLSearchParams(window.location.search);
+                  tenantSlug = params.get('tenant') || 'pornopizza';
+                }
+                
+                const [productsData, tenantData] = await Promise.all([
+                  getProducts(tenantSlug),
+                  getTenant(tenantSlug),
+                ]);
+                
+                setProducts(productsData);
+                setTenant(tenantData);
+              } catch (error: any) {
+                const errorMessage = error.message || 'Nepodarilo sa načítať dáta';
+                setError(errorMessage);
+                toast.error(errorMessage);
+              } finally {
+                setLoading(false);
+              }
             }}
-            className="px-6 py-3 bg-orange-600 text-white rounded-lg hover:bg-orange-700 font-semibold"
+            className="px-6 py-3 bg-orange-600 text-white rounded-lg hover:bg-orange-700 font-semibold transition-colors"
+            style={{ backgroundColor: tenant?.theme.primaryColor || '#FF6B00' }}
           >
             Skúsiť znova
           </button>

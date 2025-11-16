@@ -4,6 +4,56 @@ import { Response } from 'express';
 import { CustomerAuthService, RegisterDto, LoginDto } from './customer-auth.service';
 import { SmsService } from './sms.service';
 
+function getOAuthCookieOptions(frontendUrl: string) {
+  let domain = process.env.OAUTH_COOKIE_DOMAIN;
+
+  if (!domain) {
+    try {
+      const url = new URL(frontendUrl);
+      const hostname = url.hostname.replace(/^www\./, '');
+      const isLocalHost = hostname === 'localhost' || /^\d+\.\d+\.\d+\.\d+$/.test(hostname);
+      
+      if (isLocalHost) {
+        domain = undefined; // localhost cookies work without domain
+      } else {
+        // For production domains, use dot-prefixed domain for subdomain support
+        // e.g., pornopizza.sk -> .pornopizza.sk (works for www.pornopizza.sk too)
+        domain = hostname.startsWith('.') ? hostname : `.${hostname}`;
+      }
+    } catch (error) {
+      console.error('Error parsing frontend URL for cookie domain:', error);
+      domain = undefined;
+    }
+  } else {
+    // If OAUTH_COOKIE_DOMAIN is set, ensure it starts with dot if not already
+    if (domain && !domain.startsWith('.') && !domain.includes('localhost')) {
+      domain = `.${domain}`;
+    }
+  }
+
+  const isProduction = process.env.NODE_ENV === 'production';
+  const isSecure = isProduction || frontendUrl.startsWith('https://');
+
+  const options = {
+    httpOnly: false, // Frontend needs to read oauth_user_data
+    secure: isSecure,
+    sameSite: 'lax' as const,
+    path: '/',
+    ...(domain ? { domain } : {}),
+  };
+
+  console.log('OAuth cookie options:', {
+    domain,
+    secure: options.secure,
+    sameSite: options.sameSite,
+    path: options.path,
+    frontendUrl,
+    isProduction,
+  });
+
+  return options;
+}
+
 @Controller('auth/customer')
 export class CustomerAuthController {
   constructor(
@@ -199,42 +249,117 @@ export class CustomerAuthController {
         // Always redirect to oauth-callback to store tokens, then redirect to appropriate page
         const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3001';
         
-        // Store tokens in localStorage via JavaScript redirect
-        const tokens = {
-          access_token: result.access_token,
-          refresh_token: result.refresh_token,
-          user: result.user,
-          needsSmsVerification: result.needsSmsVerification,
-        };
+        // Determine if we should use URL params (development/localhost) or cookies (production)
+        // Use URL params if:
+        // 1. NODE_ENV is not production, OR
+        // 2. Frontend URL is localhost (to avoid cross-origin cookie issues)
+        const isLocalhost = frontendUrl.includes('localhost') || frontendUrl.includes('127.0.0.1');
+        const isDevelopment = process.env.NODE_ENV !== 'production';
+        const useUrlParams = isDevelopment || isLocalhost;
         
-        // Encode tokens for URL (will be stored in localStorage on frontend)
-        const tokensParam = Buffer.from(JSON.stringify(tokens)).toString('base64');
+        console.log('OAuth callback mode:', {
+          frontendUrl,
+          isLocalhost,
+          isDevelopment,
+          useUrlParams,
+          NODE_ENV: process.env.NODE_ENV
+        });
         
-        let redirectUrl: string;
-        if (result.needsSmsVerification) {
-          // If SMS verification needed, redirect to verify-phone page
-          const verifyUrl = `/auth/verify-phone?userId=${result.user.id}`;
-          if (returnUrl) {
-            redirectUrl = `${verifyUrl}&returnUrl=${encodeURIComponent(returnUrl)}`;
-          } else if (tenant) {
-            redirectUrl = `${verifyUrl}&tenant=${tenant}`;
+        if (useUrlParams) {
+          // Development: Store tokens in localStorage via JavaScript redirect
+          // Use the same format as the working commit (587f43e)
+          const tokens = {
+            access_token: result.access_token,
+            refresh_token: result.refresh_token,
+            user: result.user,
+            needsSmsVerification: result.needsSmsVerification,
+          };
+          
+          // Encode tokens for URL (will be stored in localStorage on frontend)
+          const tokensParam = Buffer.from(JSON.stringify(tokens)).toString('base64');
+          
+          let redirectUrl: string;
+          if (result.needsSmsVerification) {
+            // If SMS verification needed, redirect to verify-phone page
+            const verifyUrl = `/auth/verify-phone?userId=${result.user.id}`;
+            if (returnUrl) {
+              redirectUrl = `${verifyUrl}&returnUrl=${encodeURIComponent(returnUrl)}`;
+            } else if (tenant) {
+              redirectUrl = `${verifyUrl}&tenant=${tenant}`;
+            } else {
+              redirectUrl = verifyUrl;
+            }
           } else {
-            redirectUrl = verifyUrl;
+            // Redirect to returnUrl if exists, otherwise to account page
+            if (returnUrl) {
+              redirectUrl = returnUrl;
+            } else {
+              const accountTenant = tenant || 'pornopizza';
+              redirectUrl = `/account?tenant=${accountTenant}`;
+            }
           }
+          
+          console.log('Google OAuth callback (dev) - redirecting to oauth-callback with redirect:', redirectUrl, 'needsSmsVerification:', result.needsSmsVerification);
+          
+          // Redirect to a page that will store tokens in localStorage and then redirect
+          res.redirect(`${frontendUrl}/auth/oauth-callback?tokens=${encodeURIComponent(tokensParam)}&redirect=${encodeURIComponent(redirectUrl)}`);
         } else {
-          // Redirect to returnUrl if exists, otherwise to checkout
-          if (returnUrl) {
-            redirectUrl = returnUrl;
+          // Production: Use cookies with proper domain settings
+          const oauthCookieOptions = getOAuthCookieOptions(frontendUrl);
+
+          console.log('Setting OAuth cookies with options:', oauthCookieOptions);
+
+          res.cookie('oauth_access_token', result.access_token, {
+            ...oauthCookieOptions,
+            httpOnly: false, // Frontend needs to read this
+            maxAge: 60 * 60 * 1000, // 1 hour
+          });
+
+          res.cookie('oauth_refresh_token', result.refresh_token, {
+            ...oauthCookieOptions,
+            httpOnly: false, // Frontend needs to read this
+            maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+          });
+
+          // Store user data in a short-lived cookie (frontend needs to read this)
+          const userData = {
+            id: result.user.id,
+            email: result.user.email,
+            name: result.user.name,
+            needsSmsVerification: result.needsSmsVerification,
+          };
+          res.cookie('oauth_user_data', JSON.stringify(userData), {
+            ...oauthCookieOptions,
+            httpOnly: false, // Frontend needs to read this
+            maxAge: 5 * 60 * 1000, // 5 minutes - short lived
+          });
+
+          console.log('OAuth cookies set successfully');
+          
+          let redirectUrl: string;
+          if (result.needsSmsVerification) {
+            // If SMS verification needed, redirect to verify-phone page
+            const verifyUrl = `/auth/verify-phone?userId=${result.user.id}`;
+            if (returnUrl) {
+              redirectUrl = `${verifyUrl}&returnUrl=${encodeURIComponent(returnUrl)}`;
+            } else if (tenant) {
+              redirectUrl = `${verifyUrl}&tenant=${tenant}`;
+            } else {
+              redirectUrl = verifyUrl;
+            }
           } else {
-            const checkoutTenant = tenant || 'pornopizza';
-            redirectUrl = `/checkout?tenant=${checkoutTenant}`;
+            // Redirect to returnUrl if exists, otherwise to checkout
+            if (returnUrl) {
+              redirectUrl = returnUrl;
+            } else {
+              const accountTenant = tenant || 'pornopizza';
+              redirectUrl = `/account?tenant=${accountTenant}`;
+            }
           }
+          
+          console.log('Google OAuth callback (prod) - redirecting to oauth-callback with redirect:', redirectUrl);
+          res.redirect(`${frontendUrl}/auth/oauth-callback?redirect=${encodeURIComponent(redirectUrl)}`);
         }
-        
-        console.log('Google OAuth callback - redirecting to oauth-callback with redirect:', redirectUrl, 'needsSmsVerification:', result.needsSmsVerification);
-        
-        // Redirect to a page that will store tokens in localStorage and then redirect
-        res.redirect(`${frontendUrl}/auth/oauth-callback?tokens=${encodeURIComponent(tokensParam)}&redirect=${encodeURIComponent(redirectUrl)}`);
     } catch (error: any) {
       console.error('Google OAuth callback error:', error);
       const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3001';
@@ -380,25 +505,6 @@ export class CustomerAuthController {
       // Login with Apple using id_token and user info
       const result = await this.customerAuthService.loginWithApple(idToken, userInfo);
 
-      // Set HttpOnly cookies in production
-      if (process.env.NODE_ENV === 'production') {
-        res.cookie('access_token', result.access_token, {
-          httpOnly: true,
-          secure: true,
-          sameSite: 'strict',
-          maxAge: 60 * 60 * 1000, // 1 hour
-          path: '/',
-        });
-
-        res.cookie('refresh_token', result.refresh_token, {
-          httpOnly: true,
-          secure: true,
-          sameSite: 'strict',
-          maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-          path: '/',
-        });
-      }
-
       // Parse returnUrl from state if provided
       let returnUrl: string | undefined;
       let tenant: string | undefined;
@@ -419,16 +525,91 @@ export class CustomerAuthController {
       // Always redirect to oauth-callback to store tokens, then redirect to appropriate page
       const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3001';
       
-      // Store tokens in localStorage via JavaScript redirect
-      const tokens = {
-        access_token: result.access_token,
-        refresh_token: result.refresh_token,
-        user: result.user,
-        needsSmsVerification: result.needsSmsVerification,
-      };
+      // Determine if we should use URL params (development/localhost) or cookies (production)
+      // Use URL params if:
+      // 1. NODE_ENV is not production, OR
+      // 2. Frontend URL is localhost (to avoid cross-origin cookie issues)
+      const isLocalhost = frontendUrl.includes('localhost') || frontendUrl.includes('127.0.0.1');
+      const isDevelopment = process.env.NODE_ENV !== 'production';
+      const useUrlParams = isDevelopment || isLocalhost;
       
-      // Encode tokens for URL (will be stored in localStorage on frontend)
-      const tokensParam = Buffer.from(JSON.stringify(tokens)).toString('base64');
+      console.log('Apple OAuth callback mode:', {
+        frontendUrl,
+        isLocalhost,
+        isDevelopment,
+        useUrlParams,
+        NODE_ENV: process.env.NODE_ENV
+      });
+      
+      if (useUrlParams) {
+        // Development: Pass tokens in URL params (only in development)
+        const userData = {
+          id: result.user.id,
+          email: result.user.email,
+          name: result.user.name,
+          needsSmsVerification: result.needsSmsVerification,
+        };
+        
+        let redirectUrl: string;
+        if (result.needsSmsVerification) {
+          const verifyUrl = `/auth/verify-phone?userId=${result.user.id}`;
+          if (returnUrl) {
+            redirectUrl = `${verifyUrl}&returnUrl=${encodeURIComponent(returnUrl)}`;
+          } else if (tenant) {
+            redirectUrl = `${verifyUrl}&tenant=${tenant}`;
+          } else {
+            redirectUrl = verifyUrl;
+          }
+        } else {
+          if (returnUrl) {
+            redirectUrl = returnUrl;
+          } else {
+            const accountTenant = tenant || 'pornopizza';
+            redirectUrl = `/account?tenant=${accountTenant}`;
+          }
+        }
+        
+        const tokenParams = new URLSearchParams({
+          access_token: result.access_token,
+          refresh_token: result.refresh_token || '',
+          user_data: JSON.stringify(userData),
+        });
+        
+        console.log('Apple OAuth callback (dev) - redirecting with tokens in URL');
+        res.redirect(`${frontendUrl}/auth/oauth-callback?${tokenParams.toString()}&redirect=${encodeURIComponent(redirectUrl)}`);
+      } else {
+        // Production: Use cookies with proper domain settings
+        const oauthCookieOptions = getOAuthCookieOptions(frontendUrl);
+
+        console.log('Setting OAuth cookies with options:', oauthCookieOptions);
+        
+        // Store tokens in cookies the frontend can read (short-lived, re-stored in localStorage)
+        res.cookie('oauth_access_token', result.access_token, {
+          ...oauthCookieOptions,
+          httpOnly: false, // Frontend needs to read this
+          maxAge: 60 * 60 * 1000, // 1 hour
+        });
+
+        res.cookie('oauth_refresh_token', result.refresh_token, {
+          ...oauthCookieOptions,
+          httpOnly: false, // Frontend needs to read this
+          maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+        });
+
+        // Store user data in a short-lived cookie (frontend needs to read this)
+        const userData = {
+          id: result.user.id,
+          email: result.user.email,
+          name: result.user.name,
+          needsSmsVerification: result.needsSmsVerification,
+        };
+        res.cookie('oauth_user_data', JSON.stringify(userData), {
+          ...oauthCookieOptions,
+          httpOnly: false, // Frontend needs to read this
+          maxAge: 5 * 60 * 1000, // 5 minutes - short lived
+        });
+
+        console.log('OAuth cookies set successfully');
       
       let redirectUrl: string;
       if (result.needsSmsVerification) {
@@ -453,8 +634,8 @@ export class CustomerAuthController {
       
       console.log('Apple OAuth callback - redirecting to oauth-callback with redirect:', redirectUrl, 'needsSmsVerification:', result.needsSmsVerification);
       
-      // Redirect to a page that will store tokens in localStorage and then redirect
-      res.redirect(`${frontendUrl}/auth/oauth-callback?tokens=${encodeURIComponent(tokensParam)}&redirect=${encodeURIComponent(redirectUrl)}`);
+      // Redirect to oauth-callback which will read cookies and store in localStorage
+      res.redirect(`${frontendUrl}/auth/oauth-callback?redirect=${encodeURIComponent(redirectUrl)}`);
     } catch (error: any) {
       console.error('Apple OAuth callback error:', error);
       const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3001';
@@ -504,4 +685,3 @@ export class CustomerAuthController {
     return result;
   }
 }
-

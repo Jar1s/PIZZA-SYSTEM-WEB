@@ -3,6 +3,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useCustomerAuth } from '@/contexts/CustomerAuthContext';
+import { useToastContext } from '@/contexts/ToastContext';
+import { authenticatedFetch, handle401Response } from '@/lib/api-helpers';
 import AddressAutocomplete from './AddressAutocomplete';
 import MapPicker from './MapPicker';
 
@@ -22,7 +24,8 @@ interface MyAddressProps {
 
 export default function MyAddress({ tenant }: MyAddressProps) {
   const { t } = useLanguage();
-  const { user, loading: authLoading } = useCustomerAuth();
+  const { user, loading: authLoading, logout } = useCustomerAuth();
+  const toast = useToastContext();
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
@@ -37,40 +40,36 @@ export default function MyAddress({ tenant }: MyAddressProps) {
   const [showMapPicker, setShowMapPicker] = useState(false);
 
   const fetchAddresses = useCallback(async () => {
+    if (!user) {
+      setAddresses([]);
+      setLoading(false);
+      return;
+    }
+
     try {
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
-      const token = localStorage.getItem('customer_auth_token');
-      
-      if (!token || !user) {
-        setLoading(false);
-        return;
-      }
-      
-      const res = await fetch(`${API_URL}/api/customer/account/addresses`, {
+      const res = await authenticatedFetch('/api/customer/account/addresses', {
+        method: 'GET',
         headers: {
-          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
-      });
+      }, tenant);
 
       if (res.ok) {
         const data = await res.json();
         setAddresses(data.addresses || []);
-      } else if (res.status === 401) {
-        // Token expired or invalid - clear it and let auth context handle logout
-        localStorage.removeItem('customer_auth_token');
-        localStorage.removeItem('customer_auth_refresh_token');
-        localStorage.removeItem('customer_auth_user');
-        setAddresses([]);
       } else {
         console.error('[MyAddress] Failed to fetch addresses:', res.status, res.statusText);
       }
-    } catch (error) {
+    } catch (error: any) {
+      if (error.message?.includes('Session expired')) {
+        // Already handled by authenticatedFetch - redirecting to login
+        return;
+      }
       console.error('[MyAddress] Failed to fetch addresses:', error);
     } finally {
       setLoading(false);
     }
-  }, [user]);
+  }, [user, tenant]);
 
   useEffect(() => {
     // Wait for auth to load and user to be available before fetching addresses
@@ -91,31 +90,21 @@ export default function MyAddress({ tenant }: MyAddressProps) {
     
     // Ensure user is available before submitting
     if (!user) {
-      alert('Nie ste prihlásený. Prosím, prihláste sa znova.');
+      // Redirect to login instead of showing alert
+      if (typeof window !== 'undefined') {
+        window.location.href = `/auth/login?tenant=${tenant}`;
+      }
       return;
     }
     
     try {
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
-      const token = localStorage.getItem('customer_auth_token');
-      
-      if (!token) {
-        alert('Nie ste prihlásený. Prosím, prihláste sa znova.');
-        return;
-      }
-      
-      console.log('[MyAddress] Submitting address with token:', token.substring(0, 20) + '...');
-      
-      const res = await fetch(`${API_URL}/api/customer/account/addresses`, {
+      const res = await authenticatedFetch('/api/customer/account/addresses', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(formData),
-      });
-
-      console.log('[MyAddress] Response status:', res.status);
+      }, tenant);
 
       if (res.ok) {
         await fetchAddresses();
@@ -128,21 +117,18 @@ export default function MyAddress({ tenant }: MyAddressProps) {
           country: 'SK',
           isPrimary: false,
         });
-      } else if (res.status === 401) {
-        console.error('[MyAddress] Unauthorized - token may be expired');
-        const errorData = await res.json().catch(() => ({ message: 'Unauthorized' }));
-        alert('Vaša relácia vypršala. Prosím, prihláste sa znova.');
-        // Optionally redirect to login
-        if (typeof window !== 'undefined') {
-          window.location.href = `/auth/login?tenant=${tenant}`;
-        }
+        toast.success('Adresa úspešne pridaná!');
       } else {
         const error = await res.json().catch(() => ({ message: 'Nepodarilo sa pridať adresu' }));
-        alert(error.message || 'Nepodarilo sa pridať adresu');
+        toast.error(error.message || 'Nepodarilo sa pridať adresu');
       }
-    } catch (error) {
+    } catch (error: any) {
+      if (error.message?.includes('Session expired')) {
+        // Already handled by authenticatedFetch - redirecting to login
+        return;
+      }
       console.error('Failed to add address:', error);
-      alert('Nepodarilo sa pridať adresu. Skúste to znova.');
+      toast.error('Nepodarilo sa pridať adresu. Skúste to znova.');
     }
   };
 

@@ -1,10 +1,19 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
+import dynamic from 'next/dynamic';
 import { Product } from '@/shared';
 import { getProducts, updateProduct, deleteProduct } from '@/lib/api';
-import { EditProductModal } from '@/components/admin/EditProductModal';
 import { ProtectedRoute } from '@/components/admin/ProtectedRoute';
+
+// Lazy load modals for code splitting
+const EditProductModal = dynamic(() => import('@/components/admin/EditProductModal').then(mod => ({ default: mod.EditProductModal })), {
+  ssr: false,
+});
+
+const AddProductModal = dynamic(() => import('@/components/admin/AddProductModal').then(mod => ({ default: mod.AddProductModal })), {
+  ssr: false,
+});
 
 interface ProductWithTenant extends Product {
   tenantSlug?: string;
@@ -17,6 +26,8 @@ export default function ProductsPage() {
   const [showInactive, setShowInactive] = useState(false); // Filter for inactive products
   const [editingProduct, setEditingProduct] = useState<ProductWithTenant | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [selectedTenant, setSelectedTenant] = useState<'pornopizza' | 'pizzavnudzi'>('pornopizza');
 
   useEffect(() => {
     fetchProducts();
@@ -131,9 +142,22 @@ export default function ProductsPage() {
             Manage products across all brands. Total: {products.length} products
           </p>
         </div>
-        <button className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-          + Add Product
-        </button>
+        <div className="flex gap-4 items-center">
+          <select
+            value={selectedTenant}
+            onChange={(e) => setSelectedTenant(e.target.value as 'pornopizza' | 'pizzavnudzi')}
+            className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="pornopizza">PornoPizza</option>
+            <option value="pizzavnudzi">Pizza v Núdzi</option>
+          </select>
+          <button 
+            onClick={() => setIsAddModalOpen(true)}
+            className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          >
+            + Add Product
+          </button>
+        </div>
       </div>
 
       {/* Filter */}
@@ -218,6 +242,9 @@ export default function ProductsPage() {
                       Status
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Best Seller
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Actions
                     </th>
                   </tr>
@@ -256,6 +283,15 @@ export default function ProductsPage() {
                         }`}>
                           {product.isActive ? 'Active' : 'Inactive'}
                         </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {product.isBestSeller ? (
+                          <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
+                            ⭐ Best Seller
+                          </span>
+                        ) : (
+                          <span className="text-xs text-gray-400">—</span>
+                        )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <button
@@ -299,6 +335,14 @@ export default function ProductsPage() {
           onUpdate={handleUpdate}
         />
       )}
+
+      {/* Add Modal */}
+      <AddProductModal
+        tenantSlug={selectedTenant}
+        isOpen={isAddModalOpen}
+        onClose={() => setIsAddModalOpen(false)}
+        onAdd={handleUpdate}
+      />
       </div>
     // </ProtectedRoute> // Disabled for development
   );

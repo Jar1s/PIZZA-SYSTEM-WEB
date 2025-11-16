@@ -1,4 +1,4 @@
-import { Tenant, Product, Order } from '@/shared';
+import { Tenant, Product, Order, OrderStatus } from '@/shared';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
 
@@ -70,6 +70,20 @@ export async function deleteProduct(tenantSlug: string, productId: string): Prom
   });
   
   if (!res.ok) throw new Error('Failed to delete product');
+}
+
+export async function createProduct(tenantSlug: string, data: Partial<Product>): Promise<Product> {
+  const res = await fetch(`${API_URL}/api/${tenantSlug}/products`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({ message: 'Failed to create product' }));
+    throw new Error(errorData.message || 'Failed to create product');
+  }
+  return res.json();
 }
 
 export async function createOrder(tenantSlug: string, orderData: any): Promise<Order> {
@@ -259,6 +273,78 @@ export async function verifyCustomerPhone(phone: string, code: string, userId: s
   if (!res.ok) {
     const error = await res.json();
     throw new Error(error.message || 'Invalid SMS code');
+  }
+  
+  return res.json();
+}
+
+// Admin: Update order status
+export async function updateOrderStatus(
+  orderId: string, 
+  status: OrderStatus,
+  tenantSlug: string // Add tenant slug parameter
+): Promise<void> {
+  const res = await fetch(`${API_URL}/api/${tenantSlug}/orders/${orderId}/status`, {
+    method: 'PATCH',
+    headers: { 
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${localStorage.getItem('auth_token') || ''}`,
+    },
+    body: JSON.stringify({ status }),
+  });
+  
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({ message: 'Failed to update order status' }));
+    throw new Error(error.message || 'Failed to update order status');
+  }
+}
+
+// Admin: Create Wolt delivery
+export async function createWoltDelivery(orderId: string): Promise<{ success: boolean; deliveryId?: string; trackingUrl?: string; message: string }> {
+  const res = await fetch(`${API_URL}/api/delivery/create`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ orderId }),
+  });
+  
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({ message: 'Failed to create Wolt delivery' }));
+    throw new Error(error.message || 'Failed to create Wolt delivery');
+  }
+  
+  const delivery = await res.json();
+  // Backend returns delivery object, convert to expected format
+  return {
+    success: true,
+    deliveryId: delivery.id,
+    trackingUrl: delivery.trackingUrl || null,
+    message: 'Wolt delivery created successfully',
+  };
+}
+
+// Admin: Sync order to Storyous
+export async function syncOrderToStoryous(orderId: string, tenantSlug?: string): Promise<{ success: boolean; storyousOrderId?: string; message: string }> {
+  // If tenantSlug is not provided, try to determine it from the order
+  // For now, we'll use a generic endpoint that works with any tenant
+  // The backend will handle tenant resolution
+  const res = await fetch(`${API_URL}/api/pornopizza/orders/${orderId}/sync-storyous`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+  });
+  
+  if (!res.ok) {
+    // Try the other tenant if first fails
+    if (!tenantSlug || tenantSlug === 'pornopizza') {
+      const res2 = await fetch(`${API_URL}/api/pizzavnudzi/orders/${orderId}/sync-storyous`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      if (res2.ok) {
+        return res2.json();
+      }
+    }
+    const error = await res.json().catch(() => ({ message: 'Failed to sync order to Storyous' }));
+    throw new Error(error.message || 'Failed to sync order to Storyous');
   }
   
   return res.json();

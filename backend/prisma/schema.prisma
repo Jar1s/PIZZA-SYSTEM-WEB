@@ -47,6 +47,7 @@ model Product {
   image       String?
   modifiers   Json?
   isActive    Boolean @default(true)
+  isBestSeller Boolean @default(false)
 
   orderItems OrderItem[]
 
@@ -76,10 +77,11 @@ model Order {
   totalCents       Int
 
   // References
-  paymentRef    String?
-  paymentStatus String?
-  deliveryId    String?
-  delivery      Delivery? @relation(fields: [deliveryId], references: [id])
+  paymentRef      String?
+  paymentStatus   String?
+  deliveryId      String?
+  delivery        Delivery? @relation(fields: [deliveryId], references: [id])
+  storyousOrderId String?
 
   items OrderItem[]
 

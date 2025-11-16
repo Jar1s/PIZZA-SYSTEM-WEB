@@ -61,7 +61,10 @@ export class WebhooksController {
     // Verify signature
     const rawBody = JSON.stringify(body);
     
-    if (!this.gopayService.verifyWebhook(signature, rawBody)) {
+    // Get client secret from env (GoPay uses client secret for webhook verification)
+    const clientSecret = process.env.GOPAY_CLIENT_SECRET;
+    
+    if (!this.gopayService.verifyWebhook(signature, rawBody, clientSecret)) {
       console.error('Invalid GoPay webhook signature');
       return res.status(401).send('Invalid signature');
     }

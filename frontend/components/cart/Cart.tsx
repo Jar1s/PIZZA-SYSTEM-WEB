@@ -6,12 +6,14 @@ import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useEffect } from 'react';
 import { useCustomerAuth } from '@/contexts/CustomerAuthContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 export function Cart() {
   const { items, isOpen, closeCart } = useCart();
   const total = useCartTotal();
   const router = useRouter();
   const { user, loading: authLoading } = useCustomerAuth();
+  const { t } = useLanguage();
   
   // Debug logging
   useEffect(() => {
@@ -77,7 +79,7 @@ export function Cart() {
         }}
       >
             <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-bold">Your Cart</h2>
+              <h2 className="text-2xl font-bold">{t.yourCart}</h2>
               <button
                 onClick={closeCart}
                 className="text-gray-500 hover:text-gray-700 text-3xl leading-none"
@@ -88,7 +90,7 @@ export function Cart() {
             
             {items.length === 0 ? (
               <div className="flex-1 flex items-center justify-center">
-                <p className="text-gray-500 text-center">Your cart is empty</p>
+                <p className="text-gray-500 text-center">{t.emptyCart}</p>
               </div>
             ) : (
               <>
@@ -100,7 +102,7 @@ export function Cart() {
                 
                 <div className="border-t pt-4">
                   <div className="flex justify-between text-xl font-bold mb-4">
-                    <span>Total:</span>
+                    <span>{t.total}:</span>
                     <span>€{(total / 100).toFixed(2)}</span>
                   </div>
                   
@@ -110,7 +112,7 @@ export function Cart() {
                     className="w-full py-3 rounded-lg text-white font-semibold"
                     style={{ backgroundColor: 'var(--color-primary)' }}
                   >
-                    Checkout
+                    {t.checkout}
                   </motion.button>
                 </div>
               </>

@@ -29,6 +29,17 @@ export interface Order {
   
   // Delivery
   deliveryId: string | null;
+  delivery?: {
+    id: string;
+    provider: string;
+    jobId: string | null;
+    status: string;
+    trackingUrl: string | null;
+    quote: any;
+  } | null;
+  
+  // External integrations
+  storyousOrderId?: string | null;
   
   // Items
   items: OrderItem[];

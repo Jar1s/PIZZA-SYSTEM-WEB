@@ -3,6 +3,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { OrderStatus } from '@pizza-ecosystem/shared';
 import { EmailService } from '../email/email.service';
 import { TenantsService } from '../tenants/tenants.service';
+import { StoryousService } from '../storyous/storyous.service';
 
 @Injectable()
 export class OrderStatusService {
@@ -23,6 +24,7 @@ export class OrderStatusService {
     private prisma: PrismaService,
     private emailService: EmailService,
     private tenantsService: TenantsService,
+    private storyousService: StoryousService,
   ) {}
 
   async updateStatus(orderId: string, newStatus: OrderStatus): Promise<void> {
@@ -49,6 +51,21 @@ export class OrderStatusService {
       where: { id: orderId },
       data: { status: newStatus },
     });
+
+    // Update Storyous order status (if order was sent to Storyous)
+    try {
+      const storyousOrderId = (order as any).storyousOrderId;
+      const tenant = order.tenant;
+      const storyousConfig = (tenant as any).storyousConfig as any;
+      
+      if (storyousOrderId && storyousConfig?.enabled) {
+        await this.storyousService.updateOrderStatus(storyousOrderId, newStatus);
+        this.logger.log(`✅ Order ${orderId} status updated in Storyous`);
+      }
+    } catch (error: any) {
+      // Log but don't fail status update
+      this.logger.error(`⚠️ Failed to update Storyous order status:`, error.message);
+    }
 
     // Send notifications (email, SMS) when status changes
     await this.sendStatusNotifications(order as any, newStatus);
