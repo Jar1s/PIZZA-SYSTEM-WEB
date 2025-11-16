@@ -261,7 +261,7 @@ export default function AnalyticsPage() {
                 <XAxis dataKey="date" />
                 <YAxis />
                 <Tooltip 
-                  formatter={(value: number) => `€${value.toFixed(2)}`}
+                  formatter={(value: any) => `€${Number(value).toFixed(2)}`}
                 />
                 <Legend />
                 <Line 
@@ -314,7 +314,7 @@ export default function AnalyticsPage() {
                 <XAxis type="number" />
                 <YAxis dataKey="name" type="category" width={100} />
                 <Tooltip 
-                  formatter={(value: number) => `€${value.toFixed(2)}`}
+                  formatter={(value: any) => `€${Number(value).toFixed(2)}`}
                 />
                 <Legend />
                 <Bar dataKey="revenue" fill="#8B5CF6" name="Revenue (€)" />

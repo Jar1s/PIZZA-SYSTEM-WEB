@@ -21,8 +21,9 @@ export async function generateMetadata(): Promise<Metadata> {
   try {
     const tenantData = await getTenant(tenant);
     const siteName = tenantData.name || 'Pizza Ordering';
-    const description = tenantData.description || `Order delicious pizza online from ${siteName}. Fast delivery, fresh ingredients, and great prices.`;
-    const imageUrl = tenantData.logo || `${baseUrl}/images/og-default.jpg`;
+    const theme = typeof tenantData.theme === 'object' && tenantData.theme !== null ? tenantData.theme as any : {};
+    const description = tenantData.description || (theme.description as string) || `Order delicious pizza online from ${siteName}. Fast delivery, fresh ingredients, and great prices.`;
+    const imageUrl = tenantData.logo || (theme.logo as string) || `${baseUrl}/images/og-default.jpg`;
     
     return {
       title: {
@@ -129,16 +130,17 @@ export default async function RootLayout({
   
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3001';
   const siteName = tenantData.name || 'Pizza Ordering';
+  const theme = typeof tenantData.theme === 'object' && tenantData.theme !== null ? tenantData.theme as any : {};
   
   // Structured Data (JSON-LD)
   const organizationSchema = {
     '@context': 'https://schema.org',
     '@type': 'Restaurant',
     name: siteName,
-    description: tenantData.description || `Order delicious pizza online from ${siteName}`,
+    description: tenantData.description || (theme.description as string) || `Order delicious pizza online from ${siteName}`,
     url: baseUrl,
-    logo: tenantData.logo || `${baseUrl}/logo.png`,
-    image: tenantData.logo || `${baseUrl}/images/og-default.jpg`,
+    logo: tenantData.logo || (theme.logo as string) || `${baseUrl}/logo.png`,
+    image: tenantData.logo || (theme.logo as string) || `${baseUrl}/images/og-default.jpg`,
     address: {
       '@type': 'PostalAddress',
       addressCountry: 'SK',

@@ -6,6 +6,10 @@ export interface Tenant {
   name: string;              // 'PornoPizza'
   domain: string | null;     // 'pornopizza.sk' or null
   subdomain: string;         // 'pornopizza'
+  description?: string;      // Optional description
+  logo?: string;             // Optional logo URL (can also be in theme.logo)
+  phone?: string;            // Optional phone number
+  email?: string;            // Optional email
   theme: TenantTheme;
   paymentProvider: PaymentProvider;
   paymentConfig: Record<string, any>;  // Encrypted API keys
