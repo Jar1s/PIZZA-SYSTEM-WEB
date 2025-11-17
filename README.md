@@ -61,19 +61,31 @@ Professional pizza ordering platform supporting multiple brands with shared back
 ## 🚀 Quick Start
 
 ### Prerequisites
-- Node.js 18+
+- Node.js 20+ (automatically managed via `.nvmrc`)
 - PostgreSQL 14+
-- npm or yarn
+- fnm (Fast Node Manager) - automatically installed by setup script
 
-### Installation
+### ⚡ Fast Setup (Recommended)
 
-1. **Clone the repository**
 ```bash
-git clone <repository-url>
-cd "WEBY miro "
+# Prvýkrát - automatický setup
+chmod +x setup.sh start.sh
+./setup.sh
+
+# Každý deň - jednoduché spustenie
+./start.sh
 ```
 
-2. **Install dependencies**
+**To je všetko!** Skript automaticky:
+- ✅ Prepne na správnu Node verziu (20.19.5)
+- ✅ Spustí backend a frontend
+- ✅ Počká, kým servery bežia
+
+Pozri [QUICK_START.md](./QUICK_START.md) pre detailné inštrukcie.
+
+### 📋 Manual Setup (Alternative)
+
+1. **Install dependencies**
 ```bash
 # Backend
 cd backend
@@ -82,13 +94,9 @@ npm install
 # Frontend
 cd ../frontend
 npm install
-
-# Shared
-cd ../shared
-npm install
 ```
 
-3. **Set up database**
+2. **Set up database**
 ```bash
 # Create .env file in backend/
 DATABASE_URL="postgresql://user:password@localhost:5432/pizza_platform"
@@ -96,13 +104,9 @@ DATABASE_URL="postgresql://user:password@localhost:5432/pizza_platform"
 # Run migrations
 cd backend
 npx prisma migrate dev
-
-# Seed database
-npx ts-node -r tsconfig-paths/register prisma/seed.ts
-npx ts-node -r tsconfig-paths/register prisma/seed-pornopizza-full-menu.ts
 ```
 
-4. **Start development servers**
+3. **Start development servers**
 ```bash
 # Backend (Terminal 1)
 cd backend
@@ -113,7 +117,7 @@ cd frontend
 npm run dev
 ```
 
-5. **Access the application**
+### 🌐 Access the application
 - **Frontend**: http://localhost:3001
 - **Backend API**: http://localhost:3000
 - **Admin Dashboard**: http://localhost:3001/admin

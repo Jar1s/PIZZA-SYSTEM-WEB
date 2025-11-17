@@ -27,6 +27,8 @@ logs/
 backend.log
 frontend.log
 frontend-clean.log
+backend/*.log
+frontend/*.log
 
 # OS files
 .DS_Store

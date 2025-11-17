@@ -3,6 +3,10 @@
   "version": "1.0.0",
   "description": "Multi-tenant pizza ordering system backend",
   "main": "dist/main.js",
+  "engines": {
+    "node": ">=20.0.0 <21.0.0",
+    "npm": ">=9.0.0"
+  },
   "scripts": {
     "prebuild": "rimraf dist",
     "build": "nest build",
