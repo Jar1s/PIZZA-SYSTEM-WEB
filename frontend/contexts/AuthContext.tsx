@@ -35,14 +35,79 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     // DEV MODE: Auto-login with admin user for development
     if (process.env.NODE_ENV === 'development') {
-      const devUser: User = {
-        id: 'dev-admin',
-        username: 'admin',
-        name: 'Dev Admin',
-        role: 'ADMIN',
+      // Check if user explicitly logged out (don't auto-login)
+      const loggedOut = sessionStorage.getItem('admin_logged_out');
+      if (loggedOut === 'true') {
+        setLoading(false);
+        return;
+      }
+
+      const autoLogin = async () => {
+        const existingToken = localStorage.getItem('auth_token');
+        const existingUser = localStorage.getItem('auth_user');
+        
+        // If we have a valid token and user, use them
+        if (existingToken && existingUser) {
+          try {
+            const user = JSON.parse(existingUser);
+            setUser(user);
+            setLoading(false);
+            return;
+          } catch (e) {
+            // Invalid user data, continue to login
+          }
+        }
+        
+        // Auto-login to get real token
+        try {
+          const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+          const response = await fetch(`${API_URL}/api/auth/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: 'admin', password: 'admin123' }),
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            const devUser: User = {
+              id: data.user.id,
+              username: data.user.username,
+              name: data.user.name,
+              role: data.user.role,
+            };
+            localStorage.setItem('auth_token', data.access_token);
+            if (data.refresh_token) {
+              localStorage.setItem('refresh_token', data.refresh_token);
+            }
+            localStorage.setItem('auth_user', JSON.stringify(devUser));
+            setUser(devUser);
+          } else {
+            // If login fails, use dev user without token (for offline dev)
+            const devUser: User = {
+              id: 'dev-admin',
+              username: 'admin',
+              name: 'Dev Admin',
+              role: 'ADMIN',
+            };
+            setUser(devUser);
+            localStorage.setItem('auth_user', JSON.stringify(devUser));
+          }
+        } catch (error) {
+          // Backend not available, use dev user without token
+          console.warn('Dev mode: Backend not available, using dev user without token');
+          const devUser: User = {
+            id: 'dev-admin',
+            username: 'admin',
+            name: 'Dev Admin',
+            role: 'ADMIN',
+          };
+          setUser(devUser);
+          localStorage.setItem('auth_user', JSON.stringify(devUser));
+        }
+        setLoading(false);
       };
-      setUser(devUser);
-      setLoading(false);
+      
+      autoLogin();
       return;
     }
 
@@ -124,19 +189,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const login = async (username: string, password: string) => {
-    // DEV MODE: Auto-login for development
-    if (process.env.NODE_ENV === 'development') {
-      const devUser: User = {
-        id: 'dev-admin',
-        username: username || 'admin',
-        name: username === 'operator' ? 'Dev Operator' : 'Dev Admin',
-        role: username === 'operator' ? 'OPERATOR' : 'ADMIN',
-      };
-      setUser(devUser);
-      return;
-    }
-
-    // PRODUCTION: Real login
+    // Always use real API login to get proper token (even in dev mode)
     const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
     
     const response = await fetch(`${API_URL}/api/auth/login`, {
@@ -147,7 +200,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     if (!response.ok) {
-      const error = await response.json();
+      const error = await response.json().catch(() => ({ message: 'Login failed' }));
       throw new Error(error.message || 'Login failed');
     }
 
@@ -187,6 +240,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     
     localStorage.setItem('auth_user', JSON.stringify(data.user));
     
+    // Clear logout flag on successful login
+    sessionStorage.removeItem('admin_logged_out');
+    
     setUser(data.user);
     
     // Set up automatic token refresh
@@ -206,7 +262,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const refreshToken = localStorage.getItem('refresh_token');
     
     // Revoke refresh token on backend
-    if (refreshToken && process.env.NODE_ENV !== 'development') {
+    if (refreshToken) {
       try {
         const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
         const token = localStorage.getItem('auth_token');
@@ -219,11 +275,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           },
           credentials: 'include', // Include cookies for HttpOnly tokens
           body: JSON.stringify({ refresh_token: refreshToken }),
+        }).catch(() => {
+          // Ignore errors if backend is not available
         });
       } catch (error) {
         console.error('Logout error:', error);
       }
     }
+    
+    // Set flag to prevent auto-login in dev mode
+    sessionStorage.setItem('admin_logged_out', 'true');
     
     // Clear local storage (but keep cookie settings - they are per user and should persist)
     localStorage.removeItem('auth_token');
@@ -231,9 +292,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem('auth_user');
     setUser(null);
     
-    // DEV MODE: Don't redirect to login
-    if (process.env.NODE_ENV !== 'development') {
-      router.push('/login');
+    // Redirect to login page immediately (use window.location for hard redirect)
+    const currentPath = window.location.pathname;
+    if (currentPath.startsWith('/admin')) {
+      // If in admin, redirect to admin login
+      window.location.replace('/login');
+    } else {
+      // Otherwise redirect to home
+      window.location.replace('/');
     }
   };
 

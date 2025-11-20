@@ -66,10 +66,11 @@ export interface CustomerInfo {
 
 export interface Address {
   street: string;
+  houseNumber?: string; // Číslo domu / Poschodie
   city: string;
   postalCode: string;
   country: string;
-  instructions?: string;
+  instructions?: string; // Poznámky k doručeniu
   coordinates?: {
     lat: number;
     lng: number;

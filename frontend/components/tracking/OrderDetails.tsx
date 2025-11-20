@@ -1,13 +1,15 @@
 'use client';
 
-import { Order } from '@/shared';
+import { Order } from '@pizza-ecosystem/shared';
 import { formatModifiers } from '@/lib/format-modifiers';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface OrderDetailsProps {
   order: Order;
 }
 
 export function OrderDetails({ order }: OrderDetailsProps) {
+  const { language } = useLanguage();
   const customer = order.customer as any;
   const address = order.address as any;
 
@@ -20,7 +22,7 @@ export function OrderDetails({ order }: OrderDetailsProps) {
         <h3 className="font-semibold mb-2">Items</h3>
         <div className="space-y-3">
           {order.items.map((item: any, i: number) => {
-            const modifiers = formatModifiers(item.modifiers);
+            const modifiers = formatModifiers(item.modifiers, true, language); // Use defaults for admin
             
             return (
               <div key={i} className="flex justify-between items-start">

@@ -1,25 +1,54 @@
-import { Tenant, Product, Order, OrderStatus } from '@/shared';
+import { Tenant, Product, Order, OrderStatus } from '@pizza-ecosystem/shared';
+import { withTenantThemeDefaults } from '@/lib/tenant-utils';
+import { TenantSchema, ProductSchema, OrderSchema, safeParse } from '@/lib/schemas/api.schema';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
 
 export async function getTenant(slug: string): Promise<Tenant> {
-  const res = await fetch(`${API_URL}/api/tenants/${slug}`, {
-    cache: 'no-store', // Client-side fetch, no cache
-    headers: {
-      'Content-Type': 'application/json',
-    },
-  });
-  
-  if (!res.ok) {
-    const errorText = await res.text();
-    throw new Error(`Tenant not found: ${errorText}`);
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+    
+    console.log(`[getTenant] Fetching tenant: ${API_URL}/api/tenants/${slug}`);
+    
+    const res = await fetch(`${API_URL}/api/tenants/${slug}`, {
+      cache: 'no-store',
+      signal: controller.signal,
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+    
+    clearTimeout(timeoutId);
+    
+    if (!res.ok) {
+      const errorText = await res.text();
+      console.error(`[getTenant] HTTP error ${res.status}:`, errorText);
+      throw new Error(`Tenant not found: ${errorText}`);
+    }
+    
+    const data = await res.json();
+    console.log('[getTenant] Received data:', { name: data.name, slug: data.slug, hasTheme: !!data.theme });
+    
+    const validated = safeParse(TenantSchema, data, data as Tenant);
+    const result = withTenantThemeDefaults(validated) as Tenant;
+    console.log('[getTenant] Validated tenant:', { name: result.name, slug: result.slug });
+    return result;
+  } catch (error: any) {
+    console.error('[getTenant] Error:', error);
+    if (error.name === 'AbortError') {
+      throw new Error('Request timeout: Backend is not responding');
+    }
+    if (error.message?.includes('ECONNREFUSED') || error.message?.includes('fetch failed')) {
+      throw new Error('Backend is not available. Please ensure the backend is running on http://localhost:3000');
+    }
+    throw error;
   }
-  return res.json();
 }
 
 export async function getProducts(tenantSlug: string): Promise<Product[]> {
   const res = await fetch(`${API_URL}/api/${tenantSlug}/products`, {
-    cache: 'no-store', // Client-side fetch, no cache
+    cache: 'no-store',
     headers: {
       'Content-Type': 'application/json',
     },
@@ -29,7 +58,13 @@ export async function getProducts(tenantSlug: string): Promise<Product[]> {
     const errorText = await res.text();
     throw new Error(`Failed to fetch products: ${errorText}`);
   }
-  return res.json();
+  
+  const data = await res.json();
+  // Validate products array
+  if (Array.isArray(data)) {
+    return data.map(product => safeParse(ProductSchema, product, product as Product)) as Product[];
+  }
+  return [];
 }
 
 export async function getCategories(tenantSlug: string): Promise<string[]> {
@@ -86,7 +121,7 @@ export async function createProduct(tenantSlug: string, data: Partial<Product>):
   return res.json();
 }
 
-export async function createOrder(tenantSlug: string, orderData: any): Promise<Order> {
+export async function createOrder(tenantSlug: string, orderData: any): Promise<Order | { order: Order; authToken?: string; refreshToken?: string; user?: any }> {
   const res = await fetch(`${API_URL}/api/${tenantSlug}/orders`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -97,7 +132,15 @@ export async function createOrder(tenantSlug: string, orderData: any): Promise<O
     const errorData = await res.json().catch(() => ({ message: 'Failed to create order' }));
     throw new Error(errorData.message || 'Failed to create order');
   }
-  return res.json();
+  const data = await res.json();
+  // Validate order response (could be Order or { order: Order, ... })
+  if ('order' in data) {
+    return {
+      ...data,
+      order: safeParse(OrderSchema, data.order, data.order as Order),
+    };
+  }
+  return safeParse(OrderSchema, data, data as Order);
 }
 
 export async function createPaymentSession(orderId: string) {
@@ -117,7 +160,8 @@ export async function getOrder(orderId: string): Promise<Order> {
   });
   
   if (!res.ok) throw new Error('Order not found');
-  return res.json();
+  const data = await res.json();
+  return safeParse(OrderSchema, data, data as Order);
 }
 
 // Tenant/Brand management
@@ -345,6 +389,83 @@ export async function syncOrderToStoryous(orderId: string, tenantSlug?: string):
     }
     const error = await res.json().catch(() => ({ message: 'Failed to sync order to Storyous' }));
     throw new Error(error.message || 'Failed to sync order to Storyous');
+  }
+  
+  return res.json();
+}
+
+// Delivery zones
+export interface DeliveryFeeRequest {
+  address: {
+    postalCode?: string;
+    city?: string;
+    cityPart?: string;
+  };
+}
+
+export interface DeliveryFeeResponse {
+  available: boolean;
+  deliveryFeeCents?: number;
+  deliveryFeeEuros?: string;
+  minOrderCents?: number | null;
+  minOrderEuros?: string | null;
+  zoneName?: string;
+  message?: string;
+}
+
+export async function calculateDeliveryFee(
+  tenantSlug: string,
+  address: DeliveryFeeRequest['address'],
+): Promise<DeliveryFeeResponse> {
+  const res = await fetch(`${API_URL}/api/delivery-zones/${tenantSlug}/calculate-fee`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ address }),
+  });
+  
+  if (!res.ok) {
+    const errorText = await res.text();
+    throw new Error(`Failed to calculate delivery fee: ${errorText}`);
+  }
+  
+  return res.json();
+}
+
+export interface ValidateMinOrderRequest {
+  address: {
+    postalCode?: string;
+    city?: string;
+    cityPart?: string;
+  };
+  orderTotalCents: number;
+}
+
+export interface ValidateMinOrderResponse {
+  valid: boolean;
+  minOrderCents: number | null;
+  minOrderEuros: string | null;
+  zoneName: string | null;
+  message: string | null;
+}
+
+export async function validateMinOrder(
+  tenantSlug: string,
+  address: ValidateMinOrderRequest['address'],
+  orderTotalCents: number,
+): Promise<ValidateMinOrderResponse> {
+  const res = await fetch(`${API_URL}/api/delivery-zones/${tenantSlug}/validate-min-order`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ address, orderTotalCents }),
+  });
+  
+  if (!res.ok) {
+    const errorText = await res.text();
+    throw new Error(`Failed to validate min order: ${errorText}`);
   }
   
   return res.json();

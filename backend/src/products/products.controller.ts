@@ -14,6 +14,10 @@ import { ProductsService } from './products.service';
 import { CategoriesService } from './categories.service';
 import { TenantsService } from '../tenants/tenants.service';
 import { CreateProductDto, UpdateProductDto } from './dto';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { Public } from '../auth/decorators/public.decorator';
 
 @Controller(':tenantSlug/products')
 export class ProductsController {
@@ -23,19 +27,13 @@ export class ProductsController {
     private tenantsService: TenantsService,
   ) {}
 
+  @Public()
   @Get()
   async getProducts(
     @Param('tenantSlug') tenantSlug: string,
     @Query('category') category?: string,
     @Query('isActive') isActive?: string,
   ) {
-    // Skip reserved paths that should be handled by other controllers
-    // IMPORTANT: Order matters - check specific paths first, then generic ones
-    const reservedPaths = ['tenants', 'track', 'customer', 'customers', 'my-account', 'account', 'me', 'user', 'users', 'auth', 'payments', 'delivery', 'webhooks', 'analytics'];
-    if (reservedPaths.includes(tenantSlug.toLowerCase())) {
-      throw new NotFoundException(`Route not found`);
-    }
-    
     const tenant = await this.tenantsService.getTenantBySlug(tenantSlug);
     
     // Parse isActive query param
@@ -52,19 +50,21 @@ export class ProductsController {
     });
   }
 
+  @Public()
   @Get('categories')
   async getCategories(@Param('tenantSlug') tenantSlug: string) {
     const tenant = await this.tenantsService.getTenantBySlug(tenantSlug);
     return this.categoriesService.getCategories(tenant.id);
   }
 
+  @Public()
   @Get(':id')
   async getProduct(@Param('id') id: string) {
     return this.productsService.getProductById(id);
   }
 
   @Post()
-  // @UseGuards(AdminGuard) // Add when auth is ready
+  @Roles('ADMIN', 'OPERATOR')
   async createProduct(
     @Param('tenantSlug') tenantSlug: string,
     @Body() data: CreateProductDto,
@@ -74,7 +74,7 @@ export class ProductsController {
   }
 
   @Patch(':id')
-  // @UseGuards(AdminGuard)
+  @Roles('ADMIN', 'OPERATOR')
   async updateProduct(
     @Param('id') id: string,
     @Body() data: UpdateProductDto,
@@ -83,14 +83,14 @@ export class ProductsController {
   }
 
   @Delete(':id')
-  // @UseGuards(AdminGuard)
+  @Roles('ADMIN', 'OPERATOR')
   async deleteProduct(@Param('id') id: string) {
     await this.productsService.deleteProduct(id);
     return { message: 'Product deleted' };
   }
 
   @Post('bulk-import')
-  // @UseGuards(AdminGuard)
+  @Roles('ADMIN', 'OPERATOR')
   async bulkImport(
     @Param('tenantSlug') tenantSlug: string,
     @Body() products: CreateProductDto[],

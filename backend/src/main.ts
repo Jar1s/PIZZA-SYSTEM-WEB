@@ -1,25 +1,45 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import helmet from 'helmet';
-import { ValidationPipe } from '@nestjs/common';
+import { ValidationPipe, Logger } from '@nestjs/common';
 import { Request, Response, NextFunction } from 'express';
+import { json } from 'express';
+import { appConfig } from './config/app.config';
+import { initSentry } from './config/sentry.config';
 
 async function bootstrap() {
+  // Initialize Sentry before creating app (for error tracking)
+  initSentry();
+  
+  const logger = new Logger('Bootstrap');
+  
   // Validate JWT_SECRET in production
   if (process.env.NODE_ENV === 'production' && !process.env.JWT_SECRET) {
     throw new Error('❌ JWT_SECRET environment variable is required in production!');
   }
   
   if (!process.env.JWT_SECRET || process.env.JWT_SECRET === 'your-secret-key-change-in-production') {
-    console.warn('⚠️  WARNING: Using default JWT_SECRET. Change it in production!');
+    logger.warn('⚠️  WARNING: Using default JWT_SECRET. Change it in production!');
   }
   
   // Validate JWT_SECRET strength
   if (process.env.JWT_SECRET && process.env.JWT_SECRET.length < 32) {
-    console.warn('⚠️  WARNING: JWT_SECRET should be at least 32 characters long for security!');
+    logger.warn('⚠️  WARNING: JWT_SECRET should be at least 32 characters long for security!');
   }
   
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, {
+    bodyParser: false, // Disable default body parser to configure custom one
+  });
+  
+  // Configure body parser with raw body preservation for webhooks
+  app.use(json({
+    verify: (req: any, res: Response, buf: Buffer) => {
+      // Preserve raw body for webhook routes (needed for signature verification)
+      if (req.path && req.path.startsWith('/api/webhooks')) {
+        req.rawBody = buf;
+      }
+    },
+  }));
   
   // Handle root route before setting global prefix
   app.use((req: Request, res: Response, next: NextFunction) => {
@@ -30,13 +50,16 @@ async function bootstrap() {
         timestamp: new Date().toISOString(),
         endpoints: {
           health: '/api/health',
+          routes: '/api/routes',
           tenants: '/api/tenants',
           products: '/api/:tenantSlug/products',
           orders: '/api/:tenantSlug/orders',
           auth: '/api/auth',
           customer: '/api/customer',
+          deliveryZones: '/api/delivery-zones/:tenantSlug',
         },
         note: 'All endpoints are prefixed with /api',
+        documentation: 'See /api/routes for complete list of all routes',
       });
     }
     next();
@@ -51,7 +74,7 @@ async function bootstrap() {
     transform: true,
   }));
   
-  // Security headers
+  // Security headers with enhanced CSP
   app.use(helmet({
     contentSecurityPolicy: {
       directives: {
@@ -59,28 +82,18 @@ async function bootstrap() {
         styleSrc: ["'self'", "'unsafe-inline'"],
         scriptSrc: ["'self'"],
         imgSrc: ["'self'", "data:", "https:"],
+        connectSrc: ["'self'", "https://*.sentry.io", "https://*.ingest.sentry.io"],
+        fontSrc: ["'self'", "data:", "https:"],
+        frameSrc: ["'self'"],
+        upgradeInsecureRequests: process.env.NODE_ENV === 'production' ? [] : null,
       },
     },
     crossOriginEmbedderPolicy: false,
   }));
   
-  // Enable CORS for frontend
+  // Enable CORS for frontend - using centralized config
   app.enableCors({
-    origin: process.env.NODE_ENV === 'production'
-      ? [
-          process.env.FRONTEND_URL || 'https://pornopizza.sk',
-          'https://pornopizza.sk',
-          'https://www.pornopizza.sk',
-          'https://pizzavnudzi.sk',
-          'https://www.pizzavnudzi.sk',
-          // Add admin domain if needed
-        ]
-      : [
-          'http://localhost:3001',
-          'http://localhost:3000',
-          'http://pornopizza.localhost:3001',
-          'http://pizzavnudzi.localhost:3001',
-        ],
+    origin: appConfig.allowedOrigins,
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'x-tenant'],
@@ -89,7 +102,7 @@ async function bootstrap() {
   const port = process.env.PORT || 3000;
   await app.listen(port);
   
-  console.log(`🚀 Backend server running on http://localhost:${port}`);
+  logger.log(`🚀 Backend server running on http://localhost:${port}`);
 }
 
 bootstrap();

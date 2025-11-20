@@ -1,6 +1,6 @@
 'use client';
 
-import { OrderStatus } from '@/shared';
+import { OrderStatus } from '@pizza-ecosystem/shared';
 
 interface OrderFiltersProps {
   filters: {
@@ -57,6 +57,13 @@ export function OrderFilters({ filters, onChange }: OrderFiltersProps) {
     </div>
   );
 }
+
+
+
+
+
+
+
 
 
 

@@ -2,9 +2,11 @@
 
 import { useState, useEffect } from 'react';
 import { getTenant, updateTenant } from '@/lib/api';
-import { Tenant } from '@/shared';
+import { Tenant } from '@pizza-ecosystem/shared';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 export function MaintenanceBanner() {
+  const { t } = useLanguage();
   const [tenant, setTenant] = useState<Tenant | null>(null);
   const [maintenanceMode, setMaintenanceMode] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -78,7 +80,7 @@ export function MaintenanceBanner() {
       <div className="flex items-center justify-between">
         <div className="flex-1">
           <h2 className="text-xl font-bold text-[#f97316] mb-2">
-            Momentálne neprijímame nové objednávky!
+            {t.maintenanceModeTitle}
           </h2>
           <div className="flex items-center gap-2 text-gray-700">
             <svg
@@ -95,7 +97,7 @@ export function MaintenanceBanner() {
                 d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
               />
             </svg>
-            <span className="text-sm">Príprava na začatie práce</span>
+            <span className="text-sm">{t.maintenanceModeSubtitle}</span>
           </div>
         </div>
         

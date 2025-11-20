@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Tenant } from '@/shared';
+import { Tenant } from '@pizza-ecosystem/shared';
 import { updateTenant } from '@/lib/api';
 
 interface EditBrandModalProps {

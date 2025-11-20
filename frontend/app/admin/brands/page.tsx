@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Tenant } from '@/shared';
+import { Tenant } from '@pizza-ecosystem/shared';
 import { getAllTenants } from '@/lib/api';
 import { EditBrandModal } from '@/components/admin/EditBrandModal';
 import { BrandSettingsModal } from '@/components/admin/BrandSettingsModal';

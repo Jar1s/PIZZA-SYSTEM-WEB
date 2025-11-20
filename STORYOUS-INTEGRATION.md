@@ -155,3 +155,10 @@ Oficiálna dokumentácia: https://docs.api.storyous.com/
 - Client credentials sa ukladajú v environment variables
 - Storyous konfigurácia pre každého tenanta je v databáze (JSON field)
 
+
+
+
+
+
+
+

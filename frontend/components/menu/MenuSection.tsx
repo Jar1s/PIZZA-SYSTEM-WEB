@@ -1,6 +1,6 @@
 'use client';
 
-import { Product } from '@/shared';
+import { Product } from '@pizza-ecosystem/shared';
 import { ProductCard } from './ProductCard';
 
 interface MenuSectionProps {
@@ -20,6 +20,13 @@ export function MenuSection({ category, products }: MenuSectionProps) {
     </section>
   );
 }
+
+
+
+
+
+
+
 
 
 

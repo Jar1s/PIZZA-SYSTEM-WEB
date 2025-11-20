@@ -1,7 +1,7 @@
 import { Controller, Post, Body, HttpCode } from '@nestjs/common';
 import { PaymentsService } from './payments.service';
 
-@Controller('api/payments')
+@Controller('payments')
 export class PaymentsController {
   constructor(private paymentsService: PaymentsService) {}
 
@@ -11,6 +11,9 @@ export class PaymentsController {
     return this.paymentsService.createPaymentSession(data.orderId);
   }
 }
+
+
+
 
 
 

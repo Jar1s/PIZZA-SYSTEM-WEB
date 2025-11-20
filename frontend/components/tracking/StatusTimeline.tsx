@@ -1,6 +1,6 @@
 'use client';
 
-import { OrderStatus } from '@/shared';
+import { OrderStatus } from '@pizza-ecosystem/shared';
 
 interface StatusTimelineProps {
   status: OrderStatus;

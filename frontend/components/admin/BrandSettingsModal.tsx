@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
-import { Tenant } from '@/shared';
+import { useState, useEffect } from 'react';
+import { Tenant } from '@pizza-ecosystem/shared';
+import { getTenant, updateTenant } from '@/lib/api';
 
 interface BrandSettingsModalProps {
   tenant: Tenant | null;
@@ -15,6 +16,44 @@ export function BrandSettingsModal({
   onClose 
 }: BrandSettingsModalProps) {
   const [activeTab, setActiveTab] = useState<'general' | 'domain' | 'theme' | 'advanced'>('general');
+  const [cashEnabled, setCashEnabled] = useState(false);
+  const [cardEnabled, setCardEnabled] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (tenant) {
+      const paymentConfig = (tenant.paymentConfig as any) || {};
+      setCashEnabled(paymentConfig.cashOnDeliveryEnabled === true);
+      setCardEnabled(paymentConfig.cardOnDeliveryEnabled === true);
+    }
+  }, [tenant]);
+
+  const handleSavePaymentConfig = async () => {
+    if (!tenant) return;
+    
+    setSaving(true);
+    try {
+      const paymentConfig = {
+        ...((tenant.paymentConfig as any) || {}),
+        cashOnDeliveryEnabled: cashEnabled,
+        cardOnDeliveryEnabled: cardEnabled,
+      };
+      
+      await updateTenant(tenant.slug, {
+        paymentConfig: paymentConfig as any,
+      });
+      
+      // Reload tenant to get updated data
+      const updatedTenant = await getTenant(tenant.slug);
+      // Note: We can't update tenant prop directly, but the parent should refetch
+      alert('Payment settings saved successfully!');
+    } catch (error: any) {
+      console.error('Failed to save payment config:', error);
+      alert('Failed to save payment settings: ' + (error.message || 'Unknown error'));
+    } finally {
+      setSaving(false);
+    }
+  };
 
   if (!isOpen || !tenant) return null;
 
@@ -202,15 +241,77 @@ export function BrandSettingsModal({
               )}
 
               {activeTab === 'advanced' && (
-                <div className="space-y-4">
-                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                    <h4 className="text-sm font-medium text-yellow-900 mb-2">⚠️ Advanced Settings</h4>
-                    <p className="text-xs text-yellow-700">
-                      Advanced settings will be available in future updates.
+                <div className="space-y-6">
+                  {/* Payment on Delivery Settings */}
+                  <div className="border-t pt-6">
+                    <h4 className="text-lg font-semibold mb-4">
+                      Payment on Delivery Settings
+                    </h4>
+                    <p className="text-sm text-gray-600 mb-4">
+                      Control payment methods available for cash on delivery orders.
+                      Changes apply to all websites using this tenant.
                     </p>
+                    
+                    <div className="space-y-4">
+                      {/* Cash Payment Toggle */}
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <label className="text-sm font-medium text-gray-700">
+                            Cash Payment
+                          </label>
+                          <p className="text-xs text-gray-500">
+                            Allow customers to pay with cash on delivery
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => setCashEnabled(!cashEnabled)}
+                          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                            cashEnabled ? 'bg-green-600' : 'bg-gray-300'
+                          }`}
+                        >
+                          <span
+                            className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                              cashEnabled ? 'translate-x-6' : 'translate-x-1'
+                            }`}
+                          />
+                        </button>
+                      </div>
+                      
+                      {/* Card Payment Toggle */}
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <label className="text-sm font-medium text-gray-700">
+                            Card Payment (via Courier Terminal)
+                          </label>
+                          <p className="text-xs text-gray-500">
+                            Allow customers to pay with card via courier&apos;s terminal
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => setCardEnabled(!cardEnabled)}
+                          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                            cardEnabled ? 'bg-green-600' : 'bg-gray-300'
+                          }`}
+                        >
+                          <span
+                            className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                              cardEnabled ? 'translate-x-6' : 'translate-x-1'
+                            }`}
+                          />
+                        </button>
+                      </div>
+                    </div>
+                    
+                    <button
+                      onClick={handleSavePaymentConfig}
+                      disabled={saving}
+                      className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {saving ? 'Saving...' : 'Save Payment Settings'}
+                    </button>
                   </div>
 
-                  <div>
+                  <div className="border-t pt-6">
                     <h4 className="text-sm font-medium text-gray-700 mb-2">Brand Information</h4>
                     <div className="space-y-2 text-sm text-gray-600">
                       <div>Brand ID: <code className="bg-gray-100 px-2 py-1 rounded">{tenant.id}</code></div>

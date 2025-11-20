@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Product } from '@/shared';
-import { pizzaCustomizations, CustomizationOption } from '@/lib/customization-options';
+import { Product } from '@pizza-ecosystem/shared';
+import { pizzaCustomizations, stangleCustomizations, CustomizationOption, CustomizationCategory } from '@/lib/customization-options';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { getProductTranslation, getAllergenDescription } from '@/lib/product-translations';
 import Image from 'next/image';
@@ -13,6 +14,17 @@ interface CustomizationModalProps {
   isOpen: boolean;
   onClose: () => void;
   onAddToCart: (customizations: Record<string, string[]>, totalPrice: number) => void;
+  hideBackground?: boolean; // Only hide background for best sellers
+}
+
+// Helper function to convert hex to rgba
+function hexToRgba(hex: string, opacity: number): string {
+  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  if (!result) return hex;
+  const r = parseInt(result[1], 16);
+  const g = parseInt(result[2], 16);
+  const b = parseInt(result[3], 16);
+  return `rgba(${r}, ${g}, ${b}, ${opacity})`;
 }
 
 export default function CustomizationModal({
@@ -20,21 +32,46 @@ export default function CustomizationModal({
   isOpen,
   onClose,
   onAddToCart,
+  hideBackground = false,
 }: CustomizationModalProps) {
   const { language } = useLanguage();
   const [selections, setSelections] = useState<Record<string, string[]>>({});
   const [totalPrice, setTotalPrice] = useState(product.priceCents);
+  const [mounted, setMounted] = useState(false);
+  const [primaryColorRgba, setPrimaryColorRgba] = useState<string>('rgba(255, 107, 0, 0.3)');
+
+  useEffect(() => {
+    setMounted(true);
+    return () => setMounted(false);
+  }, []);
+
+  // Get primary color and convert to rgba for background
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const root = getComputedStyle(document.documentElement);
+      const primaryColor = root.getPropertyValue('--color-primary').trim() || '#FF6B00';
+      setPrimaryColorRgba(hexToRgba(primaryColor, 0.3));
+    }
+  }, []);
   
   // Get translated product name and description
   const translation = getProductTranslation(product.name, language);
   const displayName = translation.name || product.name;
   const displayDescription = translation.description || product.description;
 
+  // Get customization options based on product category
+  const customizations: CustomizationCategory[] = useMemo(() => {
+    if (product.category === 'STANGLE') {
+      return stangleCustomizations;
+    }
+    return pizzaCustomizations;
+  }, [product.category]);
+
   const calculateTotal = useCallback((currentSelections: Record<string, string[]>) => {
     let additionalCost = 0;
     
     Object.entries(currentSelections).forEach(([categoryId, optionIds]) => {
-      const category = pizzaCustomizations.find(c => c.id === categoryId);
+      const category = customizations.find(c => c.id === categoryId);
       if (category) {
         optionIds.forEach(optionId => {
           const option = category.options.find(o => o.id === optionId);
@@ -46,13 +83,49 @@ export default function CustomizationModal({
     });
 
     setTotalPrice(product.priceCents + additionalCost);
-  }, [product.priceCents]);
+  }, [product.priceCents, customizations]);
+
+  // Prevent body scroll when modal is open
+  useEffect(() => {
+    if (isOpen) {
+      // Save current scroll position
+      const scrollY = window.scrollY;
+      // Disable body scroll
+      document.body.style.position = 'fixed';
+      document.body.style.top = `-${scrollY}px`;
+      document.body.style.width = '100%';
+      document.body.style.overflow = 'hidden';
+      
+      return () => {
+        // Restore body scroll
+        document.body.style.position = '';
+        document.body.style.top = '';
+        document.body.style.width = '';
+        document.body.style.overflow = '';
+        window.scrollTo(0, scrollY);
+      };
+    }
+  }, [isOpen]);
+
+  // Handle ESC key to close modal
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+
+    window.addEventListener('keydown', handleEscape);
+    return () => window.removeEventListener('keydown', handleEscape);
+  }, [isOpen, onClose]);
 
   // Initialize with default selections for required categories
   useEffect(() => {
     if (isOpen) {
       const defaults: Record<string, string[]> = {};
-      pizzaCustomizations.forEach(category => {
+      customizations.forEach(category => {
         if (category.required && category.options.length > 0) {
           defaults[category.id] = [category.options[0].id];
         }
@@ -60,10 +133,10 @@ export default function CustomizationModal({
       setSelections(defaults);
       calculateTotal(defaults);
     }
-  }, [isOpen, product, calculateTotal]);
+  }, [isOpen, product, calculateTotal, customizations]);
 
   const handleOptionToggle = (categoryId: string, optionId: string) => {
-    const category = pizzaCustomizations.find(c => c.id === categoryId);
+    const category = customizations.find(c => c.id === categoryId);
     if (!category) return;
 
     setSelections(prev => {
@@ -94,7 +167,7 @@ export default function CustomizationModal({
   };
 
   const canAddMore = (categoryId: string) => {
-    const category = pizzaCustomizations.find(c => c.id === categoryId);
+    const category = customizations.find(c => c.id === categoryId);
     if (!category) return false;
     const currentCount = selections[categoryId]?.length || 0;
     return currentCount < category.maxSelection;
@@ -115,38 +188,46 @@ export default function CustomizationModal({
     onClose();
   };
 
-  if (!isOpen) return null;
+  if (!isOpen || !mounted) return null;
 
-  return (
+  const modalContent = (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-50 overflow-hidden">
-          {/* Backdrop */}
+        <>
+          {/* Overlay - fixed positioned to cover entire screen */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            className="fixed inset-0 bg-black/80"
+            style={{ zIndex: 999900 }}
           />
 
-          {/* Modal */}
-          <div className="absolute inset-0 flex items-center justify-center p-4 pointer-events-none">
+          {/* Modal Container */}
+          <div
+            className="fixed inset-0 flex items-center justify-center p-4 pointer-events-none"
+            style={{ zIndex: 999910 }}
+          >
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
               onClick={(e) => e.stopPropagation()}
-              className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col pointer-events-auto"
+              className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col pointer-events-auto relative"
+              style={{ zIndex: 999920 }}
+              onWheel={(e) => e.stopPropagation()}
+              onTouchMove={(e) => e.stopPropagation()}
             >
             {/* Header */}
-            <div className="relative p-6 border-b bg-gradient-to-r from-orange-50 to-white">
+            <div className="relative p-6 border-b bg-white">
               <button
                 onClick={onClose}
-                className="absolute top-4 right-4 w-10 h-10 flex items-center justify-center rounded-full bg-white shadow-md hover:bg-gray-100 transition-colors"
+                className="absolute top-4 right-4 w-10 h-10 flex items-center justify-center rounded-full bg-gray-800 hover:bg-gray-900 text-white shadow-lg transition-colors z-10"
+                aria-label={language === 'sk' ? 'Zatvoriť' : 'Close'}
               >
-                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
 
@@ -211,8 +292,12 @@ export default function CustomizationModal({
             </div>
 
             {/* Content */}
-            <div className="flex-1 overflow-y-auto p-6 space-y-6">
-              {pizzaCustomizations.map((category) => (
+            <div 
+              className="flex-1 overflow-y-auto p-6 space-y-6"
+              onWheel={(e) => e.stopPropagation()}
+              onTouchMove={(e) => e.stopPropagation()}
+            >
+              {customizations.map((category) => (
                 <div key={category.id} className="bg-gray-50 rounded-xl p-5">
                   <div className="flex items-center justify-between mb-4">
                     <h3 className="text-xl font-bold text-gray-900">
@@ -244,31 +329,60 @@ export default function CustomizationModal({
                           className={`
                             relative p-4 rounded-lg border-2 text-left transition-all cursor-pointer
                             ${isSelected 
-                              ? 'border-orange-500 bg-orange-50 shadow-md' 
+                              ? 'shadow-md' 
                               : isDisabled
                                 ? 'border-gray-200 bg-gray-100 opacity-50 cursor-not-allowed'
-                                : 'border-gray-200 hover:border-orange-300 hover:bg-white hover:shadow-sm'
+                                : 'border-gray-200 hover:bg-white hover:shadow-sm'
                             }
                           `}
+                          style={isSelected ? {
+                            borderColor: 'var(--color-primary)',
+                            backgroundColor: primaryColorRgba
+                          } : {
+                            backgroundColor: '#ffffff'
+                          }}
+                          onMouseEnter={(e) => {
+                            if (!isSelected && !isDisabled) {
+                              e.currentTarget.style.borderColor = 'var(--color-primary)';
+                            }
+                          }}
+                          onMouseLeave={(e) => {
+                            if (!isSelected && !isDisabled) {
+                              e.currentTarget.style.borderColor = '';
+                            }
+                          }}
                         >
                           <div className="flex items-start justify-between gap-3">
                             <div className="flex-1">
-                              <div className="font-semibold text-gray-900">
+                              <div 
+                                className="font-semibold"
+                                style={{ 
+                                  color: '#000000', 
+                                  fontWeight: 600,
+                                  WebkitTextFillColor: '#000000'
+                                }}
+                              >
                                 {language === 'sk' ? option.name : option.nameEn}
                               </div>
                               {option.price > 0 && (
-                                <div className="text-orange-600 font-bold mt-1">
+                                <div 
+                                  className="font-bold mt-1" 
+                                  style={{ 
+                                    color: isSelected ? '#000000' : 'var(--color-primary)',
+                                    WebkitTextFillColor: isSelected ? '#000000' : 'var(--color-primary)'
+                                  }}
+                                >
                                   +€{(option.price / 100).toFixed(2)}
                                 </div>
                               )}
                             </div>
-                            <div className={`
-                              w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0
-                              ${isSelected 
-                                ? 'border-orange-500 bg-orange-500' 
-                                : 'border-gray-300'
-                              }
-                            `}>
+                            <div 
+                              className={`w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${!isSelected ? 'border-gray-300' : ''}`}
+                              style={isSelected ? {
+                                borderColor: 'var(--color-primary)',
+                                backgroundColor: 'var(--color-primary)'
+                              } : {}}
+                            >
                               {isSelected && (
                                 <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
                                   <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
@@ -306,9 +420,10 @@ export default function CustomizationModal({
             </div>
           </motion.div>
         </div>
-        </div>
+        </>
       )}
     </AnimatePresence>
   );
-}
 
+  return createPortal(modalContent, document.body);
+}

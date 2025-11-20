@@ -1,12 +1,14 @@
 'use client';
 
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
-import { Order, OrderStatus } from '@/shared';
+import { Order, OrderStatus } from '@pizza-ecosystem/shared';
 import { OrderCard } from './OrderCard';
 import { OrderFilters } from './OrderFilters';
+import { getTenantSlug } from '@/lib/tenant-utils';
 
 interface OrderListProps {
   todayOnly?: boolean;
+  selectedTenant?: 'all' | string;
 }
 
 // Get today's date in YYYY-MM-DD format
@@ -15,11 +17,13 @@ const getTodayDate = () => {
   return today.toISOString().split('T')[0];
 };
 
-export function OrderList({ todayOnly = false }: OrderListProps = {}) {
-
+export function OrderList({ todayOnly = false, selectedTenant }: OrderListProps = {}) {
+  // Get current tenant as default
+  const currentTenant = selectedTenant || getTenantSlug();
+  
   const [orders, setOrders] = useState<Order[]>([]);
   const [filters, setFilters] = useState({
-    tenantSlug: 'all',
+    tenantSlug: currentTenant,
     status: 'all',
     startDate: todayOnly ? getTodayDate() : '',
     endDate: todayOnly ? getTodayDate() : '',
@@ -31,11 +35,15 @@ export function OrderList({ todayOnly = false }: OrderListProps = {}) {
 
   // Cache tenant ID to slug mapping
   const fetchTenantMapping = useCallback(async () => {
-    const tenants = ['pornopizza', 'pizzavnudzi'];
+    // Determine which tenants to fetch based on current filter
+    const tenantsToFetch = filters.tenantSlug === 'all' 
+      ? ['pornopizza', 'pizzavnudzi']
+      : [filters.tenantSlug];
+    
     const mapping: Record<string, string> = {};
     const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
     
-    for (const tenantSlug of tenants) {
+    for (const tenantSlug of tenantsToFetch) {
       try {
         const res = await fetch(`${API_URL}/api/tenants/${tenantSlug}`);
         if (res.ok) {
@@ -48,7 +56,7 @@ export function OrderList({ todayOnly = false }: OrderListProps = {}) {
     }
     
     setTenantIdToSlug(mapping);
-  }, []);
+  }, [filters.tenantSlug]);
 
   const fetchOrders = useCallback(async () => {
     // Save scroll position before update
@@ -85,8 +93,9 @@ export function OrderList({ todayOnly = false }: OrderListProps = {}) {
         if (endDate) params.set('endDate', endDate);
         
         const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+        params.set('tenantSlug', tenant);
         const res = await fetch(
-          `${API_URL}/api/${tenant}/orders?${params}`
+          `${API_URL}/api/orders?${params}`
         );
         
         if (res.ok) {
@@ -126,6 +135,13 @@ export function OrderList({ todayOnly = false }: OrderListProps = {}) {
     }
   }, [filters, tenantIdToSlug, fetchTenantMapping, todayOnly]);
 
+  // Update filters when selectedTenant changes
+  useEffect(() => {
+    if (selectedTenant && selectedTenant !== filters.tenantSlug) {
+      setFilters(prev => ({ ...prev, tenantSlug: selectedTenant }));
+    }
+  }, [selectedTenant, filters.tenantSlug]);
+
   // Reset initial load when filters change
   useEffect(() => {
     isInitialLoad.current = true;
@@ -150,7 +166,7 @@ export function OrderList({ todayOnly = false }: OrderListProps = {}) {
       
       const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
       const res = await fetch(
-        `${API_URL}/api/${orderTenantSlug}/orders/${orderId}/status`,
+        `${API_URL}/api/orders/${orderId}/status`,
         {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },

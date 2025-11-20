@@ -11,6 +11,7 @@
     "prebuild": "rimraf dist",
     "build": "nest build",
     "postbuild": "node build-shared.js && node fix-shared-imports.js && node fix-main.js",
+    "prestart:dev": "node ensure-shared.js",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "nest start",
     "start:dev": "npm run build && node dist/main.js",
@@ -21,13 +22,17 @@
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
-    "test:e2e": "jest --config ./test/jest-e2e.json",
+    "test:e2e": "jest --config ./test/jest-e2e.json --passWithNoTests",
     "type-check": "tsc --noEmit",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:deploy": "prisma migrate deploy",
     "prisma:seed": "ts-node prisma/seed.ts",
-    "prisma:studio": "prisma studio"
+    "prisma:seed-zones": "ts-node prisma/seed-delivery-zones.ts",
+    "prisma:migrate-theme": "ts-node prisma/migrate-tenant-theme.ts",
+    "test:endpoints": "node test-all-endpoints.js",
+    "prisma:studio": "prisma studio",
+    "monitor": "node scripts/monitor-implementations.js"
   },
   "prisma": {
     "seed": "ts-node prisma/seed.ts"
@@ -43,6 +48,7 @@
     "@nestjs/throttler": "^6.4.0",
     "@pizza-ecosystem/shared": "file:../shared",
     "@prisma/client": "^5.0.0",
+    "@sentry/node": "^10.26.0",
     "@types/bcryptjs": "^2.4.6",
     "@types/nodemailer": "^7.0.3",
     "@types/passport-jwt": "^4.0.1",
@@ -52,7 +58,9 @@
     "google-auth-library": "^10.5.0",
     "helmet": "^8.1.0",
     "iterare": "^1.2.1",
+    "jwks-rsa": "^3.2.0",
     "libphonenumber-js": "^1.12.26",
+    "lru-cache": "^11.2.2",
     "nodemailer": "^7.0.10",
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
@@ -88,6 +96,7 @@
     "typescript": "^5.1.3"
   },
   "jest": {
+    "preset": "ts-jest",
     "moduleFileExtensions": [
       "js",
       "json",
@@ -102,6 +111,24 @@
       "**/*.(t|j)s"
     ],
     "coverageDirectory": "../coverage",
-    "testEnvironment": "node"
+    "testEnvironment": "node",
+    "moduleDirectories": [
+      "node_modules",
+      "<rootDir>"
+    ],
+    "moduleNameMapper": {
+      "^@pizza-ecosystem/shared$": "<rootDir>/../../shared"
+    },
+    "globals": {
+      "ts-jest": {
+        "tsconfig": {
+          "paths": {
+            "@pizza-ecosystem/shared": [
+              "../shared"
+            ]
+          }
+        }
+      }
+    }
   }
 }

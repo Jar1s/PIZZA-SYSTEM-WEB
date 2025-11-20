@@ -1,4 +1,4 @@
-import { TenantTheme } from '@/shared';
+import { TenantTheme } from '@pizza-ecosystem/shared';
 
 export function applyTheme(theme: TenantTheme) {
   if (typeof window === 'undefined') return;
@@ -8,6 +8,13 @@ export function applyTheme(theme: TenantTheme) {
   root.style.setProperty('--color-secondary', theme.secondaryColor);
   root.style.setProperty('--font-family', theme.fontFamily);
 }
+
+
+
+
+
+
+
 
 
 

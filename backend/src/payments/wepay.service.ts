@@ -96,11 +96,12 @@ export class WepayService {
   verifyWebhook(signature: string, payload: string, secret: string): boolean {
     // WePay webhook signature verification
     // WePay uses HMAC-SHA256 similar to Adyen
-    // TODO: Implement proper verification when credentials available
     
-    if (process.env.NODE_ENV === 'development') {
-      this.logger.warn('⚠️  WePay webhook verification skipped in DEV mode');
-      return true; // Skip verification in dev
+    // CRITICAL: Use explicit env variable, not NODE_ENV
+    const skipVerification = process.env.SKIP_WEBHOOK_VERIFICATION === 'true';
+    if (skipVerification) {
+      this.logger.warn('⚠️  SECURITY WARNING: WePay webhook verification is DISABLED via SKIP_WEBHOOK_VERIFICATION');
+      return true;
     }
     
     if (!secret) {

@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
 import { headers } from 'next/headers';
-import { getTenant } from '@/lib/api';
+import { getTenantServer } from '@/lib/server-api';
 import { Providers } from '@/components/Providers';
 
 // Optimize font loading with display swap and preload
@@ -19,7 +19,10 @@ export async function generateMetadata(): Promise<Metadata> {
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3001';
   
   try {
-    const tenantData = await getTenant(tenant);
+    const tenantData = await getTenantServer(tenant);
+    if (!tenantData) {
+      throw new Error('Tenant not found');
+    }
     const siteName = tenantData.name || 'Pizza Ordering';
     const theme = typeof tenantData.theme === 'object' && tenantData.theme !== null ? tenantData.theme as any : {};
     const description = tenantData.description || (theme.description as string) || `Order delicious pizza online from ${siteName}. Fast delivery, fresh ingredients, and great prices.`;
@@ -116,10 +119,15 @@ export default async function RootLayout({
   
   let tenantData;
   try {
-    tenantData = await getTenant(tenant);
-  } catch {
-    // Fallback theme if tenant not found
+    tenantData = await getTenantServer(tenant);
+    if (!tenantData) {
+      throw new Error('Tenant not found');
+    }
+  } catch (error) {
+    // Fallback theme if tenant not found or backend unavailable
+    console.warn('Failed to load tenant data, using fallback:', error);
     tenantData = {
+      name: 'Pizza Ordering',
       theme: {
         primaryColor: '#FF6B00',
         secondaryColor: '#000000',

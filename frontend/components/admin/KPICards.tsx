@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
+import { getTenantSlug } from '@/lib/tenant-utils';
 
 interface KPIs {
   totalRevenue: number;
@@ -9,7 +10,11 @@ interface KPIs {
   activeOrders: number;
 }
 
-export function KPICards() {
+interface KPICardsProps {
+  selectedTenant?: 'all' | string;
+}
+
+export function KPICards({ selectedTenant }: KPICardsProps = {}) {
   const [kpis, setKpis] = useState<KPIs>({
     totalRevenue: 0,
     totalOrders: 0,
@@ -17,25 +22,21 @@ export function KPICards() {
     activeOrders: 0,
   });
 
-  useEffect(() => {
-    fetchKPIs();
-    
-    // Poll for updates every 5 seconds
-    const interval = setInterval(fetchKPIs, 5000);
-    return () => clearInterval(interval);
-  }, []);
-
-  const fetchKPIs = async () => {
+  const fetchKPIs = useCallback(async () => {
     try {
-      // Fetch from all tenants
-      const tenants = ['pornopizza', 'pizzavnudzi'];
+      // Determine which tenant(s) to fetch
+      const currentTenant = selectedTenant || getTenantSlug();
+      const tenants = currentTenant === 'all' 
+        ? ['pornopizza', 'pizzavnudzi']
+        : [currentTenant];
+      
       let totalRevenue = 0;
       let totalOrders = 0;
       let activeOrders = 0;
       
       for (const tenant of tenants) {
         const res = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}/api/${tenant}/orders`
+          `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}/api/orders?tenantSlug=${tenant}`
         );
         
         if (res.ok) {
@@ -67,7 +68,15 @@ export function KPICards() {
     } catch (error) {
       console.error('Failed to fetch KPIs:', error);
     }
-  };
+  }, [selectedTenant]);
+
+  useEffect(() => {
+    fetchKPIs();
+    
+    // Poll for updates every 5 seconds
+    const interval = setInterval(fetchKPIs, 5000);
+    return () => clearInterval(interval);
+  }, [fetchKPIs]);
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">

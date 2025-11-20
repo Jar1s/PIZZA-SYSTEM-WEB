@@ -38,6 +38,46 @@ npm run start:dev
 # The server will run on http://localhost:3000
 ```
 
+## 🧪 Testing API Endpoints
+
+### Using REST Client in VS Code
+
+1. **Install REST Client extension** in VS Code:
+   - Open VS Code Extensions (Cmd+Shift+X)
+   - Search for "REST Client" by Huachao Mao
+   - Install it
+
+2. **Open test file**: `backend/api-test.http`
+
+3. **Test endpoints**:
+   - Click "Send Request" above any request
+   - Results appear in a panel next to the file
+   - All requests use variables: `@baseUrl`, `@apiUrl`, `@tenantSlug`
+
+### Available Test Endpoints
+
+- **Health Check**: `GET /api/health`
+- **Tenants**: `GET /api/tenants`, `GET /api/tenants/:slug`
+- **Products**: `GET /api/:tenantSlug/products`
+- **Delivery Zones**: `POST /api/delivery-zones/:tenantSlug/calculate-fee`
+- **Auth**: `POST /api/auth/customer/login`, `POST /api/auth/customer/register`
+- **Orders**: `POST /api/:tenantSlug/orders`, `GET /api/:tenantSlug/orders`
+- **Customer Account**: `GET /api/customer/account/profile` (requires auth token)
+- **Tracking**: `GET /api/track/:orderId`
+
+### Quick Test Commands
+
+```bash
+# Health check
+curl http://localhost:3000/api/health
+
+# Get tenant
+curl http://localhost:3000/api/tenants/pornopizza
+
+# Get products
+curl http://localhost:3000/api/pornopizza/products
+```
+
 ## 📊 Database
 
 ### Prisma Commands
@@ -176,6 +216,13 @@ TWILIO_PHONE_NUMBER=+421XXXXXXXXX  # E.164 format
 ```
 
 **Note:** If Twilio is not configured, SMS codes will be logged to console in development mode. See [MOBILE-VERIFICATION-GUIDE.md](../MOBILE-VERIFICATION-GUIDE.md) for setup instructions.
+
+### Error Monitoring (Sentry - Optional)
+```bash
+SENTRY_DSN=https://your-sentry-dsn@sentry.io/project-id
+```
+
+**Note:** If `SENTRY_DSN` is not set, error monitoring will be disabled. Get your DSN from https://sentry.io after creating a project.
 
 ## 🔒 Security
 

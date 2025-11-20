@@ -1,0 +1,30 @@
+import { z } from 'zod';
+
+export const OrderItemSchema = z.object({
+  id: z.string(),
+  productId: z.string(),
+  quantity: z.number().int().positive(),
+  priceCents: z.number().int().nonnegative(),
+  modifiers: z.array(z.unknown()).optional(),
+});
+
+export const OrderResponseSchema = z.object({
+  id: z.string(),
+  tenantId: z.string(),
+  userId: z.string().nullable(),
+  status: z.enum(['PENDING', 'PAID', 'PREPARING', 'READY', 'DELIVERING', 'DELIVERED', 'CANCELLED']),
+  subtotalCents: z.number().int().nonnegative(),
+  taxCents: z.number().int().nonnegative(),
+  deliveryFeeCents: z.number().int().nonnegative(),
+  totalCents: z.number().int().nonnegative(),
+  customer: z.record(z.string(), z.unknown()),
+  address: z.record(z.string(), z.unknown()),
+  items: z.array(OrderItemSchema).optional(),
+  paymentRef: z.string().nullable().optional(),
+  storyousOrderId: z.string().nullable().optional(),
+  createdAt: z.date().or(z.string()),
+  updatedAt: z.date().or(z.string()),
+});
+
+export type OrderResponse = z.infer<typeof OrderResponseSchema>;
+

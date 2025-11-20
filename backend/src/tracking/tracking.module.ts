@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { TrackingController } from '../orders/orders.controller';
 import { OrdersModule } from '../orders/orders.module'; // Import OrdersModule instead of re-providing OrdersService
 import { PrismaModule } from '../prisma/prisma.module';
@@ -8,7 +8,7 @@ import { AuthModule } from '../auth/auth.module';
 
 @Module({
   imports: [
-    OrdersModule, // This exports OrdersService with all its dependencies (including StoryousModule)
+    forwardRef(() => OrdersModule), // Use forwardRef to avoid circular dependency
     PrismaModule, 
     EmailModule, 
     TenantsModule, 

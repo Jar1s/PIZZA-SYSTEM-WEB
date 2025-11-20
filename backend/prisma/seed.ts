@@ -18,6 +18,14 @@ async function main() {
         logo: '/logos/pornopizza.svg',
         favicon: '/favicons/pornopizza.ico',
         fontFamily: 'Inter',
+        layout: {
+          headerStyle: 'dark',
+          backgroundStyle: 'black',
+          useCustomLogo: true,
+          customLogoComponent: 'PornoPizzaLogo',
+          useCustomBackground: true,
+          customBackgroundClass: 'porno-bg',
+        },
       },
       paymentConfig: {
         provider: 'adyen',
@@ -45,6 +53,11 @@ async function main() {
         logo: '/logos/pizzavnudzi.svg',
         favicon: '/favicons/pizzavnudzi.ico',
         fontFamily: 'Poppins',
+        layout: {
+          headerStyle: 'light',
+          backgroundStyle: 'white',
+          useCustomLogo: false,
+        },
       },
       paymentConfig: {
         provider: 'adyen',
@@ -68,6 +81,9 @@ main()
   .finally(async () => {
     await prisma.$disconnect();
   });
+
+
+
 
 
 

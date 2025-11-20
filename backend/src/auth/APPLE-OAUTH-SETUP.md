@@ -147,3 +147,6 @@ FRONTEND_URL=https://your-frontend-domain.com
 **Ready to use once credentials are configured!** 🎉
 
 
+
+
+

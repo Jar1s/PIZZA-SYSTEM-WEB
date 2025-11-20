@@ -1,6 +1,7 @@
 import { Controller, Get, Param, Query } from '@nestjs/common';
 import { AnalyticsService } from './analytics.service';
 import { TenantsService } from '../tenants/tenants.service';
+import { Public } from '../auth/decorators/public.decorator';
 
 @Controller('analytics')
 export class AnalyticsController {
@@ -9,6 +10,7 @@ export class AnalyticsController {
     private tenantsService: TenantsService,
   ) {}
 
+  @Public()
   @Get('all')
   async getAllAnalytics(
     @Query('days') days: string = '30',
@@ -21,6 +23,7 @@ export class AnalyticsController {
     return this.analyticsService.getAllTenantsAnalytics(startDate, endDate);
   }
 
+  @Public()
   @Get(':tenantSlug')
   async getTenantAnalytics(
     @Param('tenantSlug') tenantSlug: string,

@@ -26,5 +26,21 @@ export interface TenantTheme {
   favicon: string;
   fontFamily: string;
   heroImage?: string;
+  maintenanceMode?: boolean;
+  taxRate?: number; // Tax rate in percentage (e.g., 20.0 for 20%)
+  layout?: {
+    headerStyle?: 'dark' | 'light';
+    backgroundStyle?: 'black' | 'white' | 'gradient';
+    showPizzaSlices?: boolean;
+    useCustomLogo?: boolean; // Use custom logo component instead of image
+    customLogoComponent?: string; // Name of custom logo component (e.g., 'PornoPizzaLogo')
+    useCustomBackground?: boolean; // Use custom background styling
+    customBackgroundClass?: string; // Custom CSS class for background containers
+    bodyBackgroundClass?: string; // Custom CSS class applied to body element
+  };
+  storyousConfig?: {
+    enabled: boolean;
+    merchantId: string;
+    placeId: string;
+  };
 }
-

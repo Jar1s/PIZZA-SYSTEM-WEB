@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Order } from '@/shared';
+import { Order } from '@pizza-ecosystem/shared';
 
 interface DeliveryInfoProps {
   order: Order;

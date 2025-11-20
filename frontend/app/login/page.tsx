@@ -9,15 +9,19 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { login } = useAuth();
+  const { login, user, loading: authLoading } = useAuth();
   const router = useRouter();
 
-  // DEV MODE: Auto-redirect to admin
+  // Redirect to admin if already logged in (but check logout flag first)
   useEffect(() => {
-    if (process.env.NODE_ENV === 'development') {
-      router.push('/admin');
+    if (!authLoading) {
+      const loggedOut = sessionStorage.getItem('admin_logged_out');
+      // Only redirect if user is logged in AND not explicitly logged out
+      if (user && loggedOut !== 'true') {
+        router.push('/admin');
+      }
     }
-  }, [router]);
+  }, [user, authLoading, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -26,10 +30,14 @@ export default function LoginPage() {
 
     try {
       await login(username, password);
-      router.push('/admin');
+      // Clear logout flag and wait for state update
+      sessionStorage.removeItem('admin_logged_out');
+      // Use replace to prevent back navigation to login
+      setTimeout(() => {
+        window.location.href = '/admin';
+      }, 200);
     } catch (err: any) {
       setError(err.message || 'Login failed');
-    } finally {
       setLoading(false);
     }
   };

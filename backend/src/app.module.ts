@@ -14,6 +14,7 @@ import { CustomerModule } from './customer/customer.module';
 import { TrackingModule } from './tracking/tracking.module';
 import { UploadModule } from './upload/upload.module';
 import { AppController } from './app.controller';
+import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 
 @Module({
   imports: [
@@ -25,9 +26,9 @@ import { AppController } from './app.controller';
     TenantsModule,
     AuthModule,
     CustomerModule, // Register CustomerModule BEFORE OrdersModule to avoid route conflicts
-    TrackingModule, // Register TrackingModule BEFORE ProductsModule and OrdersModule to avoid route conflicts
     ProductsModule,
-    OrdersModule,
+    OrdersModule, // Must be imported before TrackingModule to avoid circular dependency
+    TrackingModule, // TrackingModule depends on OrdersModule
     PaymentsModule,
     DeliveryModule,
     EmailModule,
@@ -36,6 +37,12 @@ import { AppController } from './app.controller';
   ],
   controllers: [AppController],
   providers: [
+    // Global JWT Auth Guard - fail-closed security (all routes protected by default)
+    // Use @Public() decorator to mark public endpoints
+    {
+      provide: APP_GUARD,
+      useClass: JwtAuthGuard,
+    },
     // Only enable throttling in production
     ...(process.env.NODE_ENV === 'production' ? [{
       provide: APP_GUARD,

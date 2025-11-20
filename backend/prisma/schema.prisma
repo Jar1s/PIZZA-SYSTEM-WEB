@@ -17,6 +17,9 @@ model Tenant {
 
   // Payment provider
   paymentProvider String @default("adyen")
+  
+  // Currency (ISO 4217 code: EUR, CZK, USD, etc.)
+  currency String @default("EUR")
 
   // JSON fields
   theme          Json
@@ -24,9 +27,11 @@ model Tenant {
   deliveryConfig Json
 
   // Relations
-  products   Product[]
-  orders     Order[]
-  deliveries Delivery[]
+  products        Product[]
+  orders          Order[]
+  deliveries      Delivery[]
+  productMappings ProductMapping[]
+  deliveryZones   DeliveryZone[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -39,14 +44,14 @@ model Product {
   tenantId String
   tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
-  name        String
-  description String?
-  priceCents  Int
-  taxRate     Float   @default(20.0)
-  category    String
-  image       String?
-  modifiers   Json?
-  isActive    Boolean @default(true)
+  name         String
+  description  String?
+  priceCents   Int
+  taxRate      Float   @default(20.0)
+  category     String
+  image        String?
+  modifiers    Json?
+  isActive     Boolean @default(true)
   isBestSeller Boolean @default(false)
 
   orderItems OrderItem[]
@@ -65,6 +70,10 @@ model Order {
   tenant   Tenant @relation(fields: [tenantId], references: [id])
 
   status OrderStatus @default(PENDING)
+
+  // User reference (can be null for guest orders)
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   // JSON fields
   customer Json
@@ -89,7 +98,9 @@ model Order {
   updatedAt DateTime @updatedAt
 
   @@index([tenantId, status])
+  @@index([tenantId, createdAt]) // Performance: Optimizes queries sorted by date
   @@index([paymentRef])
+  @@index([userId])
   @@map("orders")
 }
 
@@ -157,10 +168,15 @@ model User {
   phoneVerified Boolean  @default(false) // Whether phone is verified
   role          UserRole @default(OPERATOR)
   isActive      Boolean  @default(true)
+  
+  // Password reset token for account setup
+  passwordResetToken      String?  @unique
+  passwordResetExpires    DateTime?
 
   refreshTokens        RefreshToken[]
   smsVerificationCodes SmsVerificationCode[]
   addresses            Address[] // Customer addresses
+  orders               Order[] // Customer orders
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -168,6 +184,7 @@ model User {
   @@index([username])
   @@index([email])
   @@index([phone])
+  @@index([passwordResetToken])
   @@map("users")
 }
 
@@ -222,4 +239,53 @@ model Address {
   @@index([userId])
   @@index([userId, isPrimary])
   @@map("addresses")
+}
+
+// Mapovanie externých názvov/kódov na interné názvy produktov
+model ProductMapping {
+  id       String @id @default(cuid())
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  // Externý identifikátor (môže byť kód alebo názov)
+  externalIdentifier String // Napr. "#69", "Hawaii Premium", "Hawaiian"
+
+  // Interný názov produktu (ako je v databáze)
+  internalProductName String // Napr. "Hawaii"
+
+  // Voliteľne: zdroj (napr. "website1", "website2")
+  source String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([tenantId, externalIdentifier, source])
+  @@index([tenantId, externalIdentifier])
+  @@index([internalProductName])
+  @@map("product_mappings")
+}
+
+model DeliveryZone {
+  id       String @id @default(cuid())
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  name            String  // ZONA1, ZONA2, ZONA3, atď.
+  deliveryFeeCents Int    // Cena dopravy v centoch (100 = 1€)
+  minOrderCents    Int?   // Minimálna objednávka v centoch (3000 = 30€), null = žiadne minimum
+  
+  // Mapovanie adries na zónu - môže byť podľa PSČ, mesta, alebo časti mesta
+  postalCodes      String[] // Zoznam PSČ (napr. ["81101", "81102"])
+  cityNames        String[] // Zoznam názvov miest/častí (napr. ["Jarovce", "Staré Mesto"])
+  cityParts        String[] // Zoznam častí mesta (napr. ["Jarovce", "Petržalka"])
+  
+  isActive         Boolean @default(true)
+  priority         Int     @default(0) // Vyššia priorita = skoršie kontrolovanie (pre presnejšie zóny)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId, isActive])
+  @@index([tenantId, name])
+  @@map("delivery_zones")
 }

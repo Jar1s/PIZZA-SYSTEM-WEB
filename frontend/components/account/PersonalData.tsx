@@ -8,9 +8,10 @@ import { sendCustomerSmsCode } from '@/lib/api';
 
 interface PersonalDataProps {
   tenant: string;
+  isDark?: boolean;
 }
 
-export default function PersonalData({ tenant }: PersonalDataProps) {
+export default function PersonalData({ tenant, isDark = false }: PersonalDataProps) {
   const { user, loading: authLoading, setUser } = useCustomerAuth();
   const { t } = useLanguage();
   const router = useRouter();
@@ -68,7 +69,7 @@ export default function PersonalData({ tenant }: PersonalDataProps) {
     } catch (error) {
       console.error('Failed to fetch personal data:', error);
     }
-  }, [user]);
+  }, [user, setUser]);
 
   useEffect(() => {
     // Wait for auth to load and user to be available before fetching profile
@@ -162,6 +163,22 @@ export default function PersonalData({ tenant }: PersonalDataProps) {
     },
   ];
 
+  const mutedText = isDark ? 'text-gray-300' : 'text-gray-600';
+  const inputClass = isDark
+    ? 'w-full px-3 py-2 border border-white/20 bg-white/5 text-white rounded-lg focus:border-white/40 focus:outline-none placeholder:text-gray-400'
+    : 'w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-orange-500';
+
+  if (authLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-t-4 border-b-4 border-orange-600"></div>
+          <p className={`mt-4 ${mutedText}`}>{t.loading}</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div>
       <h2 className="text-2xl font-bold mb-6">{t.settingsAndPersonalData}</h2>
@@ -169,29 +186,31 @@ export default function PersonalData({ tenant }: PersonalDataProps) {
         {fields.map((field) => (
           <div
             key={field.key}
-            className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
+            className={`rounded-2xl p-4 border transition-shadow ${
+              isDark ? 'bg-white/5 border-white/10 text-white' : 'border-gray-200 bg-white hover:shadow-md'
+            }`}
           >
             <div className="flex items-center justify-between">
               <div className="flex-1">
-                <div className="font-semibold text-gray-900 mb-1">{field.label}</div>
+                <div className={`font-semibold mb-1 ${isDark ? 'text-white' : 'text-gray-900'}`}>{field.label}</div>
                 {editing === field.key ? (
                   <input
                     type={field.key === 'email' ? 'email' : field.key === 'phone' ? 'tel' : 'text'}
                     value={formData[field.key as keyof typeof formData]}
                     onChange={(e) => setFormData({ ...formData, [field.key]: e.target.value })}
-                    className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-orange-500"
+                    className={inputClass}
                     autoFocus
                   />
                 ) : (
-                  <div className="text-gray-600">{field.value || '-'}</div>
+                  <div className={mutedText}>{field.value || '-'}</div>
                 )}
               </div>
               {editing === field.key ? (
                 <div className="flex gap-2 ml-4">
                   <button
                     onClick={() => handleSave(field.key)}
-                    className="px-4 py-2 rounded-lg text-white font-semibold text-sm"
-                    style={{ backgroundColor: 'var(--color-primary)' }}
+                    className={`px-4 py-2 rounded-full text-sm font-semibold ${isDark ? 'bg-gradient-to-r from-[#ff5e00] via-[#ff0066] to-[#ff2d55]' : 'text-white'}`}
+                    style={!isDark ? { backgroundColor: 'var(--color-primary)' } : undefined}
                   >
                     {t.save}
                   </button>
@@ -200,14 +219,16 @@ export default function PersonalData({ tenant }: PersonalDataProps) {
                       setEditing(null);
                       fetchPersonalData();
                     }}
-                    className="px-4 py-2 rounded-lg border-2 border-gray-300 text-gray-700 font-semibold text-sm"
+                    className={`px-4 py-2 rounded-full text-sm font-semibold ${
+                      isDark ? 'border border-white/20 text-white hover:bg-white/10' : 'border-2 border-gray-300 text-gray-700'
+                    }`}
                   >
                     {t.cancel}
                   </button>
                 </div>
               ) : (
                 <svg
-                  className="w-5 h-5 text-gray-400 ml-4 cursor-pointer"
+                  className={`w-5 h-5 ml-4 cursor-pointer ${isDark ? 'text-gray-400' : 'text-gray-400'}`}
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -223,4 +244,3 @@ export default function PersonalData({ tenant }: PersonalDataProps) {
     </div>
   );
 }
-

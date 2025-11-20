@@ -4,13 +4,14 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useCustomerAuth } from '@/contexts/CustomerAuthContext';
-import { Order } from '@/shared';
+import { Order } from '@pizza-ecosystem/shared';
 
 interface OrderHistoryProps {
   tenant: string;
+  isDark?: boolean;
 }
 
-export default function OrderHistory({ tenant }: OrderHistoryProps) {
+export default function OrderHistory({ tenant, isDark = false }: OrderHistoryProps) {
   const { t } = useLanguage();
   const { user, loading: authLoading } = useCustomerAuth();
   const router = useRouter();
@@ -73,7 +74,7 @@ export default function OrderHistory({ tenant }: OrderHistoryProps) {
       <div className="flex items-center justify-center py-12">
         <div className="text-center">
           <div className="inline-block animate-spin rounded-full h-12 w-12 border-t-4 border-b-4 border-orange-600"></div>
-          <p className="mt-4 text-gray-600">{t.loading}</p>
+          <p className={`mt-4 ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>{t.loading}</p>
         </div>
       </div>
     );
@@ -83,16 +84,16 @@ export default function OrderHistory({ tenant }: OrderHistoryProps) {
     return (
       <div className="flex flex-col items-center justify-center py-12">
         <div className="mb-6">
-          <svg className="w-24 h-24 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className={`w-24 h-24 ${isDark ? 'text-gray-600' : 'text-gray-300'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
           </svg>
         </div>
-        <h3 className="text-2xl font-bold text-gray-900 mb-2">{t.emptyList}</h3>
-        <p className="text-gray-600 text-center max-w-md">{t.emptyOrderHistory}</p>
+        <h3 className={`text-2xl font-bold mb-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>{t.emptyList}</h3>
+        <p className={`${isDark ? 'text-gray-300' : 'text-gray-600'} text-center max-w-md`}>{t.emptyOrderHistory}</p>
         <button
           onClick={() => router.push(`/?tenant=${tenant}`)}
-          className="mt-6 px-6 py-3 rounded-lg text-white font-semibold"
-          style={{ backgroundColor: 'var(--color-primary)' }}
+          className={`mt-6 px-6 py-3 rounded-full font-semibold ${isDark ? 'bg-gradient-to-r from-[#ff5e00] via-[#ff0066] to-[#ff2d55]' : 'text-white'}`}
+          style={!isDark ? { backgroundColor: 'var(--color-primary)' } : undefined}
         >
           Objednať teraz
         </button>
@@ -107,14 +108,18 @@ export default function OrderHistory({ tenant }: OrderHistoryProps) {
         {orders.map((order) => (
           <div
             key={order.id}
-            className="border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow"
+            className={`rounded-2xl p-6 border transition-shadow ${
+              isDark
+                ? 'bg-white/5 border-white/10 text-white shadow-[0_20px_60px_rgba(0,0,0,0.6)]'
+                : 'border-gray-200 bg-white hover:shadow-md'
+            }`}
           >
             <div className="flex justify-between items-start mb-4">
               <div>
-                <div className="font-semibold text-gray-900 mb-1">
+                <div className="font-semibold mb-1">
                   {t.orderNumber}: {order.id.slice(0, 8)}
                 </div>
-                <div className="text-sm text-gray-600">
+                <div className={`text-sm ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
                   {t.orderDate}: {new Date(order.createdAt).toLocaleDateString('sk-SK')}
                 </div>
               </div>
@@ -122,15 +127,15 @@ export default function OrderHistory({ tenant }: OrderHistoryProps) {
                 <div className="font-bold text-lg" style={{ color: 'var(--color-primary)' }}>
                   €{(order.totalCents / 100).toFixed(2)}
                 </div>
-                <div className="text-sm text-gray-600 mt-1">
+                <div className={`text-sm mt-1 uppercase tracking-wide ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
                   {order.status}
                 </div>
               </div>
             </div>
             <button
               onClick={() => router.push(`/order/${order.id}?tenant=${tenant}`)}
-              className="text-sm font-medium"
-              style={{ color: 'var(--color-primary)' }}
+              className={`text-sm font-semibold ${isDark ? 'text-white' : ''}`}
+              style={!isDark ? { color: 'var(--color-primary)' } : undefined}
             >
               {t.viewOrder} →
             </button>
@@ -140,4 +145,3 @@ export default function OrderHistory({ tenant }: OrderHistoryProps) {
     </div>
   );
 }
-

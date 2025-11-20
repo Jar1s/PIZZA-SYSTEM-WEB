@@ -1,0 +1,181 @@
+{
+  "rateLimiting": [
+    {
+      "status": "ok",
+      "count": 1,
+      "name": "Orders Controller"
+    },
+    {
+      "status": "ok",
+      "count": 2,
+      "name": "Delivery Controller"
+    },
+    {
+      "status": "ok",
+      "count": 11,
+      "name": "Auth Controllers"
+    }
+  ],
+  "retryLogic": [
+    {
+      "status": "ok",
+      "count": 18,
+      "name": "WoltDriveService"
+    },
+    {
+      "status": "ok",
+      "count": 5,
+      "name": "Exponential Backoff"
+    },
+    {
+      "status": "ok",
+      "count": 2,
+      "name": "Storyous Retry"
+    }
+  ],
+  "structuredLogging": [
+    {
+      "status": "ok",
+      "count": 17,
+      "name": "Orders Service (with context)"
+    },
+    {
+      "status": "ok",
+      "count": 29,
+      "name": "Delivery Services"
+    },
+    {
+      "status": "ok",
+      "count": 0,
+      "name": "Console.log (should be 0)"
+    }
+  ],
+  "zodValidation": [
+    {
+      "status": "ok",
+      "count": 1,
+      "name": "Tenant Schema"
+    },
+    {
+      "status": "ok",
+      "count": 1,
+      "name": "Order Schema"
+    },
+    {
+      "status": "ok",
+      "count": 1,
+      "name": "Delivery Schema"
+    },
+    {
+      "status": "ok",
+      "count": 4,
+      "name": "Tenant Validation"
+    },
+    {
+      "status": "ok",
+      "count": 8,
+      "name": "Order Validation"
+    },
+    {
+      "status": "ok",
+      "count": 1,
+      "name": "Delivery Validation"
+    },
+    {
+      "status": "ok",
+      "count": 1,
+      "name": "Frontend Schemas"
+    },
+    {
+      "status": "ok",
+      "count": 6,
+      "name": "Frontend Validation"
+    }
+  ],
+  "cspHeaders": [
+    {
+      "status": "ok",
+      "count": 1,
+      "name": "connectSrc directive"
+    },
+    {
+      "status": "ok",
+      "count": 1,
+      "name": "fontSrc directive"
+    },
+    {
+      "status": "ok",
+      "count": 1,
+      "name": "frameSrc directive"
+    },
+    {
+      "status": "ok",
+      "count": 1,
+      "name": "upgradeInsecureRequests"
+    }
+  ],
+  "sentry": [
+    {
+      "status": "ok",
+      "count": 1,
+      "name": "Backend Sentry Config"
+    },
+    {
+      "status": "ok",
+      "count": 1,
+      "name": "Frontend Client Config"
+    },
+    {
+      "status": "ok",
+      "count": 1,
+      "name": "Frontend Server Config"
+    },
+    {
+      "status": "ok",
+      "count": 1,
+      "name": "Error Boundary"
+    },
+    {
+      "status": "ok",
+      "count": 1,
+      "name": "Sentry Initialization"
+    },
+    {
+      "status": "ok",
+      "count": 1,
+      "name": "Next.js Sentry Wrapper"
+    },
+    {
+      "status": "ok",
+      "count": 1,
+      "name": "Backend DSN"
+    },
+    {
+      "status": "ok",
+      "count": 1,
+      "name": "Frontend DSN"
+    }
+  ],
+  "e2eTests": [
+    {
+      "status": "ok",
+      "count": 1,
+      "name": "E2E Workflow"
+    },
+    {
+      "status": "missing",
+      "count": 0,
+      "name": "E2E Test Files"
+    },
+    {
+      "status": "ok",
+      "count": 3,
+      "name": "Playwright Setup"
+    },
+    {
+      "status": "ok",
+      "count": 1,
+      "name": "E2E Test Command"
+    }
+  ]
+}

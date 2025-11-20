@@ -1,0 +1,574 @@
+'use client';
+
+import { useState, useMemo, useCallback, useEffect } from 'react';
+import { Product, Tenant } from '@pizza-ecosystem/shared';
+import { ProductCard } from '@/components/menu/ProductCard';
+import { HeroSection } from '@/components/home/HeroSection';
+import { Footer } from '@/components/layout/Footer';
+import { Header } from '@/components/layout/Header';
+import { useLanguage } from '@/contexts/LanguageContext';
+import { useToastContext } from '@/contexts/ToastContext';
+import { useCart } from '@/hooks/useCart';
+import { getProductTranslation } from '@/lib/product-translations';
+import { motion } from 'framer-motion';
+import { isDarkTheme as resolveDarkTheme, getBackgroundClass, getSectionShellClass, getBodyBackgroundClass } from '@/lib/tenant-utils';
+import Image from 'next/image';
+
+// Import Cart directly instead of lazy loading to avoid chunk loading issues
+import { Cart } from '@/components/cart/Cart';
+
+type CategoryFilter = 'all' | 'PIZZA' | 'SIDES' | 'DRINKS' | 'DESSERTS' | 'SAUCES';
+
+interface HomePageClientProps {
+  products: Product[];
+  tenant: Tenant;
+}
+
+export function HomePageClient({ products, tenant }: HomePageClientProps) {
+  const { t, language } = useLanguage();
+  const { addItem } = useCart();
+  const toast = useToastContext();
+  const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>('PIZZA');
+
+  // Group products by category (memoized)
+  const productsByCategory = useMemo(() => {
+    const grouped = products.reduce((acc, product) => {
+      const category = product.category || 'OTHER';
+      if (!acc[category]) {
+        acc[category] = [];
+      }
+      acc[category].push(product);
+      return acc;
+    }, {} as Record<string, Product[]>);
+    
+    // Sort products within each category
+    Object.keys(grouped).forEach(category => {
+      grouped[category].sort((a, b) => {
+        if (category === 'PIZZA') {
+          const aIsBuildYourOwn = a.name === 'Vyskladaj si vlastnú pizzu' || a.name === 'Build Your Own Pizza';
+          const bIsBuildYourOwn = b.name === 'Vyskladaj si vlastnú pizzu' || b.name === 'Build Your Own Pizza';
+          
+          if (aIsBuildYourOwn && !bIsBuildYourOwn) return -1;
+          if (!aIsBuildYourOwn && bIsBuildYourOwn) return 1;
+        }
+        
+        return a.name.localeCompare(b.name);
+      });
+    });
+    
+    return grouped;
+  }, [products]);
+
+  // Get filtered products (memoized)
+  const filteredProducts = useMemo(() => {
+    return categoryFilter === 'all' 
+      ? products 
+      : products.filter(p => p.category === categoryFilter);
+  }, [products, categoryFilter]);
+
+  // Category counts (memoized)
+  const categoryCounts = useMemo<Record<CategoryFilter, number>>(() => ({
+    all: products.length,
+    PIZZA: productsByCategory.PIZZA?.length || 0,
+    STANGLE: productsByCategory.STANGLE?.length || 0,
+    SOUPS: productsByCategory.SOUPS?.length || 0,
+    DRINKS: productsByCategory.DRINKS?.length || 0,
+    DESSERTS: productsByCategory.DESSERTS?.length || 0,
+    SIDES: productsByCategory.SIDES?.length || 0,
+    SAUCES: productsByCategory.SAUCES?.length || 0,
+  }), [products.length, productsByCategory]);
+
+  // Category emoji map
+  const categoryEmoji: Record<string, string> = {
+    all: '🍕',
+    PIZZA: '🍕',
+    STANGLE: '🥖',
+    SOUPS: '🍲',
+    DRINKS: '🥤',
+    DESSERTS: '🍰',
+  };
+
+  // Category labels (memoized)
+  const categoryLabels = useMemo<Record<string, string>>(() => ({
+    all: t.allMenu,
+    PIZZA: t.pizzas,
+    STANGLE: t.stangle,
+    SOUPS: t.soups,
+    DRINKS: t.drinks,
+    DESSERTS: t.desserts,
+    SAUCES: t.sauces,
+  }), [t]);
+
+  // Category display order
+  const categoryOrder = useMemo(() => ['PIZZA', 'STANGLE', 'SOUPS', 'DRINKS', 'DESSERTS'], []);
+  
+  // Get ordered categories that have products
+  const orderedCategories = useMemo(() => {
+    return categoryOrder.filter(cat => productsByCategory[cat]?.length > 0);
+  }, [productsByCategory, categoryOrder]);
+
+  // Pizza sub-category mapping
+  const pizzaSubCategoryMap: Record<string, 'FOREPLAY' | 'MAIN_ACTION' | 'DELUXE_FETISH' | 'PREMIUM_SINS'> = {
+    'Margherita': 'FOREPLAY',
+    'Prosciutto': 'FOREPLAY',
+    'Bon Salami': 'FOREPLAY',
+    'Picante': 'FOREPLAY',
+    'Calimero': 'FOREPLAY',
+    'Prosciutto Funghi': 'FOREPLAY',
+    'Hawaii Premium': 'FOREPLAY',
+    'Capri': 'FOREPLAY',
+    'Da Vinci': 'FOREPLAY',
+    'Quattro Stagioni': 'FOREPLAY',
+    'Fregata': 'FOREPLAY',
+    'Pivárska': 'FOREPLAY',
+    'Mayday Special': 'MAIN_ACTION',
+    'Gazdovská': 'MAIN_ACTION',
+    'Diavola Premium': 'MAIN_ACTION',
+    'Provinciale': 'MAIN_ACTION',
+    'Quattro Formaggi': 'DELUXE_FETISH',
+    'Quattro Formaggi Bianco': 'DELUXE_FETISH',
+    'Tonno': 'DELUXE_FETISH',
+    'Vegetariana Premium': 'DELUXE_FETISH',
+    'Basil Pesto Premium': 'PREMIUM_SINS',
+    'Honey Chilli': 'PREMIUM_SINS',
+    'Pollo Crema': 'PREMIUM_SINS',
+    'Prosciutto Crudo Premium': 'PREMIUM_SINS',
+  };
+
+  // Group pizzas by sub-category
+  const productsBySubCategory = useMemo(() => {
+    const pizzas = productsByCategory.PIZZA || [];
+    const grouped: Record<string, Product[]> = {
+      FOREPLAY: [],
+      MAIN_ACTION: [],
+      DELUXE_FETISH: [],
+      PREMIUM_SINS: [],
+      OTHER: [],
+    };
+    
+    pizzas.forEach(pizza => {
+      if (pizza.name === 'Vyskladaj si vlastnú pizzu' || pizza.name === 'Build Your Own Pizza') {
+        return;
+      }
+      
+      const subCat = pizzaSubCategoryMap[pizza.name];
+      if (subCat) {
+        grouped[subCat].push(pizza);
+      } else {
+        grouped.FOREPLAY.push(pizza);
+      }
+    });
+    
+    return grouped;
+  }, [productsByCategory.PIZZA, pizzaSubCategoryMap]);
+
+  // Category filter handler
+  const handleCategoryFilter = useCallback((category: CategoryFilter) => {
+    setCategoryFilter(category);
+  }, []);
+
+  const isDarkTheme = resolveDarkTheme(tenant);
+  const backgroundClass = getBackgroundClass(tenant);
+  const sectionShellClass = getSectionShellClass(tenant);
+  const bodyBackgroundClass = getBodyBackgroundClass(tenant);
+
+  // Get primary color
+  const primaryColor = tenant.theme?.primaryColor || '#DC143C';
+
+  // Check maintenance mode
+  const maintenanceMode = tenant.theme?.maintenanceMode === true;
+
+  // Apply background class to body
+  useEffect(() => {
+    if (!bodyBackgroundClass) {
+      document.body.classList.remove('bg-porno-vibe');
+      return;
+    }
+    const classes = bodyBackgroundClass.split(' ').filter(Boolean);
+    classes.forEach(cls => document.body.classList.add(cls));
+    return () => {
+      classes.forEach(cls => document.body.classList.remove(cls));
+    };
+  }, [bodyBackgroundClass]);
+
+  return (
+    <div
+      className={`${backgroundClass} ${isDarkTheme ? 'text-white' : 'text-gray-900'} min-h-screen relative`}
+    >
+      <Header tenant={tenant} />
+      
+      {maintenanceMode && (
+        <div
+          className={`relative overflow-hidden border-b ${
+            isDarkTheme
+              ? 'bg-[#100505]/95 border-white/10 text-white'
+              : 'bg-[#fff5eb] border-orange-200 text-gray-900'
+          }`}
+        >
+          {isDarkTheme && (
+            <div className="pointer-events-none absolute inset-0 opacity-60" aria-hidden>
+              <div
+                className="absolute inset-0"
+                style={{
+                  background:
+                    'linear-gradient(120deg, rgba(255,0,102,0.12), transparent), radial-gradient(circle at top, rgba(255,94,0,0.35), transparent 55%)',
+                }}
+              />
+            </div>
+          )}
+          <div className="relative container mx-auto px-4 py-5 sm:py-6">
+            <div className="flex flex-col md:flex-row md:items-center gap-4">
+              <div className="flex items-center gap-3">
+                <div
+                  className={`h-12 w-12 flex items-center justify-center rounded-2xl border ${
+                    isDarkTheme ? 'border-white/20 bg-black/60' : 'border-orange-200 bg-white'
+                  }`}
+                  aria-hidden
+                >
+                  <svg
+                    className={`w-6 h-6 ${isDarkTheme ? 'text-white' : 'text-orange-500'}`}
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4l2.5 2.5M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <div>
+                  <p className="text-2xl font-black tracking-tight">
+                    {t.maintenanceModeTitle}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      <HeroSection 
+        tenantName={tenant.name} 
+        primaryColor={primaryColor}
+        isDark={isDarkTheme}
+      />
+
+      {/* Best Sellers Section */}
+      {productsByCategory.PIZZA && productsByCategory.PIZZA.length > 0 && (() => {
+        // Get products marked as best sellers
+        const bestSellerPizzas = productsByCategory.PIZZA.filter(
+          p => p.isBestSeller === true && p.name !== 'Vyskladaj si vlastnú pizzu' && p.name !== 'Build Your Own Pizza'
+        ).slice(0, 4);
+        
+        // If no best sellers, use first 4 pizzas as fallback
+        const pizzasToShow = bestSellerPizzas.length > 0 
+          ? bestSellerPizzas 
+          : productsByCategory.PIZZA.filter(
+              p => p.name !== 'Vyskladaj si vlastnú pizzu' && p.name !== 'Build Your Own Pizza'
+            ).slice(0, 4);
+        
+        if (pizzasToShow.length === 0) return null;
+        
+        return (
+          <section className="container mx-auto px-4 py-16" style={{ position: 'relative', zIndex: 10 }}>
+            <div className={sectionShellClass}>
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                className="text-center mb-12"
+              >
+                <h2 
+                  className="text-5xl md:text-6xl font-bold mb-4"
+                  style={{ 
+                    color: 'var(--color-primary)',
+                    textShadow: 'none',
+                    letterSpacing: '0'
+                  }}
+                >
+                  {t.bestSellersTitle}
+                </h2>
+                <p className={`text-xl max-w-2xl mx-auto ${isDarkTheme ? 'text-gray-400' : ''}`} style={{ color: isDarkTheme ? '#999' : '#666666' }}>
+                  {t.bestSellersSubtitle}
+                </p>
+              </motion.div>
+
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: 0.1 }}
+                className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6"
+              >
+                {pizzasToShow.map((product, index) => (
+                  <ProductCard key={product.id} product={product} index={index} isBestSeller={true} isDark={isDarkTheme} />
+                ))}
+              </motion.div>
+            </div>
+          </section>
+        );
+      })()}
+
+      {/* Menu Section - Continue with rest of the component */}
+      <section id="menu" className="container mx-auto px-4 py-16" style={{ position: 'relative', zIndex: 10 }}>
+        <div className={sectionShellClass}>
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-center mb-12"
+          >
+            <h2 
+              className="text-5xl md:text-6xl font-bold mb-4"
+              style={{ 
+                color: 'var(--color-primary)',
+                textShadow: 'none',
+                letterSpacing: '0'
+              }}
+            >
+              {t.menuTitle}
+            </h2>
+            <p className={`text-xl max-w-2xl mx-auto ${isDarkTheme ? 'text-gray-400' : ''}`} style={{ color: isDarkTheme ? '#999' : '#666666' }}>
+              {t.menuSubtitle}
+            </p>
+          </motion.div>
+
+          {/* Category Filter Tabs */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="flex flex-wrap justify-center gap-3 mb-12"
+          >
+            {(Object.keys(categoryCounts) as CategoryFilter[]).map((category) => {
+              if (categoryCounts[category] === 0 || category === 'all') return null;
+              
+              const chipClass = isDarkTheme
+                ? `rounded-full font-bold transition-all ${
+                    categoryFilter === category
+                      ? 'category-chip category-chip--active scale-105'
+                      : 'category-chip hover:border-white/25'
+                  }`
+                : `px-6 py-3 rounded-lg font-bold transition-all ${
+                    categoryFilter === category
+                      ? 'text-white shadow-lg scale-105'
+                      : 'text-gray-700 hover:bg-gray-100 shadow bg-white'
+                  }`;
+
+              return (
+                <button
+                  key={category}
+                  onClick={() => handleCategoryFilter(category)}
+                  className={`${chipClass} px-6 py-3`}
+                  style={categoryFilter === category && !isDarkTheme 
+                    ? { backgroundColor: tenant.theme.primaryColor }
+                    : {}
+                  }
+                >
+                  <span className="mr-2">{categoryEmoji[category]}</span>
+                  {categoryLabels[category]}
+                </button>
+              );
+            })}
+          </motion.div>
+
+          {/* Products by Category */}
+          {categoryFilter === 'PIZZA' ? (
+            <>
+              {(() => {
+                const buildYourOwnPizza = productsByCategory.PIZZA?.find(
+                  p => p.name === 'Vyskladaj si vlastnú pizzu' || p.name === 'Build Your Own Pizza'
+                );
+                
+                const buildYourOwnTranslation = buildYourOwnPizza 
+                  ? getProductTranslation(buildYourOwnPizza.name, language)
+                  : null;
+                
+                return (
+                  <div className="mb-16" style={{ position: 'relative', zIndex: 1 }}>
+                    {/* FOREPLAY */}
+                    {productsBySubCategory.FOREPLAY.length > 0 && (
+                      <div className="mb-16">
+                        <motion.div
+                          initial={{ opacity: 0, x: -20 }}
+                          whileInView={{ opacity: 1, x: 0 }}
+                          viewport={{ once: true }}
+                          className="mb-8 text-center"
+                        >
+                          <h3 
+                            className={`text-4xl md:text-5xl font-black mb-2 ${isDarkTheme ? 'text-porno-glow' : ''}`}
+                            style={{ 
+                              color: isDarkTheme ? '#FF6B9D' : primaryColor,
+                              textShadow: isDarkTheme 
+                                ? '0 0 20px rgba(255, 107, 157, 0.7), 0 0 40px rgba(255, 107, 157, 0.4), 0 2px 8px rgba(0, 0, 0, 0.9)'
+                                : '0 2px 4px rgba(0, 0, 0, 0.1)',
+                              letterSpacing: '-0.02em'
+                            }}
+                          >
+                            🔥 {t.foreplay}
+                          </h3>
+                          <p className={`mb-4 text-lg ${isDarkTheme ? 'text-gray-400' : ''}`} style={{ color: isDarkTheme ? '#999' : '#666666' }}>{t.foreplayDesc}</p>
+                          <div className="h-1 w-32 rounded mx-auto" style={{ backgroundColor: primaryColor }}></div>
+                        </motion.div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                          {productsBySubCategory.FOREPLAY.map((product, index) => (
+                            <ProductCard key={product.id} product={product} index={index} isDark={isDarkTheme} />
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* MAIN ACTION */}
+                    {productsBySubCategory.MAIN_ACTION.length > 0 && (
+                      <div className="mb-16">
+                        <motion.div
+                          initial={{ opacity: 0, x: -20 }}
+                          whileInView={{ opacity: 1, x: 0 }}
+                          viewport={{ once: true }}
+                          className="mb-8 text-center"
+                        >
+                          <h3 
+                            className={`text-4xl md:text-5xl font-black mb-2 ${isDarkTheme ? 'text-porno-glow' : ''}`}
+                            style={{ 
+                              color: isDarkTheme ? '#FF6B9D' : primaryColor,
+                              textShadow: isDarkTheme 
+                                ? '0 0 20px rgba(255, 107, 157, 0.7), 0 0 40px rgba(255, 107, 157, 0.4), 0 2px 8px rgba(0, 0, 0, 0.9)'
+                                : '0 2px 4px rgba(0, 0, 0, 0.1)',
+                              letterSpacing: '-0.02em'
+                            }}
+                          >
+                            😈 {t.mainAction}
+                          </h3>
+                          <p className={`mb-4 text-lg ${isDarkTheme ? 'text-gray-400' : ''}`} style={{ color: isDarkTheme ? '#999' : '#666666' }}>{t.mainActionDesc}</p>
+                          <div className="h-1 w-32 rounded mx-auto" style={{ backgroundColor: primaryColor }}></div>
+                        </motion.div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                          {productsBySubCategory.MAIN_ACTION.map((product, index) => (
+                            <ProductCard key={product.id} product={product} index={index} isDark={isDarkTheme} />
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* DELUXE FETISH */}
+                    {productsBySubCategory.DELUXE_FETISH.length > 0 && (
+                      <div className="mb-16">
+                        <motion.div
+                          initial={{ opacity: 0, x: -20 }}
+                          whileInView={{ opacity: 1, x: 0 }}
+                          viewport={{ once: true }}
+                          className="mb-8 text-center"
+                        >
+                          <h3 
+                            className={`text-4xl md:text-5xl font-black mb-2 ${isDarkTheme ? 'text-porno-glow' : ''}`}
+                            style={{ 
+                              color: isDarkTheme ? '#FF6B9D' : primaryColor,
+                              textShadow: isDarkTheme 
+                                ? '0 0 20px rgba(255, 107, 157, 0.7), 0 0 40px rgba(255, 107, 157, 0.4), 0 2px 8px rgba(0, 0, 0, 0.9)'
+                                : '0 2px 4px rgba(0, 0, 0, 0.1)',
+                              letterSpacing: '-0.02em'
+                            }}
+                          >
+                            💋 {t.deluxeFetish}
+                          </h3>
+                          <p className={`mb-4 text-lg ${isDarkTheme ? 'text-gray-400' : ''}`} style={{ color: isDarkTheme ? '#999' : '#666666' }}>{t.deluxeFetishDesc}</p>
+                          <div className="h-1 w-32 rounded mx-auto" style={{ backgroundColor: primaryColor }}></div>
+                        </motion.div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                          {productsBySubCategory.DELUXE_FETISH.map((product, index) => (
+                            <ProductCard key={product.id} product={product} index={index} isDark={isDarkTheme} />
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* PREMIUM SINS */}
+                    {productsBySubCategory.PREMIUM_SINS.length > 0 && (
+                      <div className="mb-16">
+                        <motion.div
+                          initial={{ opacity: 0, x: -20 }}
+                          whileInView={{ opacity: 1, x: 0 }}
+                          viewport={{ once: true }}
+                          className="mb-8 text-center"
+                        >
+                          <h3 
+                            className={`text-4xl md:text-5xl font-black mb-2 ${isDarkTheme ? 'text-porno-glow' : ''}`}
+                            style={{ 
+                              color: isDarkTheme ? '#FF6B9D' : primaryColor,
+                              textShadow: isDarkTheme 
+                                ? '0 0 20px rgba(255, 107, 157, 0.7), 0 0 40px rgba(255, 107, 157, 0.4), 0 2px 8px rgba(0, 0, 0, 0.9)'
+                                : '0 2px 4px rgba(0, 0, 0, 0.1)',
+                              letterSpacing: '-0.02em'
+                            }}
+                          >
+                            🍑 {t.premiumSins}
+                          </h3>
+                          <p className={`mb-4 text-lg ${isDarkTheme ? 'text-gray-400' : ''}`} style={{ color: isDarkTheme ? '#999' : '#666666' }}>{t.premiumSinsDesc}</p>
+                          <div className="h-1 w-32 rounded mx-auto" style={{ backgroundColor: primaryColor }}></div>
+                        </motion.div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                          {productsBySubCategory.PREMIUM_SINS.map((product, index) => (
+                            <ProductCard key={product.id} product={product} index={index} isDark={isDarkTheme} />
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Build Your Own Pizza */}
+                    {buildYourOwnPizza && (
+                      <div className="mb-16">
+                        <motion.div
+                          initial={{ opacity: 0, x: -20 }}
+                          whileInView={{ opacity: 1, x: 0 }}
+                          viewport={{ once: true }}
+                          className="mb-8 text-center"
+                        >
+                          <h3 
+                            className={`text-4xl md:text-5xl font-black mb-2 flex items-center justify-center gap-3 ${isDarkTheme ? 'text-porno-glow' : ''}`}
+                            style={{ 
+                              color: isDarkTheme ? '#FF6B9D' : primaryColor,
+                              textShadow: isDarkTheme 
+                                ? '0 0 20px rgba(255, 107, 157, 0.7), 0 0 40px rgba(255, 107, 157, 0.4), 0 2px 8px rgba(0, 0, 0, 0.9)'
+                                : '0 2px 4px rgba(0, 0, 0, 0.1)',
+                              letterSpacing: '-0.02em'
+                            }}
+                          >
+                            <span className="text-5xl">🍕</span>
+                            {buildYourOwnTranslation?.name || 'Vyskladaj si vlastnú pizzu'}
+                          </h3>
+                          <div className="h-1 w-32 rounded mx-auto" style={{ backgroundColor: primaryColor }}></div>
+                        </motion.div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                          <ProductCard key={buildYourOwnPizza.id} product={buildYourOwnPizza} index={0} isDark={isDarkTheme} />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+            </>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {filteredProducts.map((product, index) => (
+              <ProductCard key={product.id} product={product} index={index} isDark={isDarkTheme} />
+            ))}
+            </div>
+          )}
+
+          {filteredProducts.length === 0 && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="text-center py-20"
+            >
+              <div className="text-6xl mb-4">😕</div>
+              <h3 className={`text-2xl font-bold mb-2 ${isDarkTheme ? 'text-white' : 'text-gray-700'}`}>No items found</h3>
+              <p className={isDarkTheme ? 'text-gray-400' : 'text-gray-500'}>Try a different category</p>
+            </motion.div>
+          )}
+        </div>
+      </section>
+
+      <Footer tenantName={tenant.name} primaryColor={tenant.theme.primaryColor} />
+      <Cart tenant={tenant} isDark={isDarkTheme} />
+    </div>
+  );
+}

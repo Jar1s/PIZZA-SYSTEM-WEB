@@ -50,6 +50,15 @@ else
         echo -e "${YELLOW}   Backend might not work without database configuration${NC}"
     fi
     
+    # Ensure shared module exists before building (if dist exists)
+    if [ -d "dist" ] && [ ! -f "dist/shared/index.js" ]; then
+        echo -e "${YELLOW}⚠️  Shared module missing, building it first...${NC}"
+        node build-shared.js || {
+            echo -e "${RED}❌ Failed to build shared module${NC}"
+            exit 1
+        }
+    fi
+    
     # Build and start backend in background
     npm run start:dev > ../backend.log 2>&1 &
     BACKEND_PID=$!
@@ -87,8 +96,8 @@ else
         echo -e "${YELLOW}⚠️  .env.local not found, using defaults${NC}"
     fi
     
-    # Start frontend in background
-    npm run dev > ../frontend.log 2>&1 &
+    # Start frontend in background on port 3001
+    PORT=3001 npm run dev > ../frontend.log 2>&1 &
     FRONTEND_PID=$!
     cd ..
     

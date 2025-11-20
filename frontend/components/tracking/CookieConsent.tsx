@@ -207,7 +207,7 @@ export function CookieConsent() {
 
     const fbPixelId = process.env.NEXT_PUBLIC_FB_PIXEL_ID;
     if (!fbPixelId) {
-      console.warn('Facebook Pixel ID not configured. Set NEXT_PUBLIC_FB_PIXEL_ID in .env.local');
+      // Facebook Pixel is optional, silently skip if not configured
       return;
     }
 

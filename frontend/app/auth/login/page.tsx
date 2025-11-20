@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useCustomerAuth } from '@/contexts/CustomerAuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { getTenant, checkEmailExists } from '@/lib/api';
-import { Tenant } from '@/shared';
+import { Tenant } from '@pizza-ecosystem/shared';
 import Image from 'next/image';
 import { validateReturnUrl } from '@/lib/validate-return-url';
 
@@ -181,6 +181,17 @@ export default function CustomerLoginPage() {
     loginWithGoogle(returnUrl || undefined);
   };
 
+  useEffect(() => {
+    if (!tenant) return;
+    const layout = tenant.theme?.layout || {};
+    if (layout.useCustomBackground && layout.customBackgroundClass === 'porno-bg') {
+      document.body.classList.add('bg-porno-vibe');
+      return () => {
+        document.body.classList.remove('bg-porno-vibe');
+      };
+    }
+  }, [tenant]);
+
   if (!tenant) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
@@ -191,14 +202,22 @@ export default function CustomerLoginPage() {
     );
   }
 
+  const layout = tenant.theme?.layout || {};
+  const isDark = layout.headerStyle === 'dark';
+  
+  const inputClasses = isDark
+    ? 'w-full rounded-2xl px-4 py-3 bg-white/10 border border-white/10 text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-white/30'
+    : 'w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-yellow-400';
+
   const primaryColor = tenant.theme?.primaryColor || '#FFD700';
-  const isPornopizza = tenant.slug === 'pornopizza' || tenant.subdomain === 'pornopizza';
 
   return (
-    <div className="flex min-h-screen bg-white">
+    <div
+      className={`flex min-h-screen ${isDark ? 'text-white porno-bg relative' : 'bg-white text-gray-900'}`}
+    >
       {/* Left: Login Form */}
-      <div className="w-full lg:w-1/2 flex items-center justify-center p-8 lg:p-12">
-        <div className="w-full max-w-md">
+      <div className={`w-full lg:w-1/2 flex items-center justify-center p-8 lg:p-12 ${isDark ? 'relative z-10' : ''}`}>
+        <div className={`w-full max-w-md ${isDark ? 'login-card-dark' : ''}`}>
           {/* Back Button */}
           <button
             onClick={() => {
@@ -207,7 +226,9 @@ export default function CustomerLoginPage() {
               // Always redirect to main page
               router.push(`/?tenant=${tenantSlug}`);
             }}
-            className="mb-6 flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
+            className={`mb-6 flex items-center gap-2 transition-colors ${
+              isDark ? 'text-gray-300 hover:text-white' : 'text-gray-600 hover:text-gray-900'
+            }`}
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
@@ -242,7 +263,9 @@ export default function CustomerLoginPage() {
           {/* Google Login */}
           <button
             onClick={handleGoogleLogin}
-            className="w-full border border-gray-300 rounded-lg px-4 py-3 mb-6 flex items-center justify-center gap-3 hover:bg-gray-50 transition-colors"
+            className={`w-full rounded-2xl px-4 py-3 mb-6 flex items-center justify-center gap-3 transition-colors ${
+              isDark ? 'bg-white text-gray-900' : 'border border-gray-300 hover:bg-gray-50'
+            }`}
           >
             <svg className="w-5 h-5" viewBox="0 0 24 24">
               <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -256,10 +279,10 @@ export default function CustomerLoginPage() {
           {/* Separator */}
           <div className="relative mb-6">
             <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-300"></div>
+              <div className={`w-full border-t ${isDark ? 'border-white/10' : 'border-gray-300'}`}></div>
             </div>
             <div className="relative flex justify-center text-sm">
-              <span className="px-2 bg-white text-gray-500">{t.orEnterEmail}</span>
+              <span className={`px-2 ${isDark ? 'bg-transparent text-gray-300' : 'bg-white text-gray-500'}`}>{t.orEnterEmail}</span>
             </div>
           </div>
 
@@ -267,7 +290,7 @@ export default function CustomerLoginPage() {
           {step === 'email' && (
             <form onSubmit={handleEmailSubmit}>
               <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>
                   {t.yourEmail}
                 </label>
                 <input
@@ -275,15 +298,17 @@ export default function CustomerLoginPage() {
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-yellow-400"
+                  className={inputClasses}
                   placeholder={t.emailPlaceholder}
                 />
               </div>
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full text-black font-semibold py-3 rounded-lg disabled:opacity-50 transition-colors"
-                style={{ backgroundColor: primaryColor }}
+                className={`w-full font-semibold py-3 rounded-2xl disabled:opacity-50 transition-colors ${
+                  isDark ? 'bg-gradient-to-r from-[#ff5e00] via-[#ff0066] to-[#ff2d55] text-white' : 'text-black'
+                }`}
+                style={!isDark ? { backgroundColor: primaryColor } : undefined}
               >
                 {loading ? t.checking : t.next}
               </button>
@@ -294,7 +319,7 @@ export default function CustomerLoginPage() {
           {step === 'password' && (
             <form onSubmit={handleLogin}>
               <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>
                   {t.password}
                 </label>
                 <input
@@ -302,22 +327,24 @@ export default function CustomerLoginPage() {
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-yellow-400"
+                  className={inputClasses}
                   placeholder={t.passwordPlaceholder}
                 />
               </div>
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full text-black font-semibold py-3 rounded-lg disabled:opacity-50 transition-colors mb-2"
-                style={{ backgroundColor: primaryColor }}
+                className={`w-full font-semibold py-3 rounded-2xl disabled:opacity-50 transition-colors mb-2 ${
+                  isDark ? 'bg-gradient-to-r from-[#ff5e00] via-[#ff0066] to-[#ff2d55] text-white' : 'text-black'
+                }`}
+                style={!isDark ? { backgroundColor: primaryColor } : undefined}
               >
                 {loading ? t.loggingIn : t.login}
               </button>
               <button
                 type="button"
                 onClick={() => setStep('email')}
-                className="w-full text-sm text-gray-600 hover:text-gray-800"
+                className={`w-full text-sm ${isDark ? 'text-gray-300 hover:text-white' : 'text-gray-600 hover:text-gray-800'}`}
               >
                 {t.back}
               </button>
@@ -328,7 +355,7 @@ export default function CustomerLoginPage() {
           {step === 'register' && (
             <form onSubmit={handleRegister}>
               <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>
                   {t.name}
                 </label>
                 <input
@@ -336,12 +363,12 @@ export default function CustomerLoginPage() {
                   required
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-yellow-400"
+                  className={inputClasses}
                   placeholder={t.namePlaceholder}
                 />
               </div>
               <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>
                   {t.password}
                 </label>
                 <input
@@ -349,22 +376,24 @@ export default function CustomerLoginPage() {
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-yellow-400"
+                  className={inputClasses}
                   placeholder={t.passwordPlaceholder}
                 />
               </div>
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full text-black font-semibold py-3 rounded-lg disabled:opacity-50 transition-colors mb-2"
-                style={{ backgroundColor: primaryColor }}
+                className={`w-full font-semibold py-3 rounded-2xl disabled:opacity-50 transition-colors mb-2 ${
+                  isDark ? 'bg-gradient-to-r from-[#ff5e00] via-[#ff0066] to-[#ff2d55] text-white' : 'text-black'
+                }`}
+                style={!isDark ? { backgroundColor: primaryColor } : undefined}
               >
                 {loading ? t.registering : t.register}
               </button>
               <button
                 type="button"
                 onClick={() => setStep('email')}
-                className="w-full text-sm text-gray-600 hover:text-gray-800"
+                className={`w-full text-sm ${isDark ? 'text-gray-300 hover:text-white' : 'text-gray-600 hover:text-gray-800'}`}
               >
                 {t.back}
               </button>
@@ -372,7 +401,9 @@ export default function CustomerLoginPage() {
           )}
 
           {error && (
-            <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-800 text-sm">
+            <div className={`mt-4 p-3 rounded-lg text-sm ${
+              isDark ? 'bg-red-500/10 border border-red-500/40 text-red-200' : 'bg-red-50 border border-red-200 text-red-800'
+            }`}>
               {error}
             </div>
           )}
@@ -380,42 +411,69 @@ export default function CustomerLoginPage() {
       </div>
 
       {/* Right: Benefits */}
-      <div className="hidden lg:flex w-1/2 bg-gray-50 items-center justify-center p-12">
-        <div className="max-w-md">
-          <h2 className="text-2xl font-bold mb-8">{t.registrationBenefits}</h2>
-          <div className="space-y-6">
-            <div className="flex items-start gap-4">
-              <div className="text-3xl">🎁</div>
+      <div className={`hidden lg:flex w-1/2 items-center justify-center p-12 ${isDark ? 'relative overflow-hidden' : 'bg-gray-50'}`}>
+        {isDark ? (
+          <>
+            <div className="absolute inset-0">
+              <Image src="/images/hero/pizza-hero.jpg" alt="Pizza background" fill className="object-cover" />
+              <div className="absolute inset-0 bg-gradient-to-br from-black/90 via-black/60 to-transparent" />
+            </div>
+            <div className="relative z-10 max-w-md space-y-6 text-gray-200">
+              <h2 className="text-3xl font-black text-white">{t.registrationBenefits}</h2>
               <div>
-                <h3 className="font-semibold mb-1">{t.loyaltyProgram}</h3>
-                <p className="text-gray-600 text-sm">{t.loyaltyProgramDesc}</p>
+                <p className="text-xs uppercase tracking-[0.4em] text-rose-200">{t.loyaltyProgram}</p>
+                <p className="text-lg font-semibold">{t.loyaltyProgramDesc}</p>
+              </div>
+              <div>
+                <p className="text-xs uppercase tracking-[0.4em] text-rose-200">{t.fasterPayment}</p>
+                <p className="text-lg font-semibold">{t.fasterPaymentDesc}</p>
+              </div>
+              <div>
+                <p className="text-xs uppercase tracking-[0.4em] text-rose-200">{t.additionalFeatures}</p>
+                <p className="text-lg font-semibold">{t.additionalFeaturesDesc}</p>
+              </div>
+              <div>
+                <p className="text-xs uppercase tracking-[0.4em] text-rose-200">{t.orderHistory}</p>
+                <p className="text-lg font-semibold">{t.orderHistoryDesc}</p>
               </div>
             </div>
-            <div className="flex items-start gap-4">
-              <div className="text-3xl">🛍️</div>
-              <div>
-                <h3 className="font-semibold mb-1">{t.fasterPayment}</h3>
-                <p className="text-gray-600 text-sm">{t.fasterPaymentDesc}</p>
+          </>
+        ) : (
+          <div className="max-w-md">
+            <h2 className="text-2xl font-bold mb-8">{t.registrationBenefits}</h2>
+            <div className="space-y-6">
+              <div className="flex items-start gap-4">
+                <div className="text-3xl">🎁</div>
+                <div>
+                  <h3 className="font-semibold mb-1">{t.loyaltyProgram}</h3>
+                  <p className="text-gray-600 text-sm">{t.loyaltyProgramDesc}</p>
+                </div>
               </div>
-            </div>
-            <div className="flex items-start gap-4">
-              <div className="text-3xl">✨</div>
-              <div>
-                <h3 className="font-semibold mb-1">{t.additionalFeatures}</h3>
-                <p className="text-gray-600 text-sm">{t.additionalFeaturesDesc}</p>
+              <div className="flex items-start gap-4">
+                <div className="text-3xl">🛍️</div>
+                <div>
+                  <h3 className="font-semibold mb-1">{t.fasterPayment}</h3>
+                  <p className="text-gray-600 text-sm">{t.fasterPaymentDesc}</p>
+                </div>
               </div>
-            </div>
-            <div className="flex items-start gap-4">
-              <div className="text-3xl">🕐</div>
-              <div>
-                <h3 className="font-semibold mb-1">{t.orderHistory}</h3>
-                <p className="text-gray-600 text-sm">{t.orderHistoryDesc}</p>
+              <div className="flex items-start gap-4">
+                <div className="text-3xl">✨</div>
+                <div>
+                  <h3 className="font-semibold mb-1">{t.additionalFeatures}</h3>
+                  <p className="text-gray-600 text-sm">{t.additionalFeaturesDesc}</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-4">
+                <div className="text-3xl">🕐</div>
+                <div>
+                  <h3 className="font-semibold mb-1">{t.orderHistory}</h3>
+                  <p className="text-gray-600 text-sm">{t.orderHistoryDesc}</p>
+                </div>
               </div>
             </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );
 }
-

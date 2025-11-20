@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { getTenant } from '@/lib/api';
-import { Tenant } from '@/shared';
+import { Tenant } from '@pizza-ecosystem/shared';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useToastContext } from '@/contexts/ToastContext';
 import { Header } from '@/components/layout/Header';
@@ -80,11 +80,16 @@ export default function OrderSuccessPage() {
     ? tenant.theme as any
     : {};
   const primaryColor = theme.primaryColor || '#DC143C';
-  const isPornopizza = tenant.slug === 'pornopizza' || tenant.subdomain === 'pornopizza' || tenant.name?.toLowerCase().includes('pornopizza');
-  const backgroundClass = isPornopizza ? 'bg-skin-tone' : 'bg-gray-50';
+  const layout = theme.layout || {};
+  const isDark = layout.headerStyle === 'dark';
+  const useCustomBackground = layout.useCustomBackground || false;
+  const customBackgroundClass = layout.customBackgroundClass || '';
+  const backgroundClass = isDark && useCustomBackground && customBackgroundClass === 'porno-bg' 
+    ? 'bg-skin-tone' 
+    : 'bg-gray-50';
 
   return (
-    <div className={`min-h-screen ${backgroundClass}`} style={isPornopizza ? { minHeight: '100vh', position: 'relative' } : {}}>
+    <div className={`min-h-screen ${backgroundClass}`} style={isDark && useCustomBackground ? { minHeight: '100vh', position: 'relative' } : {}}>
       <Header tenant={tenant} />
       <div className="flex items-center justify-center p-4 pt-24">
         <motion.div

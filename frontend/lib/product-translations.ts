@@ -27,12 +27,12 @@ export const productTranslations: Record<string, ProductTranslation> = {
     allergens: ['1', '7'] // Depends on selections
   },
   
-  // Classic Pizzas - Presné informácie z Mayday Pizza
+  // 🔥 PREDOHRA / FOREPLAY
   'Margherita': {
-    name: { sk: 'Pizza Margherita', en: 'Pizza Margherita' },
+    name: { sk: 'Margherita Nuda', en: 'Margherita Nuda' },
     description: {
-      sk: 'Paradajkový základ, mozzarella',
-      en: 'Tomato base, mozzarella'
+      sk: 'Paradajkový základ, mozzarella – základ každého potešenia.',
+      en: 'Tomato base, mozzarella – the foundation of every pleasure.'
     },
     weight: '450g',
     allergens: ['1', '7']
@@ -47,12 +47,12 @@ export const productTranslations: Record<string, ProductTranslation> = {
     allergens: ['1', '7']
   },
   'Capri': {
-    name: { sk: 'Pizza Capri', en: 'Pizza Capri' },
+    name: { sk: 'Corny Love', en: 'Corny Love' },
     description: {
-      sk: 'Paradajkový základ, mozzarella, šunka, kukurica, šampiňóny',
-      en: 'Tomato base, mozzarella, ham, corn, mushrooms'
+      sk: 'Paradajkový základ, mozzarella, šunka, kukurica – sladká nevinnosť.',
+      en: 'Tomato base, mozzarella, ham, corn – sweet innocence.'
     },
-    weight: '550g',
+    weight: '520g',
     allergens: ['1', '7']
   },
   'Fregata': {
@@ -65,12 +65,12 @@ export const productTranslations: Record<string, ProductTranslation> = {
     allergens: ['1', '3', '7'] // lepok, vajíčka, mlieko
   },
   'Gazdovská': {
-    name: { sk: 'Pizza Gazdovská', en: 'Pizza Country Style' },
+    name: { sk: 'Gazda Deluxe', en: 'Gazda Deluxe' },
     description: {
-      sk: 'Paradajkový základ, mozzarella, slanina, cibuľa, šampiňóny, saláma',
-      en: 'Tomato base, mozzarella, bacon, onion, mushrooms, salami'
+      sk: 'Paradajkový základ, mozzarella, klobása, slanina, cibuľa - poriadna sila, keď potrebuješ viac.',
+      en: 'Tomato base, mozzarella, sausage, bacon, onion - real power when you need more.'
     },
-    weight: '450g',
+    weight: '520g',
     allergens: ['1', '7']
   },
   'Pivárska': {
@@ -92,176 +92,178 @@ export const productTranslations: Record<string, ProductTranslation> = {
     allergens: ['1', '7']
   },
   'Prosciutto': {
-    name: { sk: 'Pizza Prosciutto', en: 'Pizza Prosciutto' },
+    name: { sk: 'Prosciutto Tease', en: 'Prosciutto Tease' },
     description: {
-      sk: 'Paradajkový základ, mozzarella, šunka',
-      en: 'Tomato base, mozzarella, ham'
+      sk: 'Paradajkový základ, mozzarella, šunka – jemne vyzývavá.',
+      en: 'Tomato base, mozzarella, ham – gently provocative.'
     },
     weight: '500g',
     allergens: ['1', '7']
   },
+  // 💋 DELUXE FETISH
   'Quattro Formaggi': {
-    name: { sk: 'Pizza Quattro Formaggi', en: 'Pizza Quattro Formaggi' },
+    name: { sk: 'Four Cheese Fetish', en: 'Four Cheese Fetish' },
     description: {
-      sk: 'Paradajkový základ, mozzarella, údený syr, niva, parmezán',
-      en: 'Tomato base, mozzarella, smoked cheese, blue cheese, parmesan'
+      sk: 'Paradajkový základ, mozzarella, niva, eidam, parmezán – nebezpečne sýrové pokušenie.',
+      en: 'Tomato base, mozzarella, blue cheese, edam, parmesan – dangerously cheesy temptation.'
     },
-    weight: '550g',
+    weight: '520g',
     allergens: ['1', '7']
   },
   'Quattro Formaggi Bianco': {
-    name: { sk: 'Pizza Quattro Formaggi Bianco', en: 'Pizza Quattro Formaggi Bianco' },
+    name: { sk: 'White Dream', en: 'White Dream' },
     description: {
-      sk: 'Smetanový základ, mozzarella, údený syr, niva, parmezán',
-      en: 'Cream base, mozzarella, smoked cheese, blue cheese, parmesan'
+      sk: 'Smotanový základ, mozzarella, niva, eidam, parmezán – jemné, ale nebezpečne dobré.',
+      en: 'Cream base, mozzarella, blue cheese, edam, parmesan – gentle, but dangerously good.'
     },
-    weight: '450g',
+    weight: '520g',
     allergens: ['1', '7']
   },
   'Tonno': {
-    name: { sk: 'Pizza Tuniaková', en: 'Pizza Tonno' },
+    name: { sk: 'Tuna Affair', en: 'Tuna Affair' },
     description: {
-      sk: 'Paradajkový základ, mozzarella, tuniak, cibuľa',
-      en: 'Tomato base, mozzarella, tuna, onion'
+      sk: 'Paradajkový základ, mozzarella, tuniak, cibuľa – pre milovníkov morských radostí.',
+      en: 'Tomato base, mozzarella, tuna, onion – for lovers of sea pleasures.'
     },
-    weight: '550g',
+    weight: '520g',
     allergens: ['1', '4', '7']
   },
   
-  // Premium Pizzas
+  // 🍑 PREMIUM SINS
   'Basil Pesto Premium': {
-    name: { sk: 'Pizza Bazila Pesto', en: 'Pizza Basil Pesto' },
+    name: { sk: 'Pesto Affair', en: 'Pesto Affair' },
     description: {
-      sk: 'Paradajkový základ, mozzarella, bazalkové pesto, šunka, ricotta, paradajky, parmezán',
-      en: 'Tomato base, mozzarella, basil pesto, ham, ricotta, tomatoes, parmesan'
+      sk: 'Bazalkové pesto, mozzarella, cherry paradajky – green and naughty.',
+      en: 'Basil pesto, mozzarella, cherry tomatoes – green and naughty.'
     },
-    weight: '450g',
-    allergens: ['1', '7', '8'] // lepok, mlieko, orechy
+    weight: '520g',
+    allergens: ['1', '7', '8']
   },
   'Bon Salami': {
-    name: { sk: 'Pizza Bon Salami', en: 'Pizza Bon Salami' },
+    name: { sk: 'Salami 69', en: 'Salami 69' },
     description: {
-      sk: 'Paradajkový základ, mozzarella, saláma',
-      en: 'Tomato base, mozzarella, salami'
+      sk: 'Paradajkový základ, mozzarella, saláma – spicy in all the right places.',
+      en: 'Tomato base, mozzarella, salami – spicy in all the right places.'
     },
     weight: '500g',
     allergens: ['1', '7']
   },
   'Calimero': {
-    name: { sk: 'Pizza Calimero', en: 'Pizza Calimero' },
+    name: { sk: 'Calimero Quickie', en: 'Calimero Quickie' },
     description: {
-      sk: 'Paradajkový základ, mozzarella, šunka, kukurica',
-      en: 'Tomato base, mozzarella, ham, corn'
+      sk: 'Paradajkový základ, mozzarella, šunka, vajce – rýchle, ale stojí za to.',
+      en: 'Tomato base, mozzarella, ham, egg – quick, but worth it.'
     },
-    weight: '550g',
-    allergens: ['1', '7']
+    weight: '520g',
+    allergens: ['1', '3', '7']
   },
   'Da Vinci': {
-    name: { sk: 'Pizza Da Vinci', en: 'Pizza Da Vinci' },
+    name: { sk: 'Da Vinci Desire', en: 'Da Vinci Desire' },
     description: {
-      sk: 'Paradajkový základ, mozzarella, šunka, slanina, niva, olivy',
-      en: 'Tomato base, mozzarella, ham, bacon, blue cheese, olives'
+      sk: 'Paradajkový základ, mozzarella, šunka, šampiňóny, kukurica.',
+      en: 'Tomato base, mozzarella, ham, mushrooms, corn.'
     },
-    weight: '550g',
+    weight: '520g',
     allergens: ['1', '7']
   },
   'Diavola Premium': {
-    name: { sk: 'Pizza Diavola', en: 'Pizza Diavola' },
+    name: { sk: 'Diavola Dominant', en: 'Diavola Dominant' },
     description: {
-      sk: 'Paradajkový základ, chilli, mozzarella, pikantná saláma, baranie rohy, jalapenos',
-      en: 'Tomato base, chilli, mozzarella, spicy salami, pickled peppers, jalapeños'
+      sk: 'Paradajkový základ, mozzarella, pikantná saláma, feferóny – trochu bolí, ale chceš viac.',
+      en: 'Tomato base, mozzarella, spicy salami, peppers – it hurts a bit, but you want more.'
     },
-    weight: '550g',
+    weight: '520g',
     allergens: ['1', '7']
   },
   'Hawaii Premium': {
-    name: { sk: 'Pizza Hawai', en: 'Pizza Hawaii' },
+    name: { sk: 'Hawai Crush', en: 'Hawai Crush' },
     description: {
-      sk: 'Paradajkový základ, mozzarella, šunka, ananás',
-      en: 'Tomato base, mozzarella, ham, pineapple'
+      sk: 'Paradajkový základ, mozzarella, šunka, ananás – tropický flirt.',
+      en: 'Tomato base, mozzarella, ham, pineapple – tropical flirt.'
     },
-    weight: '550g',
+    weight: '520g',
     allergens: ['1', '7']
   },
+  // 😈 MAIN ACTION / HLAVNÉ ČÍSLO
   'Mayday Special': {
-    name: { sk: 'Pizza Mayday', en: 'Pizza Mayday' },
+    name: { sk: 'Bacon Affair', en: 'Bacon Affair' },
     description: {
-      sk: 'Paradajkový základ, mozzarella, šunka, slanina, kukurica, vajce',
-      en: 'Tomato base, mozzarella, ham, bacon, corn, egg'
+      sk: 'Paradajkový základ, mozzarella, šunka, slanina, vajce, cibuľa - guilty pleasure, čo nikdy nesklame.',
+      en: 'Tomato base, mozzarella, ham, bacon, egg, onion - guilty pleasure that never fails.'
     },
-    weight: '550g',
-    allergens: ['1', '7', '3'] // lepok, mlieko, vajce
+    weight: '520g',
+    allergens: ['1', '3', '7']
   },
   'Honey Chilli': {
-    name: { sk: 'Pizza Med-Chilli', en: 'Pizza Honey Chilli' },
+    name: { sk: 'Honey Temptation', en: 'Honey Temptation' },
     description: {
-      sk: 'Paradajkový základ, chilli, mozzarella, med, kur.prsia, ananás, oregáno',
-      en: 'Tomato base, chilli, mozzarella, honey, chicken breast, pineapple, oregano'
+      sk: 'Paradajkový základ, mozzarella, kuracie mäso, medovo-chilli omáčka – sweet & hot.',
+      en: 'Tomato base, mozzarella, chicken, honey-chilli sauce – sweet & hot.'
     },
-    weight: '450g',
+    weight: '520g',
     allergens: ['1', '7']
   },
   'Picante': {
-    name: { sk: 'Pizza Picante', en: 'Pizza Picante' },
+    name: { sk: 'Hot Fantasy', en: 'Hot Fantasy' },
     description: {
-      sk: 'Paradajkový základ, mozzarella, pikantná saláma, jalapenos',
-      en: 'Tomato base, mozzarella, spicy salami, jalapeños'
+      sk: 'Paradajkový základ, mozzarella, feferóny, pikantná saláma – horúce spojenie.',
+      en: 'Tomato base, mozzarella, peppers, spicy salami – hot connection.'
     },
     weight: '520g',
     allergens: ['1', '7']
   },
   'Pollo Crema': {
-    name: { sk: 'Pizza Pollo crema', en: 'Pizza Pollo Crema' },
+    name: { sk: 'Pollo Creamy Dream', en: 'Pollo Creamy Dream' },
     description: {
-      sk: 'Smetanový základ, mozzarella, kur.prsia, niva, kukurica, brokolica',
-      en: 'Cream base, mozzarella, chicken breast, blue cheese, corn, broccoli'
+      sk: 'Smotanový základ, mozzarella, kuracie mäso, kukurica – jemné, ale nebezpečne návykové.',
+      en: 'Cream base, mozzarella, chicken, corn – gentle, but dangerously addictive.'
     },
-    weight: '550g',
+    weight: '520g',
     allergens: ['1', '7']
   },
   'Prosciutto Crudo Premium': {
-    name: { sk: 'Pizza Prosciutto Crudo', en: 'Pizza Prosciutto Crudo' },
+    name: { sk: 'Crudo Affair', en: 'Crudo Affair' },
     description: {
-      sk: 'Paradajkový základ, mozzarella, prosciutto crudo, cherry paradajky, rukola, parmezán',
-      en: 'Tomato base, mozzarella, prosciutto crudo, cherry tomatoes, arugula, parmesan'
+      sk: 'Paradajkový základ, mozzarella, prosciutto crudo, rukola, parmezán – talianska vášeň.',
+      en: 'Tomato base, mozzarella, prosciutto crudo, arugula, parmesan – Italian passion.'
     },
-    weight: '550g',
+    weight: '520g',
     allergens: ['1', '7']
   },
   'Prosciutto Funghi': {
-    name: { sk: 'Pizza Prosciutto Funghi', en: 'Pizza Prosciutto Funghi' },
+    name: { sk: 'Shroom Affair', en: 'Shroom Affair' },
     description: {
-      sk: 'Paradajkový základ, mozzarella, šunka, šampiňóny',
-      en: 'Tomato base, mozzarella, ham, mushrooms'
+      sk: 'Paradajkový základ, mozzarella, šunka, šampiňóny – jemne zakázaná kombinácia, čo prekvapí každým sústom.',
+      en: 'Tomato base, mozzarella, ham, mushrooms – gently forbidden combination that surprises with every bite.'
     },
-    weight: '530g',
+    weight: '520g',
     allergens: ['1', '7']
   },
   'Provinciale': {
-    name: { sk: 'Pizza Provinciale', en: 'Pizza Provinciale' },
+    name: { sk: 'Country Affair', en: 'Country Affair' },
     description: {
-      sk: 'Paradajkový základ, mozzarella, šunka, slanina, kukurica, baranie rohy',
-      en: 'Tomato base, mozzarella, ham, bacon, corn, pickled peppers'
+      sk: 'Paradajkový základ, mozzarella, šunka, slanina, kukurica – jednoduché, ale maximálne uspokojivé.',
+      en: 'Tomato base, mozzarella, ham, bacon, corn – simple, but maximally satisfying.'
     },
-    weight: '450g',
+    weight: '520g',
     allergens: ['1', '7']
   },
   'Quattro Stagioni': {
-    name: { sk: 'Pizza Quattro Stagioni', en: 'Pizza Quattro Stagioni' },
+    name: { sk: 'Mixtape of Sins', en: 'Mixtape of Sins' },
     description: {
-      sk: 'Paradajkový základ, mozzarella, šunka, šampiňóny, olivy, artičoky',
-      en: 'Tomato base, mozzarella, ham, mushrooms, olives, artichokes'
+      sk: 'Paradajkový základ, mozzarella, šunka, šampiňóny, olivy, artičoky – všetko, čo by si nemal… ale chceš.',
+      en: 'Tomato base, mozzarella, ham, mushrooms, olives, artichokes – everything you shouldn\'t have… but want.'
     },
-    weight: '550g',
+    weight: '520g',
     allergens: ['1', '7']
   },
   'Vegetariana Premium': {
-    name: { sk: 'Pizza Vegetariana', en: 'Pizza Vegetariana' },
+    name: { sk: 'Veggie Pleasure', en: 'Veggie Pleasure' },
     description: {
-      sk: 'Paradajkový základ, mozzarella, brokolica, kukurica, šampiňóny, baby špenát',
-      en: 'Tomato base, mozzarella, broccoli, corn, mushrooms, baby spinach'
+      sk: 'Paradajkový základ, mozzarella, paprika, kukurica, cibuľa, olivy – čisté potešenie bez výčitiek.',
+      en: 'Tomato base, mozzarella, peppers, corn, onion, olives – pure pleasure without guilt.'
     },
-    weight: '550g',
+    weight: '520g',
     allergens: ['1', '7']
   },
   

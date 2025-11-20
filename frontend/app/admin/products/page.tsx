@@ -1,10 +1,12 @@
 'use client';
 
-import { useEffect, useState, Suspense } from 'react';
+import { useEffect, useState, Suspense, useCallback } from 'react';
 import dynamic from 'next/dynamic';
-import { Product } from '@/shared';
+import { Product } from '@pizza-ecosystem/shared';
 import { getProducts, updateProduct, deleteProduct } from '@/lib/api';
 import { ProtectedRoute } from '@/components/admin/ProtectedRoute';
+import { useAdminContext } from '@/app/admin/admin-context';
+import { getTenantSlug } from '@/lib/tenant-utils';
 
 // Lazy load modals for code splitting
 const EditProductModal = dynamic(() => import('@/components/admin/EditProductModal').then(mod => ({ default: mod.EditProductModal })), {
@@ -20,23 +22,33 @@ interface ProductWithTenant extends Product {
 }
 
 export default function ProductsPage() {
+  const { selectedTenant: contextTenant } = useAdminContext();
+  const currentTenant = getTenantSlug();
+  const defaultTenant = contextTenant === 'all' ? currentTenant : contextTenant;
+  
   const [products, setProducts] = useState<ProductWithTenant[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState<'all' | 'pornopizza' | 'pizzavnudzi'>('all');
+  const [filter, setFilter] = useState<'all' | 'pornopizza' | 'pizzavnudzi'>(contextTenant === 'all' ? 'all' : contextTenant as 'pornopizza' | 'pizzavnudzi');
   const [showInactive, setShowInactive] = useState(false); // Filter for inactive products
   const [editingProduct, setEditingProduct] = useState<ProductWithTenant | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [selectedTenant, setSelectedTenant] = useState<'pornopizza' | 'pizzavnudzi'>('pornopizza');
+  const [selectedTenant, setSelectedTenant] = useState<'pornopizza' | 'pizzavnudzi'>(defaultTenant as 'pornopizza' | 'pizzavnudzi');
 
+  // Update filter when context tenant changes
   useEffect(() => {
-    fetchProducts();
-  }, []);
+    const newFilter = contextTenant === 'all' ? 'all' : contextTenant as 'pornopizza' | 'pizzavnudzi';
+    if (newFilter !== filter) {
+      setFilter(newFilter);
+    }
+  }, [contextTenant, filter]);
 
-  const fetchProducts = async () => {
+  const fetchProducts = useCallback(async () => {
     try {
       setLoading(true);
-      const tenants = ['pornopizza', 'pizzavnudzi'];
+      const tenants = filter === 'all' 
+        ? ['pornopizza', 'pizzavnudzi']
+        : [filter];
       const allProducts: ProductWithTenant[] = [];
       
       for (const tenant of tenants) {
@@ -82,7 +94,11 @@ export default function ProductsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [filter]);
+
+  useEffect(() => {
+    fetchProducts();
+  }, [fetchProducts]);
 
   const filteredProducts = products.filter(p => {
     // Filter by brand

@@ -3,6 +3,7 @@ import { Throttle } from '@nestjs/throttler';
 import { Response } from 'express';
 import { CustomerAuthService, RegisterDto, LoginDto } from './customer-auth.service';
 import { SmsService } from './sms.service';
+import { Public } from './decorators/public.decorator';
 
 function getOAuthCookieOptions(frontendUrl: string) {
   let domain = process.env.OAUTH_COOKIE_DOMAIN;
@@ -64,6 +65,7 @@ export class CustomerAuthController {
   /**
    * Check if email exists
    */
+  @Public()
   @Throttle({ default: { limit: 10, ttl: 60000 } }) // 10 checks per minute
   @Post('check-email')
   async checkEmail(@Body() body: { email: string }) {
@@ -74,6 +76,7 @@ export class CustomerAuthController {
   /**
    * Register customer with email and password
    */
+  @Public()
   @Throttle({ default: { limit: 3, ttl: 60000 } }) // 3 registrations per minute
   @Post('register')
   async register(@Body() registerDto: RegisterDto, @Res({ passthrough: true }) res: Response) {
@@ -104,6 +107,7 @@ export class CustomerAuthController {
   /**
    * Login customer with email and password
    */
+  @Public()
   @Throttle({ default: { limit: 3, ttl: 60000 } }) // 3 login attempts per minute
   @Post('login')
   async login(@Body() loginDto: LoginDto, @Res({ passthrough: true }) res: Response) {
@@ -134,6 +138,7 @@ export class CustomerAuthController {
   /**
    * Google OAuth redirect
    */
+  @Public()
   @Get('google')
   async googleRedirect(
     @Res() res: Response, 
@@ -175,6 +180,7 @@ export class CustomerAuthController {
   /**
    * Google OAuth callback
    */
+  @Public()
   @Get('google/callback')
   async googleCallback(
     @Query('code') code: string,
@@ -370,6 +376,7 @@ export class CustomerAuthController {
   /**
    * Apple OAuth redirect
    */
+  @Public()
   @Get('apple')
   async appleRedirect(
     @Res() res: Response,
@@ -417,6 +424,7 @@ export class CustomerAuthController {
    * Apple OAuth callback
    * Note: Apple uses POST for callback, not GET
    */
+  @Public()
   @Post('apple/callback')
   async appleCallback(
     @Body() body: { code?: string; state?: string; user?: string; id_token?: string },
@@ -647,6 +655,7 @@ export class CustomerAuthController {
   /**
    * Send SMS verification code for customer
    */
+  @Public()
   @Throttle({ default: { limit: 3, ttl: 60000 } }) // 3 SMS requests per minute
   @Post('send-sms-code')
   async sendSmsCode(@Body() body: { phone: string; userId: string }) {
@@ -657,12 +666,53 @@ export class CustomerAuthController {
   /**
    * Verify SMS code and complete customer registration/login
    */
+  @Public()
   @Throttle({ default: { limit: 10, ttl: 60000 } }) // 10 verification attempts per minute
   @Post('verify-sms')
   async verifySms(@Body() body: { phone: string; code: string; userId: string }, @Res({ passthrough: true }) res: Response) {
     const { phone, code, userId } = body;
 
     const result = await this.customerAuthService.verifySmsAndComplete(phone, code, userId);
+
+    // Set HttpOnly cookies in production
+    if (process.env.NODE_ENV === 'production') {
+      res.cookie('access_token', result.access_token, {
+        httpOnly: true,
+        secure: true,
+        sameSite: 'strict',
+        maxAge: 60 * 60 * 1000, // 1 hour
+        path: '/',
+      });
+
+      res.cookie('refresh_token', result.refresh_token, {
+        httpOnly: true,
+        secure: true,
+        sameSite: 'strict',
+        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+        path: '/',
+      });
+    }
+
+    return result;
+  }
+
+  /**
+   * Set password using token (for account setup after guest checkout)
+   */
+  @Public()
+  @Post('set-password')
+  async setPassword(@Body() body: { token: string; password: string }, @Res({ passthrough: true }) res: Response) {
+    const { token, password } = body;
+
+    if (!token || !password) {
+      throw new BadRequestException('Token a heslo sú povinné');
+    }
+
+    if (password.length < 6) {
+      throw new BadRequestException('Heslo musí mať aspoň 6 znakov');
+    }
+
+    const result = await this.customerAuthService.setPasswordWithToken(token, password);
 
     // Set HttpOnly cookies in production
     if (process.env.NODE_ENV === 'production') {

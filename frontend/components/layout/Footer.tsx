@@ -10,90 +10,94 @@ interface FooterProps {
 
 export const Footer = ({ tenantName, primaryColor }: FooterProps) => {
   const { t } = useLanguage();
+  const year = new Date().getFullYear();
+  const quickLinks = [
+    { label: t.home, href: '/' },
+    { label: t.menu, href: '/#menu' },
+    { label: t.orderNow2, href: '/checkout' },
+    { label: t.trackOrder, href: '/track' },
+  ];
+
+  const socialLinks = [
+    { icon: '📸', label: 'Instagram' },
+    { icon: '🎬', label: 'OnlyFans', href: '#' },
+    { icon: '🐦', label: 'Twitter', href: '#' },
+  ];
+
   return (
-    <footer className="bg-gray-900 text-white py-12 mt-20">
+    <footer className="relative mt-24">
       <div className="container mx-auto px-4">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-          {/* Brand */}
-          <div>
-            <h3 className="text-2xl font-bold mb-4" style={{ color: primaryColor }}>
-              {tenantName}
-            </h3>
-            <p className="text-gray-400">
-              {t.footerTagline}
-            </p>
-          </div>
+        <div className="relative overflow-hidden rounded-3xl bg-black text-white border border-white/10 footer-grid">
+          <div className="absolute inset-0 bg-gradient-to-br from-white/10 via-transparent to-white/5 pointer-events-none" aria-hidden />
+          <div className="relative px-8 py-12 grid grid-cols-1 md:grid-cols-4 gap-10">
+            <div className="space-y-4">
+              <h3 className="text-3xl font-black" style={{ color: primaryColor }}>
+                {tenantName}
+              </h3>
+              <p className="text-gray-300 leading-relaxed">
+                {t.footerTagline}
+              </p>
+            </div>
 
-          {/* Quick Links */}
-          <div>
-            <h4 className="text-lg font-bold mb-4">{t.quickLinks}</h4>
-            <ul className="space-y-2 text-gray-400">
-              <li><a href="/" className="hover:text-white transition">{t.home}</a></li>
-              <li><a href="/#menu" className="hover:text-white transition">{t.menu}</a></li>
-              <li><a href="/checkout" className="hover:text-white transition">{t.orderNow2}</a></li>
-              <li><a href="/track" className="hover:text-white transition">{t.trackOrder}</a></li>
-            </ul>
-          </div>
+            <div>
+              <h4 className="text-lg font-bold mb-4 uppercase tracking-[0.3em] text-gray-400">{t.quickLinks}</h4>
+              <ul className="space-y-2 text-gray-300">
+                {quickLinks.map((link) => (
+                  <li key={link.label}>
+                    <a href={link.href} className="hover:text-white transition">
+                      {link.label}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
 
-          {/* Contact */}
-          <div>
-            <h4 className="text-lg font-bold mb-4">{t.contact}</h4>
-            <ul className="space-y-2 text-gray-400">
-              <li>📍 Bratislava, Slovakia</li>
-              <li>📞 +421 123 456 789</li>
-              <li>✉️ info@{tenantName.toLowerCase()}.sk</li>
-              <li>🕐 Daily 11:00 - 23:00</li>
-            </ul>
-          </div>
+            <div>
+              <h4 className="text-lg font-bold mb-4 uppercase tracking-[0.3em] text-gray-400">{t.contact}</h4>
+              <ul className="space-y-2 text-gray-300 text-sm">
+                <li>📍 Bratislava, Slovakia</li>
+                <li>📞 +421 123 456 789</li>
+                <li>✉️ info@{tenantName.toLowerCase()}.sk</li>
+                <li>🕐 Daily 11:00 - 23:00</li>
+              </ul>
+            </div>
 
-          {/* Social */}
-          <div>
-            <h4 className="text-lg font-bold mb-4">{t.followUs}</h4>
-            <div className="flex gap-4">
-              <motion.a
-                whileHover={{ scale: 1.2, rotate: 5 }}
-                href="#"
-                className="w-10 h-10 rounded-full bg-gray-800 flex items-center justify-center hover:bg-primary transition"
-                style={{ '--tw-bg-opacity': '1' } as React.CSSProperties}
-              >
-                📘
-              </motion.a>
-              <motion.a
-                whileHover={{ scale: 1.2, rotate: -5 }}
-                href="#"
-                className="w-10 h-10 rounded-full bg-gray-800 flex items-center justify-center hover:bg-primary transition"
-              >
-                📷
-              </motion.a>
-              <motion.a
-                whileHover={{ scale: 1.2, rotate: 5 }}
-                href="#"
-                className="w-10 h-10 rounded-full bg-gray-800 flex items-center justify-center hover:bg-primary transition"
-              >
-                🐦
-              </motion.a>
+            <div className="space-y-4">
+              <h4 className="text-lg font-bold uppercase tracking-[0.3em] text-gray-400">{t.followUs}</h4>
+              <p className="text-gray-400 text-sm">
+                {t.bestSellersSubtitle}
+              </p>
+              <div className="flex gap-4">
+                {socialLinks.map((social) => (
+                  <motion.a
+                    key={social.label}
+                    href={social.href || '#'}
+                    whileHover={{ scale: 1.1, rotate: 2 }}
+                    className="w-12 h-12 rounded-full border border-white/20 flex items-center justify-center bg-white/5 hover:bg-white/10 transition"
+                  >
+                    <span className="text-xl" aria-hidden>{social.icon}</span>
+                  </motion.a>
+                ))}
+              </div>
             </div>
           </div>
-        </div>
 
-        <div className="border-t border-gray-800 mt-8 pt-8 text-center text-gray-400 text-sm">
-          <p>© {new Date().getFullYear()} {tenantName}. {t.allRightsReserved}</p>
-          <div className="mt-2 flex justify-center gap-4 flex-wrap">
-            <a href="/cookies" className="hover:text-white transition underline">
-              {t.cookiePolicy || 'Zásady používania súborov cookie'}
-            </a>
-            <span>|</span>
-            <a href="/terms" className="hover:text-white transition underline">
-              {t.termsOfService || 'Obchodné podmienky'}
-            </a>
-            <span>|</span>
-            <a href="/privacy" className="hover:text-white transition underline">
-              {t.privacyPolicy || 'Zásady ochrany osobných údajov'}
-            </a>
+          <div className="relative border-t border-white/10 px-8 py-6 text-sm text-gray-400 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <p>© {year} {tenantName}. {t.allRightsReserved}</p>
+            <div className="flex gap-4 flex-wrap items-center text-xs uppercase tracking-[0.3em]">
+              <a href="/cookies" className="hover:text-white transition underline">
+                {t.cookiePolicy || 'Zásady cookie'}
+              </a>
+              <a href="/terms" className="hover:text-white transition underline">
+                {t.termsOfService || 'Podmienky'}
+              </a>
+              <a href="/privacy" className="hover:text-white transition underline">
+                {t.privacyPolicy || 'Súkromie'}
+              </a>
+            </div>
           </div>
         </div>
       </div>
     </footer>
   );
 };
-

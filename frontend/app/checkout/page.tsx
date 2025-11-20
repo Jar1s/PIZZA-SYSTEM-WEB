@@ -1,13 +1,18 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useCart, useCartTotal } from '@/hooks/useCart';
-import { createOrder, createPaymentSession } from '@/lib/api';
+import { createOrder, createPaymentSession, calculateDeliveryFee, validateMinOrder } from '@/lib/api';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { formatModifiers } from '@/lib/format-modifiers';
 import { useCustomerAuth } from '@/contexts/CustomerAuthContext';
+import { useTenant } from '@/contexts/TenantContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { validateReturnUrl } from '@/lib/validate-return-url';
+import { getTenant } from '@/lib/api';
+import { geocodeAddress, validateBratislavaAddressSimple } from '@/lib/geocoding';
+import { isDarkTheme, getBackgroundClass, getButtonGradientClass, getButtonStyle } from '@/lib/tenant-utils';
 
 interface Address {
   id: string;
@@ -24,245 +29,335 @@ export default function CheckoutPage() {
   const total = useCartTotal();
   const router = useRouter();
   const { user, loading: authLoading, setUser } = useCustomerAuth();
+  const { tenant: tenantData } = useTenant();
+  const { t, language } = useLanguage();
   const [loading, setLoading] = useState(false);
-  const [tenant, setTenant] = useState('pornopizza');
+  const [tenantSlug, setTenantSlug] = useState('pornopizza');
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
   const [loadingAddresses, setLoadingAddresses] = useState(true);
   
+  // Get layout config from tenant theme
+  const isDark = isDarkTheme(tenantData);
+  const backgroundClass = getBackgroundClass(tenantData);
+
+  // Guest checkout state
+  const [guestData, setGuestData] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    phonePrefix: '+421', // Default Slovak prefix
+    street: '',
+    houseNumber: '',
+    city: '',
+    postalCode: '',
+    country: 'SK',
+    instructions: '',
+  });
+  
+  const [paymentType, setPaymentType] = useState<'online' | 'cash_on_delivery'>('online');
+  const [saveAccount, setSaveAccount] = useState(false);
+  const [cashOnDeliveryMethod, setCashOnDeliveryMethod] = useState<'cash' | 'card' | null>(null);
+  const [paymentConfig, setPaymentConfig] = useState({
+    cashOnDeliveryEnabled: false,
+    cardOnDeliveryEnabled: false,
+  });
+  const [addressValidationError, setAddressValidationError] = useState<string | null>(null);
+  const [isValidatingAddress, setIsValidatingAddress] = useState(false);
+  const [geocodingTimeout, setGeocodingTimeout] = useState<NodeJS.Timeout | null>(null);
+  const [nameError, setNameError] = useState<string | null>(null);
+  const [emailError, setEmailError] = useState<string | null>(null);
+  const [phoneError, setPhoneError] = useState<string | null>(null);
+  const [deliveryFeeCents, setDeliveryFeeCents] = useState<number>(0);
+  const [minOrderCents, setMinOrderCents] = useState<number | null>(null);
+  const [zoneName, setZoneName] = useState<string | null>(null);
+  const [deliveryFeeLoading, setDeliveryFeeLoading] = useState(false);
+  const [deliveryFeeError, setDeliveryFeeError] = useState<string | null>(null);
+  const [deliveryFeeFeatureEnabled, setDeliveryFeeFeatureEnabled] = useState(true);
+
+  // Calculate delivery fee when address changes
   useEffect(() => {
-    // FIRST: Check if user should be on a different page (e.g., account) - do this BEFORE anything else
-    // This MUST happen synchronously at the very start, before any other logic
-    if (typeof window !== 'undefined') {
-      const oauthReturnUrl = sessionStorage.getItem('oauth_returnUrl');
-      if (oauthReturnUrl) {
-        // Validate returnUrl to prevent open redirect attacks
-        const validatedReturnUrl = validateReturnUrl(oauthReturnUrl);
-        if (validatedReturnUrl && !validatedReturnUrl.includes('/checkout')) {
-          // User was supposed to go to a different page (e.g., account), redirect them there immediately
-          console.log('Checkout - OAuth returnUrl indicates user should be on different page, redirecting IMMEDIATELY to:', validatedReturnUrl);
-          // Clear flags immediately
-          sessionStorage.removeItem('oauth_redirect');
-          sessionStorage.removeItem('oauth_returnUrl');
-          // Redirect immediately - don't wait for anything
-          window.location.replace(validatedReturnUrl);
-          return;
-        } else if (!validatedReturnUrl) {
-          // Invalid returnUrl, clear it
-          console.log('Checkout - Invalid oauth_returnUrl, clearing it');
-          sessionStorage.removeItem('oauth_returnUrl');
-        } else {
-          // Valid returnUrl but it's for checkout - that's fine, clear it and continue
-          console.log('Checkout - oauth_returnUrl is for checkout, clearing it and continuing');
-          sessionStorage.removeItem('oauth_returnUrl');
+    const calculateFee = async () => {
+      let address: { postalCode?: string; city?: string; cityPart?: string } | null = null;
+
+      if (user && selectedAddressId) {
+        const selectedAddress = addresses.find(addr => addr.id === selectedAddressId);
+        if (selectedAddress) {
+          console.log('[Checkout] Recalculating delivery fee for selected address:', {
+            addressId: selectedAddressId,
+            street: selectedAddress.street,
+            city: selectedAddress.city,
+            postalCode: selectedAddress.postalCode,
+            userId: user?.id,
+            userEmail: user?.email,
+          });
+          address = {
+            postalCode: selectedAddress.postalCode,
+            city: selectedAddress.city,
+          };
         }
+      } else if (!user && guestData.postalCode && guestData.city) {
+        address = {
+          postalCode: guestData.postalCode,
+          city: guestData.city,
+          // Try to extract city part from city name (e.g., "Bratislava - Jarovce" -> "Jarovce")
+          cityPart: guestData.city.includes(' - ') 
+            ? guestData.city.split(' - ')[1] 
+            : guestData.city,
+        };
+      }
+
+      if (!address || !address.postalCode || !address.city) {
+        setDeliveryFeeCents(0);
+        setMinOrderCents(null);
+        setZoneName(null);
+        setDeliveryFeeError(null);
+        return;
+      }
+
+      if (!deliveryFeeFeatureEnabled) {
+        setDeliveryFeeError(null);
+        return;
+      }
+
+      setDeliveryFeeLoading(true);
+      setDeliveryFeeError(null);
+
+      try {
+        const result = await calculateDeliveryFee(tenantSlug, address);
+        
+        if (result.available) {
+          setDeliveryFeeCents(result.deliveryFeeCents || 0);
+          setMinOrderCents(result.minOrderCents || null);
+          setZoneName(result.zoneName || null);
+          setDeliveryFeeError(null);
+          if (!deliveryFeeFeatureEnabled) {
+            setDeliveryFeeFeatureEnabled(true);
+          }
+        } else {
+          setDeliveryFeeCents(0);
+          setMinOrderCents(null);
+          setZoneName(null);
+          setDeliveryFeeError(result.message || 'Doprava nie je dostupná pre túto adresu');
+        }
+      } catch (error: any) {
+        console.error('Failed to calculate delivery fee:', error);
+        // Show error instead of hiding it - allow retry
+        setDeliveryFeeError('Nepodarilo sa načítať cenu dopravy. Skúste znova.');
+        setDeliveryFeeCents(0);
+        setMinOrderCents(null);
+        setZoneName(null);
+        // Don't disable deliveryFeeFeatureEnabled - allow retry on next address change
+      } finally {
+        setDeliveryFeeLoading(false);
+      }
+    };
+
+    calculateFee();
+  }, [user, selectedAddressId, addresses, guestData.postalCode, guestData.city, tenantSlug, deliveryFeeFeatureEnabled]);
+
+  useEffect(() => {
+    const layout = tenantData?.theme?.layout || {};
+    if (layout.useCustomBackground && layout.customBackgroundClass === 'porno-bg') {
+      document.body.classList.add('bg-porno-vibe');
+      return () => {
+        document.body.classList.remove('bg-porno-vibe');
+      };
+    }
+  }, [tenantData]);
+  
+  // Cleanup geocoding timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (geocodingTimeout) {
+        clearTimeout(geocodingTimeout);
+      }
+    };
+  }, [geocodingTimeout]);
+  
+  // Initialize tenant slug and handle OAuth redirects (only once on mount)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    
+    // Handle OAuth returnUrl redirect
+    const oauthReturnUrl = sessionStorage.getItem('oauth_returnUrl');
+    if (oauthReturnUrl) {
+      const validatedReturnUrl = validateReturnUrl(oauthReturnUrl);
+      if (validatedReturnUrl && !validatedReturnUrl.includes('/checkout')) {
+        sessionStorage.removeItem('oauth_redirect');
+        sessionStorage.removeItem('oauth_returnUrl');
+        window.location.replace(validatedReturnUrl);
+        return;
+      } else if (!validatedReturnUrl) {
+        sessionStorage.removeItem('oauth_returnUrl');
+      } else {
+        sessionStorage.removeItem('oauth_returnUrl');
       }
     }
     
-    // Get tenant from query or default
+    // Initialize tenant slug from URL
     const params = new URLSearchParams(window.location.search);
-    setTenant(params.get('tenant') || 'pornopizza');
+    setTenantSlug(params.get('tenant') || 'pornopizza');
+  }, []); // Empty deps - only run once on mount
+
+  // Handle cart validation (only when items change)
+  useEffect(() => {
+    if (items.length > 0) {
+      // Cart has items, clear OAuth flag
+      if (typeof window !== 'undefined') {
+        sessionStorage.removeItem('oauth_redirect');
+      }
+      return;
+    }
     
-    // Check if user just came from OAuth redirect - check this AFTER checking returnUrl
-    const fromOAuth = typeof window !== 'undefined' && sessionStorage.getItem('oauth_redirect') === 'true';
+    // Cart is empty - wait a bit for zustand to hydrate
+    const timeout = setTimeout(() => {
+      if (typeof window === 'undefined') return;
+      
+      const cartStorage = localStorage.getItem('cart-storage');
+      const fromOAuth = sessionStorage.getItem('oauth_redirect') === 'true';
+      
+      // Check if cart exists in localStorage
+      if (cartStorage) {
+        try {
+          const cartData = JSON.parse(cartStorage);
+          if (cartData.state?.items?.length > 0) {
+            // Cart has items, just wait for zustand to hydrate
+            if (fromOAuth) {
+              sessionStorage.removeItem('oauth_redirect');
+            }
+            return; // Don't redirect, wait for zustand
+          }
+        } catch (e) {
+          // Invalid cart data
+        }
+      }
+      
+      // If from OAuth, wait longer for cart to hydrate
+      if (fromOAuth) {
+        let checkCount = 0;
+        const maxChecks = 30; // 15 seconds max (30 * 500ms)
+        
+        const interval = setInterval(() => {
+          checkCount++;
+          const finalItems = items.length;
+          const finalCartStorage = localStorage.getItem('cart-storage');
+          
+          if (finalItems > 0) {
+            sessionStorage.removeItem('oauth_redirect');
+            clearInterval(interval);
+            return;
+          }
+          
+          if (finalCartStorage) {
+            try {
+              const cartData = JSON.parse(finalCartStorage);
+              if (cartData.state?.items?.length > 0) {
+                sessionStorage.removeItem('oauth_redirect');
+                clearInterval(interval);
+                return;
+              }
+            } catch (e) {
+              // Invalid cart data
+            }
+          }
+          
+          if (checkCount >= maxChecks) {
+            sessionStorage.removeItem('oauth_redirect');
+            clearInterval(interval);
+          }
+        }, 500);
+        
+        return () => clearInterval(interval);
+      } else {
+        // Not from OAuth - redirect if cart is really empty
+        const finalCheck = setTimeout(() => {
+          const finalItems = items.length;
+          const finalCartStorage = localStorage.getItem('cart-storage');
+          const stillFromOAuth = sessionStorage.getItem('oauth_redirect') === 'true';
+          
+          if (stillFromOAuth || finalItems > 0) return;
+          
+          if (finalCartStorage) {
+            try {
+              const cartData = JSON.parse(finalCartStorage);
+              if (cartData.state?.items?.length > 0) return;
+            } catch (e) {
+              // Invalid cart data
+            }
+          }
+          
+          // Cart is really empty, redirect to home
+          router.push('/');
+        }, 3000);
+        
+        return () => clearTimeout(finalCheck);
+      }
+    }, 2000);
     
-    // Check localStorage directly for user token (context might not be loaded yet)
-    const token = typeof window !== 'undefined' ? localStorage.getItem('customer_auth_token') : null;
-    const storedUser = typeof window !== 'undefined' ? localStorage.getItem('customer_auth_user') : null;
+    return () => clearTimeout(timeout);
+  }, [items.length, router]); // Only depend on items.length, not full items array
+
+  // Handle user/auth state (only when user or authLoading changes)
+  useEffect(() => {
+    if (authLoading) return; // Wait for auth to load
+    
+    if (typeof window === 'undefined') return;
+    
+    const fromOAuth = sessionStorage.getItem('oauth_redirect') === 'true';
+    const token = localStorage.getItem('customer_auth_token');
+    const storedUser = localStorage.getItem('customer_auth_user');
     const hasUserInStorage = !!(token && storedUser);
     
-    console.log('Checkout useEffect - fromOAuth:', fromOAuth, 'items.length:', items.length, 'authLoading:', authLoading, 'user:', !!user, 'hasUserInStorage:', hasUserInStorage);
-    
-    // Wait for auth to load before checking
-    if (authLoading) {
-      console.log('Checkout - waiting for auth to load');
-      return;
-    }
-    
-    // Redirect to login if not authenticated (but NOT if coming from OAuth - tokens might still be loading)
-    // Check both context user AND localStorage to be sure - user might be in localStorage but context not loaded yet
-    if (!user && !hasUserInStorage && !fromOAuth) {
-      console.log('Checkout - not authenticated and not from OAuth, redirecting to login');
-      // Redirect to login without returnUrl - after login, user will be redirected back to checkout
-      // Use window.location for full page reload to ensure correct route
-      window.location.href = `/auth/login?tenant=${tenant}`;
-      return;
-    }
-    
-    // If user exists in localStorage but not in context yet, wait a moment for context to load
-    // This handles the case where user clicks checkout quickly after login
+    // If user exists in localStorage but not in context yet, wait briefly
     if (!user && hasUserInStorage && !fromOAuth) {
-      console.log('Checkout - user exists in localStorage but context not loaded yet, waiting for context...');
-      const waitForContext = setTimeout(() => {
-        // Re-check - if context still doesn't have user, but localStorage does, that's OK
-        // Context should load it soon, or we can continue anyway since we have token
+      const timeout = setTimeout(() => {
         const finalToken = localStorage.getItem('customer_auth_token');
         const finalStoredUser = localStorage.getItem('customer_auth_user');
         
         if (!finalToken || !finalStoredUser) {
-          console.log('Checkout - tokens removed during wait, redirecting to login');
-          window.location.href = `/auth/login?tenant=${tenant}`;
-        } else {
-          console.log('Checkout - tokens still exist, context should load user soon');
-          // Don't redirect - context will load user and useEffect will re-run
+          window.location.href = `/auth/login?tenant=${tenantSlug}`;
         }
-      }, 500); // Short wait - just enough for context to update
-      return () => clearTimeout(waitForContext);
+      }, 500);
+      
+      return () => clearTimeout(timeout);
     }
     
-    // If from OAuth but no user yet, wait a bit for tokens to be loaded
+    // If from OAuth but no user yet, wait for tokens
     if (!user && !hasUserInStorage && fromOAuth) {
-      console.log('Checkout - from OAuth but no user yet, waiting for tokens to load');
-      const waitForUser = setTimeout(() => {
+      const timeout = setTimeout(() => {
         const token = localStorage.getItem('customer_auth_token');
         const storedUser = localStorage.getItem('customer_auth_user');
         if (!token || !storedUser) {
-          console.log('Checkout - OAuth tokens not found after wait, redirecting to login');
           sessionStorage.removeItem('oauth_redirect');
-          window.location.href = `/auth/login?tenant=${tenant}`;
+          window.location.href = `/auth/login?tenant=${tenantSlug}`;
         }
       }, 2000);
-      return () => clearTimeout(waitForUser);
-    }
-    
-    // Wait a bit for cart to load from localStorage (zustand persist)
-    // Check cart from localStorage directly if items array is empty
-    if (items.length === 0) {
       
-      // Give cart time to hydrate from localStorage (especially after OAuth redirect)
-      // Don't redirect immediately - wait for zustand to hydrate
-      const checkCart = setTimeout(() => {
-        const cartStorage = localStorage.getItem('cart-storage');
-        if (cartStorage) {
-          try {
-            const cartData = JSON.parse(cartStorage);
-            if (cartData.state && cartData.state.items && cartData.state.items.length > 0) {
-              // Cart has items in localStorage, just wait for zustand to hydrate
-              console.log('Checkout - cart has items in localStorage, waiting for zustand to hydrate');
-              // Clear OAuth flag since cart is found
-              if (fromOAuth) {
-                sessionStorage.removeItem('oauth_redirect');
-              }
-              // Don't redirect - zustand will update items array soon
-              return;
-            }
-          } catch (e) {
-            console.error('Checkout - invalid cart data:', e);
-          }
-        }
-        
-        // If user came from OAuth, don't redirect to homepage - just wait for cart to hydrate
-        // After OAuth, cart might take time to hydrate, but we should stay on checkout
-        if (fromOAuth) {
-          console.log('Checkout - user came from OAuth, waiting for cart to hydrate (no redirect)');
-          
-          // Wait for cart to hydrate, but don't redirect to homepage
-          // Just keep checking and clear the flag when cart loads
-          const oauthCheck = setInterval(() => {
-            const finalCartStorage = localStorage.getItem('cart-storage');
-            const finalItems = items.length; // Check zustand state too
-            
-            if (finalItems > 0) {
-              // Items loaded in zustand, clear flag and stop checking
-              console.log('Checkout - items loaded in zustand after OAuth');
-              sessionStorage.removeItem('oauth_redirect');
-              clearInterval(oauthCheck);
-              return;
-            }
-            
-            if (finalCartStorage) {
-              try {
-                const finalCartData = JSON.parse(finalCartStorage);
-                if (finalCartData.state && finalCartData.state.items && finalCartData.state.items.length > 0) {
-                  // Cart has items in localStorage, clear flag and stop checking
-                  console.log('Checkout - cart found in localStorage after OAuth');
-                  sessionStorage.removeItem('oauth_redirect');
-                  clearInterval(oauthCheck);
-                  return;
-                }
-              } catch (e) {
-                // Invalid cart data
-              }
-            }
-          }, 500); // Check every 500ms
-          
-          // Clear flag after 15 seconds even if cart doesn't load (safety timeout)
-          setTimeout(() => {
-            clearInterval(oauthCheck);
-            sessionStorage.removeItem('oauth_redirect');
-            console.log('Checkout - OAuth flag cleared after timeout');
-          }, 15000);
-          
-          return () => clearInterval(oauthCheck);
-        } else {
-          // Not from OAuth - normal flow, wait shorter time
-          console.log('Checkout - cart appears empty (not from OAuth), waiting before redirect');
-          
-          // Double-check OAuth flag wasn't set in the meantime
-          const stillFromOAuth = typeof window !== 'undefined' && sessionStorage.getItem('oauth_redirect') === 'true';
-          if (stillFromOAuth) {
-            console.log('Checkout - OAuth flag detected during wait, switching to OAuth flow');
-            // Switch to OAuth flow - don't redirect
-            return;
-          }
-          
-          // Wait even longer (total 5 seconds) before redirecting
-          const finalCheck = setTimeout(() => {
-            // Final check - if cart is still empty, redirect to home
-            const finalCartStorage = localStorage.getItem('cart-storage');
-            const finalItems = items.length; // Check zustand state too
-            
-            // Check OAuth flag one more time
-            const finalOAuthCheck = typeof window !== 'undefined' && sessionStorage.getItem('oauth_redirect') === 'true';
-            if (finalOAuthCheck) {
-              console.log('Checkout - OAuth flag still set, not redirecting');
-              return;
-            }
-            
-            if (finalItems > 0) {
-              // Items loaded in zustand, don't redirect
-              console.log('Checkout - items loaded in zustand, staying on checkout');
-              return;
-            }
-            
-            if (finalCartStorage) {
-              try {
-                const finalCartData = JSON.parse(finalCartStorage);
-                if (finalCartData.state && finalCartData.state.items && finalCartData.state.items.length > 0) {
-                  // Cart has items, just wait for zustand
-                  console.log('Checkout - cart found in localStorage, waiting for zustand');
-                  return;
-                }
-              } catch (e) {
-                // Invalid cart data
-              }
-            }
-            
-            // Cart is really empty after all checks, redirect to home
-            console.log('Checkout - cart is empty after all checks, redirecting to home');
-            router.push('/');
-          }, 3000); // Additional 3 seconds (total 5 seconds)
-          
-          return () => clearTimeout(finalCheck);
-        }
-      }, 2000); // Initial 2 seconds
-      
-      return () => clearTimeout(checkCart);
-    } else {
-      // Cart has items, clear OAuth flag if set
-      sessionStorage.removeItem('oauth_redirect');
+      return () => clearTimeout(timeout);
     }
-  }, [items, router, tenant, user, authLoading]);
+  }, [user?.id, authLoading, tenantSlug]); // Only depend on user.id, not full user object
   
-  // Fetch addresses and update user profile when user is loaded
-  useEffect(() => {
-    if (user) {
-      fetchAddresses();
-      fetchUserProfile(); // Fetch latest user profile to get phone number
+  // Fetch central payment config (from pornopizza tenant - master config for all websites)
+  const fetchPaymentConfig = useCallback(async () => {
+    try {
+      // Always use pornopizza tenant as master for payment config
+      const masterTenantData = await getTenant('pornopizza');
+      const paymentConfigData = (masterTenantData.paymentConfig as any) || {};
+      setPaymentConfig({
+        cashOnDeliveryEnabled: paymentConfigData.cashOnDeliveryEnabled === true,
+        cardOnDeliveryEnabled: paymentConfigData.cardOnDeliveryEnabled === true,
+      });
+    } catch (error) {
+      console.error('Failed to fetch payment config:', error);
     }
-  }, [user]);
+  }, []);
 
-  const fetchUserProfile = async () => {
+  useEffect(() => {
+    fetchPaymentConfig();
+  }, [fetchPaymentConfig]);
+
+  const fetchUserProfile = useCallback(async () => {
     try {
       const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
       const token = localStorage.getItem('customer_auth_token');
@@ -277,6 +372,19 @@ export default function CheckoutPage() {
           'Content-Type': 'application/json',
         },
       });
+
+      if (res.status === 401) {
+        // Token expired or invalid - clear auth
+        console.log('[Checkout] 401 Unauthorized when fetching profile - token expired');
+        localStorage.removeItem('customer_auth_token');
+        localStorage.removeItem('customer_auth_refresh_token');
+        localStorage.removeItem('customer_auth_user');
+        // Dispatch event to notify auth context
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new Event('customerAuthUpdate'));
+        }
+        return;
+      }
 
       if (res.ok) {
         const data = await res.json();
@@ -296,14 +404,16 @@ export default function CheckoutPage() {
     } catch (error) {
       console.error('Failed to fetch user profile:', error);
     }
-  };
+  }, [user?.id, setUser]);
 
-  const fetchAddresses = async () => {
+  const fetchAddresses = useCallback(async () => {
     try {
+      console.log('[Checkout] fetchAddresses called');
       const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
       const token = localStorage.getItem('customer_auth_token');
       
       if (!token) {
+        console.log('[Checkout] No token, skipping address fetch');
         setLoadingAddresses(false);
         return;
       }
@@ -315,9 +425,28 @@ export default function CheckoutPage() {
         },
       });
 
+      if (res.status === 401) {
+        // Token expired or invalid - clear auth and allow guest checkout
+        console.log('[Checkout] 401 Unauthorized - token expired, clearing auth');
+        localStorage.removeItem('customer_auth_token');
+        localStorage.removeItem('customer_auth_refresh_token');
+        localStorage.removeItem('customer_auth_user');
+        // Dispatch event to notify auth context
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new Event('customerAuthUpdate'));
+        }
+        setAddresses([]);
+        setLoadingAddresses(false);
+        return;
+      }
+
       if (res.ok) {
         const data = await res.json();
         const fetchedAddresses = data.addresses || [];
+        console.log('[Checkout] Addresses fetched:', {
+          count: fetchedAddresses.length,
+          addresses: fetchedAddresses.map((a: Address) => ({ id: a.id, street: a.street, isPrimary: a.isPrimary })),
+        });
         setAddresses(fetchedAddresses);
         
         // Only set default address if no address is currently selected
@@ -325,97 +454,442 @@ export default function CheckoutPage() {
         setSelectedAddressId((currentId) => {
           // If an address is already selected and it still exists, keep it
           if (currentId && fetchedAddresses.find((addr: Address) => addr.id === currentId)) {
+            console.log('[Checkout] Keeping selected address:', currentId);
             return currentId;
           }
           
           // Otherwise, select primary address or first address
           const primaryAddress = fetchedAddresses.find((addr: Address) => addr.isPrimary);
           if (primaryAddress) {
+            console.log('[Checkout] Selecting primary address:', primaryAddress.id);
             return primaryAddress.id;
           } else if (fetchedAddresses.length > 0) {
+            console.log('[Checkout] Selecting first address:', fetchedAddresses[0].id);
             return fetchedAddresses[0].id;
           }
           return null;
         });
+      } else {
+        console.error('[Checkout] Failed to fetch addresses:', res.status, res.statusText);
       }
     } catch (error) {
-      console.error('Failed to fetch addresses:', error);
+      console.error('[Checkout] Failed to fetch addresses:', error);
     } finally {
       setLoadingAddresses(false);
     }
-  };
-  
-  const handlePay = async () => {
+  }, [tenantSlug]);
+
+  // Fetch addresses and update user profile when user is loaded
+  useEffect(() => {
     if (!user) {
-      alert('Please log in to continue');
+      // User not logged in, clear addresses
+      setAddresses([]);
+      setLoadingAddresses(false);
       return;
     }
-
-    // Check if user has at least one address
-    if (addresses.length === 0) {
-      alert('Musíte mať vyplnenú adresu pred vytvorením objednávky. Presmerovávam na stránku pre pridanie adresy.');
-      router.push(`/account?tenant=${tenant}&section=address`);
+    
+    let cancelled = false;
+    
+    const loadData = async () => {
+      setLoadingAddresses(true);
+      try {
+        await Promise.all([
+          fetchAddresses(),
+          fetchUserProfile()
+        ]);
+      } catch (error) {
+        console.error('[Checkout] Error loading user data:', error);
+      } finally {
+        if (!cancelled) {
+          setLoadingAddresses(false);
+        }
+      }
+    };
+    
+    loadData();
+    
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.id, fetchAddresses, fetchUserProfile]); // Only depend on user.id and memoized functions
+  
+  // Real-time address validation with geocoding (debounced)
+  const validateAddressWithGeocoding = (street: string, city: string, postalCode: string) => {
+    // Clear previous timeout
+    if (geocodingTimeout) {
+      clearTimeout(geocodingTimeout);
+    }
+    
+    // First do simple validation immediately
+    const simpleValidation = validateBratislavaAddressSimple(city, postalCode);
+    if (!simpleValidation.isValid) {
+      setAddressValidationError(simpleValidation.message || null);
+      setIsValidatingAddress(false);
       return;
     }
-
-    // Check if address is selected
-    if (!selectedAddressId) {
-      alert('Prosím, vyberte adresu pre doručenie.');
+    
+    // Clear error if simple validation passes
+    setAddressValidationError(null);
+    
+    // If we don't have street, skip geocoding
+    if (!street || street.trim().length === 0) {
       return;
     }
+    
+    // Debounce geocoding API call (wait 1 second after user stops typing)
+    setIsValidatingAddress(true);
+    const timeout = setTimeout(async () => {
+      try {
+        const geocodingResult = await geocodeAddress(
+          street,
+          city,
+          postalCode,
+          guestData.country || 'SK'
+        );
+        
+        if (!geocodingResult.isInBratislava) {
+          setAddressValidationError(
+            geocodingResult.message || 'Adresa nie je v Bratislave. Momentálne doručujeme len do Bratislavy.'
+          );
+        } else {
+          setAddressValidationError(null);
+        }
+      } catch (error) {
+        console.error('Geocoding error:', error);
+        // Don't show error if geocoding fails - user can still proceed
+        setAddressValidationError(null);
+      } finally {
+        setIsValidatingAddress(false);
+      }
+    }, 1000); // Wait 1 second after user stops typing
+    
+    setGeocodingTimeout(timeout);
+  };
 
-    const selectedAddress = addresses.find(addr => addr.id === selectedAddressId);
-    if (!selectedAddress) {
-      alert('Vybraná adresa nebola nájdená. Prosím, vyberte inú adresu.');
-      return;
+  // Validate if address is in Bratislava (with geocoding)
+  const validateBratislavaAddress = async (
+    street: string,
+    city: string,
+    postalCode: string,
+    country: string = 'SK',
+    useGeocoding: boolean = true
+  ): Promise<{ isValid: boolean; message?: string }> => {
+    // First do simple validation
+    const simpleValidation = validateBratislavaAddressSimple(city, postalCode);
+    
+    // If simple validation fails, return immediately
+    if (!simpleValidation.isValid) {
+      return simpleValidation;
+    }
+    
+    // If we have street address and geocoding is enabled, use geocoding API
+    if (useGeocoding && street && street.trim().length > 0) {
+      try {
+        setIsValidatingAddress(true);
+        const geocodingResult = await geocodeAddress(
+          street,
+          city,
+          postalCode,
+          country
+        );
+        
+        if (!geocodingResult.isInBratislava) {
+          return {
+            isValid: false,
+            message: geocodingResult.message || 'Adresa nie je v Bratislave. Momentálne doručujeme len do Bratislavy.',
+          };
+        }
+        
+        // Address is valid and in Bratislava
+        return { isValid: true };
+      } catch (error) {
+        console.error('Geocoding error:', error);
+        // Fall back to simple validation if geocoding fails
+        return simpleValidation;
+      } finally {
+        setIsValidatingAddress(false);
+      }
+    }
+    
+    // Use simple validation result
+    return simpleValidation;
+  };
+
+  // Validate name (must contain first and last name)
+  const validateName = (name: string): { isValid: boolean; message?: string } => {
+    const trimmed = name.trim();
+    if (!trimmed) {
+      return { isValid: false, message: 'Meno je povinné.' };
+    }
+    
+    // Check if name contains at least 2 words (first name and last name)
+    const words = trimmed.split(/\s+/).filter(word => word.length > 0);
+    if (words.length < 2) {
+      return { isValid: false, message: 'Prosím, zadajte meno aj priezvisko.' };
+    }
+    
+    // Check minimum length for each word
+    if (words.some(word => word.length < 2)) {
+      return { isValid: false, message: 'Meno a priezvisko musia mať aspoň 2 znaky.' };
+    }
+    
+    return { isValid: true };
+  };
+
+  // Validate email format
+  const validateEmail = (email: string): { isValid: boolean; message?: string } => {
+    const trimmed = email.trim().toLowerCase();
+    if (!trimmed) {
+      return { isValid: false, message: 'Email je povinný.' };
+    }
+    
+    // More comprehensive email validation
+    const emailRegex = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
+    if (!emailRegex.test(trimmed)) {
+      return { isValid: false, message: 'Prosím, zadajte platnú emailovú adresu.' };
+    }
+    
+    // Check for common typos
+    if (trimmed.includes('..') || trimmed.startsWith('.') || trimmed.endsWith('.')) {
+      return { isValid: false, message: 'Email obsahuje neplatné znaky.' };
+    }
+    
+    return { isValid: true };
+  };
+
+  // Validate phone number
+  const validatePhone = (phone: string, prefix: string): { isValid: boolean; message?: string } => {
+    const trimmed = phone.trim();
+    if (!trimmed) {
+      return { isValid: false, message: 'Telefónne číslo je povinné.' };
+    }
+    
+    // Remove spaces, dashes, and parentheses
+    const cleaned = trimmed.replace(/[\s\-\(\)]/g, '');
+    
+    // Check if it contains only digits
+    if (!/^\d+$/.test(cleaned)) {
+      return { isValid: false, message: 'Telefónne číslo môže obsahovať len číslice.' };
+    }
+    
+    // Validate based on prefix
+    if (prefix === '+421') {
+      // Slovak phone numbers: 9 digits (without prefix)
+      if (cleaned.length !== 9) {
+        return { isValid: false, message: 'Slovenské telefónne číslo musí mať 9 číslic (napr. 912345678).' };
+      }
+      // Must start with 9
+      if (!cleaned.startsWith('9')) {
+        return { isValid: false, message: 'Slovenské mobilné číslo musí začínať na 9.' };
+      }
+    } else if (prefix === '+420') {
+      // Czech phone numbers: 9 digits
+      if (cleaned.length !== 9) {
+        return { isValid: false, message: 'České telefónne číslo musí mať 9 číslic.' };
+      }
+    } else {
+      // For other countries, just check minimum length
+      if (cleaned.length < 7) {
+        return { isValid: false, message: 'Telefónne číslo je príliš krátke.' };
+      }
+      if (cleaned.length > 15) {
+        return { isValid: false, message: 'Telefónne číslo je príliš dlhé.' };
+      }
+    }
+    
+    return { isValid: true };
+  };
+
+  const handlePay = async () => {
+    // Validate guest data if user is not logged in
+    if (!user) {
+      if (!guestData.name || !guestData.email || !guestData.phone || !guestData.street || !guestData.city || !guestData.postalCode) {
+        alert('Prosím, vyplňte všetky povinné polia.');
+        return;
+      }
+      
+      // Validate name
+      const nameValidation = validateName(guestData.name);
+      if (!nameValidation.isValid) {
+        alert(nameValidation.message);
+        return;
+      }
+      
+      // Validate email
+      const emailValidation = validateEmail(guestData.email);
+      if (!emailValidation.isValid) {
+        alert(emailValidation.message);
+        return;
+      }
+      
+      // Validate phone
+      const phoneValidation = validatePhone(guestData.phone, guestData.phonePrefix);
+      if (!phoneValidation.isValid) {
+        alert(phoneValidation.message);
+        return;
+      }
+      
+      // Validate Bratislava address with geocoding
+      const addressValidation = await validateBratislavaAddress(
+        guestData.street,
+        guestData.city,
+        guestData.postalCode,
+        guestData.country || 'SK',
+        true // Use geocoding
+      );
+      if (!addressValidation.isValid) {
+        alert(addressValidation.message);
+        return;
+      }
+      if (addressValidation.message) {
+        // Warning but allow to continue
+        const confirmed = confirm(`${addressValidation.message}\n\nChcete pokračovať?`);
+        if (!confirmed) return;
+      }
+      
+      // If cash on delivery, payment method must be selected
+      if (paymentType === 'cash_on_delivery') {
+        if (!cashOnDeliveryMethod) {
+          alert('Prosím, vyberte spôsob platby pri dodaní.');
+          return;
+        }
+      }
+    } else {
+      // User is logged in - check address
+      // Wait for addresses to finish loading before checking
+      if (loadingAddresses) {
+        alert('Načítavajú sa adresy, prosím počkajte...');
+        return;
+      }
+      
+      if (addresses.length === 0) {
+        alert('Musíte mať vyplnenú adresu pred vytvorením objednávky. Presmerovávam na stránku pre pridanie adresy.');
+        router.push(`/account?tenant=${tenantSlug}&section=address`);
+        return;
+      }
+
+      if (!selectedAddressId) {
+        alert('Prosím, vyberte adresu pre doručenie.');
+        return;
+      }
+
+      const selectedAddress = addresses.find(addr => addr.id === selectedAddressId);
+      if (!selectedAddress) {
+        alert('Vybraná adresa nebola nájdená. Prosím, vyberte inú adresu.');
+        return;
+      }
+
+      // Validate minimum order for delivery zone
+      if (minOrderCents !== null && total < minOrderCents) {
+        alert(`Minimálna objednávka pre ${zoneName || 'túto zónu'} je ${(minOrderCents / 100).toFixed(2)}€. Vaša objednávka je ${(total / 100).toFixed(2)}€.`);
+        return;
+      }
+      
+      // Validate Bratislava address for logged-in users with geocoding
+      const addressValidation = await validateBratislavaAddress(
+        selectedAddress.street,
+        selectedAddress.city,
+        selectedAddress.postalCode,
+        selectedAddress.country || 'SK',
+        true // Use geocoding
+      );
+      if (!addressValidation.isValid) {
+        alert(addressValidation.message);
+        return;
+      }
+      if (addressValidation.message) {
+        // Warning but allow to continue
+        const confirmed = confirm(`${addressValidation.message}\n\nChcete pokračovať?`);
+        if (!confirmed) return;
+      }
     }
 
     setLoading(true);
     
     try {
-      // Create order with user data from authentication
-      // Ensure email is provided - it's required for order history
-      if (!user.email) {
-        alert('Email is required to create an order. Please update your profile.');
-        setLoading(false);
-        return;
-      }
-
-      const order = await createOrder(tenant, {
-        customer: {
+      // Prepare order data
+      const orderData: any = {
+        customer: user ? {
           name: user.name || 'Customer',
-          email: user.email.trim().toLowerCase(), // Normalize email for consistent matching
-          phone: user.phone || '', // Use phone from user profile if available
+          email: user.email.trim().toLowerCase(),
+          phone: user.phone || '',
+        } : {
+          name: guestData.name,
+          email: guestData.email.trim().toLowerCase(),
+          phone: `${guestData.phonePrefix}${guestData.phone}`,
         },
-        address: {
-          street: selectedAddress.street,
-          city: selectedAddress.city,
-          postalCode: selectedAddress.postalCode,
-          country: selectedAddress.country || 'SK',
+        address: user ? {
+          street: addresses.find(addr => addr.id === selectedAddressId)!.street,
+          city: addresses.find(addr => addr.id === selectedAddressId)!.city,
+          postalCode: addresses.find(addr => addr.id === selectedAddressId)!.postalCode,
+          country: addresses.find(addr => addr.id === selectedAddressId)!.country || 'SK',
+        } : {
+          street: guestData.street,
+          houseNumber: guestData.houseNumber,
+          city: guestData.city,
+          postalCode: guestData.postalCode,
+          country: guestData.country,
+          instructions: guestData.instructions,
         },
         items: items.map(item => ({
           productId: item.product.id,
           quantity: item.quantity,
           modifiers: item.modifiers,
         })),
-      });
+        userId: user?.id,
+        deliveryFeeCents: deliveryFeeCents, // Add delivery fee from zone calculation
+      };
+
+      // Add guest checkout fields
+      if (!user) {
+        if (paymentType === 'cash_on_delivery') {
+          // Cash on delivery - mandatory registration
+          orderData.paymentMethod = cashOnDeliveryMethod;
+          orderData.saveAccount = true; // Always true for cash on delivery
+        } else if (paymentType === 'online') {
+          // Online payment - optional registration
+          orderData.saveAccount = saveAccount;
+        }
+      }
+
+      const result = await createOrder(tenantSlug, orderData);
+      
+      // Handle auto-login if auth token is returned
+      let order: any;
+      if ('order' in result) {
+        order = result.order;
+        if (result.authToken && result.user) {
+          // Auto-login happened - save tokens
+          localStorage.setItem('customer_auth_token', result.authToken);
+          if (result.refreshToken) {
+            localStorage.setItem('customer_refresh_token', result.refreshToken);
+          }
+          localStorage.setItem('customer_auth_user', JSON.stringify(result.user));
+          if (setUser) {
+            setUser(result.user);
+          }
+        }
+      } else {
+        order = result;
+      }
       
       // Clear cart after successful order creation
       clearCart();
       
-      // Create payment session
-      try {
-        const payment = await createPaymentSession(order.id);
-        
-        if (payment.redirectUrl) {
-          // Redirect to payment gateway (Adyen, GoPay, or WePay)
-          window.location.href = payment.redirectUrl;
-          return;
+      // Create payment session (only for online payment)
+      if (paymentType === 'online') {
+        try {
+          const payment = await createPaymentSession(order.id);
+          
+          if (payment.redirectUrl) {
+            // Redirect to payment gateway (Adyen, GoPay, or WePay)
+            window.location.href = payment.redirectUrl;
+            return;
+          }
+        } catch (paymentError) {
+          console.error('Payment session creation failed:', paymentError);
+          // Continue to success page even if payment fails (for testing)
         }
-      } catch (paymentError) {
-        console.error('Payment session creation failed:', paymentError);
-        // Continue to success page even if payment fails (for testing)
-        // In production, you might want to show an error or retry
       }
       
       // If no redirect URL, go to success page
@@ -460,19 +934,16 @@ export default function CheckoutPage() {
   // Show loading while checking auth
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-orange-600"></div>
-          <p className="mt-4 text-lg text-gray-700">Načítavam...</p>
+      <div className={`min-h-screen ${backgroundClass} ${isDark ? 'text-white' : ''} flex items-center justify-center`}>
+        <div className={`text-center ${isDark ? 'text-white' : 'text-gray-900'}`}>
+          <div className={`inline-block animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 ${isDark ? 'border-[#ff5e00]' : 'border-orange-600'}`}></div>
+          <p className="mt-4 text-lg">Načítavam...</p>
         </div>
       </div>
     );
   }
 
-  // Redirect if not authenticated (handled in useEffect)
-  if (!user) {
-    return null;
-  }
+  // Guest checkout is now allowed - no redirect needed
   
   // Check if user came from OAuth - if so, show checkout even if cart is empty (cart might still be hydrating)
   // BUT: Only if oauth_returnUrl doesn't exist or is for checkout
@@ -492,10 +963,10 @@ export default function CheckoutPage() {
   // BUT: Only if oauth_returnUrl doesn't exist or is for checkout (not for account)
   if (items.length === 0 && fromOAuth && (!hasOAuthReturnUrl || oauthReturnUrlForCheckout)) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-orange-600"></div>
-          <p className="mt-4 text-lg text-gray-700">Načítavam košík...</p>
+      <div className={`min-h-screen ${backgroundClass} ${isDark ? 'text-white' : ''} flex items-center justify-center`}>
+        <div className={`text-center ${isDark ? 'text-white' : 'text-gray-900'}`}>
+          <div className={`inline-block animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 ${isDark ? 'border-[#ff5e00]' : 'border-orange-600'}`}></div>
+          <p className="mt-4 text-lg">Načítavam košík...</p>
         </div>
       </div>
     );
@@ -510,34 +981,33 @@ export default function CheckoutPage() {
   // Show message if no addresses
   if (!loadingAddresses && addresses.length === 0 && user) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className={`min-h-screen ${backgroundClass} ${isDark ? 'text-white' : ''} flex items-center justify-center`}>
         <div className="container mx-auto px-4 max-w-2xl">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-white rounded-lg shadow-md p-8 text-center"
+            className={`${isDark ? 'checkout-card-dark text-center' : 'bg-white rounded-lg shadow-md p-8 text-center'}`}
           >
             <h2 className="text-2xl font-bold mb-4" style={{ color: 'var(--color-primary)' }}>
               Adresa je povinná
             </h2>
-            <p className="text-gray-700 mb-6">
+            <p className={`${isDark ? 'text-gray-200' : 'text-gray-700'} mb-6`}>
               Pred vytvorením objednávky musíte mať vyplnenú adresu pre doručenie.
             </p>
             <button
-              onClick={() => router.push(`/account?tenant=${tenant}&section=address`)}
-              className="w-full py-3 rounded-lg text-white font-semibold text-lg"
-              style={{ backgroundColor: 'var(--color-primary)' }}
+              onClick={() => router.push(`/account?tenant=${tenantSlug}&section=address`)}
+              className={`w-full py-3 rounded-2xl font-semibold text-lg ${getButtonGradientClass(tenantData)}`}
+              style={getButtonStyle(tenantData, isDark)}
             >
               Pridať adresu
             </button>
             <button
               type="button"
               onClick={() => router.push('/')}
-              className="w-full py-3 mt-4 rounded-lg border-2 font-semibold text-lg"
-              style={{ 
-                borderColor: 'var(--color-primary)',
-                color: 'var(--color-primary)'
-              }}
+              className={`w-full py-3 mt-4 rounded-2xl border-2 font-semibold text-lg ${
+                isDark ? 'border-white/30 text-white hover:bg-white/10' : ''
+              }`}
+              style={!isDark ? { borderColor: 'var(--color-primary)', color: 'var(--color-primary)' } : undefined}
             >
               Späť na menu
             </button>
@@ -546,24 +1016,24 @@ export default function CheckoutPage() {
       </div>
     );
   }
-  
+
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
+    <div className={`min-h-screen ${backgroundClass} ${isDark ? 'text-white py-10' : 'py-8'}`}>
       <div className="container mx-auto px-4 max-w-2xl">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-white rounded-lg shadow-md p-8"
+          className={`${isDark ? 'checkout-card-dark p-8' : 'bg-white rounded-lg shadow-md p-8'}`}
         >
           <h1 className="text-3xl font-bold mb-8" style={{ color: 'var(--color-primary)' }}>
-            Checkout
+            {t.checkoutTitle}
           </h1>
           
           {/* Order Summary */}
           <div className="mb-8 pb-8 border-b">
-            <h2 className="text-xl font-semibold mb-4">Order Summary</h2>
+            <h2 className="text-xl font-semibold mb-4">{t.orderSummary}</h2>
             {items.map(item => {
-              const modifiers = formatModifiers(item.modifiers);
+              const modifiers = formatModifiers(item.modifiers, false, language);
               return (
                 <div key={item.id} className="mb-4 pb-4 border-b last:border-b-0">
                   <div className="flex justify-between items-start mb-1">
@@ -582,51 +1052,254 @@ export default function CheckoutPage() {
                 </div>
               );
             })}
+            {deliveryFeeCents > 0 && (
+              <div className="flex justify-between text-sm mt-2">
+                <span>{t.deliveryFee}</span>
+                <span>€{(deliveryFeeCents / 100).toFixed(2)} {zoneName && `(${zoneName})`}</span>
+              </div>
+            )}
+            {minOrderCents !== null && (
+              <div className={`text-xs mt-1 ${total < minOrderCents ? 'text-red-600 font-semibold' : 'text-gray-500'}`}>
+                {total < minOrderCents 
+                  ? `⚠️ ${t.minOrderWarning} ${zoneName || t.thisZone}: €${(minOrderCents / 100).toFixed(2)}`
+                  : `✓ ${t.minOrderFulfilled}`
+                }
+              </div>
+            )}
+            {deliveryFeeError && (
+              <div className="text-sm text-red-600 mt-2">
+                {deliveryFeeError}
+              </div>
+            )}
             <div className="flex justify-between text-xl font-bold mt-4 pt-4 border-t">
-              <span>Total:</span>
-              <span>€{(total / 100).toFixed(2)}</span>
+              <span>{t.total}:</span>
+              <span>€{((total + deliveryFeeCents) / 100).toFixed(2)}</span>
             </div>
           </div>
           
-          {/* Customer Info (read-only, from authentication) */}
-          <div className="mb-8 pb-8 border-b">
-            <h2 className="text-xl font-semibold mb-4">Customer Information</h2>
-            <div className="space-y-2 text-gray-700">
-              <div><strong>Name:</strong> {user.name || 'N/A'}</div>
-              <div><strong>Email:</strong> {user.email || 'N/A'}</div>
-              {user.phone && (
+          {/* Optional Login */}
+          {!user && (
+            <div className="mb-8 pb-8 border-b">
+              <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-gray-900 font-semibold mb-1">{t.alreadyHaveAccount}</p>
+                    <p className="text-sm text-gray-600">{t.loginForFasterCheckout}</p>
+                  </div>
+                  <button
+                    onClick={() => router.push(`/auth/login?tenant=${tenantSlug}&returnUrl=${encodeURIComponent(`/checkout?tenant=${tenantSlug}`)}`)}
+                    className="px-4 py-2 rounded-lg font-semibold text-sm hover:opacity-90 transition-opacity"
+                    style={{ 
+                      backgroundColor: 'var(--color-primary)',
+                      color: 'white'
+                    }}
+                  >
+                    {t.login}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Customer Info - Guest Form or Read-only */}
+          {user ? (
+            <div className="mb-8 pb-8 border-b">
+              <h2 className="text-xl font-semibold mb-4">{t.customerInformation}</h2>
+              <div className="space-y-2 text-gray-700">
+                <div><strong>{t.nameLabel}:</strong> {user.name || 'N/A'}</div>
+                <div><strong>{t.emailLabel}:</strong> {user.email || 'N/A'}</div>
+                {user.phone && (
+                  <div>
+                    <strong>{t.phoneLabel}:</strong> {user.phone}
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className="mb-8 pb-8 border-b">
+              <h2 className="text-xl font-semibold mb-4">{t.contactDetails}</h2>
+              <div className="space-y-4">
                 <div>
-                  <strong>Phone:</strong> {user.phone}
-                  {user.phoneVerified && (
-                    <span className="ml-2 text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
-                      ✓ Verified
-                    </span>
+                  <label className="block text-sm font-medium mb-2">
+                    {t.nameLabel} <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={guestData.name}
+                    onChange={(e) => {
+                      setGuestData({...guestData, name: e.target.value});
+                      // Real-time validation
+                      if (e.target.value.trim()) {
+                        const validation = validateName(e.target.value);
+                        setNameError(validation.isValid ? null : validation.message || null);
+                      } else {
+                        setNameError(null);
+                      }
+                    }}
+                    onBlur={(e) => {
+                      // Validate on blur as well
+                      if (e.target.value.trim()) {
+                        const validation = validateName(e.target.value);
+                        setNameError(validation.isValid ? null : validation.message || null);
+                      }
+                    }}
+                    required
+                    className={`w-full px-4 py-2 border rounded-lg ${
+                      nameError ? 'border-red-500' : ''
+                    }`}
+                    placeholder={t.namePlaceholderCheckout || t.namePlaceholder}
+                  />
+                  {nameError && (
+                    <p className="mt-1 text-sm text-red-600">{nameError}</p>
                   )}
                 </div>
-              )}
-              {!user.phone && (
-                <div className="text-sm text-gray-500 italic">
-                  Phone number not provided
+                <div>
+                  <label className="block text-sm font-medium mb-2">
+                    {t.emailLabel} <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="email"
+                    value={guestData.email}
+                    onChange={(e) => {
+                      setGuestData({...guestData, email: e.target.value});
+                      // Real-time validation
+                      if (e.target.value.trim()) {
+                        const validation = validateEmail(e.target.value);
+                        setEmailError(validation.isValid ? null : validation.message || null);
+                      } else {
+                        setEmailError(null);
+                      }
+                    }}
+                    onBlur={(e) => {
+                      // Validate on blur as well
+                      if (e.target.value.trim()) {
+                        const validation = validateEmail(e.target.value);
+                        setEmailError(validation.isValid ? null : validation.message || null);
+                      }
+                    }}
+                    required
+                    className={`w-full px-4 py-2 border rounded-lg ${
+                      emailError ? 'border-red-500' : ''
+                    }`}
+                    placeholder={t.emailPlaceholderCheckout || t.emailPlaceholder}
+                  />
+                  {emailError && (
+                    <p className="mt-1 text-sm text-red-600">{emailError}</p>
+                  )}
                 </div>
-              )}
+                <div>
+                  <label className="block text-sm font-medium mb-2">
+                    {t.phoneLabel} <span className="text-red-500">*</span>
+                  </label>
+                  <div className="flex gap-2">
+                    <select
+                      value={guestData.phonePrefix}
+                      onChange={(e) => {
+                        setGuestData({...guestData, phonePrefix: e.target.value});
+                        // Re-validate phone when prefix changes
+                        if (guestData.phone.trim()) {
+                          const validation = validatePhone(guestData.phone, e.target.value);
+                          setPhoneError(validation.isValid ? null : validation.message || null);
+                        }
+                      }}
+                      className="px-3 py-2 border rounded-lg bg-white min-w-[120px]"
+                    >
+                      <option value="+421">+421 (SK)</option>
+                      <option value="+420">+420 (CZ)</option>
+                      <option value="+48">+48 (PL)</option>
+                      <option value="+36">+36 (HU)</option>
+                      <option value="+43">+43 (AT)</option>
+                      <option value="+49">+49 (DE)</option>
+                      <option value="+1">+1 (US/CA)</option>
+                      <option value="+44">+44 (GB)</option>
+                      <option value="+33">+33 (FR)</option>
+                      <option value="+39">+39 (IT)</option>
+                      <option value="+34">+34 (ES)</option>
+                      <option value="+351">+351 (PT)</option>
+                      <option value="+31">+31 (NL)</option>
+                      <option value="+32">+32 (BE)</option>
+                      <option value="+41">+41 (CH)</option>
+                      <option value="+46">+46 (SE)</option>
+                      <option value="+47">+47 (NO)</option>
+                      <option value="+45">+45 (DK)</option>
+                      <option value="+358">+358 (FI)</option>
+                      <option value="+353">+353 (IE)</option>
+                      <option value="+30">+30 (GR)</option>
+                      <option value="+40">+40 (RO)</option>
+                      <option value="+359">+359 (BG)</option>
+                      <option value="+385">+385 (HR)</option>
+                      <option value="+386">+386 (SI)</option>
+                      <option value="+372">+372 (EE)</option>
+                      <option value="+371">+371 (LV)</option>
+                      <option value="+370">+370 (LT)</option>
+                      <option value="+352">+352 (LU)</option>
+                      <option value="+356">+356 (MT)</option>
+                      <option value="+357">+357 (CY)</option>
+                    </select>
+                    <input
+                      type="tel"
+                      value={guestData.phone}
+                      onChange={(e) => {
+                        setGuestData({...guestData, phone: e.target.value});
+                        // Real-time validation
+                        if (e.target.value.trim()) {
+                          const validation = validatePhone(e.target.value, guestData.phonePrefix);
+                          setPhoneError(validation.isValid ? null : validation.message || null);
+                        } else {
+                          setPhoneError(null);
+                        }
+                      }}
+                      onBlur={(e) => {
+                        // Validate on blur as well
+                        if (e.target.value.trim()) {
+                          const validation = validatePhone(e.target.value, guestData.phonePrefix);
+                          setPhoneError(validation.isValid ? null : validation.message || null);
+                        }
+                      }}
+                      placeholder={t.phonePlaceholder || '912345678'}
+                      required
+                      className={`flex-1 px-4 py-2 border rounded-lg ${
+                        phoneError ? 'border-red-500' : ''
+                      }`}
+                    />
+                  </div>
+                  {phoneError && (
+                    <p className="mt-1 text-sm text-red-600">{phoneError}</p>
+                  )}
+                </div>
+              </div>
             </div>
-          </div>
+          )}
           
-          {/* Address Selection */}
-          {!loadingAddresses && addresses.length > 0 && (
+          {/* Address Selection - Guest Form or Address List */}
+          {user ? (
+            !loadingAddresses && addresses.length > 0 && (
             <div className="mb-8 pb-8 border-b">
-              <h2 className="text-xl font-semibold mb-4">Adresa pre doručenie</h2>
+              <h2 className="text-xl font-semibold mb-4">{t.deliveryAddress}</h2>
               <div className="space-y-3">
                 {addresses.map((address) => (
                   <label
                     key={address.id}
                     onClick={() => {
+                      console.log('[Checkout] Address clicked:', {
+                        addressId: address.id,
+                        street: address.street,
+                        city: address.city,
+                        postalCode: address.postalCode,
+                        previousAddressId: selectedAddressId,
+                        userId: user?.id,
+                        userEmail: user?.email,
+                      });
                       setSelectedAddressId(address.id);
                     }}
-                    className={`flex items-start p-4 border-2 rounded-lg cursor-pointer transition-colors ${
+                    className={`flex items-start rounded-2xl p-4 cursor-pointer transition-all border ${
                       selectedAddressId === address.id
-                        ? 'border-orange-500 bg-orange-50'
-                        : 'border-gray-200 hover:border-gray-300'
+                        ? isDark
+                          ? 'bg-white/10 border-white/30 shadow-[0_20px_60px_rgba(0,0,0,0.6)]'
+                          : 'border-orange-500 bg-orange-50 shadow'
+                        : isDark
+                          ? 'bg-white/5 border-white/10 hover:border-white/25'
+                          : 'border-gray-200 hover:border-gray-300'
                     }`}
                   >
                     <input
@@ -635,26 +1308,37 @@ export default function CheckoutPage() {
                       value={address.id}
                       checked={selectedAddressId === address.id}
                       onChange={() => {
+                        console.log('[Checkout] Address changed via radio:', {
+                          addressId: address.id,
+                          street: address.street,
+                          city: address.city,
+                          postalCode: address.postalCode,
+                          previousAddressId: selectedAddressId,
+                          userId: user?.id,
+                          userEmail: user?.email,
+                        });
                         setSelectedAddressId(address.id);
                       }}
                       onClick={(e) => {
                         e.stopPropagation();
                       }}
-                      className="mt-1 mr-3 cursor-pointer"
+                      className="mt-1 mr-3 cursor-pointer accent-[var(--color-primary)]"
                     />
-                    <div className="flex-1">
+                    <div className={`flex-1 ${isDark ? 'text-white' : 'text-gray-900'}`}>
                       <div className="font-semibold">
                         {address.street}
                         {address.isPrimary && (
-                          <span className="ml-2 text-xs bg-orange-100 text-orange-800 px-2 py-1 rounded">
-                            Primárna
+                          <span className={`ml-2 text-xs px-2 py-1 rounded ${
+                            isDark ? 'bg-white/15 text-white' : 'bg-orange-100 text-orange-800'
+                          }`}>
+                            {t.primary}
                           </span>
                         )}
                       </div>
                       {address.description && (
-                        <div className="text-sm text-gray-600 mt-1">{address.description}</div>
+                        <div className={`text-sm mt-1 ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>{address.description}</div>
                       )}
-                      <div className="text-sm text-gray-600 mt-1">
+                      <div className={`text-sm mt-1 ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
                         {address.postalCode} {address.city}, {address.country}
                       </div>
                     </div>
@@ -663,12 +1347,284 @@ export default function CheckoutPage() {
               </div>
               <button
                 type="button"
-                onClick={() => router.push(`/account?tenant=${tenant}&section=address`)}
-                className="mt-4 text-sm font-medium hover:underline"
-                style={{ color: 'var(--color-primary)' }}
+                onClick={() => router.push(`/account?tenant=${tenantSlug}&section=address`)}
+                className={`mt-4 text-sm font-medium hover:underline ${
+                  isDark ? 'text-white' : ''
+                }`}
+                style={!isDark ? { color: 'var(--color-primary)' } : undefined}
               >
-                + Pridať novú adresu
+                {t.addNewAddress}
               </button>
+            </div>
+          )
+          ) : (
+            <div className="mb-8 pb-8 border-b">
+              <h2 className="text-xl font-semibold mb-4">{t.deliveryAddress}</h2>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium mb-2">
+                    {t.street} <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={guestData.street}
+                    onChange={(e) => {
+                      setGuestData({...guestData, street: e.target.value});
+                      // Trigger geocoding validation when street is entered and we have city/postal code
+                      if (e.target.value.trim() && guestData.city && guestData.postalCode) {
+                        validateAddressWithGeocoding(e.target.value, guestData.city, guestData.postalCode);
+                      } else {
+                        // Clear error if street is empty
+                        setAddressValidationError(null);
+                      }
+                    }}
+                    required
+                    className={`w-full px-4 py-2 border rounded-lg ${
+                      addressValidationError ? 'border-red-500' : ''
+                    }`}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">
+                    {t.houseNumber}
+                  </label>
+                  <input
+                    type="text"
+                    value={guestData.houseNumber}
+                    onChange={(e) => setGuestData({...guestData, houseNumber: e.target.value})}
+                    placeholder={t.houseNumberPlaceholder}
+                    className="w-full px-4 py-2 border rounded-lg"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">
+                    {t.cityLabel} <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={guestData.city}
+                    onChange={(e) => {
+                      setGuestData({...guestData, city: e.target.value});
+                      // Trigger validation with geocoding if we have all required fields
+                      if (e.target.value && guestData.postalCode && guestData.street) {
+                        validateAddressWithGeocoding(guestData.street, e.target.value, guestData.postalCode);
+                      } else if (e.target.value && guestData.postalCode) {
+                        // Simple validation if street is missing
+                        const validation = validateBratislavaAddressSimple(e.target.value, guestData.postalCode);
+                        setAddressValidationError(validation.isValid ? null : validation.message || null);
+                      } else {
+                        setAddressValidationError(null);
+                      }
+                    }}
+                    required
+                    className={`w-full px-4 py-2 border rounded-lg ${
+                      addressValidationError ? 'border-red-500' : ''
+                    }`}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">
+                    {t.postalCodeLabel} <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={guestData.postalCode}
+                    onChange={(e) => {
+                      setGuestData({...guestData, postalCode: e.target.value});
+                      // Trigger validation with geocoding if we have all required fields
+                      if (e.target.value && guestData.city && guestData.street) {
+                        validateAddressWithGeocoding(guestData.street, guestData.city, e.target.value);
+                      } else if (e.target.value && guestData.city) {
+                        // Simple validation if street is missing
+                        const validation = validateBratislavaAddressSimple(guestData.city, e.target.value);
+                        setAddressValidationError(validation.isValid ? null : validation.message || null);
+                      } else {
+                        setAddressValidationError(null);
+                      }
+                    }}
+                    required
+                    className={`w-full px-4 py-2 border rounded-lg ${
+                      addressValidationError ? 'border-red-500' : ''
+                    }`}
+                  />
+                  {addressValidationError && (
+                    <p className="mt-1 text-sm text-red-600">{addressValidationError}</p>
+                  )}
+                  {isValidatingAddress && (
+                    <p className="mt-1 text-sm text-gray-500">{t.validatingAddress}</p>
+                  )}
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">
+                    {t.deliveryInstructions}
+                  </label>
+                  <textarea
+                    value={guestData.instructions}
+                    onChange={(e) => setGuestData({...guestData, instructions: e.target.value})}
+                    placeholder={t.deliveryInstructionsPlaceholder}
+                    rows={3}
+                    className="w-full px-4 py-2 border rounded-lg"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Payment Method Selection */}
+          <div className="mb-8 pb-8 border-b">
+            <h2 className="text-xl font-semibold mb-4">{t.paymentMethod}</h2>
+            <div className="space-y-3">
+              <label className="flex items-start p-4 border-2 rounded-lg cursor-pointer transition-colors">
+                <input
+                  type="radio"
+                  name="paymentType"
+                  value="online"
+                  checked={paymentType === 'online'}
+                  onChange={() => setPaymentType('online')}
+                  className="mt-1 mr-3 cursor-pointer"
+                />
+                <div className="flex-1">
+                  <div className="font-semibold">{t.onlinePayment}</div>
+                  <div className="text-sm text-gray-600">{t.paymentGateway}</div>
+                </div>
+              </label>
+              <label className="flex items-start p-4 border-2 rounded-lg cursor-pointer transition-colors">
+                <input
+                  type="radio"
+                  name="paymentType"
+                  value="cash_on_delivery"
+                  checked={paymentType === 'cash_on_delivery'}
+                  onChange={() => setPaymentType('cash_on_delivery')}
+                  className="mt-1 mr-3 cursor-pointer"
+                />
+                <div className="flex-1">
+                  <div className="font-semibold flex items-center gap-2">
+                    {t.cashOnDelivery}
+                    {!user && (
+                      <span className="text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded font-medium">
+                        {t.requiresAccount}
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-sm text-gray-600">
+                    {t.payOnDelivery}
+                    {!user && (
+                      <span className="block mt-1 text-orange-600 font-medium">
+                        {t.accountCreatedAutomatically}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </label>
+            </div>
+          </div>
+
+          {/* Save Account Checkbox (for online payment) */}
+          {paymentType === 'online' && !user && (
+            <div className="mb-8 pb-8 border-b">
+              <label className="flex items-start cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={saveAccount}
+                  onChange={(e) => setSaveAccount(e.target.checked)}
+                  className="mt-1 mr-3 cursor-pointer"
+                />
+                <div className="flex-1">
+                  <div className="font-medium">{t.saveDataAndCreateAccount}</div>
+                  <div className="text-sm text-gray-600">{t.createAccountForFutureOrders}</div>
+                </div>
+              </label>
+            </div>
+          )}
+
+          {/* Cash on Delivery - Payment Method Selection */}
+          {paymentType === 'cash_on_delivery' && (
+            <div className="mb-8 pb-8 border-b">
+              {!user && (
+                <div
+                  className={`mb-6 rounded-2xl border p-5 ${
+                    isDark
+                      ? 'border-white/10 bg-white/5 text-white shadow-[0_30px_70px_rgba(0,0,0,0.6)] backdrop-blur-lg'
+                      : 'bg-orange-50 border-orange-300 text-orange-900'
+                  }`}
+                >
+                  <div className="flex items-start gap-4">
+                    <div
+                      className={`flex h-10 w-10 items-center justify-center rounded-full ${
+                        isDark ? 'bg-white/10 border border-white/20' : 'bg-orange-100 text-orange-700'
+                      }`}
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    </div>
+                    <div className="flex-1">
+                      <h4 className="text-lg font-bold mb-2">
+                        {t.accountRequiredForDeliveryPayment}
+                      </h4>
+                      <p className={`text-sm mb-4 ${isDark ? 'text-gray-300' : 'text-orange-800'}`}>
+                        {t.accountCreatedAfterOrder}
+                      </p>
+                      <div className="flex flex-wrap items-center gap-3">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            router.push(`/auth/login?tenant=${tenantSlug}&returnUrl=${encodeURIComponent(`/checkout?tenant=${tenantSlug}`)}`)
+                          }
+                          className={`px-5 py-2 rounded-full text-sm font-semibold transition-colors ${
+                            isDark
+                              ? 'bg-gradient-to-r from-[#ff5e00] via-[#ff0066] to-[#ff2d55] text-white shadow-lg'
+                              : 'bg-orange-600 text-white hover:bg-orange-700'
+                          }`}
+                        >
+                          {t.orSignIn}
+                        </button>
+                        <span className={`text-xs ${isDark ? 'text-gray-400' : 'text-orange-700'}`}>
+                          {t.ifYouHaveAccount}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+              <h3 className="text-lg font-semibold mb-3">{t.paymentMethodOnDelivery}</h3>
+              <div className="space-y-3">
+                {paymentConfig.cashOnDeliveryEnabled && (
+                  <label className="flex items-start p-4 border-2 rounded-lg cursor-pointer transition-colors">
+                    <input
+                      type="radio"
+                      name="cashOnDeliveryMethod"
+                      value="cash"
+                      checked={cashOnDeliveryMethod === 'cash'}
+                      onChange={() => setCashOnDeliveryMethod('cash')}
+                      className="mt-1 mr-3 cursor-pointer"
+                    />
+                    <div className="flex-1">
+                      <div className="font-semibold">{t.cashPayment}</div>
+                    </div>
+                  </label>
+                )}
+                {paymentConfig.cardOnDeliveryEnabled && (
+                  <label className="flex items-start p-4 border-2 rounded-lg cursor-pointer transition-colors">
+                    <input
+                      type="radio"
+                      name="cashOnDeliveryMethod"
+                      value="card"
+                      checked={cashOnDeliveryMethod === 'card'}
+                      onChange={() => setCashOnDeliveryMethod('card')}
+                      className="mt-1 mr-3 cursor-pointer"
+                    />
+                    <div className="flex-1">
+                      <div className="font-semibold">{t.cardPaymentTerminal}</div>
+                    </div>
+                  </label>
+                )}
+                {!paymentConfig.cashOnDeliveryEnabled && !paymentConfig.cardOnDeliveryEnabled && (
+                  <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg text-sm text-yellow-800">
+                    {t.noDeliveryPaymentMethods}
+                  </div>
+                )}
+              </div>
             </div>
           )}
           
@@ -676,28 +1632,31 @@ export default function CheckoutPage() {
           <motion.button
             whileTap={{ scale: 0.98 }}
             onClick={handlePay}
-            disabled={loading || loadingAddresses || addresses.length === 0}
-            className="w-full py-3 rounded-lg text-white font-semibold text-lg disabled:opacity-50 disabled:cursor-not-allowed"
-            style={{ backgroundColor: 'var(--color-primary)' }}
+            disabled={
+              loading || 
+              (user && loadingAddresses) || 
+              (user && addresses.length === 0) ||
+              (!user && (!guestData.name || !guestData.email || !guestData.phone || !guestData.street || !guestData.city || !guestData.postalCode)) ||
+              (paymentType === 'cash_on_delivery' && !cashOnDeliveryMethod)
+            }
+            className={`w-full py-3 rounded-2xl font-semibold text-lg disabled:opacity-50 disabled:cursor-not-allowed ${getButtonGradientClass(tenantData)}`}
+            style={getButtonStyle(tenantData, isDark)}
           >
-            {loading ? 'Processing...' : 'Pay Now'}
+            {loading ? t.processing : paymentType === 'cash_on_delivery' ? t.confirmOrder : t.pay}
           </motion.button>
           
           <button
             type="button"
             onClick={() => router.push('/')}
-            className="w-full py-3 mt-4 rounded-lg border-2 font-semibold text-lg"
-            style={{ 
-              borderColor: 'var(--color-primary)',
-              color: 'var(--color-primary)'
-            }}
+            className={`w-full py-3 mt-4 rounded-2xl border-2 font-semibold text-lg ${
+              isDark ? 'border-white/30 text-white hover:bg-white/10' : ''
+            }`}
+            style={!isDark ? { borderColor: 'var(--color-primary)', color: 'var(--color-primary)' } : undefined}
           >
-            Back to Menu
+            {t.backToMenu}
           </button>
         </motion.div>
       </div>
     </div>
   );
 }
-
-

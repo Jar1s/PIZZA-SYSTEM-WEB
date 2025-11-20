@@ -2,7 +2,7 @@
 
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { Product } from '@/shared';
+import { Product } from '@pizza-ecosystem/shared';
 
 interface CartItem {
   id: string;
@@ -29,6 +29,7 @@ export const useCart = create<CartStore>()(
       isOpen: false,
       
       addItem: (product, modifiers) => {
+        console.log('addItem called', { product: product.name, modifiers });
         const items = get().items;
         
         // Create unique ID based on product ID and modifiers
@@ -80,8 +81,9 @@ export const useCart = create<CartStore>()(
       
       clearCart: () => set({ items: [] }),
       openCart: () => {
-        console.log('openCart called');
+        console.log('openCart called, setting isOpen to true');
         set({ isOpen: true });
+        console.log('Cart state after open:', get().isOpen);
       },
       closeCart: () => set({ isOpen: false }),
     }),

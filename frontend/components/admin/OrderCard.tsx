@@ -1,9 +1,10 @@
 'use client';
 
-import { Order, OrderStatus } from '@/shared';
+import { Order, OrderStatus } from '@pizza-ecosystem/shared';
 import { useState } from 'react';
 import { formatModifiers } from '@/lib/format-modifiers';
 import { syncOrderToStoryous, createWoltDelivery } from '@/lib/api';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface OrderCardProps {
   order: Order;
@@ -33,6 +34,7 @@ const NEXT_STATUS: Record<OrderStatus, OrderStatus | null> = {
 };
 
 export function OrderCard({ order, onStatusUpdate, isExpanded = false, onToggleExpand }: OrderCardProps) {
+  const { language } = useLanguage();
   // Use prop if provided, otherwise fall back to local state for backward compatibility
   const [localExpanded, setLocalExpanded] = useState(false);
   const expanded = onToggleExpand ? isExpanded : localExpanded;
@@ -214,7 +216,7 @@ export function OrderCard({ order, onStatusUpdate, isExpanded = false, onToggleE
           <div className="col-span-2">
             <div className="font-semibold mb-2">Items</div>
             {order.items.map((item, i) => {
-              const modifiers = formatModifiers(item.modifiers);
+              const modifiers = formatModifiers(item.modifiers, true, language); // Use defaults for admin
               
               return (
                 <div key={i} className="mb-3 pb-3 border-b last:border-b-0">

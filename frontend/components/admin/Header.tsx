@@ -1,40 +1,43 @@
 'use client';
 
-import { useAuth } from '@/contexts/AuthContext';
+import { usePathname } from 'next/navigation';
+import { TenantSelector } from './TenantSelector';
 
-export function Header() {
-  const { user } = useAuth();
+interface HeaderProps {
+  selectedTenant: 'all' | string;
+  onTenantChange: (tenant: 'all' | string) => void;
+}
+
+export function Header({ selectedTenant, onTenantChange }: HeaderProps) {
+  const pathname = usePathname();
+  
+  // Get page title from pathname
+  const getPageTitle = () => {
+    if (pathname === '/admin') return 'Dashboard';
+    if (pathname === '/admin/orders') return 'Orders';
+    if (pathname === '/admin/products') return 'Products';
+    if (pathname === '/admin/brands') return 'Brands';
+    if (pathname === '/admin/analytics') return 'Analytics';
+    if (pathname === '/admin/customers') return 'Customers';
+    return 'Admin';
+  };
 
   return (
-    <header className="bg-white border-b px-6 py-4">
-      <div className="flex justify-between items-center">
-        <div>
-          <h2 className="text-xl font-semibold">Admin Dashboard</h2>
-        </div>
-        
+    <header className="bg-white border-b border-gray-200 px-6 py-3 flex-shrink-0 z-10">
+      <div className="flex items-center justify-between">
+        <h2 className="text-lg font-semibold text-gray-900">{getPageTitle()}</h2>
         <div className="flex items-center gap-4">
-          <div className="text-sm text-gray-600">
+          <TenantSelector 
+            selectedTenant={selectedTenant} 
+            onTenantChange={onTenantChange} 
+          />
+          <div className="text-sm text-gray-500">
             {new Date().toLocaleDateString('sk-SK', {
-              weekday: 'long',
-              year: 'numeric',
-              month: 'long',
               day: 'numeric',
+              month: 'long',
+              year: 'numeric',
             })}
           </div>
-          
-          {user && (
-            <div className="flex items-center gap-3">
-              <div className="text-right">
-                <div className="text-sm font-medium text-gray-900">{user.name}</div>
-                <div className="text-xs text-gray-500">
-                  {user.role === 'ADMIN' ? '👑 Admin' : '👤 Operator'}
-                </div>
-              </div>
-              <div className="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold">
-                {user.name.charAt(0).toUpperCase()}
-              </div>
-            </div>
-          )}
         </div>
       </div>
     </header>

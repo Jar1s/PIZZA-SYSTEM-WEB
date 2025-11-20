@@ -104,9 +104,11 @@ export class GopayService {
     // GoPay signature verification
     // GoPay uses HMAC-SHA256 with client secret
     
-    if (process.env.NODE_ENV === 'development') {
-      this.logger.warn('⚠️  GoPay webhook verification skipped in DEV mode');
-      return true; // Skip verification in dev
+    // CRITICAL: Use explicit env variable, not NODE_ENV
+    const skipVerification = process.env.SKIP_WEBHOOK_VERIFICATION === 'true';
+    if (skipVerification) {
+      this.logger.warn('⚠️  SECURITY WARNING: GoPay webhook verification is DISABLED via SKIP_WEBHOOK_VERIFICATION');
+      return true;
     }
 
     // Get client secret from parameter or env

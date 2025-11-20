@@ -80,6 +80,16 @@ export class CustomerAuthService {
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 7); // 7 days
 
+    // Clean up expired refresh tokens for this user
+    await this.prisma.refreshToken.deleteMany({
+      where: {
+        userId: customer.id,
+        expiresAt: {
+          lt: new Date(), // Delete tokens that have already expired
+        },
+      },
+    });
+
     // Store refresh token
     await this.prisma.refreshToken.create({
       data: {
@@ -99,7 +109,7 @@ export class CustomerAuthService {
         name: customer.name,
         role: customer.role,
       },
-      needsSmsVerification: !customer.phone || !customer.phoneVerified,
+      needsSmsVerification: false, // SMS verification disabled
     };
   }
 
@@ -146,6 +156,16 @@ export class CustomerAuthService {
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 7); // 7 days
 
+    // Clean up expired refresh tokens for this user
+    await this.prisma.refreshToken.deleteMany({
+      where: {
+        userId: user.id,
+        expiresAt: {
+          lt: new Date(), // Delete tokens that have already expired
+        },
+      },
+    });
+
     // Store refresh token
     await this.prisma.refreshToken.create({
       data: {
@@ -164,7 +184,7 @@ export class CustomerAuthService {
         name: user.name,
         role: user.role,
       },
-      needsSmsVerification: !user.phone || !user.phoneVerified,
+      needsSmsVerification: false, // SMS verification disabled
     };
   }
 
@@ -200,7 +220,16 @@ export class CustomerAuthService {
       // Extract user info
       const googleId = payload.sub;
       const email = payload.email;
-      const name = payload.name || payload.given_name || 'Google User';
+      
+      // Better name fallback: use email prefix if name not provided
+      let name = payload.name || payload.given_name;
+      if (!name && email) {
+        // Extract name from email (e.g., "john.doe@gmail.com" -> "john.doe")
+        name = email.split('@')[0].replace(/[._]/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase());
+      }
+      if (!name) {
+        name = 'User'; // Last resort fallback
+      }
 
       if (!email) {
         throw new BadRequestException('Email not provided by Google');
@@ -271,13 +300,26 @@ export class CustomerAuthService {
       // Email: prefer from userInfo (first login), then from token, then use private relay
       const email = userInfo?.email || (payload as any).email;
       // Name: prefer from userInfo (first login), then construct from email, then default
-      let name = 'Apple User';
+      let name: string;
       if (userInfo?.name) {
         const firstName = userInfo.name.firstName || '';
         const lastName = userInfo.name.lastName || '';
-        name = [firstName, lastName].filter(Boolean).join(' ') || 'Apple User';
-      } else if (email) {
-        name = email.split('@')[0];
+        name = [firstName, lastName].filter(Boolean).join(' ');
+      }
+      
+      // Better fallback: use email prefix if name not provided
+      if (!name && email) {
+        // Extract name from email (e.g., "john.doe@privaterelay.appleid.com" -> "john.doe")
+        const emailPrefix = email.split('@')[0];
+        // Skip private relay emails for name extraction
+        if (!email.includes('privaterelay.appleid.com')) {
+          name = emailPrefix.replace(/[._]/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase());
+        }
+      }
+      
+      // Last resort fallback
+      if (!name) {
+        name = 'User';
       }
 
       if (!appleId || typeof appleId !== 'string') {
@@ -311,6 +353,7 @@ export class CustomerAuthService {
     appleId?: string;
   }): Promise<any> {
     // Try to find existing customer by email or OAuth ID
+    // Explicitly select only fields that exist to avoid schema mismatch errors
     let customer = await this.prisma.user.findFirst({
       where: {
         OR: [
@@ -318,6 +361,20 @@ export class CustomerAuthService {
           ...(data.googleId ? [{ googleId: data.googleId } as any] : []),
           ...(data.appleId ? [{ appleId: data.appleId } as any] : []),
         ],
+      },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        googleId: true,
+        appleId: true,
+        role: true,
+        phone: true,
+        phoneVerified: true,
+        isActive: true,
+        username: true,
+        createdAt: true,
+        updatedAt: true,
       },
     } as any);
 
@@ -357,6 +414,46 @@ export class CustomerAuthService {
   }
 
   /**
+   * Set password using password reset token (for account setup)
+   */
+  async setPasswordWithToken(token: string, password: string): Promise<CustomerAuthResult> {
+    // Find user by password reset token
+    const user = await this.prisma.user.findUnique({
+      where: { passwordResetToken: token } as any,
+    }) as any;
+
+    if (!user) {
+      throw new BadRequestException('Neplatný alebo expirovaný token');
+    }
+
+    // Check if token is expired
+    if (user.passwordResetExpires && new Date() > new Date(user.passwordResetExpires)) {
+      throw new BadRequestException('Token expiroval. Požiadajte o nový odkaz na nastavenie hesla.');
+    }
+
+    // Check if user already has password
+    if (user.password) {
+      throw new BadRequestException('Heslo už bolo nastavené. Použite "Zabudnuté heslo" ak ho chcete zmeniť.');
+    }
+
+    // Hash password
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Update user with password and clear reset token
+    const updatedUser = await this.prisma.user.update({
+      where: { id: user.id },
+      data: {
+        password: hashedPassword,
+        passwordResetToken: null,
+        passwordResetExpires: null,
+      } as any,
+    });
+
+    // Generate auth result (auto-login after password setup)
+    return this.generateAuthResult(updatedUser);
+  }
+
+  /**
    * Generate auth result (helper)
    */
   private async generateAuthResult(customer: any): Promise<CustomerAuthResult> {
@@ -370,6 +467,16 @@ export class CustomerAuthService {
     const refreshToken = crypto.randomBytes(32).toString('hex');
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 7); // 7 days
+
+    // Clean up expired refresh tokens for this user
+    await this.prisma.refreshToken.deleteMany({
+      where: {
+        userId: customer.id,
+        expiresAt: {
+          lt: new Date(), // Delete tokens that have already expired
+        },
+      },
+    });
 
     // Store refresh token
     await this.prisma.refreshToken.create({
@@ -391,7 +498,7 @@ export class CustomerAuthService {
         phoneVerified: customer.phoneVerified || false,
         role: customer.role,
       },
-      needsSmsVerification: !customer.phone || !customer.phoneVerified,
+      needsSmsVerification: false, // SMS verification disabled
     };
   }
 
@@ -434,6 +541,16 @@ export class CustomerAuthService {
     const refreshToken = crypto.randomBytes(32).toString('hex');
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 7); // 7 days
+
+    // Clean up expired refresh tokens for this user
+    await this.prisma.refreshToken.deleteMany({
+      where: {
+        userId: user.id,
+        expiresAt: {
+          lt: new Date(), // Delete tokens that have already expired
+        },
+      },
+    });
 
     // Store refresh token
     await this.prisma.refreshToken.create({

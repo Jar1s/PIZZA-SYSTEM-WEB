@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Product } from '@/shared';
+import { Product } from '@pizza-ecosystem/shared';
 import { updateProduct } from '@/lib/api';
 
 interface EditProductModalProps {

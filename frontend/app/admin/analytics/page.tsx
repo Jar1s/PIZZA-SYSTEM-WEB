@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback, Suspense } from 'react';
 import dynamic from 'next/dynamic';
+import { useAdminContext } from '@/app/admin/admin-context';
 
 // Lazy load recharts for code splitting (large library)
 const LineChart = dynamic(() => import('recharts').then(mod => mod.LineChart), { ssr: false });
@@ -59,10 +60,11 @@ const STATUS_COLORS: Record<string, string> = {
 const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#06B6D4', '#84CC16'];
 
 export default function AnalyticsPage() {
+  const { selectedTenant: contextTenant } = useAdminContext();
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [timeRange, setTimeRange] = useState<'7' | '30' | '90'>('30');
-  const [selectedTenant, setSelectedTenant] = useState<'all' | 'pornopizza' | 'pizzavnudzi'>('all');
+  const [selectedTenant, setSelectedTenant] = useState<'all' | 'pornopizza' | 'pizzavnudzi'>(contextTenant === 'all' ? 'all' : contextTenant as 'pornopizza' | 'pizzavnudzi');
 
   const fetchAnalytics = useCallback(async () => {
     try {
@@ -91,6 +93,14 @@ export default function AnalyticsPage() {
       setLoading(false);
     }
   }, [timeRange, selectedTenant]);
+
+  // Update selectedTenant when context changes
+  useEffect(() => {
+    const newTenant = contextTenant === 'all' ? 'all' : contextTenant as 'pornopizza' | 'pizzavnudzi';
+    if (newTenant !== selectedTenant) {
+      setSelectedTenant(newTenant);
+    }
+  }, [contextTenant, selectedTenant]);
 
   useEffect(() => {
     fetchAnalytics();

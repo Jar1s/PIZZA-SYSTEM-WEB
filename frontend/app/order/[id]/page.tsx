@@ -89,7 +89,7 @@ export default function OrderTrackingPage() {
   const params = useParams();
   const searchParams = useSearchParams();
   const router = useRouter();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const orderId = params.id as string;
   const tenant = searchParams.get('tenant') || 'pornopizza'; // Default tenant
   
@@ -282,7 +282,7 @@ export default function OrderTrackingPage() {
                     {item.quantity}x {item.productName}
                   </p>
                   {(() => {
-                    const modifiers = formatModifiers(item.modifiers);
+                    const modifiers = formatModifiers(item.modifiers, true, language); // Use defaults
                     return modifiers.length > 0 && (
                       <div className="text-sm text-gray-500 mt-1 space-y-0.5">
                         {modifiers.map((mod, idx) => (

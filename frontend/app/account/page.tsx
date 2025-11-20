@@ -8,6 +8,8 @@ import { motion } from 'framer-motion';
 import OrderHistory from '@/components/account/OrderHistory';
 import MyAddress from '@/components/account/MyAddress';
 import PersonalData from '@/components/account/PersonalData';
+import { useTenant } from '@/contexts/TenantContext';
+import { isDarkTheme, getButtonGradientClass } from '@/lib/tenant-utils';
 
 type AccountSection = 'orders' | 'address' | 'settings';
 
@@ -16,9 +18,13 @@ export default function AccountPage() {
   const searchParams = useSearchParams();
   const { user, logout, loading: authLoading } = useCustomerAuth();
   const { t } = useLanguage();
+  const { tenant: tenantData } = useTenant();
   const initialSection = searchParams.get('section') as AccountSection | null;
   const [activeSection, setActiveSection] = useState<AccountSection>(initialSection || 'orders');
   const tenant = searchParams.get('tenant') || 'pornopizza';
+  const isDark = isDarkTheme(tenantData);
+  const gradientClass = getButtonGradientClass(tenantData);
+  const primaryColor = tenantData?.theme?.primaryColor || '#DC143C';
   
   // Update active section when section query param changes
   useEffect(() => {
@@ -111,20 +117,19 @@ export default function AccountPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
+    <div className={`min-h-screen py-8 ${isDark ? 'porno-bg text-white' : 'bg-gray-50 text-gray-900'}`}>
       <div className="container mx-auto px-4 max-w-6xl">
         <div className="mb-8">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h1 className="text-3xl font-bold mb-2" style={{ color: 'var(--color-primary)' }}>
+              <h1 className="text-3xl font-black mb-2" style={{ color: primaryColor }}>
                 {t.myAccount}
               </h1>
-              <p className="text-gray-600">{user.email}</p>
+              <p className={isDark ? 'text-gray-300' : 'text-gray-600'}>{user.email}</p>
             </div>
             <button
               onClick={handleBackToHome}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg transition-colors hover:opacity-90 text-white font-medium"
-              style={{ backgroundColor: 'var(--color-primary)' }}
+              className={`flex items-center gap-2 px-4 py-2 rounded-full transition-transform hover:scale-[1.02] font-semibold ${gradientClass}`}
             >
               <svg
                 className="w-5 h-5"
@@ -147,24 +152,25 @@ export default function AccountPage() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
           {/* Menu Sidebar */}
           <div className="md:col-span-1">
-            <div className="bg-white rounded-lg shadow-md p-4 space-y-2">
+            <div className={`${isDark ? 'bg-white/5 border border-white/10 text-white' : 'bg-white'} rounded-2xl shadow-lg p-4 space-y-2`}>
               {menuItems.map((item) => (
                 <button
                   key={item.id}
                   onClick={() => setActiveSection(item.id)}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border transition-all ${
                     activeSection === item.id
-                      ? 'bg-orange-50 border-2'
-                      : 'hover:bg-gray-50 border-2 border-transparent'
+                      ? isDark
+                        ? 'bg-white/10 border-white/40 shadow-lg'
+                        : 'bg-orange-50 border-[var(--color-primary)]'
+                      : isDark
+                        ? 'border-transparent hover:bg-white/5'
+                        : 'border-transparent hover:bg-gray-50'
                   }`}
-                  style={{
-                    borderColor: activeSection === item.id ? 'var(--color-primary)' : 'transparent',
-                  }}
                 >
-                  <span className="text-gray-700">{item.icon}</span>
-                  <span className="font-medium text-gray-900">{item.label}</span>
+                  <span className={isDark ? 'text-white' : 'text-gray-700'}>{item.icon}</span>
+                  <span className={`font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>{item.label}</span>
                   <svg
-                    className="w-5 h-5 ml-auto text-gray-400"
+                    className={`w-5 h-5 ml-auto ${isDark ? 'text-gray-400' : 'text-gray-400'}`}
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -176,7 +182,9 @@ export default function AccountPage() {
 
               <button
                 onClick={handleLogout}
-                className="w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors hover:bg-gray-50 text-gray-700 mt-4"
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl mt-4 transition-colors ${
+                  isDark ? 'bg-white/5 hover:bg-white/10 text-white' : 'hover:bg-gray-50 text-gray-700 border border-gray-200'
+                }`}
               >
                 <span className="font-medium">{t.logout}</span>
               </button>
@@ -189,11 +197,11 @@ export default function AccountPage() {
               key={activeSection}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="bg-white rounded-lg shadow-md p-8"
+              className={`${isDark ? 'checkout-card-dark p-8' : 'bg-white rounded-2xl shadow-md p-8'}`}
             >
-              {activeSection === 'orders' && <OrderHistory tenant={tenant} />}
-              {activeSection === 'address' && <MyAddress tenant={tenant} />}
-              {activeSection === 'settings' && <PersonalData tenant={tenant} />}
+              {activeSection === 'orders' && <OrderHistory tenant={tenant} isDark={isDark} />}
+              {activeSection === 'address' && <MyAddress tenant={tenant} isDark={isDark} />}
+              {activeSection === 'settings' && <PersonalData tenant={tenant} isDark={isDark} />}
             </motion.div>
           </div>
         </div>
@@ -201,4 +209,3 @@ export default function AccountPage() {
     </div>
   );
 }
-

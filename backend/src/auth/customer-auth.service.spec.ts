@@ -86,7 +86,7 @@ describe('CustomerAuthService', () => {
       expect(result).toHaveProperty('refresh_token');
       expect(result).toHaveProperty('user');
       expect(result.user.email).toBe(registerDto.email);
-      expect(result.needsSmsVerification).toBe(true);
+      expect(result.needsSmsVerification).toBe(false); // SMS verification disabled
       expect(mockPrismaService.user.findUnique).toHaveBeenCalledWith({
         where: { email: registerDto.email },
       });
@@ -141,7 +141,7 @@ describe('CustomerAuthService', () => {
       expect(result).toHaveProperty('refresh_token');
       expect(result).toHaveProperty('user');
       expect(result.user.email).toBe(loginDto.email);
-      expect(result.needsSmsVerification).toBe(true);
+      expect(result.needsSmsVerification).toBe(false); // SMS verification disabled
     });
 
     it('should throw UnauthorizedException if user not found', async () => {

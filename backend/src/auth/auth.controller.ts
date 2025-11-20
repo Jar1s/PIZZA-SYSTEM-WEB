@@ -5,14 +5,16 @@ import * as crypto from 'crypto';
 import { AuthService, LoginDto, RefreshTokenDto } from './auth.service';
 import { SmsService } from './sms.service';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import { Public } from './decorators/public.decorator';
 
-@Controller('api/auth')
+@Controller('auth')
 export class AuthController {
   constructor(
     private authService: AuthService,
     private smsService: SmsService,
   ) {}
 
+  @Public()
   @Throttle({ default: { limit: 3, ttl: 60000 } }) // 3 login attempts per minute
   @Post('login')
   async login(@Body() loginDto: LoginDto, @Res({ passthrough: true }) res: Response) {
@@ -40,6 +42,7 @@ export class AuthController {
     return result;
   }
 
+  @Public()
   @Throttle({ default: { limit: 10, ttl: 60000 } }) // 10 refresh attempts per minute
   @Post('refresh')
   async refresh(@Body() refreshTokenDto: RefreshTokenDto, @Res({ passthrough: true }) res: Response) {
@@ -81,6 +84,7 @@ export class AuthController {
   }
 
   // SMS Verification Endpoints (matching spec)
+  @Public()
   @Throttle({ default: { limit: 3, ttl: 60000 } }) // 3 SMS requests per minute
   @Post('send-sms-code')
   async sendSmsCode(@Body() body: { phoneNumber: string; userId: string }) {
@@ -88,6 +92,7 @@ export class AuthController {
     return await this.smsService.sendVerificationCode(phoneNumber, userId);
   }
 
+  @Public()
   @Throttle({ default: { limit: 10, ttl: 60000 } }) // 10 verification attempts per minute
   @Post('verify-sms')
   async verifySmsCode(@Body() body: { phoneNumber: string; code: string; userId: string }, @Res({ passthrough: true }) res: Response) {
@@ -161,6 +166,7 @@ export class AuthController {
   }
 
   // Keep old endpoints for backward compatibility
+  @Public()
   @Throttle({ default: { limit: 3, ttl: 60000 } })
   @Post('sms/send-code')
   async sendSmsCodeLegacy(@Body() body: { phone: string; username?: string }) {
@@ -169,12 +175,13 @@ export class AuthController {
     if (username) {
       const user = await this.authService.findUserByUsername(username);
       if (user) {
-        userId = (user as any).id;
+        userId = user.id;
       }
     }
     return await this.smsService.sendVerificationCode(phone, userId);
   }
 
+  @Public()
   @Throttle({ default: { limit: 10, ttl: 60000 } })
   @Post('sms/verify-code')
   async verifySmsCodeLegacy(@Body() body: { phone: string; code: string; username?: string; password?: string }, @Res({ passthrough: true }) res: Response) {
@@ -182,10 +189,10 @@ export class AuthController {
     const verification = await this.smsService.verifyCode(phone, code);
     
     if (username && password) {
-      const result = await this.authService.loginWithSmsVerification({
+      // Use regular login instead of removed loginWithSmsVerification
+      const result = await this.authService.login({
         username,
         password,
-        phone,
       });
       
       if (process.env.NODE_ENV === 'production') {

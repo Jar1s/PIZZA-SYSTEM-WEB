@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { getTenant } from '@/lib/api';
-import { Tenant } from '@/shared';
+import { Tenant } from '@pizza-ecosystem/shared';
 import { motion } from 'framer-motion';
 
 export default function NotFound() {

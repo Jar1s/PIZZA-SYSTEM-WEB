@@ -93,3 +93,10 @@ echo -e "\n${GREEN}Or manually:${NC}"
 echo -e "  ${YELLOW}Terminal 1:${NC} cd backend && npm run start:dev"
 echo -e "  ${YELLOW}Terminal 2:${NC} cd frontend && npm run dev"
 
+
+
+
+
+
+
+

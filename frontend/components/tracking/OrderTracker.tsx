@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Order, OrderStatus } from '@/shared';
+import { Order, OrderStatus } from '@pizza-ecosystem/shared';
 import { getOrder } from '@/lib/api';
 import { StatusTimeline } from './StatusTimeline';
 import { OrderDetails } from './OrderDetails';
