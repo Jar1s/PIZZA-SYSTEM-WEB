@@ -37,22 +37,8 @@ async function createApp() {
       transform: true,
     }));
 
-    app.use(helmet({
-      contentSecurityPolicy: {
-        directives: {
-          defaultSrc: ["'self'"],
-          styleSrc: ["'self'", "'unsafe-inline'"],
-          scriptSrc: ["'self'"],
-          imgSrc: ["'self'", "data:", "https:"],
-          connectSrc: ["'self'", "https://*.sentry.io", "https://*.ingest.sentry.io"],
-          fontSrc: ["'self'", "data:", "https:"],
-          frameSrc: ["'self'"],
-        },
-      },
-      crossOriginEmbedderPolicy: false,
-    }));
-
-    // CORS configuration - allow all .vercel.app origins
+    // CORS configuration - MUST be before app.init() and helmet
+    // Allow all .vercel.app origins for Vercel deployments
     app.enableCors({
       origin: (origin, callback) => {
         // Allow requests with no origin (like mobile apps or curl requests)
@@ -85,8 +71,26 @@ async function createApp() {
       },
       credentials: true,
       methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-      allowedHeaders: ['Content-Type', 'Authorization', 'x-tenant'],
+      allowedHeaders: ['Content-Type', 'Authorization', 'x-tenant', 'X-Requested-With'],
+      exposedHeaders: ['Content-Length', 'Content-Type'],
+      maxAge: 86400, // 24 hours
     });
+
+    app.use(helmet({
+      contentSecurityPolicy: {
+        directives: {
+          defaultSrc: ["'self'"],
+          styleSrc: ["'self'", "'unsafe-inline'"],
+          scriptSrc: ["'self'"],
+          imgSrc: ["'self'", "data:", "https:"],
+          connectSrc: ["'self'", "https://*.sentry.io", "https://*.ingest.sentry.io", "https://*.vercel.app"],
+          fontSrc: ["'self'", "data:", "https:"],
+          frameSrc: ["'self'"],
+        },
+      },
+      crossOriginEmbedderPolicy: false,
+      crossOriginResourcePolicy: { policy: "cross-origin" }, // Allow cross-origin requests
+    }));
 
     await app.init();
     
@@ -101,6 +105,21 @@ async function createApp() {
 
 export default async function handler(req: any, res: any) {
   try {
+    // Handle OPTIONS preflight requests explicitly
+    if (req.method === 'OPTIONS') {
+      const origin = req.headers.origin;
+      
+      // Allow all .vercel.app origins
+      if (!origin || origin.endsWith('.vercel.app')) {
+        res.setHeader('Access-Control-Allow-Origin', origin || '*');
+        res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
+        res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-tenant, X-Requested-With');
+        res.setHeader('Access-Control-Allow-Credentials', 'true');
+        res.setHeader('Access-Control-Max-Age', '86400');
+        return res.status(200).end();
+      }
+    }
+    
     const app = await createApp();
     return app(req, res);
   } catch (error) {
