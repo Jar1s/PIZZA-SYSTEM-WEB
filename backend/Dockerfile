@@ -22,6 +22,15 @@ RUN npx prisma generate
 # Build shared module and application
 RUN node build-shared.js && npm run build
 
+# Verify that main.js was created
+RUN if [ ! -f dist/main.js ]; then \
+      echo "❌ ERROR: dist/main.js not found after build!"; \
+      echo "📁 Contents of dist/:"; \
+      ls -la dist/ || echo "dist/ does not exist"; \
+      exit 1; \
+    fi && \
+    echo "✅ Verified: dist/main.js exists"
+
 # Production stage
 FROM node:18-alpine
 
