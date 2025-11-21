@@ -8,8 +8,8 @@
     "npm": ">=9.0.0"
   },
   "scripts": {
-    "prebuild": "rimraf dist && npx prisma generate",
-    "build": "npm run prisma:generate && nest build",
+    "prebuild": "rimraf dist",
+    "build": "npx prisma generate && nest build",
     "postbuild": "node build-shared.js && node fix-shared-imports.js && node fix-main.js",
     "prestart:dev": "node ensure-shared.js",
     "postinstall": "npx prisma generate",
