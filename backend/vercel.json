@@ -1,8 +1,9 @@
 {
   "version": 2,
   "buildCommand": "npm run prisma:generate && npm run build",
-  "installCommand": "npm install && npx prisma generate",
+  "installCommand": "npm ci && npx prisma generate",
   "outputDirectory": "dist",
+  "ignoreCommand": "git diff --quiet HEAD^ HEAD ./backend/prisma/schema.prisma ./backend/package.json || echo 'Schema or package.json changed, forcing rebuild'",
   "framework": null,
   "builds": [
     {
