@@ -3,21 +3,24 @@ FROM node:18-alpine AS builder
 
 WORKDIR /app
 
-# Copy package files
-COPY package*.json ./
-COPY prisma ./prisma/
+# Copy shared module first
+COPY shared ./shared
+
+# Copy backend package files
+COPY backend/package*.json ./
+COPY backend/prisma ./prisma/
 
 # Install dependencies
 RUN npm ci
 
-# Copy source
-COPY . .
+# Copy backend source
+COPY backend ./
 
 # Generate Prisma client
 RUN npx prisma generate
 
-# Build application
-RUN npm run build
+# Build shared module and application
+RUN node build-shared.js && npm run build
 
 # Production stage
 FROM node:18-alpine
@@ -25,8 +28,8 @@ FROM node:18-alpine
 WORKDIR /app
 
 # Copy package files
-COPY package*.json ./
-COPY prisma ./prisma/
+COPY backend/package*.json ./
+COPY backend/prisma ./prisma/
 
 # Install production dependencies only
 RUN npm ci --only=production

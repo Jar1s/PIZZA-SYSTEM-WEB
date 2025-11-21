@@ -2,6 +2,7 @@ app = "pizza-ecosystem-api"
 primary_region = "ams" # Amsterdam
 
 [build]
+  dockerfile = "backend/Dockerfile"
   [build.args]
     NODE_VERSION = "18"
 

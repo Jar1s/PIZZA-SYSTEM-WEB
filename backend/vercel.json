@@ -1,7 +1,7 @@
 {
   "version": 2,
-  "buildCommand": "npm run prisma:generate && npm run build",
-  "installCommand": "npm ci --include=dev && npx prisma generate",
+  "buildCommand": "npm run prisma:generate -- --schema=./prisma/schema.prisma && npm run build",
+  "installCommand": "npm ci --include=dev && npx prisma generate --schema=./prisma/schema.prisma",
   "outputDirectory": "dist",
   "framework": null,
   "builds": [
