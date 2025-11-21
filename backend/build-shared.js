@@ -4,10 +4,15 @@ const { execSync } = require('child_process');
 const path = require('path');
 const fs = require('fs');
 
-const sharedDir = path.join(__dirname, '..', 'shared');
+// Find shared module - check current directory first (Docker), then parent (local dev)
+const sharedInCurrent = path.join(__dirname, 'shared');
+const sharedInParent = path.join(__dirname, '..', 'shared');
+const sharedDir = fs.existsSync(sharedInCurrent) ? sharedInCurrent : sharedInParent;
+
 const distSharedDir = path.join(__dirname, 'dist', 'shared');
 
 console.log('📦 Building shared module...');
+console.log(`📁 Shared module location: ${sharedDir}`);
 
 try {
   // Ensure dist/shared directory exists
@@ -18,15 +23,20 @@ try {
     fs.mkdirSync(distSharedDir, { recursive: true });
   }
 
-  // Compile shared module - use absolute paths to avoid issues with spaces
+  // Verify shared module exists
   const indexTsPath = path.join(sharedDir, 'index.ts');
+  if (!fs.existsSync(indexTsPath)) {
+    throw new Error(`Shared module not found at: ${indexTsPath}`);
+  }
+
+  // Compile shared module - use absolute paths to avoid issues with spaces
   const tscCommand = `npx --package=typescript tsc --outDir "${distSharedDir}" --module commonjs --target es2020 --declaration false --skipLibCheck "${indexTsPath}"`;
   
   console.log(`Running: ${tscCommand}`);
   execSync(tscCommand, {
     cwd: sharedDir,
     stdio: 'inherit',
-    shell: true
+    shell: '/bin/sh'
   });
   
   // Verify the file was created
