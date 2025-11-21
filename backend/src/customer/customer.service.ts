@@ -21,11 +21,7 @@ export class CustomerService {
     // In production, consider adding a customerId field to Order model
     const allOrders = await this.prisma.order.findMany({
       include: {
-        items: {
-          include: {
-            product: true,
-          },
-        },
+        items: true, // OrderItem already has productName snapshot, no need to include product relation
       },
       orderBy: {
         createdAt: 'desc',

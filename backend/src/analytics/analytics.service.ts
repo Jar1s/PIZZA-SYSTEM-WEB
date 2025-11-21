@@ -42,11 +42,7 @@ export class AnalyticsService {
         },
       },
       include: {
-        items: {
-          include: {
-            product: true,
-          },
-        },
+        items: true, // OrderItem already has productName snapshot, no need to include product relation
       },
     });
 
