@@ -1,5 +1,15 @@
 import * as Sentry from '@sentry/node';
-import { nodeProfilingIntegration } from '@sentry/profiling-node';
+
+// Profiling is optional; if the module is missing we just skip it to avoid runtime crashes
+let profilingIntegration: (() => any) | null = null;
+try {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { nodeProfilingIntegration } = require('@sentry/profiling-node');
+  profilingIntegration = nodeProfilingIntegration;
+} catch (err) {
+  // Safe fallback when profiling package is not installed in the environment
+  console.warn('⚠️  @sentry/profiling-node not installed, disabling Sentry profiling');
+}
 
 /**
  * Initialize Sentry for error monitoring
@@ -18,9 +28,7 @@ export function initSentry() {
     environment: process.env.NODE_ENV || 'development',
     tracesSampleRate: process.env.NODE_ENV === 'production' ? 0.1 : 1.0, // 10% in prod, 100% in dev
     profilesSampleRate: process.env.NODE_ENV === 'production' ? 0.1 : 1.0,
-    integrations: [
-      nodeProfilingIntegration(),
-    ],
+    integrations: profilingIntegration ? [profilingIntegration()] : [],
     beforeSend(event, hint) {
       // Scrub sensitive data from events
       if (event.request) {
@@ -49,7 +57,6 @@ export function initSentry() {
     },
   });
 }
-
 
 
 

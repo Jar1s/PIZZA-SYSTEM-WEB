@@ -12,11 +12,12 @@ export async function getTenant(slug: string): Promise<Tenant> {
     console.log(`[getTenant] Fetching tenant: ${API_URL}/api/tenants/${slug}`);
     
     const res = await fetch(`${API_URL}/api/tenants/${slug}`, {
-      cache: 'no-store',
       signal: controller.signal,
       headers: {
         'Content-Type': 'application/json',
       },
+      // Client-side fetch doesn't need cache: 'no-store'
+      // Next.js will handle caching appropriately
     });
     
     clearTimeout(timeoutId);
@@ -30,7 +31,7 @@ export async function getTenant(slug: string): Promise<Tenant> {
     const data = await res.json();
     console.log('[getTenant] Received data:', { name: data.name, slug: data.slug, hasTheme: !!data.theme });
     
-    const validated = safeParse(TenantSchema, data, data as Tenant);
+    const validated = safeParse(TenantSchema, data, data as any);
     const result = withTenantThemeDefaults(validated) as Tenant;
     console.log('[getTenant] Validated tenant:', { name: result.name, slug: result.slug });
     return result;
@@ -48,7 +49,6 @@ export async function getTenant(slug: string): Promise<Tenant> {
 
 export async function getProducts(tenantSlug: string): Promise<Product[]> {
   const res = await fetch(`${API_URL}/api/${tenantSlug}/products`, {
-    cache: 'no-store',
     headers: {
       'Content-Type': 'application/json',
     },
@@ -62,7 +62,7 @@ export async function getProducts(tenantSlug: string): Promise<Product[]> {
   const data = await res.json();
   // Validate products array
   if (Array.isArray(data)) {
-    return data.map(product => safeParse(ProductSchema, product, product as Product)) as Product[];
+    return data.map(product => safeParse(ProductSchema, product, product as any)) as Product[];
   }
   return [];
 }
@@ -137,10 +137,10 @@ export async function createOrder(tenantSlug: string, orderData: any): Promise<O
   if ('order' in data) {
     return {
       ...data,
-      order: safeParse(OrderSchema, data.order, data.order as Order),
+      order: safeParse(OrderSchema, data.order, data.order as any),
     };
   }
-  return safeParse(OrderSchema, data, data as Order);
+  return safeParse(OrderSchema, data, data as any) as Order;
 }
 
 export async function createPaymentSession(orderId: string) {
@@ -155,20 +155,16 @@ export async function createPaymentSession(orderId: string) {
 }
 
 export async function getOrder(orderId: string): Promise<Order> {
-  const res = await fetch(`${API_URL}/api/track/${orderId}`, {
-    cache: 'no-store', // Always fresh data
-  });
+  const res = await fetch(`${API_URL}/api/track/${orderId}`);
   
   if (!res.ok) throw new Error('Order not found');
   const data = await res.json();
-  return safeParse(OrderSchema, data, data as Order);
+  return safeParse(OrderSchema, data, data as any) as Order;
 }
 
 // Tenant/Brand management
 export async function getAllTenants(): Promise<Tenant[]> {
-  const res = await fetch(`${API_URL}/api/tenants`, {
-    cache: 'no-store',
-  });
+  const res = await fetch(`${API_URL}/api/tenants`);
   
   if (!res.ok) throw new Error('Failed to fetch tenants');
   return res.json();

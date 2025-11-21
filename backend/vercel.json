@@ -1,5 +1,9 @@
 {
   "version": 2,
+  "buildCommand": "npm run prisma:generate && npm run build",
+  "installCommand": "npm install",
+  "outputDirectory": "dist",
+  "framework": null,
   "builds": [
     {
       "src": "api/index.ts",

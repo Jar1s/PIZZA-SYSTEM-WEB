@@ -9,7 +9,7 @@
   },
   "scripts": {
     "prebuild": "rimraf dist",
-    "build": "nest build",
+    "build": "npm run prisma:generate && nest build",
     "postbuild": "node build-shared.js && node fix-shared-imports.js && node fix-main.js",
     "prestart:dev": "node ensure-shared.js",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",

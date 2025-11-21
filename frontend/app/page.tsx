@@ -4,6 +4,9 @@ import { HomePageClient } from '@/components/home/HomePageClient';
 import { ProductSkeleton } from '@/components/menu/ProductSkeleton';
 import { Tenant, Product } from '@pizza-ecosystem/shared';
 
+// Force dynamic rendering because we use dynamic tenant resolution
+export const dynamic = 'force-dynamic';
+
 /**
  * Server Component for SEO optimization
  * Data is fetched on the server, so Google can index products
