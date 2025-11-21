@@ -27,9 +27,9 @@ FROM node:18-alpine
 
 WORKDIR /app
 
-# Copy package files
-COPY package*.json ./
-COPY prisma ./prisma/
+# Copy package files (from root context)
+COPY backend/package*.json ./
+COPY backend/prisma ./prisma/
 
 # Install production dependencies only
 RUN npm ci --only=production
