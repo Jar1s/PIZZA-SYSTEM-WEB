@@ -105,24 +105,56 @@ async function createApp() {
 
 export default async function handler(req: any, res: any) {
   try {
-    // Handle OPTIONS preflight requests explicitly
+    // Handle OPTIONS preflight requests explicitly BEFORE creating app
     if (req.method === 'OPTIONS') {
       const origin = req.headers.origin;
       
-      // Allow all .vercel.app origins
-      if (!origin || origin.endsWith('.vercel.app')) {
+      // Allow all .vercel.app origins and explicit allowed origins
+      let allowOrigin = false;
+      
+      if (origin) {
+        // Always allow all Vercel preview URLs
+        if (origin.endsWith('.vercel.app')) {
+          allowOrigin = true;
+        }
+        // Check explicit allowed origins
+        else if (process.env.ALLOWED_ORIGINS) {
+          const allowedOrigins = process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim());
+          if (allowedOrigins.includes(origin)) {
+            allowOrigin = true;
+          }
+        }
+        // In development, allow localhost
+        else if (process.env.NODE_ENV !== 'production') {
+          if (origin.startsWith('http://localhost:') || 
+              origin.startsWith('http://pornopizza.localhost:') || 
+              origin.startsWith('http://pizzavnudzi.localhost:')) {
+            allowOrigin = true;
+          }
+        }
+      } else {
+        // Allow requests with no origin (like mobile apps or curl requests)
+        allowOrigin = true;
+      }
+      
+      if (allowOrigin) {
+        // IMPORTANT: With credentials: true, we MUST use the specific origin, not '*'
         res.setHeader('Access-Control-Allow-Origin', origin || '*');
         res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
         res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-tenant, X-Requested-With');
         res.setHeader('Access-Control-Allow-Credentials', 'true');
         res.setHeader('Access-Control-Max-Age', '86400');
         return res.status(200).end();
+      } else {
+        // Deny CORS preflight
+        return res.status(403).end();
       }
     }
     
     const app = await createApp();
     return app(req, res);
   } catch (error) {
+    const Logger = require('@nestjs/common').Logger;
     const logger = new Logger('VercelHandler');
     logger.error('Handler error:', error);
     if (!res.headersSent) {
