@@ -12,9 +12,12 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
 export async function getTenantServer(slug: string): Promise<Tenant | null> {
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 5000);
+    const timeoutId = setTimeout(() => controller.abort(), 10000); // Increased to 10s
     
-    const res = await fetch(`${API_URL}/api/tenants/${slug}`, {
+    const url = `${API_URL}/api/tenants/${slug}`;
+    console.log(`[getTenantServer] Fetching from: ${url}`);
+    
+    const res = await fetch(url, {
       cache: 'no-store',
       signal: controller.signal,
       headers: {
@@ -25,14 +28,30 @@ export async function getTenantServer(slug: string): Promise<Tenant | null> {
     clearTimeout(timeoutId);
     
     if (!res.ok) {
+      const errorText = await res.text();
+      console.error(`[getTenantServer] HTTP ${res.status}: ${errorText.substring(0, 200)}`);
+      
+      // If backend returns FUNCTION_INVOCATION_FAILED, log it
+      if (errorText.includes('FUNCTION_INVOCATION_FAILED')) {
+        console.error('[getTenantServer] Backend function failed - check backend logs on Vercel');
+      }
+      
       return null;
     }
     
     const data = await res.json();
-    const validated = safeParse(TenantSchema, data, data as Tenant);
+    const validated = safeParse(TenantSchema, data, data as any);
     return withTenantThemeDefaults(validated);
-  } catch (error) {
-    console.error('Failed to fetch tenant:', error);
+  } catch (error: any) {
+    console.error('[getTenantServer] Error:', error.message || error);
+    
+    // Log more details about the error
+    if (error.name === 'AbortError') {
+      console.error('[getTenantServer] Request timeout - backend is not responding');
+    } else if (error.message?.includes('fetch failed')) {
+      console.error('[getTenantServer] Network error - check NEXT_PUBLIC_API_URL:', API_URL);
+    }
+    
     return null;
   }
 }
