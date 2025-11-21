@@ -4,6 +4,11 @@ import './globals.css';
 import { headers } from 'next/headers';
 import { getTenantServer } from '@/lib/server-api';
 import { Providers } from '@/components/Providers';
+import { SpeedInsights } from '@vercel/speed-insights/next';
+import { Analytics } from '@vercel/analytics/react';
+
+// Force dynamic rendering because we use dynamic tenant resolution
+export const dynamic = 'force-dynamic';
 
 // Optimize font loading with display swap and preload
 const inter = Inter({ 
@@ -188,6 +193,8 @@ export default async function RootLayout({
         <Providers>
           {children}
         </Providers>
+        <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   );

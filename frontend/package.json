@@ -21,8 +21,10 @@
     "test:e2e:debug": "playwright test --debug"
   },
   "dependencies": {
-    "@pizza-ecosystem/shared": "file:../shared",
+    "@pizza-ecosystem/shared": "file:./shared",
     "@sentry/nextjs": "^10.26.0",
+    "@vercel/analytics": "^1.5.0",
+    "@vercel/speed-insights": "^1.2.0",
     "d3-color": "^3.1.0",
     "d3-interpolate": "^3.0.1",
     "d3-scale": "^4.0.2",

@@ -31,6 +31,7 @@
     "prisma:seed-zones": "ts-node prisma/seed-delivery-zones.ts",
     "prisma:migrate-theme": "ts-node prisma/migrate-tenant-theme.ts",
     "test:endpoints": "node test-all-endpoints.js",
+    "test:vercel": "node test-vercel-endpoints.js",
     "prisma:studio": "prisma studio",
     "monitor": "node scripts/monitor-implementations.js"
   },
@@ -46,7 +47,7 @@
     "@nestjs/passport": "^11.0.5",
     "@nestjs/platform-express": "^10.0.0",
     "@nestjs/throttler": "^6.4.0",
-    "@pizza-ecosystem/shared": "file:../shared",
+    "@pizza-ecosystem/shared": "file:./shared",
     "@prisma/client": "^5.0.0",
     "@sentry/node": "^10.26.0",
     "@types/bcryptjs": "^2.4.6",
@@ -66,7 +67,8 @@
     "passport-jwt": "^4.0.1",
     "reflect-metadata": "^0.1.13",
     "rxjs": "^7.8.1",
-    "twilio": "^5.10.5"
+    "twilio": "^5.10.5",
+    "zod": "^3.22.4"
   },
   "devDependencies": {
     "@nestjs/cli": "^10.0.0",
