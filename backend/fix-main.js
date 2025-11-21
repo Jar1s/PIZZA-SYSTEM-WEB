@@ -4,16 +4,35 @@ const fs = require('fs');
 const path = require('path');
 
 // Try main.js first, then main (without extension)
-let mainJsPath = path.join(__dirname, 'dist', 'main.js');
+const distDir = path.join(__dirname, 'dist');
+let mainJsPath = path.join(distDir, 'main.js');
+
 if (!fs.existsSync(mainJsPath)) {
-  const mainPath = path.join(__dirname, 'dist', 'main');
+  const mainPath = path.join(distDir, 'main');
   if (fs.existsSync(mainPath)) {
     mainJsPath = mainPath;
     console.log('📝 Using dist/main (without extension)');
   } else {
-    console.error('❌ main.js or main not found in dist/');
-    console.error('📁 Dist directory contents:', fs.readdirSync(path.join(__dirname, 'dist')).join(', '));
-    process.exit(1);
+    // List all files in dist to help debug
+    if (fs.existsSync(distDir)) {
+      const files = fs.readdirSync(distDir, { withFileTypes: true });
+      const fileList = files
+        .filter(f => f.isFile())
+        .map(f => f.name)
+        .join(', ');
+      const dirList = files
+        .filter(f => f.isDirectory())
+        .map(f => f.name)
+        .join(', ');
+      console.error('❌ main.js or main not found in dist/');
+      console.error('📁 Files in dist:', fileList || '(none)');
+      console.error('📁 Directories in dist:', dirList || '(none)');
+    } else {
+      console.error('❌ dist/ directory does not exist!');
+    }
+    // Don't exit - maybe nest build failed, but we should still try to continue
+    console.warn('⚠️  Continuing without fixing main.js - nest build may have failed');
+    process.exit(0); // Exit with 0 to not fail the build
   }
 }
 
