@@ -19,14 +19,19 @@ COPY backend ./
 # Generate Prisma client
 RUN npx prisma generate
 
-# Build shared module and application
-RUN node build-shared.js && npm run build
+# Build shared module first
+RUN node build-shared.js
+
+# Build application (this will fail if there are TypeScript errors)
+RUN npm run build || (echo "❌ Build failed! Checking dist/ contents:" && ls -la dist/ 2>/dev/null || echo "dist/ does not exist" && exit 1)
 
 # Verify that main.js was created
 RUN if [ ! -f dist/main.js ]; then \
       echo "❌ ERROR: dist/main.js not found after build!"; \
       echo "📁 Contents of dist/:"; \
       ls -la dist/ || echo "dist/ does not exist"; \
+      echo "📁 Contents of dist/src/ (if exists):"; \
+      ls -la dist/src/ 2>/dev/null || echo "dist/src/ does not exist"; \
       exit 1; \
     fi && \
     echo "✅ Verified: dist/main.js exists"
