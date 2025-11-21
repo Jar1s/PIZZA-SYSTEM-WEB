@@ -3,10 +3,18 @@
 const fs = require('fs');
 const path = require('path');
 
-const mainJsPath = path.join(__dirname, 'dist', 'main.js');
+// Try main.js first, then main (without extension)
+let mainJsPath = path.join(__dirname, 'dist', 'main.js');
 if (!fs.existsSync(mainJsPath)) {
-  console.error('main.js not found');
-  process.exit(1);
+  const mainPath = path.join(__dirname, 'dist', 'main');
+  if (fs.existsSync(mainPath)) {
+    mainJsPath = mainPath;
+    console.log('📝 Using dist/main (without extension)');
+  } else {
+    console.error('❌ main.js or main not found in dist/');
+    console.error('📁 Dist directory contents:', fs.readdirSync(path.join(__dirname, 'dist')).join(', '));
+    process.exit(1);
+  }
 }
 
 let content = fs.readFileSync(mainJsPath, 'utf8');
