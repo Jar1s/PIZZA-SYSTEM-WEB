@@ -22,6 +22,9 @@ RUN npx prisma generate
 # Build shared module first
 RUN node build-shared.js
 
+# Update tsconfig.json paths for Docker context (shared is in ./shared, not ../shared)
+RUN sed -i 's|"../shared"|"./shared"|g' tsconfig.json || true
+
 # Build application (this will fail if there are TypeScript errors)
 RUN npm run build || (echo "❌ Build failed! Checking dist/ contents:" && ls -la dist/ 2>/dev/null || echo "dist/ does not exist" && exit 1)
 
