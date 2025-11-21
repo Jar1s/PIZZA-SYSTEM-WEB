@@ -28,6 +28,13 @@ RUN sed -i 's|"../shared"|"./shared"|g' tsconfig.json || true
 # Build application (this will fail if there are TypeScript errors)
 RUN npm run build || (echo "❌ Build failed! Checking dist/ contents:" && ls -la dist/ 2>/dev/null || echo "dist/ does not exist" && exit 1)
 
+# Move main.js from dist/src/ to dist/ if it exists there
+RUN if [ -f dist/src/main.js ] && [ ! -f dist/main.js ]; then \
+      echo "📦 Moving dist/src/main.js to dist/main.js"; \
+      cp dist/src/main.js dist/main.js && \
+      cp dist/src/main.js.map dist/main.js.map 2>/dev/null || true; \
+    fi
+
 # Verify that main.js was created
 RUN if [ ! -f dist/main.js ]; then \
       echo "❌ ERROR: dist/main.js not found after build!"; \
