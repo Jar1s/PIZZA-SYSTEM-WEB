@@ -139,10 +139,17 @@ export default async function handler(req: any, res: any) {
       
       if (allowOrigin) {
         // IMPORTANT: With credentials: true, we MUST use the specific origin, not '*'
-        res.setHeader('Access-Control-Allow-Origin', origin || '*');
+        // If no origin, we can't use credentials, so we allow without credentials
+        if (origin) {
+          res.setHeader('Access-Control-Allow-Origin', origin);
+          res.setHeader('Access-Control-Allow-Credentials', 'true');
+        } else {
+          // No origin - allow but without credentials
+          res.setHeader('Access-Control-Allow-Origin', '*');
+          // Don't set credentials header when using '*'
+        }
         res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
         res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-tenant, X-Requested-With');
-        res.setHeader('Access-Control-Allow-Credentials', 'true');
         res.setHeader('Access-Control-Max-Age', '86400');
         return res.status(200).end();
       } else {
