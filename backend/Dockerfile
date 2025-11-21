@@ -3,7 +3,7 @@ FROM node:18-alpine AS builder
 
 WORKDIR /app
 
-# Copy shared module first
+# Copy shared module first (from root context)
 COPY shared ./shared
 
 # Copy backend package files
@@ -28,8 +28,8 @@ FROM node:18-alpine
 WORKDIR /app
 
 # Copy package files
-COPY backend/package*.json ./
-COPY backend/prisma ./prisma/
+COPY package*.json ./
+COPY prisma ./prisma/
 
 # Install production dependencies only
 RUN npm ci --only=production
