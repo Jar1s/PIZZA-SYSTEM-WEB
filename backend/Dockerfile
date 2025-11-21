@@ -3,23 +3,21 @@ FROM node:18-alpine AS builder
 
 WORKDIR /app
 
-# Copy shared module first (from root context)
-COPY shared ./shared
-
-# Copy backend package files
-COPY backend/package*.json ./
-COPY backend/prisma ./prisma/
+# Copy package files
+COPY package*.json ./
+COPY prisma ./prisma/
 
 # Install dependencies
 RUN npm ci
 
-# Copy backend source
-COPY backend ./
+# Copy source
+COPY . .
 
 # Generate Prisma client
 RUN npx prisma generate
 
 # Build shared module and application
+# build-shared.js will find shared module in parent directory (../shared)
 RUN node build-shared.js && npm run build
 
 # Production stage
