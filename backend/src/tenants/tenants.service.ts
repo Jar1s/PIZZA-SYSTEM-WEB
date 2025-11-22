@@ -81,10 +81,15 @@ export class TenantsService {
 
   async getAllTenants(includeInactive: boolean = false): Promise<Tenant[]> {
     const whereClause = includeInactive ? {} : { isActive: true };
+    this.logger.log(`getAllTenants called with includeInactive=${includeInactive}, whereClause:`, whereClause);
+    
     const tenants = await this.prisma.tenant.findMany({
       where: whereClause,
       orderBy: { name: 'asc' },
     });
+    
+    this.logger.log(`Found ${tenants.length} tenants:`, tenants.map(t => ({ slug: t.slug, name: t.name, isActive: t.isActive })));
+    
     // Validate each tenant response with Zod
     return tenants.map(tenant => {
       try {
