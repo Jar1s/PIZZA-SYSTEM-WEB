@@ -8,26 +8,37 @@ export async function middleware(request: NextRequest) {
   // Extract tenant from domain or query param
   let tenant = 'pornopizza'; // default
   
-  // Check for known production domains
-  if (hostname.includes('pornopizza.sk')) {
+  // For Vercel URLs, ALWAYS use query param or default - NEVER extract from hostname
+  if (hostname.includes('vercel.app')) {
+    tenant = url.searchParams.get('tenant') || 'pornopizza';
+    // Validate tenant slug
+    if (tenant !== 'pornopizza' && tenant !== 'pizzavnudzi') {
+      tenant = 'pornopizza';
+    }
+  }
+  // For localhost, use query param or default
+  else if (hostname.includes('localhost') || hostname.includes('127.0.0.1')) {
+    tenant = url.searchParams.get('tenant') || 'pornopizza';
+  }
+  // For known production domains, check domain first
+  else if (hostname.includes('pornopizza.sk')) {
     tenant = 'pornopizza';
   } else if (hostname.includes('pizzavnudzi.sk')) {
     tenant = 'pizzavnudzi';
-  } else if (hostname.includes('pornopizza')) {
-    // Subdomain or partial match
+  } else if (hostname.includes('pornopizza') && !hostname.includes('vercel.app')) {
+    // Subdomain or partial match (but not Vercel)
     tenant = 'pornopizza';
-  } else if (hostname.includes('pizzavnudzi')) {
-    // Subdomain or partial match
+  } else if (hostname.includes('pizzavnudzi') && !hostname.includes('vercel.app')) {
+    // Subdomain or partial match (but not Vercel)
     tenant = 'pizzavnudzi';
-  } else if (hostname.includes('localhost') || hostname.includes('127.0.0.1')) {
-    // Development: use query param or default
-    tenant = url.searchParams.get('tenant') || 'pornopizza';
-  } else if (hostname.includes('vercel.app')) {
-    // Vercel preview/production URLs: use query param or default
-    tenant = url.searchParams.get('tenant') || 'pornopizza';
   } else {
     // For other domains, try query param first, then default
     tenant = url.searchParams.get('tenant') || 'pornopizza';
+  }
+  
+  // Validate tenant slug (must be one of the known tenants)
+  if (tenant !== 'pornopizza' && tenant !== 'pizzavnudzi') {
+    tenant = 'pornopizza';
   }
   
   // Pass tenant to app via header
