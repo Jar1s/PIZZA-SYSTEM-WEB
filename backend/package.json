@@ -34,7 +34,8 @@
     "test:endpoints": "node test-all-endpoints.js",
     "test:vercel": "node test-vercel-endpoints.js",
     "prisma:studio": "prisma studio",
-    "monitor": "node scripts/monitor-implementations.js"
+    "monitor": "node scripts/monitor-implementations.js",
+    "create-admin": "node create-admin.js"
   },
   "prisma": {
     "seed": "ts-node prisma/seed.ts"
