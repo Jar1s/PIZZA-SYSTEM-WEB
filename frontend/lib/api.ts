@@ -188,8 +188,12 @@ export async function getOrder(orderId: string): Promise<Order> {
 }
 
 // Tenant/Brand management
-export async function getAllTenants(): Promise<Tenant[]> {
-  const res = await fetch(`${API_URL}/api/tenants`);
+export async function getAllTenants(includeInactive: boolean = false): Promise<Tenant[]> {
+  const url = includeInactive 
+    ? `${API_URL}/api/tenants?includeInactive=true`
+    : `${API_URL}/api/tenants`;
+    
+  const res = await fetch(url);
   
   if (!res.ok) throw new Error('Failed to fetch tenants');
   return res.json();
