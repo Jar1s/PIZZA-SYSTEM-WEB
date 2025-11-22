@@ -282,84 +282,103 @@ export function CookieConsent() {
           initial={{ y: 100, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: 100, opacity: 0 }}
-          className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-200 shadow-lg p-4 md:p-6"
+          className="fixed bottom-4 left-4 right-4 z-50 md:bottom-6 md:left-6 md:right-6"
         >
-        <div className="container mx-auto max-w-6xl">
-          <div className="flex flex-col md:flex-row items-start md:items-center gap-4">
-            <div className="flex-1">
-              <h3 className="font-semibold text-lg mb-2">
-                {isSlovak ? 'Súbory cookie' : 'Cookies'}
-              </h3>
-              <p className="text-sm text-gray-600">
-                {isSlovak
-                  ? 'Táto stránka používa súbory cookie na zlepšenie vášho zážitku. Môžete si vybrať, ktoré súbory cookie chcete povoliť.'
-                  : 'This website uses cookies to improve your experience. You can choose which cookies to allow.'}
-              </p>
-            </div>
-            <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
-              <button
-                onClick={handleRejectAll}
-                className="px-4 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-              >
-                {isSlovak ? 'Odmietnuť všetko' : 'Reject All'}
-              </button>
-              <button
-                onClick={handleCustomize}
-                className="px-4 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-              >
-                {isSlovak ? 'Prispôsobiť' : 'Customize'}
-              </button>
-              <button
-                onClick={handleAcceptAll}
-                className="px-4 py-2 text-sm rounded-lg text-white font-semibold transition-colors"
-                style={{ backgroundColor: 'var(--color-primary)' }}
-              >
-                {isSlovak ? 'Prijať všetko' : 'Accept All'}
-              </button>
+        <div className="relative overflow-hidden rounded-2xl border-2 border-[var(--color-primary)]/30 bg-gradient-to-br from-white via-white to-orange-50/50 backdrop-blur-xl shadow-[0_25px_70px_rgba(255,107,0,0.25)]">
+          {/* Primary accent stripe */}
+          <div
+            className="absolute inset-y-0 left-0 w-2"
+            style={{ background: `linear-gradient(180deg, var(--color-primary), var(--color-primary-dark, #e65a00))` }}
+          />
+          {/* Subtle gradient overlay */}
+          <div className="absolute inset-0 bg-gradient-to-r from-[var(--color-primary)]/5 via-transparent to-transparent pointer-events-none" />
+          
+          <div className="relative px-5 py-5 md:px-7 md:py-6">
+            <div className="flex flex-col md:flex-row items-start md:items-center gap-5 md:gap-7">
+              <div className="flex-1">
+                <h3 className="font-black text-xl md:text-2xl mb-2" style={{ color: 'var(--color-primary)' }}>
+                  {isSlovak ? '🍪 Súbory cookie' : '🍪 Cookies'}
+                </h3>
+                <p className="text-sm md:text-base text-gray-800 leading-relaxed font-medium">
+                  {isSlovak
+                    ? 'Táto stránka používa súbory cookie na zlepšenie vášho zážitku. Môžete si vybrať, ktoré súbory cookie chcete povoliť.'
+                    : 'This website uses cookies to improve your experience. You can choose which cookies to allow.'}
+                </p>
+              </div>
+              <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
+                <button
+                  onClick={handleRejectAll}
+                  className="px-5 py-2.5 text-sm font-bold rounded-xl border-2 border-gray-300 text-gray-700 bg-white hover:bg-gray-50 hover:border-gray-400 active:scale-95 transition-all duration-200"
+                >
+                  {isSlovak ? 'Odmietnuť' : 'Reject'}
+                </button>
+                <button
+                  onClick={handleCustomize}
+                  className="px-5 py-2.5 text-sm font-bold rounded-xl border-2 border-[var(--color-primary)]/40 text-[var(--color-primary)] bg-white hover:bg-[var(--color-primary)]/5 hover:border-[var(--color-primary)] active:scale-95 transition-all duration-200"
+                >
+                  {isSlovak ? 'Prispôsobiť' : 'Customize'}
+                </button>
+                <button
+                  onClick={handleAcceptAll}
+                  className="px-6 py-2.5 text-sm font-black rounded-xl text-white shadow-lg hover:shadow-xl active:scale-95 transition-all duration-200"
+                  style={{ 
+                    backgroundColor: 'var(--color-primary)', 
+                    boxShadow: '0 10px 25px rgba(255,107,0,0.35), 0 0 0 1px rgba(255,107,0,0.1) inset'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.boxShadow = '0 15px 35px rgba(255,107,0,0.45), 0 0 0 1px rgba(255,107,0,0.2) inset';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.boxShadow = '0 10px 25px rgba(255,107,0,0.35), 0 0 0 1px rgba(255,107,0,0.1) inset';
+                  }}
+                >
+                  {isSlovak ? 'Prijať všetko' : 'Accept All'}
+                </button>
+              </div>
             </div>
           </div>
         </div>
-      </motion.div>
+        </motion.div>
       </AnimatePresence>
     )}
     
     {/* Cookie Settings Modal */}
     {showModal && (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 0.9 }}
-          className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+          className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto border-2 border-[var(--color-primary)]/20"
         >
-          <div className="p-6">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold" style={{ color: 'var(--color-primary)' }}>
-                {isSlovak ? 'Nastavenia súborov cookie' : 'Cookie Settings'}
+          <div className="p-6 md:p-8">
+            <div className="flex items-center justify-between mb-6 pb-4 border-b-2 border-gray-200">
+              <h2 className="text-2xl md:text-3xl font-black" style={{ color: 'var(--color-primary)' }}>
+                {isSlovak ? '⚙️ Nastavenia súborov cookie' : '⚙️ Cookie Settings'}
               </h2>
               <button
                 onClick={() => {
                   setShowModal(false);
                   setShowBanner(true); // Show banner again if modal is closed
                 }}
-                className="text-gray-500 hover:text-gray-700"
+                className="text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full p-2 transition-colors"
                 aria-label={isSlovak ? 'Zavrieť' : 'Close'}
               >
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
             </div>
 
-            <div className="space-y-6 mb-6">
+            <div className="space-y-5 mb-6">
               {/* Necessary Cookies */}
-              <div className="border-b pb-4">
-                <div className="flex items-center justify-between mb-2">
-                  <div>
-                    <h3 className="font-semibold text-lg">
-                      {isSlovak ? 'Nevyhnutné súbory cookie' : 'Necessary Cookies'}
+              <div className="border-b-2 border-gray-200 pb-5">
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex-1">
+                    <h3 className="font-bold text-lg mb-1.5 text-gray-900">
+                      {isSlovak ? '🔒 Nevyhnutné súbory cookie' : '🔒 Necessary Cookies'}
                     </h3>
-                    <p className="text-sm text-gray-600">
+                    <p className="text-sm text-gray-600 leading-relaxed">
                       {isSlovak
                         ? 'Tieto súbory cookie sú nevyhnutné pre fungovanie stránky a nemôžu byť vypnuté.'
                         : 'These cookies are necessary for the website to function and cannot be disabled.'}
@@ -370,20 +389,20 @@ export function CookieConsent() {
                       type="checkbox"
                       checked={localSettings.necessary}
                       disabled
-                      className="w-5 h-5"
+                      className="w-6 h-6 rounded border-2 border-gray-300 text-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary)] cursor-not-allowed opacity-60"
                     />
                   </div>
                 </div>
               </div>
 
               {/* Analytics Cookies */}
-              <div className="border-b pb-4">
-                <div className="flex items-center justify-between mb-2">
-                  <div>
-                    <h3 className="font-semibold text-lg">
-                      {isSlovak ? 'Analytické súbory cookie' : 'Analytics Cookies'}
+              <div className="border-b-2 border-gray-200 pb-5">
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex-1">
+                    <h3 className="font-bold text-lg mb-1.5 text-gray-900">
+                      {isSlovak ? '📊 Analytické súbory cookie' : '📊 Analytics Cookies'}
                     </h3>
-                    <p className="text-sm text-gray-600">
+                    <p className="text-sm text-gray-600 leading-relaxed">
                       {isSlovak
                         ? 'Pomáhajú nám pochopiť, ako návštevníci používajú našu stránku.'
                         : 'Help us understand how visitors use our website.'}
@@ -399,20 +418,20 @@ export function CookieConsent() {
                         }
                         className="sr-only peer"
                       />
-                      <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                      <div className="w-12 h-6 bg-gray-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-[var(--color-primary)]/30 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--color-primary)] shadow-inner"></div>
                     </label>
                   </div>
                 </div>
               </div>
 
               {/* Marketing Cookies */}
-              <div className="border-b pb-4">
-                <div className="flex items-center justify-between mb-2">
-                  <div>
-                    <h3 className="font-semibold text-lg">
-                      {isSlovak ? 'Marketingové súbory cookie' : 'Marketing Cookies'}
+              <div className="border-b-2 border-gray-200 pb-5">
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex-1">
+                    <h3 className="font-bold text-lg mb-1.5 text-gray-900">
+                      {isSlovak ? '📢 Marketingové súbory cookie' : '📢 Marketing Cookies'}
                     </h3>
-                    <p className="text-sm text-gray-600">
+                    <p className="text-sm text-gray-600 leading-relaxed">
                       {isSlovak
                         ? 'Používajú sa na zobrazovanie relevantných reklám a sledovanie kampaní.'
                         : 'Used to display relevant ads and track campaigns.'}
@@ -428,27 +447,36 @@ export function CookieConsent() {
                         }
                         className="sr-only peer"
                       />
-                      <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                      <div className="w-12 h-6 bg-gray-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-[var(--color-primary)]/30 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[var(--color-primary)] shadow-inner"></div>
                     </label>
                   </div>
                 </div>
               </div>
             </div>
 
-            <div className="flex gap-4">
+            <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t-2 border-gray-200">
               <button
                 onClick={handleSaveSettings}
-                className="flex-1 px-6 py-3 rounded-lg text-white font-semibold"
-                style={{ backgroundColor: 'var(--color-primary)' }}
+                className="flex-1 px-6 py-3.5 rounded-xl text-white font-black text-base shadow-lg hover:shadow-xl active:scale-95 transition-all duration-200"
+                style={{ 
+                  backgroundColor: 'var(--color-primary)',
+                  boxShadow: '0 10px 25px rgba(255,107,0,0.35)'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.boxShadow = '0 15px 35px rgba(255,107,0,0.45)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.boxShadow = '0 10px 25px rgba(255,107,0,0.35)';
+                }}
               >
-                {isSlovak ? 'Uložiť nastavenia' : 'Save Settings'}
+                {isSlovak ? '💾 Uložiť nastavenia' : '💾 Save Settings'}
               </button>
               <button
                 onClick={() => {
                   setShowModal(false);
                   setShowBanner(true);
                 }}
-                className="px-6 py-3 rounded-lg border border-gray-300 font-semibold hover:bg-gray-50"
+                className="px-6 py-3.5 rounded-xl border-2 border-gray-300 text-gray-700 font-bold hover:bg-gray-50 hover:border-gray-400 active:scale-95 transition-all duration-200"
               >
                 {isSlovak ? 'Zrušiť' : 'Cancel'}
               </button>
@@ -460,4 +488,3 @@ export function CookieConsent() {
     </>
   );
 }
-
