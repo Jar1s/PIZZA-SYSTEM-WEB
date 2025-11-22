@@ -55,12 +55,16 @@ export default function BrandsPage() {
       const newStatus = !tenant.isActive;
       console.log(`Toggling tenant ${tenant.slug} to ${newStatus ? 'active' : 'inactive'}`);
       
+      // IMPORTANT: This only toggles isActive status, it does NOT delete the tenant
+      // The tenant will remain in the database, just with isActive = false
+      // This makes the website inaccessible but keeps all data intact
       await updateTenant(tenant.slug, {
         isActive: newStatus,
       });
       
       console.log('Tenant updated, refreshing list...');
-      // Refresh list to show updated status - always include inactive
+      // Refresh list to show updated status - always include inactive tenants
+      // Inactive tenants are still visible in admin panel, just marked as inactive
       await fetchTenants();
       console.log('List refreshed');
     } catch (error) {
@@ -105,7 +109,7 @@ export default function BrandsPage() {
             </div>
           ) : (
             tenants.map((tenant) => (
-            <div key={tenant.id} className="bg-white rounded-lg shadow-lg overflow-hidden">
+              <div key={tenant.id} className="bg-white rounded-lg shadow-lg overflow-hidden">
               {/* Header with brand color */}
               <div 
                 className="h-24 flex items-center justify-center"
@@ -210,8 +214,9 @@ export default function BrandsPage() {
                   </button>
                 </div>
               </div>
-            </div>
-          ))}
+              </div>
+            ))
+          )}
         </div>
       )}
 
