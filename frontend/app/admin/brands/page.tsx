@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Tenant } from '@pizza-ecosystem/shared';
-import { getAllTenants } from '@/lib/api';
+import { getAllTenants, updateTenant } from '@/lib/api';
 import { EditBrandModal } from '@/components/admin/EditBrandModal';
 import { BrandSettingsModal } from '@/components/admin/BrandSettingsModal';
 import { ProtectedRoute } from '@/components/admin/ProtectedRoute';
@@ -45,6 +45,19 @@ export default function BrandsPage() {
 
   const handleUpdate = () => {
     fetchTenants(); // Refresh list after update
+  };
+
+  const handleToggleActive = async (tenant: Tenant) => {
+    try {
+      await updateTenant(tenant.slug, {
+        isActive: !tenant.isActive,
+      });
+      // Refresh list to show updated status
+      fetchTenants();
+    } catch (error) {
+      console.error('Failed to update tenant status:', error);
+      alert('Nepodarilo sa aktualizovať status brandu');
+    }
   };
 
   return (
@@ -129,14 +142,33 @@ export default function BrandsPage() {
                   </div>
 
                   <div>
-                    <div className="text-sm text-gray-500">Status</div>
-                    <span className={`inline-flex px-2 py-1 text-xs leading-5 font-semibold rounded-full ${
-                      tenant.isActive
-                        ? 'bg-green-100 text-green-800'
-                        : 'bg-red-100 text-red-800'
-                    }`}>
-                      {tenant.isActive ? 'Active' : 'Inactive'}
-                    </span>
+                    <div className="text-sm text-gray-500 mb-2">Status</div>
+                    <div className="flex items-center justify-between">
+                      <span className={`inline-flex px-2 py-1 text-xs leading-5 font-semibold rounded-full ${
+                        tenant.isActive
+                          ? 'bg-green-100 text-green-800'
+                          : 'bg-red-100 text-red-800'
+                      }`}>
+                        {tenant.isActive ? 'Active' : 'Inactive'}
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className={`text-xs font-medium ${tenant.isActive ? 'text-green-600' : 'text-gray-500'}`}>
+                          {tenant.isActive ? 'Zapnuté' : 'Vypnuté'}
+                        </span>
+                        <button
+                          onClick={() => handleToggleActive(tenant)}
+                          className={`relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
+                            tenant.isActive ? 'bg-green-600' : 'bg-gray-200'
+                          }`}
+                        >
+                          <span
+                            className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                              tenant.isActive ? 'translate-x-4' : 'translate-x-0'
+                            }`}
+                          />
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 </div>
 
