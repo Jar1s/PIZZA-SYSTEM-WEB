@@ -68,6 +68,11 @@ const SoundNotificationSettings = dynamic(() => import('@/components/admin/Sound
   ssr: false,
 });
 
+const OpeningHoursSettings = dynamic(() => import('@/components/admin/OpeningHoursSettings').then(mod => ({ default: mod.OpeningHoursSettings })), {
+  loading: () => <div className="animate-pulse bg-gray-200 h-64 rounded-lg mb-6" />,
+  ssr: false,
+});
+
 export default function AdminDashboard() {
   const { selectedTenant } = useAdminContext();
   
@@ -86,6 +91,13 @@ export default function AdminDashboard() {
       <ErrorBoundary>
         <Suspense fallback={null}>
           <SoundNotificationSettings />
+        </Suspense>
+      </ErrorBoundary>
+
+      {/* Opening Hours Settings */}
+      <ErrorBoundary>
+        <Suspense fallback={<div className="animate-pulse bg-gray-200 h-64 rounded-lg mb-6" />}>
+          <OpeningHoursSettings />
         </Suspense>
       </ErrorBoundary>
 

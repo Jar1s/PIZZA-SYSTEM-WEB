@@ -4,11 +4,13 @@ import { useState, useEffect } from 'react';
 import { getTenant, updateTenant } from '@/lib/api';
 import { Tenant } from '@pizza-ecosystem/shared';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { isCurrentlyOpen, getNextOpeningTime } from '@/lib/opening-hours';
 
 export function MaintenanceBanner() {
   const { t } = useLanguage();
   const [tenant, setTenant] = useState<Tenant | null>(null);
   const [maintenanceMode, setMaintenanceMode] = useState(false);
+  const [autoMaintenanceMode, setAutoMaintenanceMode] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -25,6 +27,12 @@ export function MaintenanceBanner() {
           : {};
         
         setMaintenanceMode(theme.maintenanceMode === true);
+        
+        // Check automatic maintenance mode based on opening hours
+        if (theme.openingHours) {
+          const isOpen = isCurrentlyOpen(theme.openingHours);
+          setAutoMaintenanceMode(!isOpen);
+        }
       } catch (error) {
         console.error('Failed to load tenant:', error);
       } finally {
@@ -34,6 +42,29 @@ export function MaintenanceBanner() {
 
     loadTenant();
   }, []);
+
+  // Check opening hours every minute
+  useEffect(() => {
+    if (!tenant) return;
+
+    const checkOpeningHours = () => {
+      const theme = typeof tenant.theme === 'object' && tenant.theme !== null 
+        ? tenant.theme as any
+        : {};
+      if (theme.openingHours) {
+        const isOpen = isCurrentlyOpen(theme.openingHours);
+        setAutoMaintenanceMode(!isOpen);
+      }
+    };
+
+    // Check immediately
+    checkOpeningHours();
+
+    // Then check every minute
+    const interval = setInterval(checkOpeningHours, 60000);
+
+    return () => clearInterval(interval);
+  }, [tenant]);
 
   const handleToggle = async () => {
     if (!tenant) return;
@@ -75,12 +106,19 @@ export function MaintenanceBanner() {
     );
   }
 
+  const theme = typeof tenant?.theme === 'object' && tenant?.theme !== null 
+    ? tenant.theme as any
+    : {};
+  const openingHours = theme.openingHours;
+  const effectiveMaintenanceMode = maintenanceMode || autoMaintenanceMode;
+  const nextOpening = getNextOpeningTime(openingHours);
+
   return (
     <div className="bg-[#fefaf5] rounded-lg p-6 mb-6 border border-orange-200">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between mb-4">
         <div className="flex-1">
           <h2 className="text-xl font-bold text-[#f97316] mb-2">
-            {t.maintenanceModeTitle}
+            {t.maintenanceModeTitle} (Manuálne)
           </h2>
           <div className="flex items-center gap-2 text-gray-700">
             <svg
@@ -120,6 +158,32 @@ export function MaintenanceBanner() {
           </button>
         </div>
       </div>
+
+      {openingHours?.enabled && (
+        <div className="pt-4 border-t border-orange-200">
+          <div className="flex items-center justify-between">
+            <div className="flex-1">
+              <h3 className="text-lg font-semibold text-gray-800 mb-1">
+                Automatický režim (podľa otváracích hodín)
+              </h3>
+              <div className="flex items-center gap-2 text-gray-600 text-sm">
+                <span className={`px-2 py-1 rounded ${autoMaintenanceMode ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
+                  {autoMaintenanceMode ? 'Zatvorené' : 'Otvorené'}
+                </span>
+                {autoMaintenanceMode && nextOpening && (
+                  <span className="text-gray-500">• {nextOpening}</span>
+                )}
+              </div>
+            </div>
+          </div>
+          <div className="mt-2 text-xs text-gray-500">
+            Aktuálny stav: <strong>{effectiveMaintenanceMode ? 'Neprijímame objednávky' : 'Prijímame objednávky'}</strong>
+            {maintenanceMode && autoMaintenanceMode && ' (Manuálne + Automaticky)'}
+            {maintenanceMode && !autoMaintenanceMode && ' (Len manuálne)'}
+            {!maintenanceMode && autoMaintenanceMode && ' (Len automaticky)'}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

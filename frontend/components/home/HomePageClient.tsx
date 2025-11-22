@@ -12,6 +12,7 @@ import { useCart } from '@/hooks/useCart';
 import { getProductTranslation } from '@/lib/product-translations';
 import { motion } from 'framer-motion';
 import { isDarkTheme as resolveDarkTheme, getBackgroundClass, getSectionShellClass, getBodyBackgroundClass } from '@/lib/tenant-utils';
+import { isCurrentlyOpen } from '@/lib/opening-hours';
 import Image from 'next/image';
 
 // Import Cart directly instead of lazy loading to avoid chunk loading issues
@@ -107,36 +108,35 @@ export function HomePageClient({ products, tenant }: HomePageClientProps) {
     return categoryOrder.filter(cat => productsByCategory[cat]?.length > 0);
   }, [productsByCategory, categoryOrder]);
 
-  // Pizza sub-category mapping
-  const pizzaSubCategoryMap: Record<string, 'FOREPLAY' | 'MAIN_ACTION' | 'DELUXE_FETISH' | 'PREMIUM_SINS'> = {
-    'Margherita': 'FOREPLAY',
-    'Prosciutto': 'FOREPLAY',
-    'Bon Salami': 'FOREPLAY',
-    'Picante': 'FOREPLAY',
-    'Calimero': 'FOREPLAY',
-    'Prosciutto Funghi': 'FOREPLAY',
-    'Hawaii Premium': 'FOREPLAY',
-    'Capri': 'FOREPLAY',
-    'Da Vinci': 'FOREPLAY',
-    'Quattro Stagioni': 'FOREPLAY',
-    'Fregata': 'FOREPLAY',
-    'Pivárska': 'FOREPLAY',
-    'Mayday Special': 'MAIN_ACTION',
-    'Gazdovská': 'MAIN_ACTION',
-    'Diavola Premium': 'MAIN_ACTION',
-    'Provinciale': 'MAIN_ACTION',
-    'Quattro Formaggi': 'DELUXE_FETISH',
-    'Quattro Formaggi Bianco': 'DELUXE_FETISH',
-    'Tonno': 'DELUXE_FETISH',
-    'Vegetariana Premium': 'DELUXE_FETISH',
-    'Basil Pesto Premium': 'PREMIUM_SINS',
-    'Honey Chilli': 'PREMIUM_SINS',
-    'Pollo Crema': 'PREMIUM_SINS',
-    'Prosciutto Crudo Premium': 'PREMIUM_SINS',
-  };
-
-  // Group pizzas by sub-category
+  // Pizza sub-category mapping - moved inside useMemo to fix dependency warning
   const productsBySubCategory = useMemo(() => {
+    const pizzaSubCategoryMap: Record<string, 'FOREPLAY' | 'MAIN_ACTION' | 'DELUXE_FETISH' | 'PREMIUM_SINS'> = {
+      'Margherita': 'FOREPLAY',
+      'Prosciutto': 'FOREPLAY',
+      'Bon Salami': 'FOREPLAY',
+      'Picante': 'FOREPLAY',
+      'Calimero': 'FOREPLAY',
+      'Prosciutto Funghi': 'FOREPLAY',
+      'Hawaii Premium': 'FOREPLAY',
+      'Capri': 'FOREPLAY',
+      'Da Vinci': 'FOREPLAY',
+      'Quattro Stagioni': 'FOREPLAY',
+      'Fregata': 'FOREPLAY',
+      'Pivárska': 'FOREPLAY',
+      'Mayday Special': 'MAIN_ACTION',
+      'Gazdovská': 'MAIN_ACTION',
+      'Diavola Premium': 'MAIN_ACTION',
+      'Provinciale': 'MAIN_ACTION',
+      'Quattro Formaggi': 'DELUXE_FETISH',
+      'Quattro Formaggi Bianco': 'DELUXE_FETISH',
+      'Tonno': 'DELUXE_FETISH',
+      'Vegetariana Premium': 'DELUXE_FETISH',
+      'Basil Pesto Premium': 'PREMIUM_SINS',
+      'Honey Chilli': 'PREMIUM_SINS',
+      'Pollo Crema': 'PREMIUM_SINS',
+      'Prosciutto Crudo Premium': 'PREMIUM_SINS',
+    };
+
     const pizzas = productsByCategory.PIZZA || [];
     const grouped: Record<string, Product[]> = {
       FOREPLAY: [],
@@ -160,7 +160,7 @@ export function HomePageClient({ products, tenant }: HomePageClientProps) {
     });
     
     return grouped;
-  }, [productsByCategory.PIZZA, pizzaSubCategoryMap]);
+  }, [productsByCategory.PIZZA]);
 
   // Category filter handler
   const handleCategoryFilter = useCallback((category: CategoryFilter) => {
@@ -175,8 +175,11 @@ export function HomePageClient({ products, tenant }: HomePageClientProps) {
   // Get primary color
   const primaryColor = tenant.theme?.primaryColor || '#DC143C';
 
-  // Check maintenance mode
-  const maintenanceMode = tenant.theme?.maintenanceMode === true;
+  // Check maintenance mode (manual or automatic based on opening hours)
+  const manualMaintenanceMode = tenant.theme?.maintenanceMode === true;
+  const openingHours = tenant.theme?.openingHours;
+  const autoMaintenanceMode = openingHours ? !isCurrentlyOpen(openingHours) : false;
+  const maintenanceMode = manualMaintenanceMode || autoMaintenanceMode;
 
   // Apply background class to body
   useEffect(() => {
@@ -202,8 +205,12 @@ export function HomePageClient({ products, tenant }: HomePageClientProps) {
           className={`relative overflow-hidden border-b ${
             isDarkTheme
               ? 'bg-[#100505]/95 border-white/10 text-white'
-              : 'bg-[#fff5eb] border-orange-200 text-gray-900'
+              : 'text-gray-900'
           }`}
+          style={!isDarkTheme ? {
+            backgroundColor: `${primaryColor}15`,
+            borderColor: `${primaryColor}30`
+          } : undefined}
         >
           {isDarkTheme && (
             <div className="pointer-events-none absolute inset-0 opacity-60" aria-hidden>
@@ -221,12 +228,16 @@ export function HomePageClient({ products, tenant }: HomePageClientProps) {
               <div className="flex items-center gap-3">
                 <div
                   className={`h-12 w-12 flex items-center justify-center rounded-2xl border ${
-                    isDarkTheme ? 'border-white/20 bg-black/60' : 'border-orange-200 bg-white'
+                    isDarkTheme ? 'border-white/20 bg-black/60' : 'bg-white'
                   }`}
+                  style={!isDarkTheme ? {
+                    borderColor: `${primaryColor}30`
+                  } : undefined}
                   aria-hidden
                 >
                   <svg
-                    className={`w-6 h-6 ${isDarkTheme ? 'text-white' : 'text-orange-500'}`}
+                    className={`w-6 h-6 ${isDarkTheme ? 'text-white' : ''}`}
+                    style={!isDarkTheme ? { color: 'var(--color-primary)' } : undefined}
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"

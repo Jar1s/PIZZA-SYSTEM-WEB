@@ -20,6 +20,18 @@ export interface Tenant {
   updatedAt: Date;
 }
 
+export interface OpeningHours {
+  enabled: boolean; // Whether automatic maintenance mode is enabled
+  timezone?: string; // Timezone (e.g., 'Europe/Bratislava'), defaults to local
+  days: {
+    [key: string]: { // 'monday', 'tuesday', etc.
+      open: string; // HH:mm format (e.g., '09:00')
+      close: string; // HH:mm format (e.g., '22:00')
+      closed?: boolean; // If true, closed all day
+    };
+  };
+}
+
 export interface TenantTheme {
   primaryColor: string;      // '#FF6B00'
   secondaryColor: string;
@@ -27,7 +39,8 @@ export interface TenantTheme {
   favicon: string;
   fontFamily: string;
   heroImage?: string;
-  maintenanceMode?: boolean;
+  maintenanceMode?: boolean; // Manual maintenance mode (overrides automatic)
+  openingHours?: OpeningHours; // Automatic maintenance mode based on opening hours
   taxRate?: number; // Tax rate in percentage (e.g., 20.0 for 20%)
   layout?: {
     headerStyle?: 'dark' | 'light';
