@@ -22,7 +22,8 @@ export default function BrandsPage() {
   const fetchTenants = async () => {
     try {
       setLoading(true);
-      const tenantsData = await getAllTenants();
+      // Include inactive tenants so admin can see and reactivate them
+      const tenantsData = await getAllTenants(true);
       setTenants(tenantsData);
     } catch (error) {
       console.error('Failed to fetch tenants:', error);

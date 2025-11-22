@@ -8,8 +8,8 @@ export class TenantsController {
 
   @Public()
   @Get()
-  async getAllTenants() {
-    return this.tenantsService.getAllTenants();
+  async getAllTenants(@Query('includeInactive') includeInactive?: string) {
+    return this.tenantsService.getAllTenants(includeInactive === 'true');
   }
 
   @Public()
