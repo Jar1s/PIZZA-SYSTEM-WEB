@@ -4,6 +4,7 @@ import { createContext, useContext, useState, useEffect, ReactNode } from 'react
 import { Tenant } from '@pizza-ecosystem/shared';
 import { getTenant } from '@/lib/api';
 import { withTenantThemeDefaults } from '@/lib/tenant-utils';
+import { applyTheme } from '@/lib/theme';
 
 interface TenantContextType {
   tenant: Tenant | null;
@@ -31,30 +32,54 @@ export function TenantProvider({ children }: { children: ReactNode }) {
       }
 
       const hostname = window.location.hostname;
+      const params = new URLSearchParams(window.location.search);
       let tenantSlug = 'pornopizza'; // default
       
-      if (hostname.includes('pornopizza')) {
+      // Check for known production domains
+      if (hostname.includes('pornopizza.sk')) {
+        tenantSlug = 'pornopizza';
+      } else if (hostname.includes('pizzavnudzi.sk')) {
+        tenantSlug = 'pizzavnudzi';
+      } else if (hostname.includes('pornopizza')) {
         tenantSlug = 'pornopizza';
       } else if (hostname.includes('pizzavnudzi')) {
         tenantSlug = 'pizzavnudzi';
-      } else if (hostname.includes('localhost')) {
-        const params = new URLSearchParams(window.location.search);
+      } else if (hostname.includes('localhost') || hostname.includes('127.0.0.1')) {
+        // Development: use query param or default
+        tenantSlug = params.get('tenant') || 'pornopizza';
+      } else if (hostname.includes('vercel.app')) {
+        // Vercel preview/production URLs: use query param or default
+        tenantSlug = params.get('tenant') || 'pornopizza';
+      } else {
+        // For other domains, try query param first, then default
         tenantSlug = params.get('tenant') || 'pornopizza';
       }
       
       const tenantData = await getTenant(tenantSlug);
-      setTenant(withTenantThemeDefaults(tenantData));
+      const normalizedTenant = withTenantThemeDefaults(tenantData);
+      setTenant(normalizedTenant);
+      
+      // Apply theme CSS variables
+      if (normalizedTenant?.theme) {
+        applyTheme(normalizedTenant.theme);
+      }
     } catch (err: any) {
       console.error('Failed to load tenant:', err);
       setError(err.message || 'Failed to load tenant');
       // Set fallback tenant
-      setTenant(withTenantThemeDefaults({
+      const fallbackTenant = withTenantThemeDefaults({
         theme: {
           primaryColor: '#FF6B00',
           secondaryColor: '#000000',
           favicon: '/favicon.ico',
         }
-      } as Tenant));
+      } as Tenant);
+      setTenant(fallbackTenant);
+      
+      // Apply fallback theme
+      if (fallbackTenant?.theme) {
+        applyTheme(fallbackTenant.theme);
+      }
     } finally {
       setLoading(false);
     }
@@ -63,6 +88,13 @@ export function TenantProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     loadTenant();
   }, []);
+
+  // Apply theme whenever tenant changes
+  useEffect(() => {
+    if (tenant?.theme) {
+      applyTheme(tenant.theme);
+    }
+  }, [tenant?.theme?.primaryColor, tenant?.theme?.secondaryColor, tenant?.theme?.fontFamily]);
 
   return (
     <TenantContext.Provider value={{ tenant, loading, error, refresh: loadTenant }}>

@@ -83,11 +83,28 @@ export function getTenantSlugFromHeaders(headers: Headers): string {
   const hostname = headers.get('host') || '';
   const referer = headers.get('referer') || '';
   
-  // Check hostname first
-  if (hostname.includes('pornopizza')) {
+  // Check hostname first for known production domains
+  if (hostname.includes('pornopizza.sk')) {
+    return 'pornopizza';
+  } else if (hostname.includes('pizzavnudzi.sk')) {
+    return 'pizzavnudzi';
+  } else if (hostname.includes('pornopizza')) {
     return 'pornopizza';
   } else if (hostname.includes('pizzavnudzi')) {
     return 'pizzavnudzi';
+  } else if (hostname.includes('vercel.app')) {
+    // Vercel preview/production URLs: check referer for query param
+    try {
+      const url = new URL(referer || 'http://localhost:3001');
+      const tenantParam = url.searchParams.get('tenant');
+      if (tenantParam) {
+        return tenantParam;
+      }
+    } catch {
+      // Ignore URL parsing errors
+    }
+    // Default for Vercel URLs
+    return 'pornopizza';
   }
   
   // Check referer as fallback

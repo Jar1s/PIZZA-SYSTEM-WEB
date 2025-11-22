@@ -145,14 +145,23 @@ export function getTenantSlug(): string {
   if (typeof window === 'undefined') return 'pornopizza';
   
   const hostname = window.location.hostname;
+  const params = new URLSearchParams(window.location.search);
   
+  // Check for known production domains
+  if (hostname.includes('pornopizza.sk')) return 'pornopizza';
+  if (hostname.includes('pizzavnudzi.sk')) return 'pizzavnudzi';
   if (hostname.includes('pornopizza')) return 'pornopizza';
   if (hostname.includes('pizzavnudzi')) return 'pizzavnudzi';
   
-  // For localhost, check URL params
-  if (hostname.includes('localhost') || hostname.includes('127.0.0.1')) {
-    const params = new URLSearchParams(window.location.search);
+  // For localhost or Vercel URLs, check URL params
+  if (hostname.includes('localhost') || hostname.includes('127.0.0.1') || hostname.includes('vercel.app')) {
     return params.get('tenant') || 'pornopizza';
+  }
+  
+  // For other domains, try query param first
+  const tenantParam = params.get('tenant');
+  if (tenantParam) {
+    return tenantParam;
   }
   
   // Default fallback
