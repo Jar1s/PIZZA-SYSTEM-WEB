@@ -340,7 +340,7 @@ export default function CheckoutPage() {
       
       return () => clearTimeout(timeout);
     }
-  }, [user?.id, authLoading, tenantSlug]); // Only depend on user.id, not full user object
+  }, [user, authLoading, tenantSlug]);
   
   // Fetch central payment config (from pornopizza tenant - master config for all websites)
   const fetchPaymentConfig = useCallback(async () => {
@@ -408,7 +408,7 @@ export default function CheckoutPage() {
     } catch (error) {
       console.error('Failed to fetch user profile:', error);
     }
-  }, [user?.id, setUser]);
+  }, [user, setUser]);
 
   const fetchAddresses = useCallback(async () => {
     try {
@@ -481,7 +481,7 @@ export default function CheckoutPage() {
     } finally {
       setLoadingAddresses(false);
     }
-  }, [tenantSlug]);
+  }, []);
 
   // Fetch addresses and update user profile when user is loaded
   useEffect(() => {
@@ -515,7 +515,7 @@ export default function CheckoutPage() {
     return () => {
       cancelled = true;
     };
-  }, [user?.id, fetchAddresses, fetchUserProfile]); // Only depend on user.id and memoized functions
+  }, [user, fetchAddresses, fetchUserProfile]);
   
   // Real-time address validation with geocoding (debounced)
   const validateAddressWithGeocoding = (street: string, city: string, postalCode: string) => {

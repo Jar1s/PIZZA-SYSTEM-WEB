@@ -140,3 +140,4 @@ Po úspěšném deploymentu:
 
 Pokud máš backend URL, můžu ti pomoci otestovat všechny endpointy automaticky!
 
+

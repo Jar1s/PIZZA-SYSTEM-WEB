@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Image from 'next/image';
 import { createProduct } from '@/lib/api';
 
 interface AddProductModalProps {
@@ -251,9 +252,11 @@ export function AddProductModal({
                     />
                     {imagePreview && (
                       <div className="mt-2">
-                        <img 
+                        <Image 
                           src={imagePreview} 
                           alt="Preview" 
+                          width={128}
+                          height={128}
                           className="h-32 w-32 object-cover rounded-md border border-gray-300"
                         />
                       </div>

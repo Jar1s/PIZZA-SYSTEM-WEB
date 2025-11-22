@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { validateReturnUrl } from '@/lib/validate-return-url';
 
@@ -36,7 +36,7 @@ export default function OAuthCallbackPage() {
   };
 
   // Extract token processing to separate function
-  const processOAuthTokens = (accessToken: string, userDataStr: string, refreshToken: string | null, redirect: string) => {
+  const processOAuthTokens = useCallback((accessToken: string, userDataStr: string, refreshToken: string | null, redirect: string) => {
     if (accessToken && userDataStr) {
       try {
         // Parse user data from cookie
@@ -128,7 +128,7 @@ export default function OAuthCallbackPage() {
         window.location.href = '/auth/login?error=oauth_callback_failed&tenant=pornopizza';
       }
     }
-  };
+  }, []);
 
   useEffect(() => {
     const tokensParam = searchParams.get('tokens');
@@ -250,7 +250,7 @@ export default function OAuthCallbackPage() {
         window.location.href = '/auth/login?error=no_tokens&tenant=pornopizza';
       }
     }
-  }, [searchParams]);
+  }, [searchParams, processOAuthTokens]);
 
   return (
     <div className="min-h-screen bg-white flex items-center justify-center">

@@ -2,7 +2,20 @@
 
 import { useState, useEffect } from 'react';
 import { getTenant, updateTenant } from '@/lib/api';
-import { Tenant, OpeningHours } from '@pizza-ecosystem/shared';
+import { Tenant } from '@pizza-ecosystem/shared';
+
+// OpeningHours type - defined locally since it's not exported from shared
+interface OpeningHours {
+  enabled: boolean;
+  timezone?: string;
+  days: {
+    [key: string]: {
+      open: string;
+      close: string;
+      closed?: boolean;
+    };
+  };
+}
 import { getDefaultOpeningHours } from '@/lib/opening-hours';
 
 export function OpeningHoursSettings() {

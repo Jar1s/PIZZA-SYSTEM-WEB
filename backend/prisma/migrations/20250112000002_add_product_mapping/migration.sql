@@ -34,3 +34,4 @@ ALTER TABLE "product_mappings" ADD CONSTRAINT "product_mappings_tenantId_fkey"
 
 
 
+

@@ -45,7 +45,7 @@ export const HeroSection = ({ tenantName, primaryColor, isDark = false }: HeroSe
   };
 
   return (
-    <section className="relative min-h-[660px] overflow-hidden" style={{ position: 'relative', zIndex: 10 }}>
+    <section className="relative min-h-[500px] sm:min-h-[600px] md:min-h-[660px] overflow-hidden" style={{ position: 'relative', zIndex: 10 }}>
       {/* Background Image */}
       <div className="absolute inset-0" style={{ position: 'absolute', zIndex: 0 }}>
         <Image
@@ -71,12 +71,12 @@ export const HeroSection = ({ tenantName, primaryColor, isDark = false }: HeroSe
       </div>
 
       {/* Content */}
-      <div className="relative z-10 container mx-auto px-4 h-full py-20 flex items-center">
+      <div className="relative z-10 container mx-auto px-4 sm:px-6 h-full py-12 sm:py-16 md:py-20 flex items-center">
         <motion.div
           initial={{ opacity: 0, x: -30 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.5 }}
-          className="max-w-3xl text-white"
+          className="max-w-3xl text-white w-full"
         >
           <motion.span
             initial={{ opacity: 0, y: -10 }}
@@ -92,7 +92,7 @@ export const HeroSection = ({ tenantName, primaryColor, isDark = false }: HeroSe
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1, duration: 0.4 }}
-            className="text-5xl md:text-7xl font-black mb-6 leading-tight"
+            className="text-3xl sm:text-4xl md:text-5xl lg:text-7xl font-black mb-4 sm:mb-6 leading-tight"
             style={{
               textShadow: 'none',
               letterSpacing: '0.03em'
@@ -115,7 +115,7 @@ export const HeroSection = ({ tenantName, primaryColor, isDark = false }: HeroSe
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2, duration: 0.4 }}
-            className="text-lg md:text-xl mb-6 max-w-2xl"
+            className="text-base sm:text-lg md:text-xl mb-4 sm:mb-6 max-w-2xl"
             style={{
               color: isDark ? '#ccc' : '#374151',
               textShadow: 'none'
@@ -132,7 +132,7 @@ export const HeroSection = ({ tenantName, primaryColor, isDark = false }: HeroSe
           >
             <button
               onClick={scrollToMenu}
-              className="px-8 py-4 rounded-full font-bold text-base md:text-lg transition-all hover:opacity-90 shadow-xl"
+              className="px-6 sm:px-8 py-3 sm:py-4 rounded-full font-bold text-sm sm:text-base md:text-lg transition-all hover:opacity-90 active:opacity-75 shadow-xl touch-manipulation min-h-[48px]"
               style={{
                 background: accentColor,
                 color: 'white',

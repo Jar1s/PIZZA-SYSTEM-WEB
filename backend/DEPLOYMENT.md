@@ -75,3 +75,4 @@ If endpoints still fail:
 - Error logging is now in place via NestJS Logger
 - Build process includes shared module compilation
 
+

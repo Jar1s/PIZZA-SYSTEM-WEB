@@ -22,3 +22,4 @@
 
 Pošlete mi ho a já spustím migrace!
 
+

@@ -311,7 +311,7 @@ export default function MapPicker({ isOpen, onClose, onSelect, initialLocation }
     };
 
     loadGoogleMaps();
-  }, [isOpen, initializeMap]); // Removed initialLocation from dependencies
+  }, [isOpen, initializeMap, initialLocation]);
 
   if (!isOpen) return null;
 

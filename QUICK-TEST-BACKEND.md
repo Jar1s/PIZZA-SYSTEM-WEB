@@ -60,3 +60,4 @@ Pokud všechny testy projdou:
 2. ✅ Můžeš nastavit frontend `NEXT_PUBLIC_API_URL`
 3. ✅ Můžeš testovat celý flow
 
+

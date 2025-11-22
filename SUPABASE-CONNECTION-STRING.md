@@ -51,3 +51,4 @@
 
 Pošlete mi celý connection string (včetně hesla) a já spustím migrace!
 
+

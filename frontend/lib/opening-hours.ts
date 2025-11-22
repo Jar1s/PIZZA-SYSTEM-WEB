@@ -2,7 +2,18 @@
  * Utility functions for handling opening hours and automatic maintenance mode
  */
 
-import type { OpeningHours } from '@pizza-ecosystem/shared';
+// OpeningHours type - defined locally since it's not exported from shared
+interface OpeningHours {
+  enabled: boolean;
+  timezone?: string;
+  days: {
+    [key: string]: {
+      open: string;
+      close: string;
+      closed?: boolean;
+    };
+  };
+}
 
 /**
  * Get current day name in lowercase (monday, tuesday, etc.)

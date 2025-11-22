@@ -67,3 +67,4 @@ supabase link --project-ref wfzppetogdcgcgjvmrgt
 npx prisma migrate deploy
 ```
 
+

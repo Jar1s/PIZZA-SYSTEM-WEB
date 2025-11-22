@@ -8,12 +8,12 @@
 -- 4. Vlož tento SQL a klikni "Run"
 -- ============================================
 
--- Vytvor admin účet
+-- Vytvor admin účet (alebo aktualizuj, ak už existuje)
 INSERT INTO users (id, username, password, name, role, "isActive", "createdAt", "updatedAt")
 VALUES (
   gen_random_uuid()::text,
   'admin',
-  '$2b$10$blzp7CvimQf58vs7pxXHWe0irdqBcz7aDGkG5tm.TvImmquDR.CIG',  -- admin123
+  '$2b$10$blzp7CvimQf58vs7pxXHWe0irdqBcz7aDGkG5tm.TvImmquDR.CIG',  -- hash pre admin123
   'Admin User',
   'ADMIN',
   true,
@@ -28,12 +28,12 @@ DO UPDATE SET
   "isActive" = EXCLUDED."isActive",
   "updatedAt" = NOW();
 
--- Vytvor operator účet
+-- Vytvor operator účet (alebo aktualizuj, ak už existuje)
 INSERT INTO users (id, username, password, name, role, "isActive", "createdAt", "updatedAt")
 VALUES (
   gen_random_uuid()::text,
   'operator',
-  '$2b$10$PdOpS9lj94VJrFE654dVTePsVnEv43opmIXRKCEu1D3o/Rs/OZ.uu',  -- operator123
+  '$2b$10$PdOpS9lj94VJrFE654dVTePsVnEv43opmIXRKCEu1D3o/Rs/OZ.uu',  -- hash pre operator123
   'Operator User',
   'OPERATOR',
   true,

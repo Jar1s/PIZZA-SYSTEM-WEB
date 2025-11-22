@@ -1,6 +1,9 @@
 generator client {
   provider = "prisma-client-js"
   output   = "../node_modules/.prisma/client"
+  // Include musl binary built against OpenSSL 3 (Alpine 3.18+); drop legacy 1.1 target to avoid libssl.so.1.1 dependency
+  // Only use openssl-3.0.x engine for Fly.io Alpine runtime
+  binaryTargets = ["linux-musl-openssl-3.0.x"]
 }
 
 datasource db {

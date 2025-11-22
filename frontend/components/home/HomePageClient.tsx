@@ -177,7 +177,7 @@ export function HomePageClient({ products, tenant }: HomePageClientProps) {
 
   // Check maintenance mode (manual or automatic based on opening hours)
   const manualMaintenanceMode = tenant.theme?.maintenanceMode === true;
-  const openingHours = tenant.theme?.openingHours;
+  const openingHours = (tenant.theme as any)?.openingHours;
   const autoMaintenanceMode = openingHours ? !isCurrentlyOpen(openingHours) : false;
   const maintenanceMode = manualMaintenanceMode || autoMaintenanceMode;
 
@@ -288,7 +288,7 @@ export function HomePageClient({ products, tenant }: HomePageClientProps) {
                 className="text-center mb-12"
               >
                 <h2 
-                  className="text-5xl md:text-6xl font-bold mb-4"
+                  className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-3 sm:mb-4"
                   style={{ 
                     color: 'var(--color-primary)',
                     textShadow: 'none',
@@ -297,7 +297,7 @@ export function HomePageClient({ products, tenant }: HomePageClientProps) {
                 >
                   {t.bestSellersTitle}
                 </h2>
-                <p className={`text-xl max-w-2xl mx-auto ${isDarkTheme ? 'text-gray-400' : ''}`} style={{ color: isDarkTheme ? '#999' : '#666666' }}>
+                <p className={`text-base sm:text-lg md:text-xl max-w-2xl mx-auto px-4 ${isDarkTheme ? 'text-gray-400' : ''}`} style={{ color: isDarkTheme ? '#999' : '#666666' }}>
                   {t.bestSellersSubtitle}
                 </p>
               </motion.div>
@@ -368,13 +368,13 @@ export function HomePageClient({ products, tenant }: HomePageClientProps) {
                 <button
                   key={category}
                   onClick={() => handleCategoryFilter(category)}
-                  className={`${chipClass} px-6 py-3`}
+                  className={`${chipClass} px-4 sm:px-6 py-2.5 sm:py-3 text-sm sm:text-base touch-manipulation min-h-[44px]`}
                   style={categoryFilter === category && !isDarkTheme 
                     ? { backgroundColor: tenant.theme.primaryColor }
                     : {}
                   }
                 >
-                  <span className="mr-2">{categoryEmoji[category]}</span>
+                  <span className="mr-1 sm:mr-2">{categoryEmoji[category]}</span>
                   {categoryLabels[category]}
                 </button>
               );

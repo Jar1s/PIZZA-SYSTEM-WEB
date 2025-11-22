@@ -151,21 +151,12 @@ export function Cart({ tenant = null, isDark: isDarkOverride }: CartProps) {
         onClick={(e) => {
           e.stopPropagation();
         }}
+        className="fixed right-0 top-0 h-screen w-full sm:max-w-[28rem] p-4 sm:p-6 flex flex-col overflow-y-auto"
         style={{
-          position: 'fixed',
-          right: 0,
-          top: 0,
-          height: '100vh',
-          width: '100%',
-          maxWidth: '28rem',
-          padding: '1.5rem',
           zIndex: 10001,
-          display: 'flex',
-          flexDirection: 'column',
           backgroundColor: isDark ? 'var(--cart-dark-bg, #1a1a1a)' : '#ffffff',
           boxShadow: '-4px 0 20px rgba(0, 0, 0, 0.3)',
           pointerEvents: 'auto',
-          overflowY: 'auto',
         }}
         onAnimationStart={() => console.log('🛒 Cart animation started')}
         onAnimationComplete={() => console.log('🛒 Cart animation completed')}
@@ -232,7 +223,7 @@ export function Cart({ tenant = null, isDark: isDarkOverride }: CartProps) {
                 whileHover={{ scale: 1.01 }}
                 whileTap={{ scale: 0.98 }}
                 onClick={handleCheckout}
-                className={`w-full py-4 rounded-full text-lg font-semibold shadow-lg text-white ${getButtonGradientClass(tenant)}`}
+                className={`w-full py-3 sm:py-4 rounded-full text-base sm:text-lg font-semibold shadow-lg text-white touch-manipulation min-h-[48px] ${getButtonGradientClass(tenant)}`}
                 style={{
                   ...getButtonStyle(tenant, isDark),
                   backgroundColor: tenant?.theme?.primaryColor || 'var(--color-primary)',
@@ -244,10 +235,10 @@ export function Cart({ tenant = null, isDark: isDarkOverride }: CartProps) {
               <button
                 type="button"
                 onClick={handleContinueShopping}
-                className={`w-full py-3 rounded-full font-semibold border ${
+                className={`w-full py-3 rounded-full font-semibold border touch-manipulation min-h-[44px] ${
                   isDark
-                    ? 'text-white hover:bg-white/10'
-                    : 'border-gray-300 text-gray-800 hover:bg-gray-50'
+                    ? 'text-white hover:bg-white/10 active:bg-white/5'
+                    : 'border-gray-300 text-gray-800 hover:bg-gray-50 active:bg-gray-100'
                 }`}
                 style={{
                   borderColor: tenant?.theme?.primaryColor || 'var(--color-primary)',

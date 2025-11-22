@@ -99,7 +99,7 @@ export const ProductCard = memo(function ProductCard({ product, index = 0, isBes
     >
       {isDark && <span className="product-card-gradient" aria-hidden />}
       {/* Image Container */}
-      <div className="relative h-64 overflow-hidden bg-gray-100 flex-shrink-0">
+      <div className="relative h-48 sm:h-56 md:h-64 overflow-hidden bg-gray-100 flex-shrink-0">
         {product.image && !imageError ? (
           <>
             {/* Loading skeleton */}
@@ -174,7 +174,7 @@ export const ProductCard = memo(function ProductCard({ product, index = 0, isBes
       </div>
 
       {/* Content */}
-      <div className="p-6 flex flex-col flex-grow min-h-[280px]">
+      <div className="p-4 sm:p-5 md:p-6 flex flex-col flex-grow min-h-[240px] sm:min-h-[260px] md:min-h-[280px]">
         {/* Product Name - Fixed height to align descriptions */}
         <div className="h-16 mb-2 flex items-start">
           <h3 
@@ -246,7 +246,7 @@ export const ProductCard = memo(function ProductCard({ product, index = 0, isBes
               e.stopPropagation();
             }}
             disabled={isAdding}
-            className={`relative z-10 px-6 py-3 rounded-full font-bold text-white transition-all hover:scale-105 active:scale-95 ${
+            className={`relative z-10 px-4 sm:px-6 py-2.5 sm:py-3 rounded-full font-bold text-sm sm:text-base text-white transition-all hover:scale-105 active:scale-95 touch-manipulation min-h-[44px] ${
               isAdding 
                 ? 'bg-green-500' 
                 : isDark

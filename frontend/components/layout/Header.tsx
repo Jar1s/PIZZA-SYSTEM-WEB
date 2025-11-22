@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { Tenant } from '@pizza-ecosystem/shared';
 import { useCart } from '@/hooks/useCart';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -18,6 +19,7 @@ export function Header({ tenant }: HeaderProps) {
   const { t } = useLanguage();
   const { user } = useCustomerAuth();
   const router = useRouter();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const itemCount = items.reduce((sum, item) => sum + item.quantity, 0);
 
   // Get tenant from URL or use prop
@@ -99,6 +101,7 @@ export function Header({ tenant }: HeaderProps) {
             </h1>
           )}
 
+          {/* Desktop Navigation */}
           <nav className="hidden lg:flex items-center gap-4 text-sm font-semibold">
             {navItems.map((item) => (
               <button
@@ -119,6 +122,29 @@ export function Header({ tenant }: HeaderProps) {
               </button>
             ))}
           </nav>
+
+          {/* Mobile Menu Button */}
+          <button
+            type="button"
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            className={`lg:hidden flex h-10 w-10 items-center justify-center rounded-lg transition-colors ${
+              isDarkTheme
+                ? 'text-white hover:bg-white/10'
+                : 'text-gray-700 hover:bg-gray-100'
+            }`}
+            aria-label="Menu"
+            aria-expanded={mobileMenuOpen}
+          >
+            {mobileMenuOpen ? (
+              <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            ) : (
+              <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            )}
+          </button>
         </div>
 
         <div className="flex items-center gap-2 sm:gap-3">
@@ -185,10 +211,10 @@ export function Header({ tenant }: HeaderProps) {
             onMouseDown={(e) => {
               e.stopPropagation();
             }}
-            className={`relative z-50 flex items-center gap-2 rounded-full px-4 py-2 font-semibold text-white transition-colors shadow-lg ${
+            className={`relative z-50 flex items-center gap-2 rounded-full px-3 sm:px-4 py-2 min-h-[44px] font-semibold text-white transition-colors shadow-lg touch-manipulation ${
               isDarkTheme
-                ? 'bg-gradient-to-r from-[#ff5e00] via-[#ff0066] to-[#ff2d55] hover:brightness-110'
-                : 'bg-red-600 hover:bg-red-700'
+                ? 'bg-gradient-to-r from-[#ff5e00] via-[#ff0066] to-[#ff2d55] hover:brightness-110 active:brightness-90'
+                : 'bg-red-600 hover:bg-red-700 active:bg-red-800'
             }`}
             aria-label={t.cart}
           >
@@ -211,6 +237,33 @@ export function Header({ tenant }: HeaderProps) {
           </button>
         </div>
       </div>
+
+      {/* Mobile Menu */}
+      {mobileMenuOpen && (
+        <div className={`lg:hidden border-t ${
+          isDarkTheme ? 'border-white/10 bg-black/95' : 'border-gray-200 bg-white'
+        }`}>
+          <nav className="px-4 py-3 space-y-2">
+            {navItems.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => {
+                  scrollToSection(item.id);
+                  setMobileMenuOpen(false);
+                }}
+                className={`w-full text-left px-4 py-3 rounded-lg text-base font-semibold transition-colors ${
+                  isDarkTheme
+                    ? 'text-gray-300 hover:text-white hover:bg-white/10'
+                    : 'text-gray-700 hover:text-gray-900 hover:bg-gray-50'
+                }`}
+              >
+                {item.label}
+              </button>
+            ))}
+          </nav>
+        </div>
+      )}
     </header>
   );
 }

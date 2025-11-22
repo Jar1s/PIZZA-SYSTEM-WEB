@@ -100,3 +100,4 @@ echo -e "  ${YELLOW}Terminal 2:${NC} cd frontend && npm run dev"
 
 
 
+

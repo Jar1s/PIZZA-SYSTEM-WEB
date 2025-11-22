@@ -57,3 +57,4 @@ curl https://your-backend.vercel.app/api/tenants/pornopizza
 
 **Viz `DEPLOYMENT-RESCUE-PLAN.md` pro detailní instrukce.**
 
+

@@ -57,28 +57,14 @@ if (!hasModuleFix) {
     }
   }
   
-  // Use relative path from main.js location (portable)
-  const aliasSetup = `const path = require('path');
-const Module = require('module');
-const fs = require('fs');
-const originalResolveFilename = Module._resolveFilename;
-// Use __dirname to resolve shared module path dynamically (relative to main.js)
-const sharedModulePath = path.join(__dirname, 'shared', 'index.js');
-Module._resolveFilename = function(request, parent, isMain, options) {
-  if (request === '@pizza-ecosystem/shared') {
-    if (!fs.existsSync(sharedModulePath)) {
-      throw new Error('Shared module not found at: ' + sharedModulePath + '\\n' +
-        'Please run: cd backend && node build-shared.js');
-    }
-    return sharedModulePath;
-  }
-  return originalResolveFilename.call(this, request, parent, isMain, options);
-};
-`;
+  // Load setup-module-resolution.js at the very beginning
+  // This must be the FIRST require to ensure it runs before any other modules
+  const setupRequire = `require('./setup-module-resolution.js');\n`;
   
-  content = content.replace('"use strict";', `"use strict";\n${aliasSetup}`);
+  // Insert after "use strict" but before any other code
+  content = content.replace('"use strict";', `"use strict";\n${setupRequire}`);
   fs.writeFileSync(mainJsPath, content, 'utf8');
-  console.log('✅ Added module resolution fix to main.js');
+  console.log('✅ Added module resolution setup to main.js');
 } else {
   // Update existing fix to use relative path if it's using absolute
   if (content.includes('/Users/') || content.includes('C:\\') || content.match(/['"]\/[^'"]+backend\/dist\/shared/)) {
