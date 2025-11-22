@@ -9,6 +9,7 @@ import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import LanguageSwitcher from './LanguageSwitcher';
 import { PornoPizzaLogo } from './PornoPizzaLogo';
+import { PizzaPoundLogo } from './PizzaPoundLogo';
 
 interface HeaderProps {
   tenant: Tenant;
@@ -82,6 +83,8 @@ export function Header({ tenant }: HeaderProps) {
         <div className="flex flex-1 items-center gap-4 min-w-0">
           {useCustomLogo && customLogoComponent === 'PornoPizzaLogo' ? (
             <PornoPizzaLogo className="h-8 sm:h-9 md:h-10 w-auto max-w-[140px] sm:max-w-[160px] md:max-w-[200px]" width={200} height={50} />
+          ) : useCustomLogo && customLogoComponent === 'PizzaPoundLogo' ? (
+            <PizzaPoundLogo className="h-8 sm:h-9 md:h-10 w-auto max-w-[140px] sm:max-w-[160px] md:max-w-[200px]" width={200} height={50} />
           ) : tenant.theme.logo ? (
             <Image
               src={tenant.theme.logo}
