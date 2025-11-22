@@ -201,7 +201,7 @@ export class CustomerAuthService {
         where: { email: email.toLowerCase().trim() },
       });
       return !!user;
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('[CustomerAuthService] Error checking email existence:', error);
       // Return false on error to allow registration flow to continue
       // This prevents blocking users if there's a database issue

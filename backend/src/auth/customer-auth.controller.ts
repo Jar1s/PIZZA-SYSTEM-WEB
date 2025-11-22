@@ -75,7 +75,7 @@ export class CustomerAuthController {
       }
       const exists = await this.customerAuthService.checkEmailExists(body.email);
       return { exists };
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('[CustomerAuthController] Error checking email:', error);
       // Return false on error to allow registration flow to continue
       // This prevents blocking users if there's a database issue
