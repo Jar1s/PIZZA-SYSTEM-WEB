@@ -12,7 +12,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { validateReturnUrl } from '@/lib/validate-return-url';
 import { getTenant } from '@/lib/api';
 import { geocodeAddress, validateBratislavaAddressSimple } from '@/lib/geocoding';
-import { isDarkTheme, getBackgroundClass, getButtonGradientClass, getButtonStyle } from '@/lib/tenant-utils';
+import { isDarkTheme, getBackgroundClass, getButtonGradientClass, getButtonStyle, withTenantThemeDefaults } from '@/lib/tenant-utils';
 
 interface Address {
   id: string;
@@ -36,6 +36,10 @@ export default function CheckoutPage() {
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
   const [loadingAddresses, setLoadingAddresses] = useState(true);
+  
+  // Get normalized tenant theme (ensures PornoPizza never uses legacy orange)
+  const normalizedTenant = withTenantThemeDefaults(tenantData);
+  const primaryColor = normalizedTenant?.theme?.primaryColor || 'var(--color-primary)';
   
   // Get layout config from tenant theme
   const isDark = isDarkTheme(tenantData);
@@ -936,7 +940,8 @@ export default function CheckoutPage() {
     return (
       <div className={`min-h-screen ${backgroundClass} ${isDark ? 'text-white' : ''} flex items-center justify-center`}>
         <div className={`text-center ${isDark ? 'text-white' : 'text-gray-900'}`}>
-          <div className={`inline-block animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 ${isDark ? 'border-[#ff5e00]' : 'border-orange-600'}`}></div>
+          <div className={`inline-block animate-spin rounded-full h-16 w-16 border-t-4 border-b-4`}
+          style={{ borderColor: isDark ? '#ff5e00' : 'var(--color-primary)' }}></div>
           <p className="mt-4 text-lg">Načítavam...</p>
         </div>
       </div>
@@ -965,7 +970,8 @@ export default function CheckoutPage() {
     return (
       <div className={`min-h-screen ${backgroundClass} ${isDark ? 'text-white' : ''} flex items-center justify-center`}>
         <div className={`text-center ${isDark ? 'text-white' : 'text-gray-900'}`}>
-          <div className={`inline-block animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 ${isDark ? 'border-[#ff5e00]' : 'border-orange-600'}`}></div>
+          <div className={`inline-block animate-spin rounded-full h-16 w-16 border-t-4 border-b-4`}
+          style={{ borderColor: isDark ? '#ff5e00' : 'var(--color-primary)' }}></div>
           <p className="mt-4 text-lg">Načítavam košík...</p>
         </div>
       </div>
@@ -1296,11 +1302,15 @@ export default function CheckoutPage() {
                       selectedAddressId === address.id
                         ? isDark
                           ? 'bg-white/10 border-white/30 shadow-[0_20px_60px_rgba(0,0,0,0.6)]'
-                          : 'border-orange-500 bg-orange-50 shadow'
+                          : 'shadow'
                         : isDark
                           ? 'bg-white/5 border-white/10 hover:border-white/25'
                           : 'border-gray-200 hover:border-gray-300'
                     }`}
+                    style={selectedAddressId === address.id && !isDark ? {
+                      borderColor: 'var(--color-primary)',
+                      backgroundColor: `${primaryColor}15`
+                    } : undefined}
                   >
                     <input
                       type="radio"
@@ -1329,8 +1339,12 @@ export default function CheckoutPage() {
                         {address.street}
                         {address.isPrimary && (
                           <span className={`ml-2 text-xs px-2 py-1 rounded ${
-                            isDark ? 'bg-white/15 text-white' : 'bg-orange-100 text-orange-800'
-                          }`}>
+                            isDark ? 'bg-white/15 text-white' : ''
+                          }`}
+                          style={!isDark ? {
+                            backgroundColor: `${primaryColor}20`,
+                            color: primaryColor
+                          } : undefined}>
                             {t.primary}
                           </span>
                         )}
@@ -1501,7 +1515,11 @@ export default function CheckoutPage() {
                   <div className="font-semibold flex items-center gap-2">
                     {t.cashOnDelivery}
                     {!user && (
-                      <span className="text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded font-medium">
+                      <span
+                        className="text-xs px-2.5 py-1 rounded-md font-bold text-white"
+                        style={{
+                          backgroundColor: 'var(--color-primary)',
+                        }}>
                         {t.requiresAccount}
                       </span>
                     )}
@@ -1509,7 +1527,8 @@ export default function CheckoutPage() {
                   <div className="text-sm text-gray-600">
                     {t.payOnDelivery}
                     {!user && (
-                      <span className="block mt-1 text-orange-600 font-medium">
+                      <span className="block mt-1 font-medium"
+                      style={{ color: 'var(--color-primary)' }}>
                         {t.accountCreatedAutomatically}
                       </span>
                     )}
@@ -1545,14 +1564,23 @@ export default function CheckoutPage() {
                   className={`mb-6 rounded-2xl border p-5 ${
                     isDark
                       ? 'border-white/10 bg-white/5 text-white shadow-[0_30px_70px_rgba(0,0,0,0.6)] backdrop-blur-lg'
-                      : 'bg-orange-50 border-orange-300 text-orange-900'
+                      : ''
                   }`}
+                  style={!isDark ? {
+                    backgroundColor: `${primaryColor}15`,
+                    borderColor: `${primaryColor}40`,
+                    color: `${primaryColor}DD`
+                  } : undefined}
                 >
                   <div className="flex items-start gap-4">
                     <div
                       className={`flex h-10 w-10 items-center justify-center rounded-full ${
-                        isDark ? 'bg-white/10 border border-white/20' : 'bg-orange-100 text-orange-700'
+                        isDark ? 'bg-white/10 border border-white/20' : ''
                       }`}
+                      style={!isDark ? {
+                        backgroundColor: `${primaryColor}20`,
+                        color: primaryColor
+                      } : undefined}
                     >
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -1562,7 +1590,8 @@ export default function CheckoutPage() {
                       <h4 className="text-lg font-bold mb-2">
                         {t.accountRequiredForDeliveryPayment}
                       </h4>
-                      <p className={`text-sm mb-4 ${isDark ? 'text-gray-300' : 'text-orange-800'}`}>
+                      <p className={`text-sm mb-4 ${isDark ? 'text-gray-300' : ''}`}
+                      style={!isDark ? { color: `${primaryColor}DD` } : undefined}>
                         {t.accountCreatedAfterOrder}
                       </p>
                       <div className="flex flex-wrap items-center gap-3">
@@ -1574,12 +1603,16 @@ export default function CheckoutPage() {
                           className={`px-5 py-2 rounded-full text-sm font-semibold transition-colors ${
                             isDark
                               ? 'bg-gradient-to-r from-[#ff5e00] via-[#ff0066] to-[#ff2d55] text-white shadow-lg'
-                              : 'bg-orange-600 text-white hover:bg-orange-700'
+                              : 'text-white hover:opacity-90'
                           }`}
+                          style={!isDark ? {
+                            backgroundColor: 'var(--color-primary)'
+                          } : undefined}
                         >
                           {t.orSignIn}
                         </button>
-                        <span className={`text-xs ${isDark ? 'text-gray-400' : 'text-orange-700'}`}>
+                        <span className={`text-xs ${isDark ? 'text-gray-400' : ''}`}
+                        style={!isDark ? { color: 'var(--color-primary)' } : undefined}>
                           {t.ifYouHaveAccount}
                         </span>
                       </div>

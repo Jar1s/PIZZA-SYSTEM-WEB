@@ -3,6 +3,7 @@ import { Inter } from 'next/font/google';
 import './globals.css';
 import { headers } from 'next/headers';
 import { getTenantServer } from '@/lib/server-api';
+import { withTenantThemeDefaults } from '@/lib/tenant-utils';
 import { Providers } from '@/components/Providers';
 import { SpeedInsights } from '@vercel/speed-insights/next';
 import { Analytics } from '@vercel/analytics/react';
@@ -37,8 +38,9 @@ export async function generateMetadata(): Promise<Metadata> {
     if (!tenantData) {
       throw new Error('Tenant not found');
     }
-    const siteName = tenantData.name || 'Pizza Ordering';
-    const theme = typeof tenantData.theme === 'object' && tenantData.theme !== null ? tenantData.theme as any : {};
+    const normalizedTenant = withTenantThemeDefaults(tenantData);
+    const siteName = normalizedTenant?.name || 'Pizza Ordering';
+    const theme = typeof normalizedTenant?.theme === 'object' && normalizedTenant?.theme !== null ? normalizedTenant.theme as any : {};
     const description = tenantData.description || (theme.description as string) || `Order delicious pizza online from ${siteName}. Fast delivery, fresh ingredients, and great prices.`;
     const imageUrl = tenantData.logo || (theme.logo as string) || `${baseUrl}/images/og-default.jpg`;
     
@@ -141,18 +143,25 @@ export default async function RootLayout({
     // Fallback theme if tenant not found or backend unavailable
     console.warn('Failed to load tenant data, using fallback:', error);
     tenantData = {
+      slug: tenant,
       name: 'Pizza Ordering',
       theme: {
-        primaryColor: '#FF6B00',
-        secondaryColor: '#000000',
+        primaryColor: '#E91E63',
+        secondaryColor: '#0F141A',
         favicon: '/favicon.ico',
       }
     };
   }
   
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3001';
-  const siteName = tenantData.name || 'Pizza Ordering';
-  const theme = typeof tenantData.theme === 'object' && tenantData.theme !== null ? tenantData.theme as any : {};
+  const normalizedTenant = withTenantThemeDefaults(tenantData as any);
+  const siteName = normalizedTenant?.name || 'Pizza Ordering';
+  const theme = typeof normalizedTenant?.theme === 'object' && normalizedTenant?.theme !== null ? normalizedTenant.theme as any : {};
+  
+  // Use normalized theme colors (never legacy orange for PornoPizza)
+  const primaryColor = theme.primaryColor || '#E91E63';
+  const secondaryColor = theme.secondaryColor || '#0F141A';
+  const fontFamily = theme.fontFamily || 'Inter, sans-serif';
   
   // Structured Data (JSON-LD)
   const organizationSchema = {
@@ -180,9 +189,9 @@ export default async function RootLayout({
   return (
     <html lang="sk" suppressHydrationWarning>
       <head>
-        <link rel="icon" href={tenantData.theme.favicon || '/favicon.ico'} />
+        <link rel="icon" href={theme.favicon || '/favicon.ico'} />
         <link rel="canonical" href={baseUrl} />
-        <meta name="theme-color" content={tenantData.theme.primaryColor || '#FF6B00'} />
+        <meta name="theme-color" content={primaryColor} />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{
@@ -192,9 +201,9 @@ export default async function RootLayout({
         <style dangerouslySetInnerHTML={{
           __html: `
             :root {
-              --color-primary: ${tenantData.theme.primaryColor || '#FF6B00'};
-              --color-secondary: ${tenantData.theme.secondaryColor || '#000000'};
-              --font-family: ${tenantData.theme.fontFamily || 'Inter, sans-serif'};
+              --color-primary: ${primaryColor};
+              --color-secondary: ${secondaryColor};
+              --font-family: ${fontFamily};
             }
           `
         }} />
@@ -209,5 +218,3 @@ export default async function RootLayout({
     </html>
   );
 }
-
-

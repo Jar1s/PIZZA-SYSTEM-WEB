@@ -15,7 +15,7 @@ describe('tenant-utils', () => {
     slug: 'pornopizza',
     name: 'PornoPizza',
     theme: {
-      primaryColor: '#FF6B00',
+      primaryColor: '#FF6B00', // Legacy orange - should be overridden
       secondaryColor: '#FF0066',
       layout: {
         headerStyle: 'dark',
@@ -106,7 +106,7 @@ describe('tenant-utils', () => {
     it('should return gradient for dark theme', () => {
       const result = getButtonGradientClass(mockPornopizzaTenant);
       expect(result).toContain('bg-gradient-to-r');
-      expect(result).toContain('from-[#ff5e00]');
+      expect(result).toContain('from-[#e91e63]');
     });
 
     it('should return text-white for light theme', () => {
@@ -128,7 +128,7 @@ describe('tenant-utils', () => {
   });
 
   describe('withTenantThemeDefaults', () => {
-    it('should add default layout config for PornoPizza', () => {
+    it('should override legacy orange (#FF6B00) with brand pink (#E91E63) for PornoPizza', () => {
       const tenantWithoutLayout: Tenant = {
         ...mockPornopizzaTenant,
         theme: { primaryColor: '#FF6B00' },
@@ -139,12 +139,29 @@ describe('tenant-utils', () => {
       expect(result?.theme?.layout?.headerStyle).toBe('dark');
       expect(result?.theme?.layout?.useCustomLogo).toBe(true);
       expect(result?.theme?.layout?.customLogoComponent).toBe('PornoPizzaLogo');
+      expect(result?.theme?.primaryColor).toBe('#E91E63');
+      expect(result?.theme?.secondaryColor).toBe('#0F141A');
     });
 
-    it('should preserve existing layout config', () => {
+    it('should override legacy orange even when present in full theme', () => {
       const result = withTenantThemeDefaults(mockPornopizzaTenant);
+      expect(result?.theme?.primaryColor).toBe('#E91E63');
+      expect(result?.theme?.secondaryColor).toBe('#0F141A');
       expect(result?.theme?.layout?.headerStyle).toBe('dark');
       expect(result?.theme?.layout?.useCustomLogo).toBe(true);
+    });
+
+    it('should preserve non-orange primary colors for PornoPizza', () => {
+      const tenantWithCustomColor: Tenant = {
+        ...mockPornopizzaTenant,
+        theme: {
+          ...mockPornopizzaTenant.theme,
+          primaryColor: '#FF1493', // Different pink
+        },
+      };
+      
+      const result = withTenantThemeDefaults(tenantWithCustomColor);
+      expect(result?.theme?.primaryColor).toBe('#FF1493'); // Should preserve
     });
 
     it('should return null for null tenant', () => {
@@ -155,6 +172,7 @@ describe('tenant-utils', () => {
     it('should not modify non-PornoPizza tenants', () => {
       const result = withTenantThemeDefaults(mockLightTenant);
       expect(result?.theme?.layout?.headerStyle).toBe('light');
+      expect(result?.theme?.primaryColor).toBe('#DC143C'); // Should preserve
     });
   });
 });

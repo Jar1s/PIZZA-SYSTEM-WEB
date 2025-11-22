@@ -20,14 +20,24 @@ export function withTenantThemeDefaults(tenant: Tenant | null): Tenant | null {
 
   const slug = tenant.slug?.toLowerCase();
   if (slug === 'pornopizza') {
+    const brandPrimary = '#E91E63'; // vivid pink/red brand tone (no orange)
+    const brandSecondary = '#0F141A'; // darker secondary
     const theme = tenant.theme || ({} as Tenant['theme']);
     const layout = theme.layout || {};
+    
+    // Always override legacy orange (#FF6B00) with brand pink/red
+    const currentPrimary = theme.primaryColor?.toLowerCase() || '';
+    const normalizedPrimary = 
+      currentPrimary === '#ff6b00' || currentPrimary === 'ff6b00' || !currentPrimary
+        ? brandPrimary
+        : theme.primaryColor;
+    
     return {
       ...tenant,
       theme: {
         ...theme,
-        primaryColor: theme.primaryColor || '#FF6B00',
-        secondaryColor: theme.secondaryColor || '#FF0066',
+        primaryColor: normalizedPrimary,
+        secondaryColor: brandSecondary, // Always use brand secondary for PornoPizza
         layout: {
           headerStyle: layout.headerStyle || 'dark',
           backgroundStyle: layout.backgroundStyle || 'black',
@@ -120,7 +130,7 @@ export function getButtonGradientClass(tenant: Tenant | null): string {
   const config = getLayoutConfig(tenant);
   
   if (config.backgroundStyle === 'black' || config.headerStyle === 'dark') {
-    return 'bg-gradient-to-r from-[#ff5e00] via-[#ff0066] to-[#ff2d55] text-white';
+    return 'bg-gradient-to-r from-[#e91e63] via-[#ff2d7a] to-[#ff006e] text-white';
   }
   
   return 'text-white';
