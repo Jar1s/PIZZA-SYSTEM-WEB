@@ -89,13 +89,27 @@ export async function getProductById(productId: string): Promise<Product> {
 }
 
 export async function updateProduct(tenantSlug: string, productId: string, data: Partial<Product>): Promise<Product> {
+  const token = localStorage.getItem('auth_token');
+  
+  const headers: HeadersInit = { 'Content-Type': 'application/json' };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  
   const res = await fetch(`${API_URL}/api/${tenantSlug}/products/${productId}`, {
     method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
+    headers,
     body: JSON.stringify(data),
   });
   
-  if (!res.ok) throw new Error('Failed to update product');
+  if (!res.ok) {
+    if (res.status === 401) {
+      throw new Error('Unauthorized - Please log in again');
+    }
+    const errorText = await res.text().catch(() => 'Failed to update product');
+    throw new Error(errorText || 'Failed to update product');
+  }
+  
   return res.json();
 }
 
@@ -109,15 +123,23 @@ export interface ProductMapping {
 }
 
 export async function getProductMappings(tenantSlug: string, productId: string): Promise<ProductMapping[]> {
+  const token = localStorage.getItem('auth_token');
+  
+  const headers: HeadersInit = { 'Content-Type': 'application/json' };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  
   const res = await fetch(`${API_URL}/api/${tenantSlug}/products/${productId}/mappings`, {
-    headers: {
-      'Content-Type': 'application/json',
-    },
+    headers,
   });
   
   if (!res.ok) {
     // If endpoint doesn't exist or no mappings, return empty array
-    if (res.status === 404) return [];
+    if (res.status === 404 || res.status === 500) return [];
+    if (res.status === 401) {
+      throw new Error('Unauthorized - Please log in again');
+    }
     throw new Error('Failed to fetch product mappings');
   }
   
@@ -125,21 +147,44 @@ export async function getProductMappings(tenantSlug: string, productId: string):
 }
 
 export async function deleteProduct(tenantSlug: string, productId: string): Promise<void> {
+  const token = localStorage.getItem('auth_token');
+  
+  const headers: HeadersInit = {};
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  
   const res = await fetch(`${API_URL}/api/${tenantSlug}/products/${productId}`, {
     method: 'DELETE',
+    headers,
   });
   
-  if (!res.ok) throw new Error('Failed to delete product');
+  if (!res.ok) {
+    if (res.status === 401) {
+      throw new Error('Unauthorized - Please log in again');
+    }
+    throw new Error('Failed to delete product');
+  }
 }
 
 export async function createProduct(tenantSlug: string, data: Partial<Product>): Promise<Product> {
+  const token = localStorage.getItem('auth_token');
+  
+  const headers: HeadersInit = { 'Content-Type': 'application/json' };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  
   const res = await fetch(`${API_URL}/api/${tenantSlug}/products`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers,
     body: JSON.stringify(data),
   });
   
   if (!res.ok) {
+    if (res.status === 401) {
+      throw new Error('Unauthorized - Please log in again');
+    }
     const errorData = await res.json().catch(() => ({ message: 'Failed to create product' }));
     throw new Error(errorData.message || 'Failed to create product');
   }
