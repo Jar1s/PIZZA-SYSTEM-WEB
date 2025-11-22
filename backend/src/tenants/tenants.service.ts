@@ -109,15 +109,23 @@ export class TenantsService {
   }
   
   async updateTenant(slug: string, data: any): Promise<Tenant> {
-    // Get existing tenant data for merging JSON fields
+    // IMPORTANT: This method only UPDATES existing tenants, it never DELETES them
+    // When isActive is set to false, the tenant is just disabled, not removed
+    // All tenant data (products, orders, etc.) remains intact
+    
+    // First, verify the tenant exists
     const existingTenant = await this.prisma.tenant.findUnique({
       where: { slug },
       select: { theme: true, paymentConfig: true, deliveryConfig: true },
     });
     
+    if (!existingTenant) {
+      throw new NotFoundException(`Tenant with slug ${slug} not found`);
+    }
+    
     // If theme is being updated, merge it with existing theme
     if (data.theme && typeof data.theme === 'object') {
-      if (existingTenant && existingTenant.theme) {
+      if (existingTenant.theme) {
         const existingTheme = existingTenant.theme as any;
         data.theme = {
           ...existingTheme,
@@ -128,7 +136,7 @@ export class TenantsService {
     
     // If paymentConfig is being updated, merge it with existing paymentConfig
     if (data.paymentConfig && typeof data.paymentConfig === 'object') {
-      if (existingTenant && existingTenant.paymentConfig) {
+      if (existingTenant.paymentConfig) {
         const existingPaymentConfig = existingTenant.paymentConfig as any;
         data.paymentConfig = {
           ...existingPaymentConfig,
@@ -139,7 +147,7 @@ export class TenantsService {
     
     // If deliveryConfig is being updated, merge it with existing deliveryConfig
     if (data.deliveryConfig && typeof data.deliveryConfig === 'object') {
-      if (existingTenant && existingTenant.deliveryConfig) {
+      if (existingTenant.deliveryConfig) {
         const existingDeliveryConfig = existingTenant.deliveryConfig as any;
         data.deliveryConfig = {
           ...existingDeliveryConfig,
@@ -148,10 +156,13 @@ export class TenantsService {
       }
     }
     
+    // Update tenant - this only modifies the record, never deletes it
     const tenant = await this.prisma.tenant.update({
       where: { slug },
       data,
     });
+    
+    this.logger.log(`Tenant ${slug} updated. isActive: ${tenant.isActive}`);
     return tenant as any as Tenant;
   }
 }
