@@ -5,6 +5,7 @@ import { Order, OrderStatus } from '@pizza-ecosystem/shared';
 import { OrderCard } from './OrderCard';
 import { OrderFilters } from './OrderFilters';
 import { getTenantSlug } from '@/lib/tenant-utils';
+import { isSoundNotificationEnabled } from './SoundNotificationSettings';
 
 interface OrderListProps {
   todayOnly?: boolean;
@@ -154,7 +155,10 @@ export function OrderList({ todayOnly = false, selectedTenant }: OrderListProps 
           );
           
           if (newPendingOrders.length > 0) {
-            playNewOrderSound();
+            // Prehraj zvuk len ak sú zvukové upozornenia zapnuté
+            if (isSoundNotificationEnabled()) {
+              playNewOrderSound();
+            }
             console.log(`🔔 Nová objednávka! (${newPendingOrders.length} nových)`);
           }
         }

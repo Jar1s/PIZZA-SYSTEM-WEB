@@ -63,6 +63,11 @@ const PaymentSettings = dynamic(() => import('@/components/admin/PaymentSettings
   ssr: false,
 });
 
+const SoundNotificationSettings = dynamic(() => import('@/components/admin/SoundNotificationSettings').then(mod => ({ default: mod.SoundNotificationSettings })), {
+  loading: () => null,
+  ssr: false,
+});
+
 export default function AdminDashboard() {
   const { selectedTenant } = useAdminContext();
   
@@ -74,6 +79,13 @@ export default function AdminDashboard() {
       <ErrorBoundary>
         <Suspense fallback={null}>
           <MaintenanceBanner />
+        </Suspense>
+      </ErrorBoundary>
+
+      {/* Sound Notification Settings */}
+      <ErrorBoundary>
+        <Suspense fallback={null}>
+          <SoundNotificationSettings />
         </Suspense>
       </ErrorBoundary>
 
