@@ -73,33 +73,31 @@ export function PaymentSettings() {
   }
 
   return (
-    <div className="bg-white rounded-lg p-4 mb-6 border border-gray-200">
-      <div className="flex items-center justify-between mb-3">
-        <div>
-          <h2 className="text-lg font-semibold text-gray-900">
-            Nastavenia platieb pri dodaní
+    <div className="bg-white rounded-lg p-3 border border-gray-200">
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex-1 min-w-0">
+          <h2 className="text-sm font-semibold text-gray-900">
+            Platby pri dodaní
           </h2>
-          <p className="text-xs text-gray-500 mt-0.5">
+          <p className="text-xs text-gray-500 mt-0.5 truncate">
             Aplikuje sa na všetky weby
           </p>
         </div>
         <button
           onClick={handleSave}
           disabled={saving}
-          className="px-4 py-1.5 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+          className="ml-3 px-3 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium flex-shrink-0"
         >
-          {saving ? 'Ukladám...' : 'Uložiť'}
+          {saving ? '...' : 'Uložiť'}
         </button>
       </div>
       
-      <div className="space-y-2">
+      <div className="space-y-1.5">
         {/* Cash Payment Toggle */}
-        <div className="flex items-center justify-between py-2">
-          <div className="flex-1">
-            <label className="text-sm font-medium text-gray-900">
-              Hotovosť
-            </label>
-          </div>
+        <div className="flex items-center justify-between">
+          <label className="text-xs font-medium text-gray-900">
+            Hotovosť
+          </label>
           <button
             onClick={() => setCashEnabled(!cashEnabled)}
             disabled={saving}
@@ -116,12 +114,10 @@ export function PaymentSettings() {
         </div>
         
         {/* Card Payment Toggle */}
-        <div className="flex items-center justify-between py-2">
-          <div className="flex-1">
-            <label className="text-sm font-medium text-gray-900">
-              Platba kartou
-            </label>
-          </div>
+        <div className="flex items-center justify-between">
+          <label className="text-xs font-medium text-gray-900">
+            Platba kartou
+          </label>
           <button
             onClick={() => setCardEnabled(!cardEnabled)}
             disabled={saving}

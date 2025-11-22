@@ -33,15 +33,15 @@ export function SoundNotificationSettings() {
   }
 
   return (
-    <div className="bg-blue-50 rounded-lg p-6 mb-6 border border-blue-200">
+    <div className="bg-blue-50 rounded-lg p-3 border border-blue-200">
       <div className="flex items-center justify-between">
-        <div className="flex-1">
-          <h2 className="text-xl font-bold text-blue-700 mb-2">
+        <div className="flex-1 min-w-0">
+          <h2 className="text-sm font-bold text-blue-700 mb-1">
             Zvukové upozornenia
           </h2>
-          <div className="flex items-center gap-2 text-gray-700">
+          <div className="flex items-center gap-1.5 text-gray-600">
             <svg
-              className="w-5 h-5"
+              className="w-3.5 h-3.5 flex-shrink-0"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -54,25 +54,25 @@ export function SoundNotificationSettings() {
                 d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"
               />
             </svg>
-            <span className="text-sm">
-              Zvukové upozornenie pri novej objednávke
+            <span className="text-xs truncate">
+              Zvuk pri novej objednávke
             </span>
           </div>
         </div>
         
-        <div className="ml-6 flex items-center gap-3">
-          <span className={`text-sm font-medium ${soundEnabled ? 'text-blue-600' : 'text-gray-500'}`}>
-            {soundEnabled ? 'Zapnuté' : 'Vypnuté'}
+        <div className="ml-3 flex items-center gap-2 flex-shrink-0">
+          <span className={`text-xs font-medium ${soundEnabled ? 'text-blue-600' : 'text-gray-500'}`}>
+            {soundEnabled ? 'Zap.' : 'Vyp.'}
           </span>
           <button
             onClick={handleToggle}
-            className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
+            className={`relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 ${
               soundEnabled ? 'bg-blue-600' : 'bg-gray-200'
             }`}
           >
             <span
-              className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                soundEnabled ? 'translate-x-5' : 'translate-x-0'
+              className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                soundEnabled ? 'translate-x-4' : 'translate-x-0'
               }`}
             />
           </button>

@@ -78,36 +78,40 @@ export default function AdminDashboard() {
   
   return (
     <div>
-      <h1 className="text-3xl font-bold mb-6">Dashboard</h1>
+      <h1 className="text-3xl font-bold mb-4">Dashboard</h1>
       
-      {/* Maintenance Banner with Toggle */}
-      <ErrorBoundary>
-        <Suspense fallback={null}>
-          <MaintenanceBanner />
-        </Suspense>
-      </ErrorBoundary>
+      {/* Compact Settings Grid - Top Section */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+        {/* Maintenance Banner with Toggle - Compact */}
+        <ErrorBoundary>
+          <Suspense fallback={null}>
+            <MaintenanceBanner />
+          </Suspense>
+        </ErrorBoundary>
 
-      {/* Sound Notification Settings */}
-      <ErrorBoundary>
-        <Suspense fallback={null}>
-          <SoundNotificationSettings />
-        </Suspense>
-      </ErrorBoundary>
+        {/* Sound Notification Settings - Compact */}
+        <ErrorBoundary>
+          <Suspense fallback={null}>
+            <SoundNotificationSettings />
+          </Suspense>
+        </ErrorBoundary>
 
-      {/* Opening Hours Settings */}
-      <ErrorBoundary>
-        <Suspense fallback={<div className="animate-pulse bg-gray-200 h-64 rounded-lg mb-6" />}>
-          <OpeningHoursSettings />
-        </Suspense>
-      </ErrorBoundary>
+        {/* Opening Hours Settings - Compact */}
+        <ErrorBoundary>
+          <Suspense fallback={<div className="animate-pulse bg-gray-200 h-24 rounded-lg" />}>
+            <OpeningHoursSettings />
+          </Suspense>
+        </ErrorBoundary>
 
-      {/* Payment Settings - Central for all websites */}
-      <ErrorBoundary>
-        <Suspense fallback={<div className="animate-pulse bg-gray-200 h-64 rounded-lg mb-6" />}>
-          <PaymentSettings />
-        </Suspense>
-      </ErrorBoundary>
+        {/* Payment Settings - Compact */}
+        <ErrorBoundary>
+          <Suspense fallback={<div className="animate-pulse bg-gray-200 h-24 rounded-lg" />}>
+            <PaymentSettings />
+          </Suspense>
+        </ErrorBoundary>
+      </div>
 
+      {/* Main Content */}
       <ErrorBoundary>
         <Suspense fallback={<div className="animate-pulse bg-gray-200 h-32 rounded-lg mb-6" />}>
           <KPICards selectedTenant={selectedTenant} />

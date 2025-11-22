@@ -114,15 +114,15 @@ export function MaintenanceBanner() {
   const nextOpening = getNextOpeningTime(openingHours);
 
   return (
-    <div className="bg-[#fefaf5] rounded-lg p-6 mb-6 border border-orange-200">
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex-1">
-          <h2 className="text-xl font-bold text-[#f97316] mb-2">
-            {t.maintenanceModeTitle} (Manuálne)
+    <div className="bg-[#fefaf5] rounded-lg p-3 border border-orange-200">
+      <div className="flex items-center justify-between">
+        <div className="flex-1 min-w-0">
+          <h2 className="text-sm font-bold text-[#f97316] mb-1 truncate">
+            {t.maintenanceModeTitle}
           </h2>
-          <div className="flex items-center gap-2 text-gray-700">
+          <div className="flex items-center gap-1.5 text-gray-600">
             <svg
-              className="w-5 h-5"
+              className="w-3.5 h-3.5 flex-shrink-0"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -135,55 +135,39 @@ export function MaintenanceBanner() {
                 d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
               />
             </svg>
-            <span className="text-sm">{t.maintenanceModeSubtitle}</span>
+            <span className="text-xs truncate">{t.maintenanceModeSubtitle}</span>
           </div>
+          {openingHours?.enabled && (
+            <div className="mt-1.5 flex items-center gap-1.5">
+              <span className={`text-xs px-1.5 py-0.5 rounded ${autoMaintenanceMode ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
+                {autoMaintenanceMode ? 'Zatvorené' : 'Otvorené'}
+              </span>
+              {autoMaintenanceMode && nextOpening && (
+                <span className="text-xs text-gray-500 truncate">{nextOpening}</span>
+              )}
+            </div>
+          )}
         </div>
         
-        <div className="ml-6 flex items-center gap-3">
-          <span className={`text-sm font-medium ${maintenanceMode ? 'text-orange-600' : 'text-gray-500'}`}>
-            {maintenanceMode ? 'Zapnuté' : 'Vypnuté'}
+        <div className="ml-3 flex items-center gap-2 flex-shrink-0">
+          <span className={`text-xs font-medium ${maintenanceMode ? 'text-orange-600' : 'text-gray-500'}`}>
+            {maintenanceMode ? 'Zap.' : 'Vyp.'}
           </span>
           <button
             onClick={handleToggle}
             disabled={saving}
-            className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 ${
+            className={`relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-1 ${
               maintenanceMode ? 'bg-orange-600' : 'bg-gray-200'
             } ${saving ? 'opacity-50 cursor-not-allowed' : ''}`}
           >
             <span
-              className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                maintenanceMode ? 'translate-x-5' : 'translate-x-0'
+              className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                maintenanceMode ? 'translate-x-4' : 'translate-x-0'
               }`}
             />
           </button>
         </div>
       </div>
-
-      {openingHours?.enabled && (
-        <div className="pt-4 border-t border-orange-200">
-          <div className="flex items-center justify-between">
-            <div className="flex-1">
-              <h3 className="text-lg font-semibold text-gray-800 mb-1">
-                Automatický režim (podľa otváracích hodín)
-              </h3>
-              <div className="flex items-center gap-2 text-gray-600 text-sm">
-                <span className={`px-2 py-1 rounded ${autoMaintenanceMode ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
-                  {autoMaintenanceMode ? 'Zatvorené' : 'Otvorené'}
-                </span>
-                {autoMaintenanceMode && nextOpening && (
-                  <span className="text-gray-500">• {nextOpening}</span>
-                )}
-              </div>
-            </div>
-          </div>
-          <div className="mt-2 text-xs text-gray-500">
-            Aktuálny stav: <strong>{effectiveMaintenanceMode ? 'Neprijímame objednávky' : 'Prijímame objednávky'}</strong>
-            {maintenanceMode && autoMaintenanceMode && ' (Manuálne + Automaticky)'}
-            {maintenanceMode && !autoMaintenanceMode && ' (Len manuálne)'}
-            {!maintenanceMode && autoMaintenanceMode && ' (Len automaticky)'}
-          </div>
-        </div>
-      )}
     </div>
   );
 }
