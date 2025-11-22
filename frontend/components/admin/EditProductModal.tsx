@@ -5,7 +5,6 @@ import Image from 'next/image';
 import { Product } from '@pizza-ecosystem/shared';
 import { updateProduct, getProductMappings, ProductMapping } from '@/lib/api';
 import { getProductTranslation } from '@/lib/product-translations';
-import { getProductTranslation } from '@/lib/product-translations';
 
 interface EditProductModalProps {
   product: Product | null;
