@@ -10,7 +10,7 @@
   "scripts": {
     "prebuild": "rimraf dist",
     "build": "npx prisma generate && npx @nestjs/cli build --tsc -p tsconfig.build.json",
-    "postbuild": "node build-shared.js && node fix-shared-imports.js && (node fix-main.js || echo 'fix-main.js skipped')",
+    "postbuild": "node build-shared.js && node fix-shared-imports.js && cp setup-module-resolution.js dist/setup-module-resolution.js && (node fix-main.js || echo 'fix-main.js skipped')",
     "prestart:dev": "node ensure-shared.js",
     "postinstall": "npx prisma generate",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
