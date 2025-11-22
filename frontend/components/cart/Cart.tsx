@@ -151,9 +151,8 @@ export function Cart({ tenant = null, isDark: isDarkOverride }: CartProps) {
         onClick={(e) => {
           e.stopPropagation();
         }}
-        className="fixed right-0 top-0 h-screen w-full sm:max-w-[28rem] p-4 sm:p-6 flex flex-col overflow-y-auto"
+        className="fixed right-0 top-0 h-screen w-full sm:max-w-[28rem] p-4 sm:p-6 flex flex-col overflow-y-auto z-[10001]"
         style={{
-          zIndex: 10001,
           backgroundColor: isDark ? 'var(--cart-dark-bg, #1a1a1a)' : '#ffffff',
           boxShadow: '-4px 0 20px rgba(0, 0, 0, 0.3)',
           pointerEvents: 'auto',

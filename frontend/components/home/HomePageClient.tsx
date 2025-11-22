@@ -337,7 +337,7 @@ export function HomePageClient({ products, tenant }: HomePageClientProps) {
             >
               {t.menuTitle}
             </h2>
-            <p className={`text-xl max-w-2xl mx-auto ${isDarkTheme ? 'text-gray-400' : ''}`} style={{ color: isDarkTheme ? '#999' : '#666666' }}>
+            <p className={`text-base sm:text-lg md:text-xl max-w-2xl mx-auto px-4 ${isDarkTheme ? 'text-gray-400' : ''}`} style={{ color: isDarkTheme ? '#999' : '#666666' }}>
               {t.menuSubtitle}
             </p>
           </motion.div>
