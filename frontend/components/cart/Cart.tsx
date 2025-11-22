@@ -232,8 +232,11 @@ export function Cart({ tenant = null, isDark: isDarkOverride }: CartProps) {
                 whileHover={{ scale: 1.01 }}
                 whileTap={{ scale: 0.98 }}
                 onClick={handleCheckout}
-                className={`w-full py-4 rounded-full text-lg font-semibold shadow-lg ${getButtonGradientClass(tenant)}`}
-                style={getButtonStyle(tenant, isDark)}
+                className={`w-full py-4 rounded-full text-lg font-semibold shadow-lg text-white ${getButtonGradientClass(tenant)}`}
+                style={{
+                  ...getButtonStyle(tenant, isDark),
+                  backgroundColor: tenant?.theme?.primaryColor || 'var(--color-primary)',
+                }}
               >
                 {t.checkout}
               </motion.button>
@@ -243,9 +246,13 @@ export function Cart({ tenant = null, isDark: isDarkOverride }: CartProps) {
                 onClick={handleContinueShopping}
                 className={`w-full py-3 rounded-full font-semibold border ${
                   isDark
-                    ? 'border-white/20 text-white hover:bg-white/10'
+                    ? 'text-white hover:bg-white/10'
                     : 'border-gray-300 text-gray-800 hover:bg-gray-50'
                 }`}
+                style={{
+                  borderColor: tenant?.theme?.primaryColor || 'var(--color-primary)',
+                  color: tenant?.theme?.primaryColor || 'var(--color-primary)',
+                }}
               >
                 {t.menu}
               </button>
