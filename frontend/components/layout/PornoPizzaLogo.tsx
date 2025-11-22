@@ -6,91 +6,110 @@ interface PornoPizzaLogoProps {
   height?: number;
 }
 
-export function PornoPizzaLogo({ className = '', width = 200, height = 60 }: PornoPizzaLogoProps) {
+export function PornoPizzaLogo({ className = '', width = 350, height = 80 }: PornoPizzaLogoProps) {
   // Scale factor to fit better in header
-  const scale = Math.min(width / 200, height / 60);
-  const scaledWidth = 200 * scale;
-  const scaledHeight = 60 * scale;
+  const scale = Math.min(width / 350, height / 80);
+  const scaledWidth = 350 * scale;
+  const scaledHeight = 80 * scale;
   
   return (
     <svg
       width={scaledWidth}
       height={scaledHeight}
-      viewBox="0 0 200 60"
+      viewBox="0 0 350 80"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
       className={className}
       preserveAspectRatio="xMidYMid meet"
     >
-      {/* Pizza wheel circle - centered, partially obscured by PIZZAPORNO at top */}
-      <g transform="translate(100, 35)">
-        {/* Outer circle - thick off-white/light grey outline */}
-        <circle
-          cx="0"
-          cy="0"
-          r="22"
-          stroke="#D4D4D4"
-          strokeWidth="2.5"
-          fill="none"
+      {/* Pizza Slice - Left Side */}
+      <g transform="translate(10, 5)">
+        {/* Pizza slice crust (thick golden-brown with darker outline) */}
+        <path
+          d="M 0 35 L 55 8 A 55 55 0 0 1 55 62 Z"
+          fill="#D4A574"
+          stroke="#8B4513"
+          strokeWidth="3"
         />
-        {/* Pizza slices/spokes - radial lines from center to edge (16 spokes) */}
-        {[0, 22.5, 45, 67.5, 90, 112.5, 135, 157.5, 180, 202.5, 225, 247.5, 270, 292.5, 315, 337.5].map((angle, index) => {
-          const rad = (angle * Math.PI) / 180;
-          const x = Math.cos(rad) * 22;
-          const y = Math.sin(rad) * 22;
-          return (
-            <line
-              key={index}
-              x1="0"
-              y1="0"
-              x2={x}
-              y2={y}
-              stroke="#D4D4D4"
-              strokeWidth="1.5"
-              opacity="0.9"
-            />
-          );
-        })}
+        
+        {/* Pizza cheese (vibrant yellow) */}
+        <path
+          d="M 3 33 L 52 8 A 52 52 0 0 1 52 58 Z"
+          fill="#FFD700"
+        />
+        
+        {/* Cheese drips from the tip */}
+        <ellipse cx="50" cy="18" rx="4" ry="6" fill="#FFD700" />
+        <ellipse cx="53" cy="24" rx="3.5" ry="5" fill="#FFD700" />
+        <ellipse cx="55" cy="30" rx="3" ry="4.5" fill="#FFD700" />
+        
+        {/* Pepperoni slices (red with darker outline) */}
+        <circle cx="28" cy="22" r="7" fill="#DC143C" stroke="#8B0000" strokeWidth="1.5" />
+        <circle cx="38" cy="28" r="7" fill="#DC143C" stroke="#8B0000" strokeWidth="1.5" />
+        <circle cx="33" cy="38" r="6.5" fill="#DC143C" stroke="#8B0000" strokeWidth="1.5" />
+        
+        {/* Pepperoni highlights (lighter red) */}
+        <circle cx="27" cy="21" r="2.5" fill="#FF4444" opacity="0.7" />
+        <circle cx="37" cy="27" r="2.5" fill="#FF4444" opacity="0.7" />
+        <circle cx="32" cy="37" r="2" fill="#FF4444" opacity="0.7" />
+        
+        {/* Dark outline around entire slice */}
+        <path
+          d="M 0 35 L 55 8 A 55 55 0 0 1 55 62 Z"
+          fill="none"
+          stroke="#654321"
+          strokeWidth="2.5"
+        />
       </g>
 
-      {/* PIZZAPORNO text - bold orange, layered on top of wheel (partially covering top of wheel) */}
-      <text
-        x="100"
-        y="25"
-        textAnchor="middle"
-        fontSize="20"
-        fontWeight="900"
-        fontFamily="Arial, sans-serif"
-        fill="#FF9900"
-        style={{
-          letterSpacing: '1.2px',
-        }}
-      >
-        <tspan
-          stroke="#1a1a1a"
-          strokeWidth="0.8"
-          strokeLinejoin="round"
+      {/* PIZZA PORNO Text - Right Side */}
+      <g transform="translate(80, 5)">
+        {/* PIZZA text - top line */}
+        <text
+          x="0"
+          y="32"
+          fontSize="22"
+          fontWeight="900"
+          fontFamily="Arial Black, sans-serif"
+          fill="#F5F5DC"
+          style={{
+            letterSpacing: '1.5px',
+          }}
         >
-          PIZZAPORNO
-        </tspan>
-        <tspan fill="#FF9900" stroke="none">PIZZAPORNO</tspan>
-      </text>
+          <tspan
+            stroke="#000000"
+            strokeWidth="2"
+            strokeLinejoin="round"
+            strokeLinecap="round"
+            paintOrder="stroke fill"
+          >
+            PIZZA
+          </tspan>
+        </text>
 
-      {/* BRATISLAVA text - smaller, lighter grey/off-white, layered on top of wheel */}
-      <text
-        x="100"
-        y="42"
-        textAnchor="middle"
-        fontSize="9"
-        fontWeight="600"
-        fontFamily="Arial, sans-serif"
-        fill="#D4D4D4"
-        style={{
-          letterSpacing: '0.6px',
-        }}
-      >
-        BRATISLAVA
-      </text>
+        {/* PORNO text - bottom line */}
+        <text
+          x="0"
+          y="58"
+          fontSize="22"
+          fontWeight="900"
+          fontFamily="Arial Black, sans-serif"
+          fill="#F5F5DC"
+          style={{
+            letterSpacing: '1.5px',
+          }}
+        >
+          <tspan
+            stroke="#000000"
+            strokeWidth="2"
+            strokeLinejoin="round"
+            strokeLinecap="round"
+            paintOrder="stroke fill"
+          >
+            PORNO
+          </tspan>
+        </text>
+      </g>
     </svg>
   );
 }

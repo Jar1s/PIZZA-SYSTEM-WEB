@@ -81,7 +81,7 @@ export function Header({ tenant }: HeaderProps) {
       <div className="mx-auto flex h-16 items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
         <div className="flex flex-1 items-center gap-4 min-w-0">
           {useCustomLogo && customLogoComponent === 'PornoPizzaLogo' ? (
-            <PornoPizzaLogo className="h-12 w-auto max-w-[180px]" width={180} height={48} />
+            <PornoPizzaLogo className="h-12 w-auto max-w-[280px]" width={280} height={64} />
           ) : tenant.theme.logo ? (
             <Image
               src={tenant.theme.logo}
