@@ -37,6 +37,11 @@ export class TenantsService {
       throw new NotFoundException(`Tenant ${slug} not found`);
     }
     
+    // Check if tenant is active
+    if (!tenant.isActive) {
+      throw new NotFoundException(`Tenant ${slug} is not active`);
+    }
+    
     // Validate response with Zod
     try {
       return TenantResponseSchema.parse(tenant) as unknown as Tenant;
@@ -58,6 +63,11 @@ export class TenantsService {
     
     if (!tenant) {
       throw new NotFoundException(`Tenant for domain ${domain} not found`);
+    }
+    
+    // Check if tenant is active
+    if (!tenant.isActive) {
+      throw new NotFoundException(`Tenant for domain ${domain} is not active`);
     }
     
     // Validate response with Zod

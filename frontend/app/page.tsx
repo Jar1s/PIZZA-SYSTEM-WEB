@@ -48,6 +48,27 @@ export default async function HomePage({
     );
   }
 
+  // Check if tenant is active
+  if (!tenant.isActive) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+        <div className="bg-white rounded-2xl shadow-lg p-8 max-w-md w-full text-center">
+          <div className="text-6xl mb-4">🚫</div>
+          <h2 className="text-2xl font-bold text-gray-800 mb-4">Stránka je dočasne nedostupná</h2>
+          <p className="text-gray-600 mb-6 text-sm">
+            Tento brand je momentálne vypnutý. Skúste to neskôr.
+          </p>
+          <a
+            href="/"
+            className="inline-block px-6 py-3 bg-orange-600 text-white rounded-lg hover:bg-orange-700 font-semibold"
+          >
+            Späť na hlavnú stránku
+          </a>
+        </div>
+      </div>
+    );
+  }
+
   // If no products, show loading skeleton
   if (products.length === 0) {
     return (
