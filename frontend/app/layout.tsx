@@ -66,7 +66,6 @@ export async function generateMetadata(): Promise<Metadata> {
         address: false,
         telephone: false,
       },
-      metadataBase: new URL(baseUrl),
       alternates: {
         canonical: '/',
       },
