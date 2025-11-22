@@ -12,6 +12,7 @@ import {
 } from '@nestjs/common';
 import { ProductsService } from './products.service';
 import { CategoriesService } from './categories.service';
+import { ProductMappingService } from './product-mapping.service';
 import { TenantsService } from '../tenants/tenants.service';
 import { CreateProductDto, UpdateProductDto } from './dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -24,6 +25,7 @@ export class ProductsController {
   constructor(
     private productsService: ProductsService,
     private categoriesService: CategoriesService,
+    private productMappingService: ProductMappingService,
     private tenantsService: TenantsService,
   ) {}
 
@@ -55,6 +57,22 @@ export class ProductsController {
   async getCategories(@Param('tenantSlug') tenantSlug: string) {
     const tenant = await this.tenantsService.getTenantBySlug(tenantSlug);
     return this.categoriesService.getCategories(tenant.id);
+  }
+
+  @Public()
+  @Get(':id/mappings')
+  async getProductMappings(
+    @Param('tenantSlug') tenantSlug: string,
+    @Param('id') id: string,
+  ) {
+    const tenant = await this.tenantsService.getTenantBySlug(tenantSlug);
+    const product = await this.productsService.getProductById(id);
+    
+    if (!product || product.tenantId !== tenant.id) {
+      throw new NotFoundException('Product not found');
+    }
+    
+    return this.productMappingService.getMappingsForProduct(tenant.id, product.name);
   }
 
   @Public()

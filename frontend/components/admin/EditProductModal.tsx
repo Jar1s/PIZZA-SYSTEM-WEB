@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Product } from '@pizza-ecosystem/shared';
-import { updateProduct } from '@/lib/api';
+import { updateProduct, getProductMappings, ProductMapping } from '@/lib/api';
 
 interface EditProductModalProps {
   product: Product | null;
@@ -42,6 +42,8 @@ export function EditProductModal({
   const [error, setError] = useState<string | null>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [mappings, setMappings] = useState<ProductMapping[]>([]);
+  const [loadingMappings, setLoadingMappings] = useState(false);
 
   useEffect(() => {
     if (product) {
@@ -57,8 +59,26 @@ export function EditProductModal({
       setImagePreview(product.image || null);
       setImageFile(null);
       setError(null);
+      
+      // Načítaj mappings pre produkt
+      loadMappings();
     }
-  }, [product]);
+  }, [product, tenantSlug]);
+
+  const loadMappings = async () => {
+    if (!product) return;
+    
+    setLoadingMappings(true);
+    try {
+      const productMappings = await getProductMappings(tenantSlug, product.id);
+      setMappings(productMappings);
+    } catch (error) {
+      console.error('Failed to load product mappings:', error);
+      setMappings([]);
+    } finally {
+      setLoadingMappings(false);
+    }
+  };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -294,6 +314,46 @@ export function EditProductModal({
                   <label htmlFor="isBestSeller" className="ml-2 block text-sm text-gray-900">
                     Best Seller
                   </label>
+                </div>
+
+                {/* Product Mappings */}
+                <div className="border-t pt-4 mt-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Webové mapovanie
+                  </label>
+                  {loadingMappings ? (
+                    <div className="text-sm text-gray-500">Načítavam mapovania...</div>
+                  ) : mappings.length > 0 ? (
+                    <div className="space-y-2">
+                      {mappings.map((mapping) => (
+                        <div
+                          key={mapping.id}
+                          className="flex items-center justify-between p-2 bg-gray-50 rounded-md border border-gray-200"
+                        >
+                          <div className="flex-1">
+                            <div className="text-sm font-medium text-gray-900">
+                              {mapping.externalIdentifier}
+                            </div>
+                            {mapping.source && (
+                              <div className="text-xs text-gray-500">
+                                Zdroj: {mapping.source}
+                              </div>
+                            )}
+                          </div>
+                          <div className="text-xs text-gray-400">
+                            →
+                          </div>
+                          <div className="text-sm text-gray-700 font-medium">
+                            {mapping.internalProductName}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-sm text-gray-500 italic">
+                      Žiadne mapovania pre tento produkt
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

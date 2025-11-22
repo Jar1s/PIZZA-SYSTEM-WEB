@@ -99,6 +99,31 @@ export async function updateProduct(tenantSlug: string, productId: string, data:
   return res.json();
 }
 
+export interface ProductMapping {
+  id: string;
+  externalIdentifier: string;
+  internalProductName: string;
+  source: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export async function getProductMappings(tenantSlug: string, productId: string): Promise<ProductMapping[]> {
+  const res = await fetch(`${API_URL}/api/${tenantSlug}/products/${productId}/mappings`, {
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  });
+  
+  if (!res.ok) {
+    // If endpoint doesn't exist or no mappings, return empty array
+    if (res.status === 404) return [];
+    throw new Error('Failed to fetch product mappings');
+  }
+  
+  return res.json();
+}
+
 export async function deleteProduct(tenantSlug: string, productId: string): Promise<void> {
   const res = await fetch(`${API_URL}/api/${tenantSlug}/products/${productId}`, {
     method: 'DELETE',
