@@ -321,6 +321,9 @@ export function EditProductModal({
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Webové mapovanie
                   </label>
+                  <p className="text-xs text-gray-500 mb-3">
+                    Ako sa tento produkt zobrazuje na webe
+                  </p>
                   {loadingMappings ? (
                     <div className="text-sm text-gray-500">Načítavam mapovania...</div>
                   ) : mappings.length > 0 ? (
@@ -328,29 +331,28 @@ export function EditProductModal({
                       {mappings.map((mapping) => (
                         <div
                           key={mapping.id}
-                          className="flex items-center justify-between p-2 bg-gray-50 rounded-md border border-gray-200"
+                          className="p-3 bg-blue-50 rounded-md border border-blue-200"
                         >
-                          <div className="flex-1">
-                            <div className="text-sm font-medium text-gray-900">
-                              {mapping.externalIdentifier}
-                            </div>
-                            {mapping.source && (
-                              <div className="text-xs text-gray-500">
-                                Zdroj: {mapping.source}
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex-1">
+                              <div className="text-sm font-semibold text-blue-900 mb-1">
+                                {mapping.externalIdentifier}
                               </div>
-                            )}
-                          </div>
-                          <div className="text-xs text-gray-400">
-                            →
-                          </div>
-                          <div className="text-sm text-gray-700 font-medium">
-                            {mapping.internalProductName}
+                              <div className="text-xs text-gray-600">
+                                V databáze: <span className="font-medium">{mapping.internalProductName}</span>
+                              </div>
+                              {mapping.source && (
+                                <div className="text-xs text-gray-500 mt-1">
+                                  Zdroj: {mapping.source}
+                                </div>
+                              )}
+                            </div>
                           </div>
                         </div>
                       ))}
                     </div>
                   ) : (
-                    <div className="text-sm text-gray-500 italic">
+                    <div className="text-sm text-gray-500 italic p-2 bg-gray-50 rounded-md">
                       Žiadne mapovania pre tento produkt
                     </div>
                   )}
