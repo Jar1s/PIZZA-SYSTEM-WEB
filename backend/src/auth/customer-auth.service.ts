@@ -192,8 +192,12 @@ export class CustomerAuthService {
    * Check if email exists
    */
   async checkEmailExists(email: string): Promise<boolean> {
-    const user = await this.prisma.user.findUnique({
-      where: { email } as any,
+    if (!email) {
+      return false;
+    }
+    // Use findFirst instead of findUnique because email is optional field
+    const user = await this.prisma.user.findFirst({
+      where: { email: email.toLowerCase().trim() },
     });
     return !!user;
   }
