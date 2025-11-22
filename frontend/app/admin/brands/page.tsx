@@ -91,7 +91,20 @@ export default function BrandsPage() {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {tenants.map((tenant) => (
+          {tenants.length === 0 ? (
+            <div className="col-span-2 text-center py-12">
+              <div className="text-6xl mb-4">🏢</div>
+              <h3 className="text-xl font-semibold text-gray-700 mb-2">No brands found</h3>
+              <p className="text-gray-500 mb-4">No brands were returned from the API.</p>
+              <button
+                onClick={fetchTenants}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              >
+                Retry
+              </button>
+            </div>
+          ) : (
+            tenants.map((tenant) => (
             <div key={tenant.id} className="bg-white rounded-lg shadow-lg overflow-hidden">
               {/* Header with brand color */}
               <div 
