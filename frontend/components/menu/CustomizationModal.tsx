@@ -175,7 +175,7 @@ export default function CustomizationModal({
 
   const handleAddToCart = () => {
     // Validate required selections
-    const allRequiredSelected = pizzaCustomizations
+    const allRequiredSelected = customizations
       .filter(c => c.required)
       .every(c => selections[c.id]?.length > 0);
 
@@ -214,16 +214,16 @@ export default function CustomizationModal({
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
               onClick={(e) => e.stopPropagation()}
-              className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col pointer-events-auto relative"
+              className="bg-gradient-to-b from-white via-white to-[#fff8f2] rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col pointer-events-auto relative border border-orange-50"
               style={{ zIndex: 999920 }}
               onWheel={(e) => e.stopPropagation()}
               onTouchMove={(e) => e.stopPropagation()}
             >
             {/* Header */}
-            <div className="relative p-6 border-b bg-white">
+            <div className="relative p-6 border-b border-orange-100/60 bg-gradient-to-r from-white via-white to-[rgba(255,107,0,0.06)]">
               <button
                 onClick={onClose}
-                className="absolute top-4 right-4 w-10 h-10 flex items-center justify-center rounded-full bg-gray-800 hover:bg-gray-900 text-white shadow-lg transition-colors z-10"
+                className="absolute top-4 right-4 w-10 h-10 flex items-center justify-center rounded-full bg-gray-900 hover:bg-black text-white shadow-lg transition-colors z-10"
                 aria-label={language === 'sk' ? 'Zatvoriť' : 'Close'}
               >
                 <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
@@ -244,9 +244,9 @@ export default function CustomizationModal({
                   </div>
                 )}
                 <div>
-                  <h2 className="text-3xl font-bold text-gray-900 mb-2">{displayName}</h2>
+                  <h2 className="text-3xl font-extrabold text-gray-900 mb-2">{displayName}</h2>
                   {displayDescription && (
-                    <p className="text-gray-600 mb-3">{displayDescription}</p>
+                    <p className="text-gray-700 mb-3 leading-relaxed">{displayDescription}</p>
                   )}
                   
                   {/* Weight and Allergens */}
@@ -298,12 +298,12 @@ export default function CustomizationModal({
               onTouchMove={(e) => e.stopPropagation()}
             >
               {customizations.map((category) => (
-                <div key={category.id} className="bg-gray-50 rounded-xl p-5">
+                <div key={category.id} className="bg-white rounded-xl p-5 border border-orange-50 shadow-[0_10px_30px_rgba(0,0,0,0.04)]">
                   <div className="flex items-center justify-between mb-4">
                     <h3 className="text-xl font-bold text-gray-900">
                       {language === 'sk' ? category.name : category.nameEn}
                       {category.required && (
-                        <span className="ml-2 text-red-500 text-sm">POVINNÉ</span>
+                        <span className="ml-2 text-sm font-semibold text-[var(--color-primary)]">POVINNÉ</span>
                       )}
                     </h3>
                     <span className="text-sm text-gray-500">
@@ -327,12 +327,12 @@ export default function CustomizationModal({
                           onClick={() => handleOptionToggle(category.id, option.id)}
                           disabled={isDisabled}
                           className={`
-                            relative p-4 rounded-lg border-2 text-left transition-all cursor-pointer
+                            relative p-4 rounded-xl border-2 text-left transition-all cursor-pointer
                             ${isSelected 
-                              ? 'shadow-md' 
+                              ? 'shadow-[0_12px_28px_rgba(255,107,0,0.18)]'
                               : isDisabled
                                 ? 'border-gray-200 bg-gray-100 opacity-50 cursor-not-allowed'
-                                : 'border-gray-200 hover:bg-white hover:shadow-sm'
+                                : 'border-gray-200 hover:border-[var(--color-primary)] hover:shadow-[0_10px_20px_rgba(0,0,0,0.06)]'
                             }
                           `}
                           style={isSelected ? {
@@ -340,16 +340,6 @@ export default function CustomizationModal({
                             backgroundColor: primaryColorRgba
                           } : {
                             backgroundColor: '#ffffff'
-                          }}
-                          onMouseEnter={(e) => {
-                            if (!isSelected && !isDisabled) {
-                              e.currentTarget.style.borderColor = 'var(--color-primary)';
-                            }
-                          }}
-                          onMouseLeave={(e) => {
-                            if (!isSelected && !isDisabled) {
-                              e.currentTarget.style.borderColor = '';
-                            }
                           }}
                         >
                           <div className="flex items-start justify-between gap-3">
@@ -402,21 +392,21 @@ export default function CustomizationModal({
             <div className="border-t p-6 bg-gray-50">
               <div className="flex items-center justify-between">
                 <div>
-                  <div className="text-sm text-gray-600 mb-1">
-                    {language === 'sk' ? 'Celková cena:' : 'Total price:'}
-                  </div>
-                  <div className="text-4xl font-bold" style={{ color: 'var(--color-primary)' }}>
-                    €{(totalPrice / 100).toFixed(2)}
-                  </div>
-                </div>
-                <button
-                  onClick={handleAddToCart}
-                  className="px-8 py-4 rounded-xl font-bold text-white text-lg shadow-lg hover:shadow-xl transition-all transform hover:scale-105"
-                  style={{ backgroundColor: 'var(--color-primary)' }}
-                >
-                  🛒 {language === 'sk' ? 'Pridať do košíka' : 'Add to Cart'}
-                </button>
-              </div>
+                          <div className="text-sm text-gray-600 mb-1">
+                            {language === 'sk' ? 'Celková cena:' : 'Total price:'}
+                          </div>
+                          <div className="text-4xl font-extrabold" style={{ color: 'var(--color-primary)' }}>
+                            €{(totalPrice / 100).toFixed(2)}
+                          </div>
+                        </div>
+                        <button
+                          onClick={handleAddToCart}
+                          className="px-8 py-4 rounded-xl font-bold text-white text-lg shadow-lg hover:shadow-xl transition-all transform hover:scale-105 inline-flex items-center gap-2"
+                          style={{ backgroundColor: 'var(--color-primary)', boxShadow: '0 14px 30px rgba(255,107,0,0.25)' }}
+                        >
+                          🛒 {language === 'sk' ? 'Pridať do košíka' : 'Add to Cart'}
+                        </button>
+                      </div>
             </div>
           </motion.div>
         </div>
