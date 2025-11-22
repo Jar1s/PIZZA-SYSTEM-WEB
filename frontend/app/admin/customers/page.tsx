@@ -50,8 +50,14 @@ export default function CustomersPage() {
       const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
       const token = localStorage.getItem('auth_token');
 
+      console.log('Fetching customers - API_URL:', API_URL, 'Has token:', !!token, 'User role:', user?.role);
+
       if (!token) {
-        throw new Error('Not authenticated');
+        throw new Error('Not authenticated - Please log in again');
+      }
+
+      if (!user || (user.role !== 'ADMIN' && user.role !== 'OPERATOR')) {
+        throw new Error('Access denied - Only admins and operators can view customers');
       }
 
       const params = new URLSearchParams({
@@ -73,12 +79,14 @@ export default function CustomersPage() {
       if (!res.ok) {
         if (res.status === 401) {
           const errorData = await res.json().catch(() => ({ message: 'Unauthorized' }));
-          throw new Error(errorData.message || 'Unauthorized - Only admins and operators can view customers');
+          console.error('401 Unauthorized:', errorData);
+          throw new Error(errorData.message || 'Unauthorized - Only admins and operators can view customers. Please check your login.');
         }
         if (res.status === 404) {
           throw new Error('Endpoint not found. Please ensure backend is running and restarted after adding the customers endpoint.');
         }
         const errorText = await res.text().catch(() => 'Unknown error');
+        console.error('Failed to fetch customers:', res.status, errorText);
         throw new Error(`Failed to fetch customers: ${res.status} ${errorText}`);
       }
 
@@ -93,11 +101,13 @@ export default function CustomersPage() {
   };
 
   useEffect(() => {
-    if (user?.role === 'ADMIN' || user?.role === 'OPERATOR') {
+    if (user && (user.role === 'ADMIN' || user.role === 'OPERATOR')) {
+      console.log('Fetching customers for user:', user.role, user.username);
       fetchCustomers();
+    } else if (user) {
+      console.log('User does not have permission to view customers:', user.role);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page]);
+  }, [page, user]);
 
   useEffect(() => {
     if ((user?.role === 'ADMIN' || user?.role === 'OPERATOR') && search !== '') {
@@ -116,11 +126,22 @@ export default function CustomersPage() {
     fetchCustomers();
   };
 
-  if (user?.role !== 'ADMIN' && user?.role !== 'OPERATOR') {
+  // Show loading while checking user role
+  if (!user) {
+    return (
+      <div className="text-center py-12">
+        <div className="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-orange-600"></div>
+        <p className="mt-4 text-gray-600">Loading...</p>
+      </div>
+    );
+  }
+
+  if (user.role !== 'ADMIN' && user.role !== 'OPERATOR') {
     return (
       <div className="bg-red-50 border border-red-200 rounded-lg p-6">
         <h2 className="text-xl font-bold text-red-800 mb-2">Access Denied</h2>
         <p className="text-red-600">Only administrators and operators can view the customer list.</p>
+        <p className="text-sm text-red-500 mt-2">Your role: {user.role}</p>
       </div>
     );
   }
