@@ -41,6 +41,18 @@ async function bootstrap() {
     },
   }));
   
+  // Handle OPTIONS requests for CORS preflight (before CORS middleware)
+  app.use((req: Request, res: Response, next: NextFunction) => {
+    if (req.method === 'OPTIONS') {
+      res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
+      res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
+      res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-tenant');
+      res.header('Access-Control-Allow-Credentials', 'true');
+      return res.status(200).end();
+    }
+    next();
+  });
+
   // Handle root route before setting global prefix
   app.use((req: Request, res: Response, next: NextFunction) => {
     if (req.path === '/' && req.method === 'GET') {
@@ -74,23 +86,7 @@ async function bootstrap() {
     transform: true,
   }));
   
-  // Security headers with enhanced CSP
-  app.use(helmet({
-    contentSecurityPolicy: {
-      directives: {
-        defaultSrc: ["'self'"],
-        styleSrc: ["'self'", "'unsafe-inline'"],
-        scriptSrc: ["'self'"],
-        imgSrc: ["'self'", "data:", "https:"],
-        connectSrc: ["'self'", "https://*.sentry.io", "https://*.ingest.sentry.io"],
-        fontSrc: ["'self'", "data:", "https:"],
-        frameSrc: ["'self'"],
-        upgradeInsecureRequests: process.env.NODE_ENV === 'production' ? [] : null,
-      },
-    },
-    crossOriginEmbedderPolicy: false,
-  }));
-  
+  // Enable CORS BEFORE helmet (CORS must be set before security headers)
   // Enable CORS for frontend - allow all .vercel.app origins
   app.enableCors({
     origin: (origin, callback) => {
@@ -127,7 +123,26 @@ async function bootstrap() {
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'x-tenant'],
+    preflightContinue: false,
+    optionsSuccessStatus: 200,
   });
+  
+  // Security headers with enhanced CSP (after CORS)
+  app.use(helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        styleSrc: ["'self'", "'unsafe-inline'"],
+        scriptSrc: ["'self'"],
+        imgSrc: ["'self'", "data:", "https:"],
+        connectSrc: ["'self'", "https://*.sentry.io", "https://*.ingest.sentry.io"],
+        fontSrc: ["'self'", "data:", "https:"],
+        frameSrc: ["'self'"],
+        upgradeInsecureRequests: process.env.NODE_ENV === 'production' ? [] : null,
+      },
+    },
+    crossOriginEmbedderPolicy: false,
+  }));
   
   const port = process.env.PORT || 3000;
   await app.listen(port);
