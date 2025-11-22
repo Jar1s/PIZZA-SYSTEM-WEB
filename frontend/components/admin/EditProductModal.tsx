@@ -1,8 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import Image from 'next/image';
 import { Product } from '@pizza-ecosystem/shared';
 import { updateProduct, getProductMappings, ProductMapping } from '@/lib/api';
+import { getProductTranslation } from '@/lib/product-translations';
+import { getProductTranslation } from '@/lib/product-translations';
 
 interface EditProductModalProps {
   product: Product | null;
@@ -45,6 +48,21 @@ export function EditProductModal({
   const [mappings, setMappings] = useState<ProductMapping[]>([]);
   const [loadingMappings, setLoadingMappings] = useState(false);
 
+  const loadMappings = useCallback(async () => {
+    if (!product) return;
+    
+    setLoadingMappings(true);
+    try {
+      const productMappings = await getProductMappings(tenantSlug, product.id);
+      setMappings(productMappings);
+    } catch (error) {
+      console.error('Failed to load product mappings:', error);
+      setMappings([]);
+    } finally {
+      setLoadingMappings(false);
+    }
+  }, [product, tenantSlug]);
+
   useEffect(() => {
     if (product) {
       setFormData({
@@ -63,22 +81,7 @@ export function EditProductModal({
       // Načítaj mappings pre produkt
       loadMappings();
     }
-  }, [product, tenantSlug]);
-
-  const loadMappings = async () => {
-    if (!product) return;
-    
-    setLoadingMappings(true);
-    try {
-      const productMappings = await getProductMappings(tenantSlug, product.id);
-      setMappings(productMappings);
-    } catch (error) {
-      console.error('Failed to load product mappings:', error);
-      setMappings([]);
-    } finally {
-      setLoadingMappings(false);
-    }
-  };
+  }, [product, tenantSlug, loadMappings]);
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -211,14 +214,99 @@ export function EditProductModal({
                 {/* Description */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Description
+                    Description (SK / EN)
                   </label>
-                  <textarea
-                    value={formData.description}
-                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    rows={3}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
+                  <div className="space-y-2">
+                    {/* Try to parse description as JSON with sk/en, or display as single string */}
+                    {(() => {
+                      try {
+                        const desc = formData.description;
+                        if (!desc) return null;
+                        
+                        // Try to parse as JSON
+                        const parsed = JSON.parse(desc);
+                        if (parsed && typeof parsed === 'object' && (parsed.sk || parsed.en)) {
+                          return (
+                            <div className="space-y-2">
+                              <div>
+                                <label className="text-xs text-gray-600 mb-1 block">Slovensky (SK):</label>
+                                <textarea
+                                  value={parsed.sk || ''}
+                                  onChange={(e) => {
+                                    const newDesc = { ...parsed, sk: e.target.value };
+                                    setFormData({ ...formData, description: JSON.stringify(newDesc) });
+                                  }}
+                                  rows={2}
+                                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                                />
+                              </div>
+                              <div>
+                                <label className="text-xs text-gray-600 mb-1 block">English (EN):</label>
+                                <textarea
+                                  value={parsed.en || ''}
+                                  onChange={(e) => {
+                                    const newDesc = { ...parsed, en: e.target.value };
+                                    setFormData({ ...formData, description: JSON.stringify(newDesc) });
+                                  }}
+                                  rows={2}
+                                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                                />
+                              </div>
+                            </div>
+                          );
+                        }
+                      } catch (e) {
+                        // Not JSON, treat as single string
+                      }
+                      
+                      // Single string or not JSON - show both fields with translations
+                      const descStr = formData.description || '';
+                      const translationSK = product ? getProductTranslation(product.name, 'sk') : null;
+                      const translationEN = product ? getProductTranslation(product.name, 'en') : null;
+                      
+                      return (
+                        <div className="space-y-2">
+                          <div>
+                            <label className="text-xs text-gray-600 mb-1 block">Slovensky (SK):</label>
+                            <textarea
+                              value={descStr || translationSK?.description || ''}
+                              onChange={(e) => {
+                                const sk = e.target.value;
+                                const en = translationEN?.description || '';
+                                setFormData({ 
+                                  ...formData, 
+                                  description: en ? JSON.stringify({ sk, en }) : sk 
+                                });
+                              }}
+                              rows={2}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                              placeholder="Zadajte popis v slovenčine..."
+                            />
+                          </div>
+                          <div>
+                            <label className="text-xs text-gray-600 mb-1 block">English (EN):</label>
+                            <textarea
+                              value={translationEN?.description || ''}
+                              onChange={(e) => {
+                                const en = e.target.value;
+                                const sk = descStr || translationSK?.description || '';
+                                setFormData({ 
+                                  ...formData, 
+                                  description: en ? JSON.stringify({ sk, en }) : sk 
+                                });
+                              }}
+                              rows={2}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                              placeholder="Enter description in English..."
+                            />
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Zobrazí sa oba jazyky (SK a EN) na webe
+                  </p>
                 </div>
 
                 {/* Price */}
@@ -268,9 +356,11 @@ export function EditProductModal({
                     />
                     {imagePreview && (
                       <div className="mt-2">
-                        <img 
+                        <Image 
                           src={imagePreview} 
                           alt="Preview" 
+                          width={128}
+                          height={128}
                           className="h-32 w-32 object-cover rounded-md border border-gray-300"
                         />
                       </div>
