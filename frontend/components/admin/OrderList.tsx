@@ -17,6 +17,33 @@ const getTodayDate = () => {
   return today.toISOString().split('T')[0];
 };
 
+// Funkcia na prehratie zvuku pri novej objednávke
+const playNewOrderSound = () => {
+  try {
+    // Vytvor jednoduchý beep zvuk pomocou Web Audio API
+    const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const oscillator = audioContext.createOscillator();
+    const gainNode = audioContext.createGain();
+
+    oscillator.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+
+    // Nastav frekvenciu a typ zvuku (800Hz - príjemný beep)
+    oscillator.frequency.value = 800;
+    oscillator.type = 'sine';
+
+    // Nastav hlasitosť (0.3 = 30%)
+    gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+
+    // Prehraj zvuk (300ms)
+    oscillator.start(audioContext.currentTime);
+    oscillator.stop(audioContext.currentTime + 0.3);
+  } catch (error) {
+    console.error('Failed to play sound:', error);
+  }
+};
+
 export function OrderList({ todayOnly = false, selectedTenant }: OrderListProps = {}) {
   // Get current tenant as default
   const currentTenant = selectedTenant || getTenantSlug();
@@ -32,6 +59,9 @@ export function OrderList({ todayOnly = false, selectedTenant }: OrderListProps 
   const [tenantIdToSlug, setTenantIdToSlug] = useState<Record<string, string>>({});
   const [expandedOrders, setExpandedOrders] = useState<Set<string>>(new Set());
   const isInitialLoad = useRef(true);
+  
+  // Ref na uloženie predchádzajúcich order IDs pre detekciu nových objednávok
+  const previousOrderIds = useRef<Set<string>>(new Set());
 
   // Cache tenant ID to slug mapping
   const fetchTenantMapping = useCallback(async () => {
@@ -109,6 +139,30 @@ export function OrderList({ todayOnly = false, selectedTenant }: OrderListProps 
         new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
       );
       
+      // Detekcia nových objednávok (len ak to nie je prvý load)
+      if (!isInitial && previousOrderIds.current.size > 0) {
+        const currentOrderIds = new Set(allOrders.map(o => o.id));
+        const newOrderIds = Array.from(currentOrderIds).filter(
+          id => !previousOrderIds.current.has(id)
+        );
+        
+        // Ak sú nové objednávky, prehraj zvuk
+        if (newOrderIds.length > 0) {
+          // Filtruj len nové objednávky s PENDING statusom (nepridávať zvuk pre staré objednávky)
+          const newPendingOrders = allOrders.filter(
+            o => newOrderIds.includes(o.id) && o.status === 'PENDING'
+          );
+          
+          if (newPendingOrders.length > 0) {
+            playNewOrderSound();
+            console.log(`🔔 Nová objednávka! (${newPendingOrders.length} nových)`);
+          }
+        }
+      }
+      
+      // Aktualizuj predchádzajúce order IDs
+      previousOrderIds.current = new Set(allOrders.map(o => o.id));
+      
       setOrders(allOrders);
       
       // Restore scroll position after update (only if not initial load)
@@ -145,6 +199,8 @@ export function OrderList({ todayOnly = false, selectedTenant }: OrderListProps 
   // Reset initial load when filters change
   useEffect(() => {
     isInitialLoad.current = true;
+    // Reset previous order IDs keď sa zmenia filtre
+    previousOrderIds.current = new Set();
   }, [filters]);
 
   useEffect(() => {
