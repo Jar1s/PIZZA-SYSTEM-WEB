@@ -36,45 +36,52 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     // Function to load user from localStorage
     const loadUser = () => {
-      const token = localStorage.getItem('customer_auth_token');
-      const storedUser = localStorage.getItem('customer_auth_user');
+      try {
+        const token = localStorage.getItem('customer_auth_token');
+        const storedUser = localStorage.getItem('customer_auth_user');
 
-      console.log('CustomerAuthContext - loadUser called, token:', !!token, 'storedUser:', !!storedUser);
+        console.log('CustomerAuthContext - loadUser called, token:', !!token, 'storedUser:', !!storedUser);
 
-      if (token && storedUser) {
-        try {
-          const newUser = JSON.parse(storedUser);
-          console.log('CustomerAuthContext - loaded user from localStorage:', newUser.email);
-          // Check if user changed (for cart clearing) - compare with current state
-          setUser((prevUser) => {
-            if (prevUser && prevUser.id !== newUser.id) {
-              clearCart(); // Clear cart if user switched
-            }
-            return newUser;
-          });
-        } catch (e) {
-          console.error('CustomerAuthContext - error parsing stored user:', e);
-          localStorage.removeItem('customer_auth_token');
-          localStorage.removeItem('customer_auth_refresh_token');
-          localStorage.removeItem('customer_auth_user');
+        if (token && storedUser) {
+          try {
+            const newUser = JSON.parse(storedUser);
+            console.log('CustomerAuthContext - loaded user from localStorage:', newUser.email);
+            // Check if user changed (for cart clearing) - compare with current state
+            setUser((prevUser) => {
+              if (prevUser && prevUser.id !== newUser.id) {
+                clearCart(); // Clear cart if user switched
+              }
+              return newUser;
+            });
+          } catch (e) {
+            console.error('CustomerAuthContext - error parsing stored user:', e);
+            localStorage.removeItem('customer_auth_token');
+            localStorage.removeItem('customer_auth_refresh_token');
+            localStorage.removeItem('customer_auth_user');
+            setUser((prevUser) => {
+              if (prevUser) {
+                clearCart(); // Clear cart when user is removed
+              }
+              return null;
+            });
+          }
+        } else {
+          console.log('CustomerAuthContext - no token or user in localStorage');
+          // User logged out - clear cart
           setUser((prevUser) => {
             if (prevUser) {
-              clearCart(); // Clear cart when user is removed
+              clearCart();
             }
             return null;
           });
         }
-      } else {
-        console.log('CustomerAuthContext - no token or user in localStorage');
-        // User logged out - clear cart
-        setUser((prevUser) => {
-          if (prevUser) {
-            clearCart();
-          }
-          return null;
-        });
+      } catch (error) {
+        console.error('CustomerAuthContext - error in loadUser:', error);
+        setUser(null);
+      } finally {
+        // Always set loading to false, even if there's an error
+        setLoading(false);
       }
-      setLoading(false);
     };
 
     // Load user on mount

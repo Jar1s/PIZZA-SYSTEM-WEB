@@ -64,13 +64,48 @@ export default function AccountPage() {
     }
   }, [authLoading, user, router, tenant, searchParams]);
 
-  // Render spinner while authLoading || !user
+  // Timeout for loading state (prevent infinite loading)
+  const [loadingTimeout, setLoadingTimeout] = useState(false);
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      if (authLoading) {
+        console.warn('Account page: Loading timeout - authLoading still true after 5 seconds');
+        setLoadingTimeout(true);
+      }
+    }, 5000);
+    return () => clearTimeout(timeout);
+  }, [authLoading]);
+
+  // Render spinner while authLoading || !user (but with timeout)
   if (authLoading || !user) {
+    // If timeout, show error message
+    if (loadingTimeout && !user) {
+      return (
+        <div className={`min-h-screen ${isDark ? 'porno-bg text-white' : 'bg-gray-50'} flex items-center justify-center`}>
+          <div className="text-center">
+            <div className="text-6xl mb-4">⚠️</div>
+            <h2 className="text-2xl font-bold mb-4">{t.error || 'Chyba'}</h2>
+            <p className={`mb-6 ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
+              Nepodarilo sa načítať údaje používateľa. Prosím, skúste sa prihlásiť znova.
+            </p>
+            <button
+              onClick={() => router.push(`/auth/login?tenant=${tenant}`)}
+              className={`px-6 py-3 rounded-full font-semibold ${gradientClass}`}
+              style={!isDark ? { backgroundColor: primaryColor, color: 'white' } : undefined}
+            >
+              Prihlásiť sa
+            </button>
+          </div>
+        </div>
+      );
+    }
+    
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className={`min-h-screen ${isDark ? 'porno-bg text-white' : 'bg-gray-50'} flex items-center justify-center`}>
         <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-orange-600"></div>
-          <p className="mt-4 text-lg text-gray-700">{t.loading}</p>
+          <div className={`inline-block animate-spin rounded-full h-16 w-16 border-t-4 border-b-4`}
+          style={{ borderColor: isDark ? '#ff5e00' : primaryColor }}></div>
+          <p className={`mt-4 text-lg ${isDark ? 'text-white' : 'text-gray-700'}`}>{t.loading}</p>
         </div>
       </div>
     );
