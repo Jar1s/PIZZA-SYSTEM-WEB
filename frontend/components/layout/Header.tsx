@@ -78,22 +78,22 @@ export function Header({ tenant }: HeaderProps) {
           <div className="absolute inset-x-0 bottom-0 h-[1px] bg-gradient-to-r from-transparent via-[var(--color-primary)]/70 to-transparent" />
         </div>
       )}
-      <div className="mx-auto flex h-16 items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
+      <div className="mx-auto flex h-14 sm:h-16 items-center justify-between gap-2 sm:gap-3 md:gap-4 px-3 sm:px-4 md:px-6 lg:px-8">
         <div className="flex flex-1 items-center gap-4 min-w-0">
           {useCustomLogo && customLogoComponent === 'PornoPizzaLogo' ? (
-            <PornoPizzaLogo className="h-12 w-auto max-w-[280px]" width={280} height={64} />
+            <PornoPizzaLogo className="h-8 sm:h-9 md:h-10 w-auto max-w-[140px] sm:max-w-[160px] md:max-w-[200px]" width={200} height={50} />
           ) : tenant.theme.logo ? (
             <Image
               src={tenant.theme.logo}
               alt={tenant.name}
               width={200}
               height={60}
-              className="h-10 w-auto"
+              className="h-8 sm:h-10 w-auto max-w-[140px] sm:max-w-[180px] md:max-w-[200px]"
               priority
             />
           ) : (
             <h1
-              className={`truncate text-xl font-semibold ${
+              className={`truncate text-lg sm:text-xl font-semibold ${
                 isDarkTheme ? 'text-[#ff9900]' : 'text-[var(--color-primary)]'
               }`}
             >
@@ -147,7 +147,7 @@ export function Header({ tenant }: HeaderProps) {
           </button>
         </div>
 
-        <div className="flex items-center gap-2 sm:gap-3">
+        <div className="flex items-center gap-1.5 sm:gap-2 md:gap-3">
           <LanguageSwitcher />
 
           {user ? (

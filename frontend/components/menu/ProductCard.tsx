@@ -174,7 +174,7 @@ export const ProductCard = memo(function ProductCard({ product, index = 0, isBes
       </div>
 
       {/* Content */}
-      <div className="p-4 sm:p-5 md:p-6 flex flex-col flex-grow min-h-[240px] sm:min-h-[260px] md:min-h-[280px]">
+      <div className="p-3 sm:p-4 md:p-5 lg:p-6 flex flex-col flex-grow min-h-[220px] sm:min-h-[240px] md:min-h-[260px] lg:min-h-[280px]">
         {/* Product Name - Fixed height to align descriptions */}
         <div className="h-16 mb-2 flex items-start">
           <h3 

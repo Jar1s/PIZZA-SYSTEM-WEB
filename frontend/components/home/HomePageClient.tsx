@@ -223,8 +223,8 @@ export function HomePageClient({ products, tenant }: HomePageClientProps) {
               />
             </div>
           )}
-          <div className="relative container mx-auto px-4 py-5 sm:py-6">
-            <div className="flex flex-col md:flex-row md:items-center gap-4">
+          <div className="relative container mx-auto px-3 sm:px-4 py-4 sm:py-5 md:py-6">
+            <div className="flex flex-col md:flex-row md:items-center gap-3 sm:gap-4">
               <div className="flex items-center gap-3">
                 <div
                   className={`h-12 w-12 flex items-center justify-center rounded-2xl border ${
@@ -279,7 +279,7 @@ export function HomePageClient({ products, tenant }: HomePageClientProps) {
         if (pizzasToShow.length === 0) return null;
         
         return (
-          <section className="container mx-auto px-4 py-16" style={{ position: 'relative', zIndex: 10 }}>
+          <section className="container mx-auto px-3 sm:px-4 py-8 sm:py-12 md:py-16" style={{ position: 'relative', zIndex: 10 }}>
             <div className={sectionShellClass}>
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
@@ -307,7 +307,7 @@ export function HomePageClient({ products, tenant }: HomePageClientProps) {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: 0.1 }}
-                className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6"
+                className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5 md:gap-6"
               >
                 {pizzasToShow.map((product, index) => (
                   <ProductCard key={product.id} product={product} index={index} isBestSeller={true} isDark={isDarkTheme} />
@@ -347,7 +347,11 @@ export function HomePageClient({ products, tenant }: HomePageClientProps) {
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            className="flex flex-wrap justify-center gap-3 mb-12"
+            className="flex gap-2 sm:gap-3 md:gap-4 overflow-x-auto pb-2 sm:pb-0 -mx-3 sm:mx-0 px-3 sm:px-0 scrollbar-hide mb-8 sm:mb-12 justify-start sm:justify-center"
+            style={{
+              scrollbarWidth: 'none',
+              msOverflowStyle: 'none',
+            }}
           >
             {(Object.keys(categoryCounts) as CategoryFilter[]).map((category) => {
               if (categoryCounts[category] === 0 || category === 'all') return null;
@@ -368,7 +372,7 @@ export function HomePageClient({ products, tenant }: HomePageClientProps) {
                 <button
                   key={category}
                   onClick={() => handleCategoryFilter(category)}
-                  className={`${chipClass} px-4 sm:px-6 py-2.5 sm:py-3 text-sm sm:text-base touch-manipulation min-h-[44px]`}
+                  className={`${chipClass} px-4 sm:px-6 py-2.5 sm:py-3 text-sm sm:text-base touch-manipulation min-h-[44px] whitespace-nowrap flex-shrink-0`}
                   style={categoryFilter === category && !isDarkTheme 
                     ? { backgroundColor: tenant.theme.primaryColor }
                     : {}
@@ -419,7 +423,7 @@ export function HomePageClient({ products, tenant }: HomePageClientProps) {
                           <p className={`mb-4 text-lg ${isDarkTheme ? 'text-gray-400' : ''}`} style={{ color: isDarkTheme ? '#999' : '#666666' }}>{t.foreplayDesc}</p>
                           <div className="h-1 w-32 rounded mx-auto" style={{ backgroundColor: primaryColor }}></div>
                         </motion.div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5 md:gap-6">
                           {productsBySubCategory.FOREPLAY.map((product, index) => (
                             <ProductCard key={product.id} product={product} index={index} isDark={isDarkTheme} />
                           ))}
@@ -451,7 +455,7 @@ export function HomePageClient({ products, tenant }: HomePageClientProps) {
                           <p className={`mb-4 text-lg ${isDarkTheme ? 'text-gray-400' : ''}`} style={{ color: isDarkTheme ? '#999' : '#666666' }}>{t.mainActionDesc}</p>
                           <div className="h-1 w-32 rounded mx-auto" style={{ backgroundColor: primaryColor }}></div>
                         </motion.div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5 md:gap-6">
                           {productsBySubCategory.MAIN_ACTION.map((product, index) => (
                             <ProductCard key={product.id} product={product} index={index} isDark={isDarkTheme} />
                           ))}
@@ -483,7 +487,7 @@ export function HomePageClient({ products, tenant }: HomePageClientProps) {
                           <p className={`mb-4 text-lg ${isDarkTheme ? 'text-gray-400' : ''}`} style={{ color: isDarkTheme ? '#999' : '#666666' }}>{t.deluxeFetishDesc}</p>
                           <div className="h-1 w-32 rounded mx-auto" style={{ backgroundColor: primaryColor }}></div>
                         </motion.div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5 md:gap-6">
                           {productsBySubCategory.DELUXE_FETISH.map((product, index) => (
                             <ProductCard key={product.id} product={product} index={index} isDark={isDarkTheme} />
                           ))}
@@ -515,7 +519,7 @@ export function HomePageClient({ products, tenant }: HomePageClientProps) {
                           <p className={`mb-4 text-lg ${isDarkTheme ? 'text-gray-400' : ''}`} style={{ color: isDarkTheme ? '#999' : '#666666' }}>{t.premiumSinsDesc}</p>
                           <div className="h-1 w-32 rounded mx-auto" style={{ backgroundColor: primaryColor }}></div>
                         </motion.div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5 md:gap-6">
                           {productsBySubCategory.PREMIUM_SINS.map((product, index) => (
                             <ProductCard key={product.id} product={product} index={index} isDark={isDarkTheme} />
                           ))}
@@ -547,7 +551,7 @@ export function HomePageClient({ products, tenant }: HomePageClientProps) {
                           </h3>
                           <div className="h-1 w-32 rounded mx-auto" style={{ backgroundColor: primaryColor }}></div>
                         </motion.div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5 md:gap-6">
                           <ProductCard key={buildYourOwnPizza.id} product={buildYourOwnPizza} index={0} isDark={isDarkTheme} />
                         </div>
                       </div>

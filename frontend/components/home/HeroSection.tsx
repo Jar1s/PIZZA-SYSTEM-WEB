@@ -71,7 +71,7 @@ export const HeroSection = ({ tenantName, primaryColor, isDark = false }: HeroSe
       </div>
 
       {/* Content */}
-      <div className="relative z-10 container mx-auto px-4 sm:px-6 h-full py-12 sm:py-16 md:py-20 flex items-center">
+      <div className="relative z-10 container mx-auto px-4 sm:px-6 h-full py-8 sm:py-12 md:py-16 lg:py-20 flex items-center">
         <motion.div
           initial={{ opacity: 0, x: -30 }}
           animate={{ opacity: 1, x: 0 }}
@@ -82,7 +82,7 @@ export const HeroSection = ({ tenantName, primaryColor, isDark = false }: HeroSe
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.05, duration: 0.4 }}
-            className={`${isDark ? 'hero-badge mb-6 inline-flex' : 'inline-flex items-center gap-2 rounded-full bg-white/80 px-4 py-2 text-xs font-semibold text-black mb-6'}`}
+            className={`${isDark ? 'hero-badge mb-4 sm:mb-6 inline-flex' : 'inline-flex items-center gap-2 rounded-full bg-white/80 px-3 sm:px-4 py-1.5 sm:py-2 text-[10px] sm:text-xs font-semibold text-black mb-4 sm:mb-6'}`}
           >
             <span>🌶️</span>
             {t.heroBadge}
@@ -92,14 +92,14 @@ export const HeroSection = ({ tenantName, primaryColor, isDark = false }: HeroSe
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1, duration: 0.4 }}
-            className="text-3xl sm:text-4xl md:text-5xl lg:text-7xl font-black mb-4 sm:mb-6 leading-tight"
+            className="text-3xl sm:text-4xl md:text-5xl lg:text-7xl font-black mb-3 sm:mb-4 md:mb-6 leading-tight"
             style={{
               textShadow: 'none',
               letterSpacing: '0.03em'
             }}
           >
             {t.heroTitle}
-            <br className="hidden md:block" />
+            <br className="hidden sm:block" />
             <span
               style={{
                 color: accentColor,
@@ -115,7 +115,7 @@ export const HeroSection = ({ tenantName, primaryColor, isDark = false }: HeroSe
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2, duration: 0.4 }}
-            className="text-base sm:text-lg md:text-xl mb-4 sm:mb-6 max-w-2xl"
+            className="text-sm sm:text-base md:text-lg lg:text-xl mb-4 sm:mb-6 max-w-2xl"
             style={{
               color: isDark ? '#ccc' : '#374151',
               textShadow: 'none'
@@ -128,11 +128,11 @@ export const HeroSection = ({ tenantName, primaryColor, isDark = false }: HeroSe
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.35, duration: 0.4 }}
-            className="flex flex-wrap gap-4 items-center"
+            className="flex flex-wrap gap-3 sm:gap-4 items-center"
           >
             <button
               onClick={scrollToMenu}
-              className="px-6 sm:px-8 py-3 sm:py-4 rounded-full font-bold text-sm sm:text-base md:text-lg transition-all hover:opacity-90 active:opacity-75 shadow-xl touch-manipulation min-h-[48px]"
+              className="px-5 sm:px-6 md:px-8 py-2.5 sm:py-3 md:py-4 rounded-full font-bold text-sm sm:text-base md:text-lg transition-all hover:opacity-90 active:opacity-75 shadow-xl touch-manipulation min-h-[44px] sm:min-h-[48px]"
               style={{
                 background: accentColor,
                 color: 'white',
@@ -148,24 +148,24 @@ export const HeroSection = ({ tenantName, primaryColor, isDark = false }: HeroSe
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.5, duration: 0.4 }}
-            className="mt-10 grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm"
+            className="mt-6 sm:mt-10 grid grid-cols-3 gap-2 sm:gap-4 text-sm"
           >
             {stats.map((stat) => (
               <div
                 key={stat.label}
-                className={`rounded-2xl px-5 py-4 flex items-center gap-4 border ${
+                className={`rounded-xl sm:rounded-2xl px-3 py-3 sm:px-5 sm:py-4 flex flex-col sm:flex-row items-center sm:items-center gap-2 sm:gap-4 border ${
                   isDark
                     ? 'bg-white/5 border-white/10 text-white'
                     : 'bg-white border-black/5 text-gray-900 shadow-lg'
                 }`}
               >
-                <span className="text-3xl" aria-hidden>
+                <span className="text-2xl sm:text-3xl" aria-hidden>
                   {stat.icon}
                 </span>
-                <div>
-                  <div className="text-2xl font-bold">{stat.value}</div>
+                <div className="text-center sm:text-left">
+                  <div className="text-lg sm:text-2xl font-bold">{stat.value}</div>
                   <div
-                    className="uppercase tracking-widest text-xs"
+                    className="uppercase tracking-wider sm:tracking-widest text-[10px] sm:text-xs leading-tight"
                     style={{ color: isDark ? '#c1c1c1' : '#6b7280' }}
                   >
                     {stat.label}
