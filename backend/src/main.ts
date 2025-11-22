@@ -44,11 +44,33 @@ async function bootstrap() {
   // Handle OPTIONS requests for CORS preflight (before CORS middleware)
   app.use((req: Request, res: Response, next: NextFunction) => {
     if (req.method === 'OPTIONS') {
-      res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
-      res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
-      res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-tenant');
-      res.header('Access-Control-Allow-Credentials', 'true');
-      return res.status(200).end();
+      const origin = req.headers.origin;
+      
+      // Check if origin is allowed (same logic as CORS)
+      let allowed = false;
+      if (!origin) {
+        allowed = true; // Allow requests with no origin
+      } else if (origin.endsWith('.vercel.app')) {
+        allowed = true; // Always allow Vercel preview URLs
+      } else if (origin.startsWith('http://localhost:') || 
+                 origin.startsWith('http://127.0.0.1:') ||
+                 origin.startsWith('http://pornopizza.localhost:') || 
+                 origin.startsWith('http://pizzavnudzi.localhost:')) {
+        allowed = true; // Always allow localhost
+      } else if (process.env.ALLOWED_ORIGINS) {
+        const allowedOrigins = process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim());
+        allowed = allowedOrigins.includes(origin);
+      }
+      
+      if (allowed) {
+        res.header('Access-Control-Allow-Origin', origin || '*');
+        res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
+        res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-tenant');
+        res.header('Access-Control-Allow-Credentials', 'true');
+        return res.status(200).end();
+      } else {
+        return res.status(403).end();
+      }
     }
     next();
   });
