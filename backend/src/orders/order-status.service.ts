@@ -79,12 +79,9 @@ export class OrderStatusService {
     const orderNumber = order.id.slice(0, 8).toUpperCase();
 
     try {
-      // Email notification
-      const statusMessages: Record<OrderStatus, { subject: string; message: string }> = {
-        [OrderStatus.PAID]: {
-          subject: `✅ Payment Received - Order #${orderNumber}`,
-          message: `Your payment has been received. We're preparing your order!`,
-        },
+      // Email notification - len pre statusy kde chceme posielať email
+      // PAID a PENDING sa neposielajú (PENDING má confirmation email pri vytvorení objednávky)
+      const statusMessages: Partial<Record<OrderStatus, { subject: string; message: string }>> = {
         [OrderStatus.PREPARING]: {
           subject: `👨‍🍳 Order #${orderNumber} is Being Prepared`,
           message: `Great news! Your order is now being prepared in our kitchen.`,
@@ -105,10 +102,7 @@ export class OrderStatusService {
           subject: `❌ Order #${orderNumber} Cancelled`,
           message: `Your order has been cancelled. If you have questions, please contact us.`,
         },
-        [OrderStatus.PENDING]: {
-          subject: `📦 Order #${orderNumber} Received`,
-          message: `We've received your order and are processing it.`,
-        },
+        // PAID a PENDING sa neposielajú
       };
 
       const notification = statusMessages[newStatus];
