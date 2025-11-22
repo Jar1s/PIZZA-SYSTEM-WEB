@@ -11,10 +11,17 @@ export const dynamic = 'force-dynamic';
  * Server Component for SEO optimization
  * Data is fetched on the server, so Google can index products
  */
-export default async function HomePage() {
-  // Get tenant slug from headers (server-side)
+export default async function HomePage({
+  searchParams,
+}: {
+  searchParams: { tenant?: string };
+}) {
+  // Get tenant slug from headers (server-side) or query params
   const headersList = await headers();
-  const tenantSlug = getTenantSlugFromHeaders(headersList);
+  // Check x-tenant header first (set by middleware), then query param, then headers
+  const tenantFromHeader = headersList.get('x-tenant');
+  const tenantFromQuery = searchParams?.tenant;
+  const tenantSlug = tenantFromQuery || tenantFromHeader || getTenantSlugFromHeaders(headersList);
 
   // Fetch data on server (for SEO)
   const [products, tenant] = await Promise.all([

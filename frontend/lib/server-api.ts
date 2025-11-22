@@ -82,8 +82,14 @@ export async function getProductsServer(tenantSlug: string): Promise<Product[]> 
 export function getTenantSlugFromHeaders(headers: Headers): string {
   const hostname = headers.get('host') || '';
   const referer = headers.get('referer') || '';
+  const xTenant = headers.get('x-tenant'); // Set by middleware
   
-  // Check hostname first for known production domains
+  // First check x-tenant header (set by middleware)
+  if (xTenant && (xTenant === 'pornopizza' || xTenant === 'pizzavnudzi')) {
+    return xTenant;
+  }
+  
+  // Check hostname for known production domains
   if (hostname.includes('pornopizza.sk')) {
     return 'pornopizza';
   } else if (hostname.includes('pizzavnudzi.sk')) {
