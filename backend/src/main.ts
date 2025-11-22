@@ -104,17 +104,19 @@ async function bootstrap() {
         return callback(null, true);
       }
       
+      // Always allow localhost (safe - not publicly accessible)
+      // This allows local development even when backend is in production
+      if (origin.startsWith('http://localhost:') || 
+          origin.startsWith('http://127.0.0.1:') ||
+          origin.startsWith('http://pornopizza.localhost:') || 
+          origin.startsWith('http://pizzavnudzi.localhost:')) {
+        return callback(null, true);
+      }
+      
       // Check explicit allowed origins
       if (process.env.ALLOWED_ORIGINS) {
         const allowedOrigins = process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim());
         if (allowedOrigins.includes(origin)) {
-          return callback(null, true);
-        }
-      }
-      
-      // In development, allow localhost
-      if (process.env.NODE_ENV !== 'production') {
-        if (origin.startsWith('http://localhost:') || origin.startsWith('http://pornopizza.localhost:') || origin.startsWith('http://pizzavnudzi.localhost:')) {
           return callback(null, true);
         }
       }
