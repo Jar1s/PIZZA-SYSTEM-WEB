@@ -69,8 +69,18 @@ export class CustomerAuthController {
   @Throttle({ default: { limit: 10, ttl: 60000 } }) // 10 checks per minute
   @Post('check-email')
   async checkEmail(@Body() body: { email: string }) {
-    const exists = await this.customerAuthService.checkEmailExists(body.email);
-    return { exists };
+    try {
+      if (!body?.email) {
+        return { exists: false };
+      }
+      const exists = await this.customerAuthService.checkEmailExists(body.email);
+      return { exists };
+    } catch (error: any) {
+      console.error('[CustomerAuthController] Error checking email:', error);
+      // Return false on error to allow registration flow to continue
+      // This prevents blocking users if there's a database issue
+      return { exists: false };
+    }
   }
 
   /**

@@ -192,14 +192,21 @@ export class CustomerAuthService {
    * Check if email exists
    */
   async checkEmailExists(email: string): Promise<boolean> {
-    if (!email) {
+    try {
+      if (!email) {
+        return false;
+      }
+      // Use findFirst instead of findUnique because email is optional field
+      const user = await this.prisma.user.findFirst({
+        where: { email: email.toLowerCase().trim() },
+      });
+      return !!user;
+    } catch (error: any) {
+      console.error('[CustomerAuthService] Error checking email existence:', error);
+      // Return false on error to allow registration flow to continue
+      // This prevents blocking users if there's a database issue
       return false;
     }
-    // Use findFirst instead of findUnique because email is optional field
-    const user = await this.prisma.user.findFirst({
-      where: { email: email.toLowerCase().trim() },
-    });
-    return !!user;
   }
 
   /**
