@@ -84,39 +84,42 @@ export function getTenantSlugFromHeaders(headers: Headers): string {
   const referer = headers.get('referer') || '';
   const xTenant = headers.get('x-tenant'); // Set by middleware
   
-  // First check x-tenant header (set by middleware)
+  // First check x-tenant header (set by middleware) - highest priority
   if (xTenant && (xTenant === 'pornopizza' || xTenant === 'pizzavnudzi')) {
     return xTenant;
   }
   
-  // Check hostname for known production domains
-  if (hostname.includes('pornopizza.sk')) {
-    return 'pornopizza';
-  } else if (hostname.includes('pizzavnudzi.sk')) {
-    return 'pizzavnudzi';
-  } else if (hostname.includes('pornopizza')) {
-    return 'pornopizza';
-  } else if (hostname.includes('pizzavnudzi')) {
-    return 'pizzavnudzi';
-  } else if (hostname.includes('vercel.app')) {
-    // Vercel preview/production URLs: check referer for query param
+  // For Vercel URLs, NEVER extract from hostname - always use default or query param
+  if (hostname.includes('vercel.app')) {
+    // Check referer for query param
     try {
       const url = new URL(referer || 'http://localhost:3001');
       const tenantParam = url.searchParams.get('tenant');
-      if (tenantParam) {
+      if (tenantParam && (tenantParam === 'pornopizza' || tenantParam === 'pizzavnudzi')) {
         return tenantParam;
       }
     } catch {
       // Ignore URL parsing errors
     }
-    // Default for Vercel URLs
+    // Default for Vercel URLs (don't extract from hostname!)
     return 'pornopizza';
   }
   
-  // Check referer as fallback
-  if (referer.includes('pornopizza')) {
+  // Check hostname for known production domains (only for real domains, not Vercel)
+  if (hostname.includes('pornopizza.sk')) {
     return 'pornopizza';
-  } else if (referer.includes('pizzavnudzi')) {
+  } else if (hostname.includes('pizzavnudzi.sk')) {
+    return 'pizzavnudzi';
+  } else if (hostname.includes('pornopizza') && !hostname.includes('vercel.app')) {
+    return 'pornopizza';
+  } else if (hostname.includes('pizzavnudzi') && !hostname.includes('vercel.app')) {
+    return 'pizzavnudzi';
+  }
+  
+  // Check referer as fallback
+  if (referer.includes('pornopizza') && !referer.includes('vercel.app')) {
+    return 'pornopizza';
+  } else if (referer.includes('pizzavnudzi') && !referer.includes('vercel.app')) {
     return 'pizzavnudzi';
   }
   
@@ -124,7 +127,7 @@ export function getTenantSlugFromHeaders(headers: Headers): string {
   try {
     const url = new URL(referer || 'http://localhost:3001');
     const tenantParam = url.searchParams.get('tenant');
-    if (tenantParam) {
+    if (tenantParam && (tenantParam === 'pornopizza' || tenantParam === 'pizzavnudzi')) {
       return tenantParam;
     }
   } catch {
