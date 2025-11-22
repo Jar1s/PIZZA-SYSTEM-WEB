@@ -20,7 +20,16 @@ const inter = Inter({
 
 export async function generateMetadata(): Promise<Metadata> {
   const headersList = await headers();
-  const tenant = headersList.get('x-tenant') || 'pornopizza';
+  // Get tenant from x-tenant header (set by middleware) or default
+  let tenant = headersList.get('x-tenant') || 'pornopizza';
+  
+  // For Vercel URLs, ensure we never use hostname-derived tenant
+  const hostname = headersList.get('host') || '';
+  if (hostname.includes('vercel.app') && tenant.includes('pizza-system')) {
+    // If tenant was incorrectly extracted from hostname, use default
+    tenant = 'pornopizza';
+  }
+  
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3001';
   
   try {
@@ -183,8 +192,9 @@ export default async function RootLayout({
         <style dangerouslySetInnerHTML={{
           __html: `
             :root {
-              --color-primary: ${tenantData.theme.primaryColor};
-              --color-secondary: ${tenantData.theme.secondaryColor};
+              --color-primary: ${tenantData.theme.primaryColor || '#FF6B00'};
+              --color-secondary: ${tenantData.theme.secondaryColor || '#000000'};
+              --font-family: ${tenantData.theme.fontFamily || 'Inter, sans-serif'};
             }
           `
         }} />
