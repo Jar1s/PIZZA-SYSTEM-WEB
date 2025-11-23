@@ -44,17 +44,19 @@ export const ProductCard = memo(function ProductCard({ product, index = 0, isBes
   const displayName = useMemo(() => translation.name || product.name, [translation.name, product.name]);
   const displayDescription = useMemo(() => translation.description || product.description, [translation.description, product.description]);
   
-  // Check if product is a pizza that needs customization
-  const isPizza = useMemo(() => product.category === 'PIZZA', [product.category]);
+  // Check if product needs customization (PIZZA or STANGLE)
+  const needsCustomization = useMemo(() => {
+    return product.category === 'PIZZA' || product.category === 'STANGLE';
+  }, [product.category]);
   
   const handleAddToCart = useCallback(() => {
-    console.log('handleAddToCart called', { isPizza, product: product.name });
-    if (isPizza) {
-      // Open customization modal for pizzas
+    console.log('handleAddToCart called', { needsCustomization, product: product.name, category: product.category });
+    if (needsCustomization) {
+      // Open customization modal for pizzas and stangle products
       console.log('Opening customization modal');
       setShowCustomization(true);
     } else {
-      // Direct add for non-pizza items
+      // Direct add for items that don't need customization
       console.log('Adding product directly to cart', product);
       setIsAdding(true);
       addItem(product);
@@ -65,7 +67,7 @@ export const ProductCard = memo(function ProductCard({ product, index = 0, isBes
         setIsAdding(false);
       }, 800);
     }
-  }, [isPizza, addItem, product, toast, displayName]);
+  }, [needsCustomization, addItem, product, toast, displayName]);
 
   const handleCustomizedAdd = useCallback((customizations: Record<string, string[]>, totalPrice: number) => {
     setIsAdding(true);

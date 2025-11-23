@@ -116,14 +116,14 @@ export const pizzaCustomizations: CustomizationCategory[] = [
 export const stangleCustomizations: CustomizationCategory[] = [
   {
     id: 'edge',
-    name: '🧈 OKRAJ – DOTYK NAVYŠE',
-    nameEn: '🧈 EDGE – EXTRA TOUCH',
+    name: '👉 Potrieť',
+    nameEn: '👉 Brush',
     required: false,
     maxSelection: 1,
     options: [
-      { id: 'olive-oil', name: 'Olivovým olejom', nameEn: 'Olive oil', price: 0 },
       { id: 'garlic', name: 'Cesnakom', nameEn: 'Garlic', price: 0 },
-      { id: 'none', name: 'Nepotierať (raw version)', nameEn: 'Don\'t brush (raw version)', price: 0 },
+      { id: 'olive-oil', name: 'Olejom', nameEn: 'Olive oil', price: 0 },
+      { id: 'none', name: 'Raw (nepotierať)', nameEn: 'Raw (dont brush)', price: 0 },
     ],
   },
 ];
