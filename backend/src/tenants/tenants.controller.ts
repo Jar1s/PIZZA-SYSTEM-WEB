@@ -26,8 +26,13 @@ export class TenantsController {
       const tenant = await this.tenantsService.getTenantBySlug(slug);
       console.log('[TenantsController] Tenant found:', tenant?.name);
       return tenant;
-    } catch (error) {
-      console.error('[TenantsController] Error getting tenant:', error);
+    } catch (error: any) {
+      console.error('[TenantsController] Error getting tenant:', {
+        message: error.message,
+        code: error.code,
+        meta: error.meta,
+        stack: error.stack,
+      });
       throw error;
     }
   }

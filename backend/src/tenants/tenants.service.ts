@@ -29,25 +29,45 @@ export class TenantsService {
   }
 
   async getTenantBySlug(slug: string): Promise<Tenant> {
-    const tenant = await this.prisma.tenant.findUnique({
-      where: { slug },
-    });
-    
-    if (!tenant) {
-      throw new NotFoundException(`Tenant ${slug} not found`);
-    }
-    
-    // Check if tenant is active
-    if (!tenant.isActive) {
-      throw new NotFoundException(`Tenant ${slug} is not active`);
-    }
-    
-    // Validate response with Zod
     try {
-      return TenantResponseSchema.parse(tenant) as unknown as Tenant;
-    } catch (error) {
-      this.logger.error(`Tenant response validation failed for ${slug}`, { error, tenant });
-      return tenant as any as Tenant;
+      this.logger.log(`[getTenantBySlug] Looking for tenant with slug: ${slug}`);
+      
+      const tenant = await this.prisma.tenant.findUnique({
+        where: { slug },
+      });
+      
+      if (!tenant) {
+        this.logger.warn(`[getTenantBySlug] Tenant ${slug} not found in database`);
+        throw new NotFoundException(`Tenant ${slug} not found`);
+      }
+      
+      this.logger.log(`[getTenantBySlug] Tenant found: ${tenant.name} (id: ${tenant.id}, isActive: ${tenant.isActive})`);
+      
+      // Check if tenant is active
+      if (!tenant.isActive) {
+        this.logger.warn(`[getTenantBySlug] Tenant ${slug} is not active`);
+        throw new NotFoundException(`Tenant ${slug} is not active`);
+      }
+      
+      // Validate response with Zod
+      try {
+        return TenantResponseSchema.parse(tenant) as unknown as Tenant;
+      } catch (error) {
+        this.logger.error(`[getTenantBySlug] Tenant response validation failed for ${slug}`, { error, tenant });
+        return tenant as any as Tenant;
+      }
+    } catch (error: any) {
+      // Log Prisma errors with full details
+      if (error.code) {
+        this.logger.error(`[getTenantBySlug] Prisma error (code: ${error.code}): ${error.message}`, {
+          code: error.code,
+          meta: error.meta,
+          stack: error.stack,
+        });
+      } else {
+        this.logger.error(`[getTenantBySlug] Error getting tenant ${slug}:`, error);
+      }
+      throw error;
     }
   }
 
