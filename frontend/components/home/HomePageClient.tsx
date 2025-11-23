@@ -351,6 +351,20 @@ export function HomePageClient({ products, tenant }: HomePageClientProps) {
             style={{
               scrollbarWidth: 'none',
               msOverflowStyle: 'none',
+              overscrollBehaviorX: 'contain',
+            }}
+            onWheel={(e) => {
+              // Prevent horizontal scroll when scrolling vertically
+              // Only allow horizontal scroll if user is intentionally scrolling horizontally
+              if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
+                // User is scrolling vertically - lock horizontal scroll position
+                const scrollContainer = e.currentTarget;
+                const savedScrollLeft = scrollContainer.scrollLeft;
+                // Reset horizontal scroll after a short delay
+                setTimeout(() => {
+                  scrollContainer.scrollLeft = savedScrollLeft;
+                }, 0);
+              }
             }}
           >
             {(Object.keys(categoryCounts) as CategoryFilter[]).map((category) => {
