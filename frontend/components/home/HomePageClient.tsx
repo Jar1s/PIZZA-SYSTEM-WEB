@@ -591,6 +591,33 @@ export function HomePageClient({ products, tenant }: HomePageClientProps) {
                   <div className="h-1 w-32 rounded mx-auto mt-4" style={{ backgroundColor: primaryColor }}></div>
                 </motion.div>
               )}
+
+              {/* Category Title and Subtitle for DESSERTS */}
+              {categoryFilter === 'DESSERTS' && filteredProducts.length > 0 && (
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  className="mb-8 text-center"
+                >
+                  <h3 
+                    className={`text-3xl md:text-4xl font-black mb-2 ${isDarkTheme ? 'text-porno-glow' : ''}`}
+                    style={{ 
+                      color: isDarkTheme ? '#FF6B9D' : primaryColor,
+                      textShadow: isDarkTheme 
+                        ? '0 0 20px rgba(255, 107, 157, 0.7), 0 0 40px rgba(255, 107, 157, 0.4), 0 2px 8px rgba(0, 0, 0, 0.9)'
+                        : '0 2px 4px rgba(0, 0, 0, 0.1)',
+                      letterSpacing: '-0.02em'
+                    }}
+                  >
+                    {t.dessertsTitle}
+                  </h3>
+                  <p className={`mb-2 text-lg ${isDarkTheme ? 'text-gray-400' : ''}`} style={{ color: isDarkTheme ? '#999' : '#666666' }}>
+                    {t.dessertsSubtitle}
+                  </p>
+                  <div className="h-1 w-32 rounded mx-auto mt-4" style={{ backgroundColor: primaryColor }}></div>
+                </motion.div>
+              )}
               
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                 {filteredProducts.map((product, index) => (

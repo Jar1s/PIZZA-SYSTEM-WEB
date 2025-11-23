@@ -367,11 +367,11 @@ export const productTranslations: Record<string, ProductTranslation> = {
   'Tiramisu': {
     name: { sk: 'Tiramisu', en: 'Tiramisu' },
     description: {
-      sk: 'Klasický taliansky dezert s kávou a kakaom',
-      en: 'Classic Italian dessert with coffee and cocoa'
+      sk: '☕️ Lebo každá dobrá vec si zaslúži šťastný koniec.',
+      en: '☕️ Because every good thing deserves a happy ending.'
     },
     weight: '150g',
-    allergens: ['1', '3', '7']
+    allergens: ['3', '7']
   },
 };
 

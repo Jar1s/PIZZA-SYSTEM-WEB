@@ -364,10 +364,14 @@ section[id] {
 .category-chip--active::after {
   content: '';
   position: absolute;
-  inset: -28%;
+  left: 50%;
+  top: 50%;
+  width: 230%;
+  height: 260%;
+  transform: translate(-50%, -50%);
   border-radius: 999px;
-  background: radial-gradient(circle, rgba(233, 30, 99, 0.3) 0%, rgba(255, 94, 0, 0.18) 45%, rgba(0, 0, 0, 0) 70%);
-  filter: blur(16px);
+  background: radial-gradient(circle at 50% 50%, rgba(233, 30, 99, 0.32) 0%, rgba(255, 94, 0, 0.2) 38%, rgba(0, 0, 0, 0) 70%);
+  filter: blur(26px);
   z-index: -1;
   pointer-events: none;
 }

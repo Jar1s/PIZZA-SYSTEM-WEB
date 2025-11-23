@@ -69,6 +69,8 @@ export const translations = {
     drinksSubtitle: '💡 Lebo aj tie najväčšie hriechy treba zapiť.',
     drinksDeposit: '(vrátane zálohy 0,15 €)',
     desserts: 'Dezerty',
+    dessertsTitle: '🍰 SWEET FINISH / SLADKÉ POKUŠENIE',
+    dessertsSubtitle: '☕️ Lebo každá dobrá vec si zaslúži šťastný koniec.',
     sauces: 'Omáčky',
     
     // Product Card
@@ -361,10 +363,12 @@ export const translations = {
     stangle: 'Breadsticks',
     soups: 'Soups',
     drinks: 'Drinks',
-    drinksTitle: '🧃 LIQUID SINS 💦',
+    drinksTitle: '🧃 LIQUID SINS',
     drinksSubtitle: '💡 Because even the biggest sins need to be washed down.',
     drinksDeposit: '(including deposit €0.15)',
     desserts: 'Desserts',
+    dessertsTitle: '🍰 SWEET FINISH',
+    dessertsSubtitle: '☕️ Because every good thing deserves a happy ending.',
     sauces: 'Sauces',
     
     // Product Card
