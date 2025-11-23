@@ -121,6 +121,19 @@ export class ProductsController {
     const count = await this.productsService.bulkImportProducts(tenant.id, products);
     return { imported: count };
   }
+
+  @Public()
+  @Post('update-prices')
+  async updatePrices(@Param('tenantSlug') tenantSlug: string) {
+    // One-time endpoint to fix prices - can be called once from browser
+    // TODO: Remove or protect this endpoint after use
+    const tenant = await this.tenantsService.getTenantBySlug(tenantSlug);
+    const result = await this.productsService.updateProductPrices(tenant.id);
+    return {
+      message: 'Prices updated',
+      ...result,
+    };
+  }
 }
 
 

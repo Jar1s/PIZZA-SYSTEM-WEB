@@ -109,6 +109,49 @@ export class ProductsService {
     });
     return products as any as Product[];
   }
+
+  async updateProductPrices(tenantId: string): Promise<{ updated: number; errors: string[] }> {
+    const pizzaUpdates = [
+      { name: 'Basil Pesto Premium', priceCents: 1199 },
+      { name: 'Honey Chilli', priceCents: 1099 },
+      { name: 'Pollo Crema', priceCents: 1099 },
+      { name: 'Prosciutto Crudo Premium', priceCents: 1199 },
+      { name: 'Quattro Formaggi', priceCents: 1099 },
+      { name: 'Quattro Formaggi Bianco', priceCents: 1099 },
+      { name: 'Tonno', priceCents: 1099 },
+      { name: 'Vegetariana Premium', priceCents: 1099 },
+      { name: 'Hot Missionary', priceCents: 1099 },
+    ];
+
+    let updated = 0;
+    const errors: string[] = [];
+
+    for (const update of pizzaUpdates) {
+      try {
+        const product = await this.prisma.product.findFirst({
+          where: {
+            tenantId,
+            name: update.name,
+          },
+        });
+
+        if (product) {
+          await this.prisma.product.update({
+            where: { id: product.id },
+            data: { priceCents: update.priceCents },
+          });
+          this.logger.log(`✅ Updated ${update.name}: ${update.priceCents} cents = €${(update.priceCents / 100).toFixed(2)}`);
+          updated++;
+        } else {
+          errors.push(`${update.name} not found`);
+        }
+      } catch (error) {
+        errors.push(`${update.name}: ${error instanceof Error ? error.message : String(error)}`);
+      }
+    }
+
+    return { updated, errors };
+  }
 }
 
 
