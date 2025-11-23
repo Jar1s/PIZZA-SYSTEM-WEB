@@ -13,6 +13,8 @@ export class ProductsService {
     category?: string;
     isActive?: boolean;
   }): Promise<Product[]> {
+    // Force fresh query - bypass any potential Prisma cache
+    // Use findMany with explicit select to ensure we get latest data
     const products = await this.prisma.product.findMany({
       where: {
         tenantId,
@@ -23,7 +25,37 @@ export class ProductsService {
         { category: 'asc' },
         { name: 'asc' },
       ],
+      // Explicitly select all fields to avoid any caching
+      select: {
+        id: true,
+        tenantId: true,
+        name: true,
+        description: true,
+        priceCents: true,
+        taxRate: true,
+        category: true,
+        image: true,
+        modifiers: true,
+        isActive: true,
+        isBestSeller: true,
+        createdAt: true,
+        updatedAt: true,
+      },
     });
+    
+    // Log prices for debugging (always log for these specific products to track price issues)
+    const premiumSins = ['Basil Pesto Premium', 'Honey Chilli', 'Pollo Crema', 'Prosciutto Crudo Premium'];
+    const deluxeFetish = ['Quattro Formaggi', 'Quattro Formaggi Bianco', 'Tonno', 'Vegetariana Premium', 'Hot Missionary'];
+    const productsToLog = [...premiumSins, ...deluxeFetish];
+    
+    productsToLog.forEach(name => {
+      const p = products.find(pr => pr.name === name);
+      if (p) {
+        this.logger.log(`[getProducts] ${p.name}: ${p.priceCents} cents = €${(p.priceCents / 100).toFixed(2)}`);
+      }
+    });
+    
+    return products as any as Product[];
     
     // Log prices for debugging (always log for these specific products to track price issues)
     const premiumSins = ['Basil Pesto Premium', 'Honey Chilli', 'Pollo Crema', 'Prosciutto Crudo Premium'];

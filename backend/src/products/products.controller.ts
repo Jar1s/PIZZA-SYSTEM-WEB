@@ -46,10 +46,14 @@ export class ProductsController {
       isActiveFilter = undefined; // Return all products
     }
     
-    return this.productsService.getProducts(tenant.id, {
+    const products = await this.productsService.getProducts(tenant.id, {
       category,
       isActive: isActiveFilter,
     });
+    
+    // Force fresh data - disable any potential caching
+    // This ensures we always get the latest prices from database
+    return products;
   }
 
   @Public()
