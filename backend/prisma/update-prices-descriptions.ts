@@ -80,22 +80,22 @@ async function updatePricesAndDescriptions() {
     {
       name: 'Quattro Formaggi',
       priceCents: 1099, // 10,99 €
-      description: 'Paradajkový základ, mozzarella, údený syr, niva, parmezán',
+      description: 'Paradajkový základ, mozzarella, niva, eidam, parmezán – nebezpečne sýrové pokušenie.',
     },
     {
       name: 'Quattro Formaggi Bianco',
       priceCents: 1099, // 10,99 €
-      description: 'Smetanový základ, mozzarella, údený syr, niva, parmezán',
+      description: 'Smotanový základ, mozzarella, niva, eidam, parmezán – jemné, ale nebezpečne dobré.',
     },
     {
       name: 'Tonno',
       priceCents: 1099, // 10,99 €
-      description: 'Paradajkový základ, mozzarella, tuniak, cibuľa',
+      description: 'Paradajkový základ, mozzarella, tuniak, cibuľa – pre milovníkov morských radostí.',
     },
     {
       name: 'Vegetariana Premium',
       priceCents: 1099, // 10,99 €
-      description: 'Paradajkový základ, mozzarella, brokolica, kukurica, šampiňóny, baby špenát',
+      description: 'Paradajkový základ, mozzarella, paprika, kukurica, cibuľa, olivy – čisté potešenie bez výčitiek.',
     },
     {
       name: 'Fregata',
@@ -115,19 +115,19 @@ async function updatePricesAndDescriptions() {
     {
       name: 'Honey Chilli',
       priceCents: 1099, // 10,99 €
-      description: 'Paradajkový základ, chilli, mozzarella, med, kur.prsia, ananás, oregáno',
+      description: 'Paradajkový základ, mozzarella, kuracie mäso, medovo-chilli omáčka – sweet & hot.',
     },
     
     // Premium Pizzas
     {
       name: 'Pollo Crema',
       priceCents: 1099, // 10,99 €
-      description: 'Smetanový základ, mozzarella, kur.prsia, niva, kukurica, brokolica',
+      description: 'Smotanový základ, mozzarella, kuracie mäso, kukurica – jemné, ale nebezpečne návykové.',
     },
     {
       name: 'Basil Pesto Premium',
       priceCents: 1199, // 11,99 €
-      description: 'Paradajkový základ, mozzarella, bazalkové pesto, šunka, ricotta, paradajky, parmezán',
+      description: 'Bazalkové pesto, mozzarella, cherry paradajky – green and naughty.',
     },
     {
       name: 'Diavola Premium',
@@ -137,7 +137,7 @@ async function updatePricesAndDescriptions() {
     {
       name: 'Prosciutto Crudo Premium',
       priceCents: 1199, // 11,99 €
-      description: 'Paradajkový základ, mozzarella, prosciutto crudo, cherry paradajky, rukola, parmezán',
+      description: 'Paradajkový základ, mozzarella, prosciutto crudo, rukola, parmezán – talianska vášeň.',
     },
   ];
 

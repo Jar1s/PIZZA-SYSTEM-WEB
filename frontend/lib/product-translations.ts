@@ -266,6 +266,15 @@ export const productTranslations: Record<string, ProductTranslation> = {
     weight: '520g',
     allergens: ['1', '7']
   },
+  'Hot Missionary': {
+    name: { sk: 'Hot Missionary', en: 'Hot Missionary' },
+    description: {
+      sk: 'Paradajkový základ, mozzarella, šunka, šampiňóny, feferóny – klasika, ale s poriadnou iskrou.',
+      en: 'Tomato base, mozzarella, ham, mushrooms, peppers – classic, but with a proper spark.'
+    },
+    weight: '520g',
+    allergens: ['1', '7']
+  },
   
   // Štangle & Posúch
   'Pizza Štangle': {
