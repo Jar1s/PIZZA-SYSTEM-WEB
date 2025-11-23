@@ -58,7 +58,7 @@ export const Footer = ({ tenantName, primaryColor }: FooterProps) => {
                 <li>📍 Bratislava, Slovakia</li>
                 <li>📞 +421 123 456 789</li>
                 <li>✉️ info@{tenantName.toLowerCase()}.sk</li>
-                <li>🕐 Daily 11:00 - 23:00</li>
+                <li>🕐 {t.openingHours}</li>
               </ul>
             </div>
 

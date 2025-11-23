@@ -263,20 +263,20 @@ export function HomePageClient({ products, tenant }: HomePageClientProps) {
       />
 
       {/* Best Sellers Section */}
-      {productsByCategory.PIZZA && productsByCategory.PIZZA.length > 0 && (() => {
-        // Get products marked as best sellers
-        const bestSellerPizzas = productsByCategory.PIZZA.filter(
-          p => p.isBestSeller === true && p.name !== 'Vyskladaj si vlastnú pizzu' && p.name !== 'Build Your Own Pizza'
+      {products.length > 0 && (() => {
+        // Get products marked as best sellers from ALL categories
+        const bestSellerProducts = products.filter(
+          p => p.isBestSeller === true && p.isActive === true
         ).slice(0, 4);
         
         // If no best sellers, use first 4 pizzas as fallback
-        const pizzasToShow = bestSellerPizzas.length > 0 
-          ? bestSellerPizzas 
-          : productsByCategory.PIZZA.filter(
+        const productsToShow = bestSellerProducts.length > 0 
+          ? bestSellerProducts 
+          : (productsByCategory.PIZZA || []).filter(
               p => p.name !== 'Vyskladaj si vlastnú pizzu' && p.name !== 'Build Your Own Pizza'
             ).slice(0, 4);
         
-        if (pizzasToShow.length === 0) return null;
+        if (productsToShow.length === 0) return null;
         
         return (
           <section className="container mx-auto px-3 sm:px-4 py-8 sm:py-12 md:py-16" style={{ position: 'relative', zIndex: 10 }}>
@@ -309,7 +309,7 @@ export function HomePageClient({ products, tenant }: HomePageClientProps) {
                 transition={{ delay: 0.1 }}
                 className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5 md:gap-6"
               >
-                {pizzasToShow.map((product, index) => (
+                {productsToShow.map((product, index) => (
                   <ProductCard key={product.id} product={product} index={index} isBestSeller={true} isDark={isDarkTheme} />
                 ))}
               </motion.div>
