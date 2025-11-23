@@ -6,6 +6,19 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
   private readonly logger = new Logger(PrismaService.name);
 
   constructor() {
+    // Ensure SSL parameter is present for Supabase connections BEFORE creating PrismaClient
+    if (process.env.DATABASE_URL) {
+      let databaseUrl = process.env.DATABASE_URL;
+      if ((databaseUrl.includes('supabase.com') || databaseUrl.includes('supabase.co')) 
+          && !databaseUrl.includes('sslmode=') && !databaseUrl.includes('ssl=')) {
+        // Add SSL parameter if missing
+        const separator = databaseUrl.includes('?') ? '&' : '?';
+        databaseUrl = `${databaseUrl}${separator}sslmode=require`;
+        // Update process.env for Prisma to use
+        process.env.DATABASE_URL = databaseUrl;
+      }
+    }
+
     super({
       log: process.env.NODE_ENV === 'development' 
         ? ['query', 'error', 'warn'] 
@@ -27,32 +40,17 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
         );
       }
 
-      // Ensure SSL parameter is present for Supabase connections
-      let databaseUrl = process.env.DATABASE_URL;
-      if (!databaseUrl) {
-        throw new Error('DATABASE_URL is not set');
-      }
-
-      // Log connection attempt (without sensitive data) - before SSL modification
-      const safeUrlBefore = databaseUrl.replace(/:[^:@]+@/, ':****@');
-      this.logger.log(`🔌 Original DATABASE_URL: ${safeUrlBefore.substring(0, 120)}...`);
-
+      // Log connection attempt (without sensitive data)
+      const databaseUrl = process.env.DATABASE_URL;
+      const safeUrl = databaseUrl.replace(/:[^:@]+@/, ':****@');
+      this.logger.log(`🔌 Connecting to database: ${safeUrl.substring(0, 120)}...`);
+      
       if (databaseUrl.includes('supabase.com') || databaseUrl.includes('supabase.co')) {
-        // Ensure SSL parameter is present for Supabase
-        if (!databaseUrl.includes('sslmode=') && !databaseUrl.includes('ssl=')) {
-          // Add SSL parameter if missing
-          const separator = databaseUrl.includes('?') ? '&' : '?';
-          databaseUrl = `${databaseUrl}${separator}sslmode=require`;
-          // Update process.env for Prisma to use
-          process.env.DATABASE_URL = databaseUrl;
-          this.logger.log('🔒 Added SSL parameter (sslmode=require) to DATABASE_URL for Supabase connection');
+        if (databaseUrl.includes('sslmode=') || databaseUrl.includes('ssl=')) {
+          this.logger.log('✅ SSL parameter present in DATABASE_URL');
         } else {
-          this.logger.log('✅ SSL parameter already present in DATABASE_URL');
+          this.logger.warn('⚠️ SSL parameter missing - should have been added in constructor');
         }
-        
-        // Log final connection string (without password)
-        const safeUrlAfter = databaseUrl.replace(/:[^:@]+@/, ':****@');
-        this.logger.log(`🔌 Final DATABASE_URL: ${safeUrlAfter.substring(0, 120)}...`);
       }
 
       // Try to connect with retry logic
