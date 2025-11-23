@@ -65,6 +65,9 @@ export const translations = {
     stangle: 'Štangle & Posúch',
     soups: 'Polievky',
     drinks: 'Nápoje',
+    drinksTitle: '🧃 LIQUID SINS / NA PREPLÁCHNUTIE HRIECHU 💦',
+    drinksSubtitle: '💡 Lebo aj tie najväčšie hriechy treba zapiť.',
+    drinksDeposit: '(vrátane zálohy 0,15 €)',
     desserts: 'Dezerty',
     sauces: 'Omáčky',
     
@@ -358,6 +361,9 @@ export const translations = {
     stangle: 'Breadsticks',
     soups: 'Soups',
     drinks: 'Drinks',
+    drinksTitle: '🧃 LIQUID SINS 💦',
+    drinksSubtitle: '💡 Because even the biggest sins need to be washed down.',
+    drinksDeposit: '(including deposit €0.15)',
     desserts: 'Desserts',
     sauces: 'Sauces',
     
