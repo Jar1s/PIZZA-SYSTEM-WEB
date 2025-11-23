@@ -65,11 +65,11 @@ export const translations = {
     stangle: 'Štangle & Posúch',
     soups: 'Polievky',
     drinks: 'Nápoje',
-    drinksTitle: '🧃 LIQUID SINS / NA PREPLÁCHNUTIE HRIECHU 💦',
+    drinksTitle: 'NA PREPLÁCHNUTIE HRIECHU 💦',
     drinksSubtitle: '💡 Lebo aj tie najväčšie hriechy treba zapiť.',
     drinksDeposit: '(vrátane zálohy 0,15 €)',
     desserts: 'Dezerty',
-    dessertsTitle: '🍰 SWEET FINISH / SLADKÉ POKUŠENIE',
+    dessertsTitle: 'SLADKÉ POKUŠENIE',
     dessertsSubtitle: '☕️ Lebo každá dobrá vec si zaslúži šťastný koniec.',
     sauces: 'Omáčky',
     
