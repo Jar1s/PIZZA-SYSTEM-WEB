@@ -355,10 +355,21 @@ section[id] {
   background: linear-gradient(110deg, rgba(255, 153, 0, 0.9), rgba(255, 0, 95, 0.85));
   border-color: rgba(255, 255, 255, 0.3);
   color: #0b0b0b;
-  box-shadow: 0 15px 40px rgba(255, 102, 0, 0.3);
+  box-shadow: none;
   overflow: visible;
   position: relative;
   z-index: 1;
+}
+
+.category-chip--active::after {
+  content: '';
+  position: absolute;
+  inset: -28%;
+  border-radius: 999px;
+  background: radial-gradient(circle, rgba(233, 30, 99, 0.3) 0%, rgba(255, 94, 0, 0.18) 45%, rgba(0, 0, 0, 0) 70%);
+  filter: blur(16px);
+  z-index: -1;
+  pointer-events: none;
 }
 
 .neon-divider {
