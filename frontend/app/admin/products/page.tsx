@@ -71,6 +71,14 @@ export default function ProductsPage() {
           const tenantProducts = await res.json();
           console.log(`Fetched ${tenantProducts.length} products for ${tenant}`);
           
+          // Debug: Log prices for specific products
+          const productsToDebug = ['Basil Pesto Premium', 'Honey Chilli', 'Pollo Crema', 'Prosciutto Crudo Premium', 'Quattro Formaggi', 'Quattro Formaggi Bianco', 'Tonno', 'Vegetariana Premium', 'Hot Missionary'];
+          tenantProducts.forEach((p: Product) => {
+            if (productsToDebug.includes(p.name)) {
+              console.log(`[Admin] ${p.name}: ${p.priceCents} cents = €${(p.priceCents / 100).toFixed(2)}`);
+            }
+          });
+          
           allProducts.push(...tenantProducts.map((p: Product) => ({
             ...p,
             tenantSlug: tenant,
