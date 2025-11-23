@@ -29,6 +29,17 @@ export default async function HomePage({
     getTenantServer(tenantSlug),
   ]);
 
+  // Debug: Log prices for specific products on server
+  if (process.env.NODE_ENV === 'development') {
+    const productsToDebug = ['Basil Pesto Premium', 'Honey Chilli', 'Pollo Crema', 'Prosciutto Crudo Premium', 'Quattro Formaggi', 'Quattro Formaggi Bianco', 'Tonno', 'Vegetariana Premium', 'Hot Missionary'];
+    productsToDebug.forEach(name => {
+      const p = products.find(pr => pr.name === name);
+      if (p) {
+        console.log(`[Server] ${p.name}: ${p.priceCents} cents = €${(p.priceCents / 100).toFixed(2)}`);
+      }
+    });
+  }
+
   // Handle loading/error states
   if (!tenant) {
     return (

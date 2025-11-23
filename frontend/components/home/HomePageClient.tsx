@@ -31,6 +31,17 @@ export function HomePageClient({ products, tenant }: HomePageClientProps) {
   const toast = useToastContext();
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>('PIZZA');
 
+  // Debug: Log prices for specific products when component mounts
+  useEffect(() => {
+    const productsToDebug = ['Basil Pesto Premium', 'Honey Chilli', 'Pollo Crema', 'Prosciutto Crudo Premium', 'Quattro Formaggi', 'Quattro Formaggi Bianco', 'Tonno', 'Vegetariana Premium', 'Hot Missionary'];
+    productsToDebug.forEach(name => {
+      const p = products.find(pr => pr.name === name);
+      if (p) {
+        console.log(`[HomePageClient] ${p.name}: ${p.priceCents} cents = €${(p.priceCents / 100).toFixed(2)}`);
+      }
+    });
+  }, [products]);
+
   // Group products by category (memoized)
   const productsByCategory = useMemo(() => {
     const grouped = products.reduce((acc, product) => {
