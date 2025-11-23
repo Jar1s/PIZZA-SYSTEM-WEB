@@ -7,10 +7,9 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
 
   constructor() {
     // Ensure SSL parameter is present for Supabase connections BEFORE creating PrismaClient
-    if (process.env.DATABASE_URL) {
-      let databaseUrl = process.env.DATABASE_URL;
-      if ((databaseUrl.includes('supabase.com') || databaseUrl.includes('supabase.co')) 
-          && !databaseUrl.includes('sslmode=') && !databaseUrl.includes('ssl=')) {
+    let databaseUrl = process.env.DATABASE_URL;
+    if (databaseUrl && (databaseUrl.includes('supabase.com') || databaseUrl.includes('supabase.co'))) {
+      if (!databaseUrl.includes('sslmode=') && !databaseUrl.includes('ssl=')) {
         // Add SSL parameter if missing
         const separator = databaseUrl.includes('?') ? '&' : '?';
         databaseUrl = `${databaseUrl}${separator}sslmode=require`;
@@ -19,11 +18,23 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
       }
     }
 
-    super({
+    // Use datasource override to ensure PrismaClient uses the correct DATABASE_URL
+    const prismaOptions: any = {
       log: process.env.NODE_ENV === 'development' 
         ? ['query', 'error', 'warn'] 
         : ['error'],
-    });
+    };
+
+    // If we modified DATABASE_URL, pass it explicitly via datasources
+    if (databaseUrl && databaseUrl !== process.env.DATABASE_URL) {
+      prismaOptions.datasources = {
+        db: {
+          url: databaseUrl,
+        },
+      };
+    }
+
+    super(prismaOptions);
   }
 
   async onModuleInit() {
