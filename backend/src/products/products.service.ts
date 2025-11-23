@@ -56,20 +56,6 @@ export class ProductsService {
     });
     
     return products as any as Product[];
-    
-    // Log prices for debugging (always log for these specific products to track price issues)
-    const premiumSins = ['Basil Pesto Premium', 'Honey Chilli', 'Pollo Crema', 'Prosciutto Crudo Premium'];
-    const deluxeFetish = ['Quattro Formaggi', 'Quattro Formaggi Bianco', 'Tonno', 'Vegetariana Premium', 'Hot Missionary'];
-    const productsToLog = [...premiumSins, ...deluxeFetish];
-    
-    productsToLog.forEach(name => {
-      const p = products.find(pr => pr.name === name);
-      if (p) {
-        this.logger.log(`[getProducts] ${p.name}: ${p.priceCents} cents = €${(p.priceCents / 100).toFixed(2)}`);
-      }
-    });
-    
-    return products as any as Product[];
   }
 
   async getProductById(id: string): Promise<Product> {
