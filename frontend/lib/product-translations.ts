@@ -277,23 +277,50 @@ export const productTranslations: Record<string, ProductTranslation> = {
   },
   
   // Štangle & Posúch
-  'Pizza Štangle': {
-    name: { sk: 'Pizza štangle', en: 'Breadsticks' },
+  'Pizza štangle (4 ks)': {
+    name: { sk: 'Pizza štangle (4 ks)', en: 'Breadsticks (4 pcs)' },
     description: {
-      sk: 'Tradičné štangle s cesnakom a bylinkami',
-      en: 'Traditional breadsticks with garlic and herbs'
+      sk: 'Chrumkavé pizza tyčinky s bylinkami a olivovým olejom',
+      en: 'Crispy pizza breadsticks with herbs and olive oil'
     },
     weight: '200g',
     allergens: ['1', '7']
   },
-  'Pizza Štangle bezlepkové': {
-    name: { sk: 'Pizza štangle bezlepkové', en: 'Gluten-free Breadsticks' },
+  'Pizza Štangle': {
+    name: { sk: 'Pizza štangle (4 ks)', en: 'Breadsticks (4 pcs)' },
     description: {
-      sk: 'Bezlepkové štangle s cesnakom a bylinkami',
-      en: 'Gluten-free breadsticks with garlic and herbs'
+      sk: 'Chrumkavé pizza tyčinky s bylinkami a olivovým olejom',
+      en: 'Crispy pizza breadsticks with herbs and olive oil'
     },
     weight: '200g',
+    allergens: ['1', '7']
+  },
+  'Bezlepkové štangle (4 ks)': {
+    name: { sk: 'Bezlepkové štangle (4 ks)', en: 'Gluten-free Breadsticks (4 pcs)' },
+    description: {
+      sk: 'Bezlepkové chrumkavé pizza tyčinky s bylinkami',
+      en: 'Gluten-free crispy pizza breadsticks with herbs'
+    },
+    weight: '300g',
     allergens: ['7']
+  },
+  'Pizza Štangle bezlepkové': {
+    name: { sk: 'Bezlepkové štangle (4 ks)', en: 'Gluten-free Breadsticks (4 pcs)' },
+    description: {
+      sk: 'Bezlepkové chrumkavé pizza tyčinky s bylinkami',
+      en: 'Gluten-free crispy pizza breadsticks with herbs'
+    },
+    weight: '300g',
+    allergens: ['7']
+  },
+  'Pizza posúch': {
+    name: { sk: 'Pizza posúch', en: 'Garlic Bread' },
+    description: {
+      sk: 'Tradiční posúch s cesnakom a bylinkami',
+      en: 'Traditional garlic bread with garlic and herbs'
+    },
+    weight: '200g',
+    allergens: ['1', '7']
   },
   'Pizza Posúch': {
     name: { sk: 'Pizza posúch', en: 'Garlic Bread' },
@@ -304,8 +331,17 @@ export const productTranslations: Record<string, ProductTranslation> = {
     weight: '200g',
     allergens: ['1', '7']
   },
+  'Bezlepkový posúch': {
+    name: { sk: 'Bezlepkový posúch', en: 'Gluten-free Garlic Bread' },
+    description: {
+      sk: 'Bezlepkový posúch s cesnakom a bylinkami',
+      en: 'Gluten-free garlic bread with garlic and herbs'
+    },
+    weight: '200g',
+    allergens: ['7']
+  },
   'Pizza Posúch bezlepkový': {
-    name: { sk: 'Pizza posúch bezlepkový', en: 'Gluten-free Garlic Bread' },
+    name: { sk: 'Bezlepkový posúch', en: 'Gluten-free Garlic Bread' },
     description: {
       sk: 'Bezlepkový posúch s cesnakom a bylinkami',
       en: 'Gluten-free garlic bread with garlic and herbs'
