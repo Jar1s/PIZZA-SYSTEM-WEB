@@ -347,7 +347,7 @@ export function HomePageClient({ products, tenant }: HomePageClientProps) {
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            className="flex gap-2 sm:gap-3 md:gap-4 overflow-x-auto pb-2 sm:pb-0 -mx-3 sm:mx-0 px-3 sm:px-0 scrollbar-hide mb-8 sm:mb-12 justify-start sm:justify-center"
+            className="flex gap-2 sm:gap-3 md:gap-4 overflow-x-auto overflow-y-visible pb-4 sm:pb-4 pt-2 sm:pt-2 -mx-3 sm:mx-0 px-3 sm:px-0 scrollbar-hide mb-8 sm:mb-12 justify-start sm:justify-center"
             style={{
               scrollbarWidth: 'none',
               msOverflowStyle: 'none',
