@@ -1,10 +1,12 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { Product } from '@pizza-ecosystem/shared';
 import { CreateProductDto, UpdateProductDto } from './dto';
 
 @Injectable()
 export class ProductsService {
+  private readonly logger = new Logger(ProductsService.name);
+  
   constructor(private prisma: PrismaService) {}
 
   async getProducts(tenantId: string, filters?: {
@@ -22,6 +24,21 @@ export class ProductsService {
         { name: 'asc' },
       ],
     });
+    
+    // Log prices for debugging (only for specific products)
+    if (process.env.NODE_ENV === 'development' || process.env.LOG_PRICES === 'true') {
+      const premiumSins = ['Basil Pesto Premium', 'Honey Chilli', 'Pollo Crema', 'Prosciutto Crudo Premium'];
+      const deluxeFetish = ['Quattro Formaggi', 'Quattro Formaggi Bianco', 'Tonno', 'Vegetariana Premium', 'Hot Missionary'];
+      const productsToLog = [...premiumSins, ...deluxeFetish];
+      
+      productsToLog.forEach(name => {
+        const p = products.find(pr => pr.name === name);
+        if (p) {
+          this.logger.debug(`[getProducts] ${p.name}: ${p.priceCents} cents = ${(p.priceCents / 100).toFixed(2)} €`);
+        }
+      });
+    }
+    
     return products as any as Product[];
   }
 
