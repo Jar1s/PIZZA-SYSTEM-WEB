@@ -429,8 +429,9 @@ export class CustomerAuthService {
    */
   async setPasswordWithToken(token: string, password: string): Promise<CustomerAuthResult> {
     // Find user by password reset token
-    const user = await this.prisma.user.findUnique({
-      where: { passwordResetToken: token } as any,
+    // Use findFirst instead of findUnique to avoid Prisma schema sync issues
+    const user = await this.prisma.user.findFirst({
+      where: { passwordResetToken: token },
     }) as any;
 
     if (!user) {
