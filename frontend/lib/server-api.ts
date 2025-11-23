@@ -58,10 +58,16 @@ export async function getTenantServer(slug: string): Promise<Tenant | null> {
 
 export async function getProductsServer(tenantSlug: string): Promise<Product[]> {
   try {
-    const res = await fetch(`${API_URL}/api/${tenantSlug}/products`, {
+    // Use no-store and add timestamp to prevent caching
+    const timestamp = Date.now();
+    const res = await fetch(`${API_URL}/api/${tenantSlug}/products?t=${timestamp}`, {
       cache: 'no-store',
+      next: { revalidate: 0 }, // Disable Next.js cache
       headers: {
         'Content-Type': 'application/json',
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0',
       },
     });
     

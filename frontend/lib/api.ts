@@ -48,9 +48,14 @@ export async function getTenant(slug: string): Promise<Tenant> {
 }
 
 export async function getProducts(tenantSlug: string): Promise<Product[]> {
-  const res = await fetch(`${API_URL}/api/${tenantSlug}/products`, {
+  // Add timestamp to prevent browser caching
+  const timestamp = Date.now();
+  const res = await fetch(`${API_URL}/api/${tenantSlug}/products?t=${timestamp}`, {
     headers: {
       'Content-Type': 'application/json',
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0',
     },
   });
   
