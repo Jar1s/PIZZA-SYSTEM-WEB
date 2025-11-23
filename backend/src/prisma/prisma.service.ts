@@ -9,6 +9,8 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
     // Ensure SSL parameter is present for Supabase connections BEFORE creating PrismaClient
     let databaseUrl = process.env.DATABASE_URL;
     if (databaseUrl && (databaseUrl.includes('supabase.com') || databaseUrl.includes('supabase.co'))) {
+      // For Session Pooler, try port 6543 if 5432 fails (will be handled in onModuleInit)
+      // But first ensure SSL is present
       if (!databaseUrl.includes('sslmode=') && !databaseUrl.includes('ssl=')) {
         // Add SSL parameter if missing
         const separator = databaseUrl.includes('?') ? '&' : '?';
@@ -96,12 +98,21 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
       }
       
       // For other connection errors, provide helpful context
+      const currentDatabaseUrl = process.env.DATABASE_URL || '';
+      const isPooler = currentDatabaseUrl.includes('pooler.supabase.com');
+      const currentPort = currentDatabaseUrl.match(/:(\d+)\//)?.[1] || '5432';
+      
       this.logger.error(
         '💡 Troubleshooting tips:\n' +
         '  1. Check DATABASE_URL is set correctly in Render.com (Environment → DATABASE_URL)\n' +
-        '  2. Use Session Pooler connection string with SSL: postgresql://postgres.gsawehudurchkeysdqhm:011jarko@aws-1-eu-west-1.pooler.supabase.com:5432/postgres?sslmode=require\n' +
-        '  3. Verify database is accessible (check Supabase Dashboard → Settings → Database)\n' +
-        '  4. Ensure Supabase firewall allows all IPs (Settings → Database → Network Restrictions)\n' +
+        '  2. Verify Supabase Network Restrictions allow all IPs (0.0.0.0/0):\n' +
+        '     → Supabase Dashboard → Settings → Database → Network Restrictions\n' +
+        '  3. If using Session Pooler on port 5432, try port 6543:\n' +
+        (isPooler && currentPort === '5432' 
+          ? `     → Change port from 5432 to 6543 in DATABASE_URL\n` +
+            `     → New URL: ${currentDatabaseUrl.replace(':5432/', ':6543/').replace(/:[^:@]+@/, ':****@')}\n`
+          : '') +
+        '  4. Verify database is accessible (check Supabase Dashboard → Settings → Database)\n' +
         '  5. SSL parameter is required for Supabase - add ?sslmode=require to connection string\n' +
         '  6. See SUPABASE-CONNECTION-FIX.md for detailed instructions'
       );
