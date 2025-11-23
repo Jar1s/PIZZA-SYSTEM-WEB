@@ -6,7 +6,7 @@ import { getTenantServer } from '@/lib/server-api';
 import { withTenantThemeDefaults } from '@/lib/tenant-utils';
 import { Providers } from '@/components/Providers';
 import { SpeedInsights } from '@vercel/speed-insights/next';
-import { Analytics } from '@vercel/analytics/react';
+import { Analytics } from '@vercel/analytics/next';
 
 // Force dynamic rendering because we use dynamic tenant resolution
 export const dynamic = 'force-dynamic';
