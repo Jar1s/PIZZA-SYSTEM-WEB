@@ -22,7 +22,7 @@ export const translations = {
     emptyCart: 'Váš košík je prázdny',
     
     // Hero Section
-    heroTitle: 'Vitajte v',
+    heroTitle: 'Vitajte v ',
     heroSubtitle: 'Pravá talianska pizza priamo k vám domov. Vyberte si z lahodných špecialít pripravených s láskou.',
     heroBadge: 'Rýchle doručenie do 90 minút',
     heroFeatureOneTitle: 'Ručne robené cesto',
