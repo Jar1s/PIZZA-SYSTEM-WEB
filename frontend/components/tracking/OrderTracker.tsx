@@ -75,7 +75,7 @@ export function OrderTracker({ order: initialOrder }: OrderTrackerProps) {
           Contact Support
         </a>
         <p className="text-sm text-gray-500 mt-2">
-          or call: +421 900 000 000
+          or call: 0914 363 363
         </p>
       </div>
     </div>

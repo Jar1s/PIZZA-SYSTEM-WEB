@@ -55,8 +55,8 @@ export const Footer = ({ tenantName, primaryColor }: FooterProps) => {
             <div>
               <h4 className="text-lg font-bold mb-4 uppercase tracking-[0.3em] text-gray-400">{t.contact}</h4>
               <ul className="space-y-2 text-gray-300 text-sm">
-                <li>📍 Bratislava, Slovakia</li>
-                <li>📞 +421 123 456 789</li>
+                <li>📍 Tobrucká 5, Bratislava</li>
+                <li>📞 0914 363 363</li>
                 <li>✉️ info@{tenantName.toLowerCase()}.sk</li>
                 <li>🕐 {t.openingHours}</li>
               </ul>
