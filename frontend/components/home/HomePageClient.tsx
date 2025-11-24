@@ -183,8 +183,8 @@ export function HomePageClient({ products, tenant }: HomePageClientProps) {
   const sectionShellClass = getSectionShellClass(tenant);
   const bodyBackgroundClass = getBodyBackgroundClass(tenant);
 
-  // Get primary color
-  const primaryColor = tenant.theme?.primaryColor || '#DC143C';
+  // Get primary color (use PornoPizza brand pink/red as default)
+  const primaryColor = tenant.theme?.primaryColor || '#E91E63';
 
   // Check maintenance mode (manual or automatic based on opening hours)
   const manualMaintenanceMode = tenant.theme?.maintenanceMode === true;

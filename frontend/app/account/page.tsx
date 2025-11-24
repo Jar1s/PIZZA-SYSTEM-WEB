@@ -24,7 +24,7 @@ export default function AccountPage() {
   const tenant = searchParams.get('tenant') || 'pornopizza';
   const isDark = isDarkTheme(tenantData);
   const gradientClass = getButtonGradientClass(tenantData);
-  const primaryColor = tenantData?.theme?.primaryColor || '#DC143C';
+  const primaryColor = tenantData?.theme?.primaryColor || '#E91E63';
   
   // Update active section when section query param changes
   useEffect(() => {

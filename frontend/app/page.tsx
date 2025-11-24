@@ -50,7 +50,8 @@ export default async function HomePage({
           <p className="text-gray-600 mb-6 text-sm">Nepodarilo sa načítať informácie o tenantovi.</p>
           <a
             href="/"
-            className="inline-block px-6 py-3 bg-orange-600 text-white rounded-lg hover:bg-orange-700 font-semibold"
+            className="inline-block px-6 py-3 text-white rounded-lg font-semibold"
+            style={{ backgroundColor: 'var(--color-primary)' }}
           >
             Obnoviť stránku
           </a>
@@ -71,7 +72,8 @@ export default async function HomePage({
           </p>
           <a
             href="/"
-            className="inline-block px-6 py-3 bg-orange-600 text-white rounded-lg hover:bg-orange-700 font-semibold"
+            className="inline-block px-6 py-3 text-white rounded-lg font-semibold"
+            style={{ backgroundColor: 'var(--color-primary)' }}
           >
             Späť na hlavnú stránku
           </a>

@@ -25,10 +25,11 @@ export function withTenantThemeDefaults(tenant: Tenant | null): Tenant | null {
     const theme = tenant.theme || ({} as Tenant['theme']);
     const layout = theme.layout || {};
     
-    // Always override legacy orange (#FF6B00) with brand pink/red
-    const currentPrimary = theme.primaryColor?.toLowerCase() || '';
+    // Always override legacy orange colors with brand pink/red
+    const currentPrimary = theme.primaryColor?.toLowerCase()?.trim() || '';
+    const orangeColors = ['#ff6b00', 'ff6b00', '#ff5e00', 'ff5e00', '#ff6600', 'ff6600', '#dc143c', 'dc143c'];
     const normalizedPrimary = 
-      currentPrimary === '#ff6b00' || currentPrimary === 'ff6b00' || !currentPrimary
+      !currentPrimary || orangeColors.includes(currentPrimary)
         ? brandPrimary
         : theme.primaryColor;
     
@@ -141,7 +142,7 @@ export function getButtonGradientClass(tenant: Tenant | null): string {
  */
 export function getButtonStyle(tenant: Tenant | null, isDark: boolean): React.CSSProperties | undefined {
   if (!isDark) {
-    const primaryColor = tenant?.theme?.primaryColor || '#DC143C';
+    const primaryColor = tenant?.theme?.primaryColor || '#E91E63';
     return { backgroundColor: primaryColor };
   }
   return undefined;

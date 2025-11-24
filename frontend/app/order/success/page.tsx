@@ -79,7 +79,7 @@ export default function OrderSuccessPage() {
   const theme = typeof tenant.theme === 'object' && tenant.theme !== null 
     ? tenant.theme as any
     : {};
-  const primaryColor = theme.primaryColor || '#DC143C';
+  const primaryColor = theme.primaryColor || '#E91E63';
   const layout = theme.layout || {};
   const isDark = layout.headerStyle === 'dark';
   const useCustomBackground = layout.useCustomBackground || false;

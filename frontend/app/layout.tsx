@@ -170,9 +170,16 @@ export default async function RootLayout({
   const theme = typeof normalizedTenant?.theme === 'object' && normalizedTenant?.theme !== null ? normalizedTenant.theme as any : {};
   
   // Use normalized theme colors (never legacy orange for PornoPizza)
-  const primaryColor = theme.primaryColor || '#E91E63';
-  const secondaryColor = theme.secondaryColor || '#0F141A';
+  // Force PornoPizza brand colors if tenant is pornopizza
+  const isPornopizza = normalizedTenant?.slug?.toLowerCase() === 'pornopizza';
+  const primaryColor = isPornopizza ? '#E91E63' : (theme.primaryColor || '#E91E63');
+  const secondaryColor = isPornopizza ? '#0F141A' : (theme.secondaryColor || '#0F141A');
   const fontFamily = theme.fontFamily || 'Inter, sans-serif';
+  
+  // Debug logging in development
+  if (process.env.NODE_ENV === 'development') {
+    console.log('[Layout] Tenant:', normalizedTenant?.slug, 'PrimaryColor:', primaryColor, 'Original:', theme.primaryColor);
+  }
   
   // Structured Data (JSON-LD)
   const organizationSchema = {
