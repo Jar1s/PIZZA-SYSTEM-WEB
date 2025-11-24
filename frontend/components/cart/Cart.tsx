@@ -197,11 +197,12 @@ export function Cart({ tenant = null, isDark: isDarkOverride }: CartProps) {
         onClick={(e) => {
           e.stopPropagation();
         }}
-        className="fixed right-0 top-0 h-screen w-full sm:max-w-[28rem] p-4 sm:p-6 flex flex-col overflow-y-auto z-[10001]"
+        className="fixed right-0 top-0 h-screen w-full sm:max-w-[28rem] p-4 sm:p-6 flex flex-col z-[10001]"
         style={{
           backgroundColor: isDark ? 'var(--cart-dark-bg, #1a1a1a)' : '#ffffff',
           boxShadow: '-4px 0 20px rgba(0, 0, 0, 0.3)',
           pointerEvents: 'auto',
+          overflow: 'hidden',
         }}
         onAnimationStart={() => console.log('🛒 Cart animation started')}
         onAnimationComplete={() => console.log('🛒 Cart animation completed')}
@@ -240,13 +241,13 @@ export function Cart({ tenant = null, isDark: isDarkOverride }: CartProps) {
           </div>
         ) : (
           <>
-            <div className="flex-1 overflow-y-auto pr-2 space-y-4 mb-6">
+            <div className="flex-1 overflow-y-auto pr-2 space-y-4 mb-6 min-h-0">
               {items.map(item => (
                 <CartItem key={item.id} item={item} variant={isDark ? 'dark' : 'light'} />
               ))}
             </div>
 
-            <div className="mt-auto space-y-4 pt-4 border-t border-white/10">
+            <div className="mt-auto space-y-4 pt-4 border-t border-white/10 pb-4 flex-shrink-0">
               <div className={`rounded-2xl p-4 flex items-center justify-between ${
                 isDark ? 'bg-white/5 border border-white/10' : 'bg-gray-100'
               }`}>
