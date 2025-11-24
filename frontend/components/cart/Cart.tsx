@@ -4,11 +4,14 @@ import { useCart, useCartTotal } from '@/hooks/useCart';
 import { CartItem } from './CartItem';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { useEffect, useCallback, useState } from 'react';
+import { useEffect, useCallback, useState, useMemo } from 'react';
 import { useCustomerAuth } from '@/contexts/CustomerAuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useTenant } from '@/contexts/TenantContext';
 import { Tenant } from '@pizza-ecosystem/shared';
 import { isDarkTheme, getButtonGradientClass, getButtonStyle } from '@/lib/tenant-utils';
+import { isCurrentlyOpen } from '@/lib/opening-hours';
+import { useToastContext } from '@/contexts/ToastContext';
 
 interface CartProps {
   tenant?: Tenant | null;
@@ -20,9 +23,22 @@ export function Cart({ tenant = null, isDark: isDarkOverride }: CartProps) {
   const total = useCartTotal();
   const router = useRouter();
   const { user } = useCustomerAuth();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
+  const { tenant: tenantFromContext } = useTenant();
+  const toast = useToastContext();
   
-  const isDark = typeof isDarkOverride === 'boolean' ? isDarkOverride : isDarkTheme(tenant);
+  // Use tenant from props or context
+  const effectiveTenant = tenant || tenantFromContext;
+  const isDark = typeof isDarkOverride === 'boolean' ? isDarkOverride : isDarkTheme(effectiveTenant);
+  
+  // Check maintenance mode (manual or automatic based on opening hours)
+  const maintenanceMode = useMemo(() => {
+    if (!effectiveTenant) return false;
+    const manualMaintenanceMode = effectiveTenant.theme?.maintenanceMode === true;
+    const openingHours = (effectiveTenant.theme as any)?.openingHours;
+    const autoMaintenanceMode = openingHours ? !isCurrentlyOpen(openingHours) : false;
+    return manualMaintenanceMode || autoMaintenanceMode;
+  }, [effectiveTenant]);
 
   // Debug logging
   useEffect(() => {
@@ -59,6 +75,14 @@ export function Cart({ tenant = null, isDark: isDarkOverride }: CartProps) {
     if (e) {
       e.preventDefault();
       e.stopPropagation();
+    }
+    
+    // Check maintenance mode first
+    if (maintenanceMode) {
+      toast.error(language === 'sk' 
+        ? 'Momentálne neprijímame nové objednávky!' 
+        : 'We are currently not accepting new orders!');
+      return;
     }
     
     console.log('🛒 Checkout button clicked', { itemsCount: items.length, tenantSlug: getTenantSlug() });
@@ -186,8 +210,8 @@ export function Cart({ tenant = null, isDark: isDarkOverride }: CartProps) {
             <p className={`${isDark ? 'text-gray-400' : 'text-gray-500'} text-sm`}>{t.cartEmptyCta}</p>
             <button
               onClick={handleContinueShopping}
-              className={`px-5 py-3 rounded-full font-semibold ${getButtonGradientClass(tenant)}`}
-              style={getButtonStyle(tenant, isDark)}
+              className={`px-5 py-3 rounded-full font-semibold ${getButtonGradientClass(effectiveTenant)}`}
+              style={getButtonStyle(effectiveTenant, isDark)}
             >
               {t.menu}
             </button>
@@ -219,16 +243,26 @@ export function Cart({ tenant = null, isDark: isDarkOverride }: CartProps) {
               </div>
 
               <motion.button
-                whileHover={{ scale: 1.01 }}
-                whileTap={{ scale: 0.98 }}
+                whileHover={maintenanceMode ? {} : { scale: 1.01 }}
+                whileTap={maintenanceMode ? {} : { scale: 0.98 }}
                 onClick={handleCheckout}
-                className={`w-full py-3 sm:py-4 rounded-full text-base sm:text-lg font-semibold shadow-lg text-white touch-manipulation min-h-[48px] ${getButtonGradientClass(tenant)}`}
+                disabled={maintenanceMode}
+                className={`w-full py-3 sm:py-4 rounded-full text-base sm:text-lg font-semibold shadow-lg text-white touch-manipulation min-h-[48px] ${
+                  maintenanceMode 
+                    ? 'opacity-50 cursor-not-allowed' 
+                    : getButtonGradientClass(effectiveTenant)
+                }`}
                 style={{
-                  ...getButtonStyle(tenant, isDark),
-                  backgroundColor: tenant?.theme?.primaryColor || 'var(--color-primary)',
+                  ...(maintenanceMode ? {} : getButtonStyle(effectiveTenant, isDark)),
+                  backgroundColor: maintenanceMode 
+                    ? '#999' 
+                    : (effectiveTenant?.theme?.primaryColor || 'var(--color-primary)'),
                 }}
               >
-                {t.checkout}
+                {maintenanceMode 
+                  ? (t.maintenanceModeTitle || (language === 'sk' ? 'Momentálne neprijímame nové objednávky!' : 'We are currently not accepting new orders!'))
+                  : t.checkout
+                }
               </motion.button>
 
               <button
@@ -240,8 +274,8 @@ export function Cart({ tenant = null, isDark: isDarkOverride }: CartProps) {
                     : 'border-gray-300 text-gray-800 hover:bg-gray-50 active:bg-gray-100'
                 }`}
                 style={{
-                  borderColor: tenant?.theme?.primaryColor || 'var(--color-primary)',
-                  color: tenant?.theme?.primaryColor || 'var(--color-primary)',
+                  borderColor: effectiveTenant?.theme?.primaryColor || 'var(--color-primary)',
+                  color: effectiveTenant?.theme?.primaryColor || 'var(--color-primary)',
                 }}
               >
                 {t.menu}

@@ -13,6 +13,7 @@ import { validateReturnUrl } from '@/lib/validate-return-url';
 import { getTenant } from '@/lib/api';
 import { geocodeAddress, validateBratislavaAddressSimple } from '@/lib/geocoding';
 import { isDarkTheme, getBackgroundClass, getButtonGradientClass, getButtonStyle, withTenantThemeDefaults } from '@/lib/tenant-utils';
+import { isCurrentlyOpen } from '@/lib/opening-hours';
 
 interface Address {
   id: string;
@@ -44,6 +45,15 @@ export default function CheckoutPage() {
   // Get layout config from tenant theme
   const isDark = isDarkTheme(tenantData);
   const backgroundClass = getBackgroundClass(tenantData);
+  
+  // Check maintenance mode (manual or automatic based on opening hours)
+  const maintenanceMode = useMemo(() => {
+    if (!normalizedTenant) return false;
+    const manualMaintenanceMode = normalizedTenant.theme?.maintenanceMode === true;
+    const openingHours = (normalizedTenant.theme as any)?.openingHours;
+    const autoMaintenanceMode = openingHours ? !isCurrentlyOpen(openingHours) : false;
+    return manualMaintenanceMode || autoMaintenanceMode;
+  }, [normalizedTenant]);
 
   // Guest checkout state
   const [guestData, setGuestData] = useState({
@@ -916,6 +926,14 @@ export default function CheckoutPage() {
     }
   };
   
+  // Check maintenance mode - redirect to home if maintenance is active
+  useEffect(() => {
+    if (maintenanceMode) {
+      console.log('Checkout: Maintenance mode active, redirecting to home');
+      router.push(`/?tenant=${tenantSlug}`);
+    }
+  }, [maintenanceMode, router, tenantSlug]);
+  
   // CRITICAL: Check if user should be redirected to a different page (e.g., account)
   // This MUST be the FIRST check, before ANY rendering, including loading states
   // This prevents "Načítavam košík..." from showing when user should be on account page
@@ -933,6 +951,32 @@ export default function CheckoutPage() {
         return null;
       }
     }
+  }
+  
+  // If maintenance mode is active, don't render checkout
+  if (maintenanceMode) {
+    return (
+      <div className={`min-h-screen ${backgroundClass} ${isDark ? 'text-white' : ''} flex items-center justify-center`}>
+        <div className="text-center">
+          <div className="text-6xl mb-4">🚫</div>
+          <h2 className="text-2xl font-bold mb-4">
+            {language === 'sk' ? 'Momentálne neprijímame nové objednávky!' : 'We are currently not accepting new orders!'}
+          </h2>
+          <p className={`mb-6 ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
+            {language === 'sk' 
+              ? 'Objednávky sú momentálne pozastavené. Skúste to neskôr.' 
+              : 'Orders are currently suspended. Please try again later.'}
+          </p>
+          <button
+            onClick={() => router.push(`/?tenant=${tenantSlug}`)}
+            className={`px-6 py-3 rounded-full font-semibold ${getButtonGradientClass(normalizedTenant)}`}
+            style={getButtonStyle(normalizedTenant, isDark)}
+          >
+            {language === 'sk' ? 'Späť na hlavnú stránku' : 'Back to Home'}
+          </button>
+        </div>
+      </div>
+    );
   }
 
   // Show loading while checking auth
