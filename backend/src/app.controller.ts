@@ -30,7 +30,13 @@ export class AppController {
   @Public()
   @Get('health')
   async getHealth() {
-    const checks = {
+    const checks: {
+      status: string;
+      timestamp: string;
+      uptime: number;
+      database: string;
+      error?: string;
+    } = {
       status: 'ok',
       timestamp: new Date().toISOString(),
       uptime: Math.floor(process.uptime()),
