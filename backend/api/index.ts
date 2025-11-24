@@ -51,6 +51,11 @@ async function createApp() {
           return callback(null, true);
         }
         
+        // Always allow production domains (p0rnopizza.sk, pornopizza.sk, etc.)
+        if (origin.includes('p0rnopizza.sk') || origin.includes('pornopizza.sk') || origin.includes('pizzavnudzi.sk')) {
+          return callback(null, true);
+        }
+        
         // Check explicit allowed origins
         if (process.env.ALLOWED_ORIGINS) {
           const allowedOrigins = process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim());
@@ -115,6 +120,10 @@ export default async function handler(req: any, res: any) {
       if (origin) {
         // Always allow all Vercel preview URLs
         if (origin.endsWith('.vercel.app')) {
+          allowOrigin = true;
+        }
+        // Always allow production domains (p0rnopizza.sk, pornopizza.sk, etc.)
+        else if (origin.includes('p0rnopizza.sk') || origin.includes('pornopizza.sk') || origin.includes('pizzavnudzi.sk')) {
           allowOrigin = true;
         }
         // Check explicit allowed origins

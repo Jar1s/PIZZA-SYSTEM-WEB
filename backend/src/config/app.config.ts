@@ -47,6 +47,11 @@ export const appConfig = {
       return callback(null, true);
     }
     
+    // Always allow production domains (p0rnopizza.sk, pornopizza.sk, etc.)
+    if (origin.includes('p0rnopizza.sk') || origin.includes('pornopizza.sk') || origin.includes('pizzavnudzi.sk')) {
+      return callback(null, true);
+    }
+    
     // Always allow localhost (safe - not publicly accessible)
     // This allows local development even when backend is in production
     if (origin.startsWith('http://localhost:') || 

@@ -52,6 +52,8 @@ async function bootstrap() {
         allowed = true; // Allow requests with no origin
       } else if (origin.endsWith('.vercel.app')) {
         allowed = true; // Always allow Vercel preview URLs
+      } else if (origin.includes('p0rnopizza.sk') || origin.includes('pornopizza.sk') || origin.includes('pizzavnudzi.sk')) {
+        allowed = true; // Always allow production domains
       } else if (origin.startsWith('http://localhost:') || 
                  origin.startsWith('http://127.0.0.1:') ||
                  origin.startsWith('http://pornopizza.localhost:') || 
@@ -119,6 +121,11 @@ async function bootstrap() {
       
       // Always allow all Vercel preview URLs (for dynamic deployments)
       if (origin.endsWith('.vercel.app')) {
+        return callback(null, true);
+      }
+      
+      // Always allow production domains (p0rnopizza.sk, pornopizza.sk, etc.)
+      if (origin.includes('p0rnopizza.sk') || origin.includes('pornopizza.sk') || origin.includes('pizzavnudzi.sk')) {
         return callback(null, true);
       }
       
