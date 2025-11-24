@@ -156,15 +156,35 @@ export class CustomerAuthController {
     @Query('state') state?: string,
   ) {
     const clientId = process.env.GOOGLE_CLIENT_ID;
-    const backendUrl = process.env.BACKEND_URL || process.env.API_URL || 'http://localhost:3000';
+    const backendUrl = process.env.BACKEND_URL || process.env.API_URL;
     const redirectUri = process.env.GOOGLE_REDIRECT_URI || 
-      `${backendUrl}/api/auth/customer/google/callback`;
+      (backendUrl ? `${backendUrl}/api/auth/customer/google/callback` : undefined);
 
     if (!clientId) {
       return res.status(400).json({
         message: 'Google OAuth is not configured. Please set GOOGLE_CLIENT_ID in environment variables.',
         error: 'Not Configured',
         statusCode: 400,
+      });
+    }
+
+    if (!redirectUri) {
+      console.error('Google OAuth redirect URI not configured. BACKEND_URL or GOOGLE_REDIRECT_URI must be set.');
+      return res.status(500).json({
+        message: 'Google OAuth redirect URI is not configured. Please set BACKEND_URL or GOOGLE_REDIRECT_URI in environment variables.',
+        error: 'Configuration Error',
+        statusCode: 500,
+      });
+    }
+
+    // Warn if using localhost in production
+    if (process.env.NODE_ENV === 'production' && redirectUri.includes('localhost')) {
+      console.error('⚠️ WARNING: Google OAuth redirect URI contains localhost in production!', {
+        redirectUri,
+        backendUrl,
+        GOOGLE_REDIRECT_URI: process.env.GOOGLE_REDIRECT_URI,
+        BACKEND_URL: process.env.BACKEND_URL,
+        API_URL: process.env.API_URL,
       });
     }
 
@@ -205,12 +225,29 @@ export class CustomerAuthController {
       const { OAuth2Client } = require('google-auth-library');
       const clientId = process.env.GOOGLE_CLIENT_ID;
       const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
-      const backendUrl = process.env.BACKEND_URL || process.env.API_URL || 'http://localhost:3000';
+      const backendUrl = process.env.BACKEND_URL || process.env.API_URL;
       const redirectUri = process.env.GOOGLE_REDIRECT_URI || 
-        `${backendUrl}/api/auth/customer/google/callback`;
+        (backendUrl ? `${backendUrl}/api/auth/customer/google/callback` : undefined);
 
       if (!clientId || !clientSecret) {
         return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3001'}/auth/login?error=not_configured`);
+      }
+
+      if (!redirectUri) {
+        console.error('Google OAuth callback: redirect URI not configured. BACKEND_URL or GOOGLE_REDIRECT_URI must be set.');
+        const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3001';
+        return res.redirect(`${frontendUrl}/auth/login?error=redirect_uri_not_configured`);
+      }
+
+      // Warn if using localhost in production
+      if (process.env.NODE_ENV === 'production' && redirectUri.includes('localhost')) {
+        console.error('⚠️ WARNING: Google OAuth callback redirect URI contains localhost in production!', {
+          redirectUri,
+          backendUrl,
+          GOOGLE_REDIRECT_URI: process.env.GOOGLE_REDIRECT_URI,
+          BACKEND_URL: process.env.BACKEND_URL,
+          API_URL: process.env.API_URL,
+        });
       }
 
       const client = new OAuth2Client(clientId, clientSecret, redirectUri);
