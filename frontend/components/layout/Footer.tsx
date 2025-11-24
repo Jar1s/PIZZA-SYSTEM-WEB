@@ -15,7 +15,6 @@ export const Footer = ({ tenantName, primaryColor }: FooterProps) => {
     { label: t.home, href: '/' },
     { label: t.menu, href: '/#menu' },
     { label: t.orderNow2, href: '/checkout' },
-    { label: t.trackOrder, href: '/track' },
   ];
 
   const socialLinks = [
