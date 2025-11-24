@@ -36,11 +36,11 @@ export function TenantProvider({ children }: { children: ReactNode }) {
       let tenantSlug = 'pornopizza'; // default
       
       // Check for known production domains
-      if (hostname.includes('pornopizza.sk')) {
+      if (hostname.includes('pornopizza.sk') || hostname.includes('p0rnopizza.sk')) {
         tenantSlug = 'pornopizza';
       } else if (hostname.includes('pizzavnudzi.sk')) {
         tenantSlug = 'pizzavnudzi';
-      } else if (hostname.includes('pornopizza')) {
+      } else if (hostname.includes('pornopizza') || hostname.includes('p0rnopizza')) {
         tenantSlug = 'pornopizza';
       } else if (hostname.includes('pizzavnudzi')) {
         tenantSlug = 'pizzavnudzi';

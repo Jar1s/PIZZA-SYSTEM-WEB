@@ -31,7 +31,9 @@ export async function generateMetadata(): Promise<Metadata> {
     tenant = 'pornopizza';
   }
   
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3001';
+  // Dynamically detect base URL from request headers for proper asset loading
+  const protocol = headersList.get('x-forwarded-proto') || 'https';
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || `${protocol}://${hostname}`;
   
   try {
     const tenantData = await getTenantServer(tenant);
@@ -159,7 +161,10 @@ export default async function RootLayout({
     };
   }
   
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3001';
+  // Dynamically detect base URL from request headers for proper asset loading
+  const hostname = headersList.get('host') || '';
+  const protocol = headersList.get('x-forwarded-proto') || 'https';
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || `${protocol}://${hostname}`;
   const normalizedTenant = withTenantThemeDefaults(tenantData as any);
   const siteName = normalizedTenant?.name || 'Pizza Ordering';
   const theme = typeof normalizedTenant?.theme === 'object' && normalizedTenant?.theme !== null ? normalizedTenant.theme as any : {};

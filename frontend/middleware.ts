@@ -21,11 +21,11 @@ export async function middleware(request: NextRequest) {
     tenant = url.searchParams.get('tenant') || 'pornopizza';
   }
   // For known production domains, check domain first
-  else if (hostname.includes('pornopizza.sk')) {
+  else if (hostname.includes('pornopizza.sk') || hostname.includes('p0rnopizza.sk')) {
     tenant = 'pornopizza';
   } else if (hostname.includes('pizzavnudzi.sk')) {
     tenant = 'pizzavnudzi';
-  } else if (hostname.includes('pornopizza') && !hostname.includes('vercel.app')) {
+  } else if ((hostname.includes('pornopizza') || hostname.includes('p0rnopizza')) && !hostname.includes('vercel.app')) {
     // Subdomain or partial match (but not Vercel)
     tenant = 'pornopizza';
   } else if (hostname.includes('pizzavnudzi') && !hostname.includes('vercel.app')) {

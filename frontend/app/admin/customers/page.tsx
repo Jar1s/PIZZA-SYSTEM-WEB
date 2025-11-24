@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAdminContext } from '@/app/admin/admin-context';
 import { getTenantSlug } from '@/lib/tenant-utils';
@@ -42,7 +42,7 @@ export default function CustomersPage() {
     totalPages: 0,
   });
 
-  const fetchCustomers = async () => {
+  const fetchCustomers = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -98,7 +98,7 @@ export default function CustomersPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [page, search, user]);
 
   useEffect(() => {
     if (user && (user.role === 'ADMIN' || user.role === 'OPERATOR')) {
@@ -107,7 +107,7 @@ export default function CustomersPage() {
     } else if (user) {
       console.log('User does not have permission to view customers:', user.role);
     }
-  }, [page, user]);
+  }, [page, user, fetchCustomers]);
 
   useEffect(() => {
     if ((user?.role === 'ADMIN' || user?.role === 'OPERATOR') && search !== '') {

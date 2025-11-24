@@ -158,9 +158,9 @@ export function getTenantSlug(): string {
   const params = new URLSearchParams(window.location.search);
   
   // Check for known production domains
-  if (hostname.includes('pornopizza.sk')) return 'pornopizza';
+  if (hostname.includes('pornopizza.sk') || hostname.includes('p0rnopizza.sk')) return 'pornopizza';
   if (hostname.includes('pizzavnudzi.sk')) return 'pizzavnudzi';
-  if (hostname.includes('pornopizza')) return 'pornopizza';
+  if (hostname.includes('pornopizza') || hostname.includes('p0rnopizza')) return 'pornopizza';
   if (hostname.includes('pizzavnudzi')) return 'pizzavnudzi';
   
   // For localhost or Vercel URLs, check URL params

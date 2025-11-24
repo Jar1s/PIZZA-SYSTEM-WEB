@@ -241,7 +241,7 @@ export const ProductCard = memo(function ProductCard({ product, index = 0, isBes
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
-              console.log('🔵 Button clicked, calling handleAddToCart', { product: product.name, isPizza });
+              console.log('🔵 Button clicked, calling handleAddToCart', { product: product.name, needsCustomization });
               handleAddToCart();
             }}
             onMouseDown={(e) => {
@@ -272,7 +272,7 @@ export const ProductCard = memo(function ProductCard({ product, index = 0, isBes
       <div className="absolute inset-0 border-4 border-transparent group-hover:border-primary rounded-3xl transition-all duration-300 pointer-events-none z-0" style={{ borderColor: 'transparent' }} />
 
       {/* Customization Modal */}
-      {isPizza && (
+      {needsCustomization && (
         <CustomizationModal
           product={product}
           isOpen={showCustomization}
