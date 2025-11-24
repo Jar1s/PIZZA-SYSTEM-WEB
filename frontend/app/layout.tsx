@@ -212,9 +212,10 @@ export default async function RootLayout({
         <style dangerouslySetInnerHTML={{
           __html: `
             :root {
-              --color-primary: ${primaryColor};
-              --color-secondary: ${secondaryColor};
-              --font-family: ${fontFamily};
+              --color-primary: ${primaryColor} !important;
+              --color-primary-dark: ${primaryColor === '#E91E63' ? '#C2185B' : '#e65a00'} !important;
+              --color-secondary: ${secondaryColor} !important;
+              --font-family: ${fontFamily} !important;
             }
           `
         }} />
