@@ -51,6 +51,12 @@ export async function getTenantServer(slug: string): Promise<Tenant | null> {
     
     const validated = safeParse(TenantSchema, data, data as any);
     const result = withTenantThemeDefaults(validated);
+    
+    if (!result) {
+      console.error('[getTenantServer] Failed to normalize tenant data');
+      return null;
+    }
+    
     console.log(`[getTenantServer] Validated tenant:`, { name: result.name, slug: result.slug });
     
     return result;
