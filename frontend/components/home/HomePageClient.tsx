@@ -119,6 +119,15 @@ export function HomePageClient({ products, tenant }: HomePageClientProps) {
     return categoryOrder.filter(cat => productsByCategory[cat]?.length > 0);
   }, [productsByCategory, categoryOrder]);
 
+  // Debug: Log category counts and SOUPS products
+  useEffect(() => {
+    console.log('[HomePageClient] Category counts:', categoryCounts);
+    console.log('[HomePageClient] Products by category:', Object.keys(productsByCategory).map(cat => `${cat}: ${productsByCategory[cat]?.length || 0}`));
+    const soups = products.filter(p => p.category === 'SOUPS');
+    console.log('[HomePageClient] SOUPS products:', soups.map(p => `${p.name} (active: ${p.isActive})`));
+    console.log('[HomePageClient] Will show SOUPS category?', categoryCounts.SOUPS > 0);
+  }, [products, categoryCounts, productsByCategory]);
+
   // Pizza sub-category mapping - moved inside useMemo to fix dependency warning
   const productsBySubCategory = useMemo(() => {
     const pizzaSubCategoryMap: Record<string, 'FOREPLAY' | 'MAIN_ACTION' | 'DELUXE_FETISH' | 'PREMIUM_SINS'> = {
