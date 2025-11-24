@@ -71,7 +71,7 @@ export const HeroSection = ({ tenantName, primaryColor, isDark = false }: HeroSe
       </div>
 
       {/* Content */}
-      <div className="relative z-10 container mx-auto px-4 sm:px-6 h-full py-10 sm:py-12 md:py-16 lg:py-20 flex flex-col justify-center">
+      <div className="relative z-10 container mx-auto px-4 sm:px-6 h-full pt-20 sm:pt-12 md:pt-16 lg:pt-20 pb-10 sm:pb-12 md:pb-16 lg:pb-20 flex flex-col justify-start sm:justify-center">
         <motion.div
           initial={{ opacity: 0, x: -30 }}
           animate={{ opacity: 1, x: 0 }}
