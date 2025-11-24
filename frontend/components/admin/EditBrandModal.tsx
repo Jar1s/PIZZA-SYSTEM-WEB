@@ -21,8 +21,8 @@ export function EditBrandModal({
     name: '',
     subdomain: '',
     domain: '',
-    primaryColor: '#FF6B00',
-    secondaryColor: '#000000',
+    primaryColor: '#E91E63',
+    secondaryColor: '#0F141A',
     isActive: true,
   });
   const [loading, setLoading] = useState(false);
@@ -39,8 +39,8 @@ export function EditBrandModal({
         name: tenant.name || '',
         subdomain: tenant.subdomain || tenant.slug || '',
         domain: tenant.domain || '',
-        primaryColor: theme.primaryColor || '#FF6B00',
-        secondaryColor: theme.secondaryColor || '#000000',
+        primaryColor: theme.primaryColor || '#E91E63',
+        secondaryColor: theme.secondaryColor || '#0F141A',
         isActive: tenant.isActive !== undefined ? tenant.isActive : true,
       });
       setError(null);
@@ -173,7 +173,7 @@ export function EditBrandModal({
                       type="text"
                       value={formData.primaryColor}
                       onChange={(e) => setFormData({ ...formData, primaryColor: e.target.value })}
-                      placeholder="#FF6B00"
+                      placeholder="#E91E63"
                       className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                   </div>

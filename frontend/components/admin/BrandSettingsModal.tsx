@@ -195,7 +195,7 @@ export function BrandSettingsModal({
                         style={{ 
                           backgroundColor: (tenant.theme && typeof tenant.theme === 'object' && 'primaryColor' in tenant.theme
                             ? (tenant.theme as any).primaryColor 
-                            : '#FF6B00')
+                            : '#E91E63')
                         }}
                       />
                       <div className="flex-1">
@@ -203,7 +203,7 @@ export function BrandSettingsModal({
                           type="text"
                           value={(tenant.theme && typeof tenant.theme === 'object' && 'primaryColor' in tenant.theme
                             ? (tenant.theme as any).primaryColor 
-                            : '#FF6B00')}
+                            : '#E91E63')}
                           disabled
                           className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100"
                         />
@@ -222,7 +222,7 @@ export function BrandSettingsModal({
                         style={{ 
                           backgroundColor: (tenant.theme && typeof tenant.theme === 'object' && 'secondaryColor' in tenant.theme
                             ? (tenant.theme as any).secondaryColor 
-                            : '#000000')
+                            : '#0F141A')
                         }}
                       />
                       <div className="flex-1">
@@ -230,7 +230,7 @@ export function BrandSettingsModal({
                           type="text"
                           value={(tenant.theme && typeof tenant.theme === 'object' && 'secondaryColor' in tenant.theme
                             ? (tenant.theme as any).secondaryColor 
-                            : '#000000')}
+                            : '#0F141A')}
                           disabled
                           className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100"
                         />
