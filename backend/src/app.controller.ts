@@ -1,8 +1,10 @@
 import { Controller, Get } from '@nestjs/common';
 import { Public } from './auth/decorators/public.decorator';
+import { PrismaService } from './prisma/prisma.service';
 
 @Controller()
 export class AppController {
+  constructor(private prisma: PrismaService) {}
   @Public()
   @Get()
   getRoot() {
@@ -27,11 +29,30 @@ export class AppController {
 
   @Public()
   @Get('health')
-  getHealth() {
-    return {
+  async getHealth() {
+    const checks = {
       status: 'ok',
       timestamp: new Date().toISOString(),
+      uptime: Math.floor(process.uptime()),
+      database: 'unknown',
     };
+
+    // Test database connection
+    try {
+      const isConnected = await this.prisma.isConnected();
+      if (isConnected) {
+        checks.database = 'connected';
+      } else {
+        checks.database = 'disconnected';
+        checks.status = 'degraded';
+      }
+    } catch (error) {
+      checks.database = 'error';
+      checks.status = 'degraded';
+      checks.error = error instanceof Error ? error.message : 'Unknown error';
+    }
+
+    return checks;
   }
 
   @Public()

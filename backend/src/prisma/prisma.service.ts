@@ -54,7 +54,7 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
       }
 
       // Log connection attempt (without sensitive data)
-      const databaseUrl = process.env.DATABASE_URL;
+      let databaseUrl = process.env.DATABASE_URL;
       const safeUrl = databaseUrl.replace(/:[^:@]+@/, ':****@');
       this.logger.log(`🔌 Connecting to database: ${safeUrl.substring(0, 120)}...`);
       
@@ -63,6 +63,11 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
           this.logger.log('✅ SSL parameter present in DATABASE_URL');
         } else {
           this.logger.warn('⚠️ SSL parameter missing - should have been added in constructor');
+        }
+        
+        // Check if we're using port 5432 and suggest 6543 if connection fails
+        if (databaseUrl.includes(':5432/') && databaseUrl.includes('pooler.supabase.com')) {
+          this.logger.log('ℹ️ Using port 5432. If connection fails, try port 6543 (Session Pooler standard port)');
         }
       }
 
@@ -123,6 +128,62 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
   async onModuleDestroy() {
     await this.$disconnect();
     this.logger.log('Database disconnected');
+  }
+
+  /**
+   * Attempt to reconnect to the database
+   * Useful when connection is lost during runtime
+   */
+  async reconnect(): Promise<boolean> {
+    try {
+      this.logger.log('🔄 Attempting to reconnect to database...');
+      
+      // Disconnect first if connected
+      try {
+        await this.$disconnect();
+      } catch (error) {
+        // Ignore disconnect errors (might already be disconnected)
+      }
+      
+      // Wait a bit before reconnecting
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Try to reconnect with retry logic
+      let retries = 3;
+      while (retries > 0) {
+        try {
+          await this.$connect();
+          this.logger.log('✅ Database reconnected successfully');
+          return true;
+        } catch (connectError: unknown) {
+          retries--;
+          if (retries > 0) {
+            this.logger.warn(`⚠️ Reconnection attempt failed, retrying... (${retries} attempts left)`);
+            await new Promise(resolve => setTimeout(resolve, 2000));
+          } else {
+            this.logger.error('❌ Failed to reconnect to database after 3 attempts');
+            return false;
+          }
+        }
+      }
+      
+      return false;
+    } catch (error) {
+      this.logger.error('❌ Error during reconnection attempt:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Check if database connection is healthy
+   */
+  async isConnected(): Promise<boolean> {
+    try {
+      await this.$queryRaw`SELECT 1`;
+      return true;
+    } catch (error) {
+      return false;
+    }
   }
 }
 

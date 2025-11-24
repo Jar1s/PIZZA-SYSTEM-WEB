@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { APP_GUARD } from '@nestjs/core';
+import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { PrismaModule } from './prisma/prisma.module';
 import { TenantsModule } from './tenants/tenants.module';
@@ -15,6 +15,7 @@ import { TrackingModule } from './tracking/tracking.module';
 import { UploadModule } from './upload/upload.module';
 import { AppController } from './app.controller';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
+import { DatabaseErrorInterceptor } from './common/interceptors/database-error.interceptor';
 
 @Module({
   imports: [
@@ -48,6 +49,11 @@ import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
       provide: APP_GUARD,
       useClass: ThrottlerGuard,
     }] : []),
+    // Global database error interceptor - handles connection errors and attempts reconnection
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: DatabaseErrorInterceptor,
+    },
   ],
 })
 export class AppModule {}
