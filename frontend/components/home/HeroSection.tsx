@@ -71,7 +71,7 @@ export const HeroSection = ({ tenantName, primaryColor, isDark = false }: HeroSe
       </div>
 
       {/* Content */}
-      <div className="relative z-10 container mx-auto px-4 sm:px-6 h-full py-12 sm:py-12 md:py-16 lg:py-20 flex flex-col justify-center">
+      <div className="relative z-10 container mx-auto px-4 sm:px-6 h-full py-10 sm:py-12 md:py-16 lg:py-20 flex flex-col justify-center">
         <motion.div
           initial={{ opacity: 0, x: -30 }}
           animate={{ opacity: 1, x: 0 }}
@@ -82,7 +82,7 @@ export const HeroSection = ({ tenantName, primaryColor, isDark = false }: HeroSe
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.05, duration: 0.4 }}
-            className={`${isDark ? 'hero-badge mb-4 sm:mb-6 inline-flex' : 'inline-flex items-center gap-1.5 sm:gap-2 rounded-full bg-white/90 sm:bg-white/80 px-3 sm:px-4 py-1.5 sm:py-2 text-[11px] sm:text-xs font-semibold text-black mb-5 sm:mb-6'}`}
+            className={`${isDark ? 'hero-badge mb-4 sm:mb-6 inline-flex' : 'inline-flex items-center gap-1.5 sm:gap-2 rounded-full bg-white/90 sm:bg-white/80 px-3 sm:px-4 py-1.5 sm:py-2 text-[11px] sm:text-xs font-semibold text-black mb-4 sm:mb-6'}`}
           >
             <span className="text-sm sm:text-base">🌶️</span>
             <span className="whitespace-nowrap">{t.heroBadge}</span>
@@ -92,7 +92,7 @@ export const HeroSection = ({ tenantName, primaryColor, isDark = false }: HeroSe
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1, duration: 0.4 }}
-            className="text-4xl sm:text-4xl md:text-5xl lg:text-7xl font-black mb-4 sm:mb-4 md:mb-6 leading-[1.1] sm:leading-tight"
+            className="text-4xl sm:text-4xl md:text-5xl lg:text-7xl font-black mb-3 sm:mb-4 md:mb-6 leading-[1.1] sm:leading-tight"
             style={{
               textShadow: 'none',
               letterSpacing: '0.03em'
@@ -115,7 +115,7 @@ export const HeroSection = ({ tenantName, primaryColor, isDark = false }: HeroSe
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2, duration: 0.4 }}
-            className="text-base sm:text-base md:text-lg lg:text-xl mb-6 sm:mb-6 max-w-2xl leading-relaxed"
+            className="text-base sm:text-base md:text-lg lg:text-xl mb-5 sm:mb-6 max-w-2xl leading-relaxed"
             style={{
               color: isDark ? '#e5e5e5' : '#f3f4f6',
               textShadow: isDark ? '0 1px 2px rgba(0,0,0,0.5)' : '0 1px 2px rgba(0,0,0,0.3)'
@@ -128,7 +128,7 @@ export const HeroSection = ({ tenantName, primaryColor, isDark = false }: HeroSe
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.35, duration: 0.4 }}
-            className="flex flex-wrap gap-3 sm:gap-4 items-center mb-8 sm:mb-0"
+            className="flex flex-wrap gap-3 sm:gap-4 items-center mb-6 sm:mb-0"
           >
             <button
               onClick={scrollToMenu}
@@ -148,7 +148,7 @@ export const HeroSection = ({ tenantName, primaryColor, isDark = false }: HeroSe
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.5, duration: 0.4 }}
-            className="mt-8 sm:mt-10 grid grid-cols-3 gap-2.5 sm:gap-4"
+            className="mt-6 sm:mt-10 grid grid-cols-3 gap-2.5 sm:gap-4 pb-4 sm:pb-0"
           >
             {stats.map((stat) => (
               <div
