@@ -238,16 +238,44 @@ export default function OAuthCallbackPage() {
     } else {
       // Fallback: Try cookies (production mode)
       console.log('OAuth callback - no tokens param, trying cookies...');
+      console.log('OAuth callback - current domain:', window.location.hostname);
+      console.log('OAuth callback - all cookies:', document.cookie);
+      
       const accessToken = getCookie('oauth_access_token');
       const refreshToken = getCookie('oauth_refresh_token');
       const userDataStr = getCookie('oauth_user_data');
+      
+      console.log('OAuth callback - cookie check results:', {
+        accessToken: !!accessToken,
+        refreshToken: !!refreshToken,
+        userDataStr: !!userDataStr,
+        accessTokenLength: accessToken?.length,
+        userDataStrLength: userDataStr?.length,
+      });
       
       if (accessToken && userDataStr) {
         console.log('OAuth callback - found tokens in cookies, processing...');
         processOAuthTokens(accessToken, userDataStr, refreshToken, redirect);
       } else {
-        console.error('OAuth callback - no tokens found in URL or cookies');
-        window.location.href = '/auth/login?error=no_tokens&tenant=pornopizza';
+        console.error('OAuth callback - no tokens found in URL or cookies', {
+          hasAccessToken: !!accessToken,
+          hasUserData: !!userDataStr,
+          allCookies: document.cookie,
+          currentDomain: window.location.hostname,
+          redirectParam,
+        });
+        // Wait a bit and try again - cookies might not be set yet
+        setTimeout(() => {
+          const retryAccessToken = getCookie('oauth_access_token');
+          const retryUserDataStr = getCookie('oauth_user_data');
+          if (retryAccessToken && retryUserDataStr) {
+            console.log('OAuth callback - found tokens on retry, processing...');
+            processOAuthTokens(retryAccessToken, retryUserDataStr, refreshToken, redirect);
+          } else {
+            console.error('OAuth callback - still no tokens after retry, redirecting to login');
+            window.location.href = '/auth/login?error=no_tokens&tenant=pornopizza';
+          }
+        }, 500);
       }
     }
   }, [searchParams, processOAuthTokens]);

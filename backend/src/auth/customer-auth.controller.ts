@@ -401,7 +401,7 @@ export class CustomerAuthController {
               redirectUrl = verifyUrl;
             }
           } else {
-            // Redirect to returnUrl if exists, otherwise to checkout
+            // Redirect to returnUrl if exists, otherwise to account page
             if (returnUrl) {
               redirectUrl = returnUrl;
             } else {
@@ -410,8 +410,18 @@ export class CustomerAuthController {
             }
           }
           
-          console.log('Google OAuth callback (prod) - redirecting to oauth-callback with redirect:', redirectUrl);
-          res.redirect(`${frontendUrl}/auth/oauth-callback?redirect=${encodeURIComponent(redirectUrl)}`);
+          const oauthCallbackUrl = `${frontendUrl}/auth/oauth-callback?redirect=${encodeURIComponent(redirectUrl)}`;
+          console.log('Google OAuth callback (prod) - redirecting to oauth-callback:', {
+            oauthCallbackUrl,
+            redirectUrl,
+            frontendUrl,
+            cookieDomain: oauthCookieOptions.domain,
+            cookieSecure: oauthCookieOptions.secure,
+            cookieSameSite: oauthCookieOptions.sameSite,
+            userEmail: result.user.email,
+            needsSmsVerification: result.needsSmsVerification,
+          });
+          res.redirect(oauthCallbackUrl);
         }
     } catch (error: any) {
       console.error('Google OAuth callback error:', error);
