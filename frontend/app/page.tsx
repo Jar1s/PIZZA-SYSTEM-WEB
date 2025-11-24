@@ -43,11 +43,11 @@ export default async function HomePage({
   // Handle loading/error states
   if (!tenant) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
-        <div className="bg-white rounded-2xl shadow-lg p-8 max-w-md w-full text-center">
+      <div className="min-h-screen bg-porno-vibe flex items-center justify-center px-4">
+        <div className="bg-black/40 backdrop-blur-sm rounded-2xl shadow-lg p-8 max-w-md w-full text-center border border-white/10">
           <div className="text-6xl mb-4">⚠️</div>
-          <h2 className="text-2xl font-bold text-gray-800 mb-4">Tenant nenájdený</h2>
-          <p className="text-gray-600 mb-6 text-sm">Nepodarilo sa načítať informácie o tenantovi.</p>
+          <h2 className="text-2xl font-bold text-white mb-4">Tenant nenájdený</h2>
+          <p className="text-gray-300 mb-6 text-sm">Nepodarilo sa načítať informácie o tenantovi.</p>
           <a
             href="/"
             className="inline-block px-6 py-3 text-white rounded-lg font-semibold"
@@ -63,11 +63,11 @@ export default async function HomePage({
   // Check if tenant is active
   if (!tenant.isActive) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
-        <div className="bg-white rounded-2xl shadow-lg p-8 max-w-md w-full text-center">
+      <div className="min-h-screen bg-porno-vibe flex items-center justify-center px-4">
+        <div className="bg-black/40 backdrop-blur-sm rounded-2xl shadow-lg p-8 max-w-md w-full text-center border border-white/10">
           <div className="text-6xl mb-4">🚫</div>
-          <h2 className="text-2xl font-bold text-gray-800 mb-4">Stránka je dočasne nedostupná</h2>
-          <p className="text-gray-600 mb-6 text-sm">
+          <h2 className="text-2xl font-bold text-white mb-4">Stránka je dočasne nedostupná</h2>
+          <p className="text-gray-300 mb-6 text-sm">
             Tento brand je momentálne vypnutý. Skúste to neskôr.
           </p>
           <a
@@ -85,8 +85,8 @@ export default async function HomePage({
   // If no products, show loading skeleton
   if (products.length === 0) {
     return (
-      <div className="min-h-screen bg-gray-50">
-        <div className="h-[600px] bg-gray-300 animate-pulse" />
+      <div className="min-h-screen bg-porno-vibe">
+        <div className="h-[600px] bg-black/20 animate-pulse" />
         <div className="container mx-auto px-4 py-12">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {[...Array(6)].map((_, i) => (

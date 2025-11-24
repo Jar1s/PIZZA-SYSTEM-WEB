@@ -6,6 +6,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { getTenant } from '@/lib/api';
 import { Tenant } from '@pizza-ecosystem/shared';
 import { motion } from 'framer-motion';
+import { withTenantThemeDefaults, isDarkTheme, getBackgroundClass } from '@/lib/tenant-utils';
 
 export default function NotFound() {
   const { t, language } = useLanguage();
@@ -31,14 +32,15 @@ export default function NotFound() {
         }
         
         const tenantData = await getTenant(tenantSlug);
-        setTenant(tenantData);
+        const normalizedTenant = withTenantThemeDefaults(tenantData);
+        setTenant(normalizedTenant);
       } catch (error) {
         console.error('Failed to load tenant:', error);
-        // Fallback theme
+        // Fallback theme with PornoPizza brand colors
         setTenant({
           theme: {
-            primaryColor: '#FF6B00',
-            secondaryColor: '#000000',
+            primaryColor: '#E91E63',
+            secondaryColor: '#0F141A',
             favicon: '/favicon.ico',
           }
         } as Tenant);
@@ -50,15 +52,30 @@ export default function NotFound() {
     loadTenant();
   }, []);
 
-  const primaryColor = tenant?.theme?.primaryColor || '#FF6B00';
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-porno-vibe flex items-center justify-center">
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full h-16 w-16 border-t-4 border-b-4"
+            style={{ borderColor: 'var(--color-primary)' }}></div>
+          <p className="mt-4 text-lg text-white">Načítavam...</p>
+        </div>
+      </div>
+    );
+  }
+
+  const normalizedTenant = withTenantThemeDefaults(tenant);
+  const isDark = isDarkTheme(normalizedTenant);
+  const backgroundClass = getBackgroundClass(normalizedTenant);
+  const primaryColor = normalizedTenant?.theme?.primaryColor || '#E91E63';
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+    <div className={`min-h-screen flex items-center justify-center ${backgroundClass} ${isDark ? 'text-white' : ''} px-4`}>
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
-        className="bg-white rounded-2xl shadow-lg p-8 md:p-12 max-w-md w-full text-center"
+        className={`${isDark ? 'bg-black/40 backdrop-blur-sm border border-white/10' : 'bg-white'} rounded-2xl shadow-lg p-8 md:p-12 max-w-md w-full text-center`}
       >
         {/* Magnifying Glass Icon */}
         <motion.div
@@ -133,7 +150,7 @@ export default function NotFound() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.3 }}
-          className="text-4xl md:text-5xl font-bold text-gray-900 mb-4"
+          className={`text-4xl md:text-5xl font-bold mb-4 ${isDark ? 'text-white' : 'text-gray-900'}`}
         >
           {t.notFoundTitle}
         </motion.h1>
@@ -143,7 +160,7 @@ export default function NotFound() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.4 }}
-          className="text-gray-600 text-lg mb-8"
+          className={`text-lg mb-8 ${isDark ? 'text-gray-300' : 'text-gray-600'}`}
         >
           {t.notFoundDescription}
         </motion.p>

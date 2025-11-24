@@ -194,9 +194,11 @@ export default function CustomerLoginPage() {
 
   if (!tenant) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
+      <div className="min-h-screen bg-porno-vibe flex items-center justify-center">
         <div className="text-center">
-          <div className="text-2xl font-bold mb-4">{t.loading}</div>
+          <div className="inline-block animate-spin rounded-full h-16 w-16 border-t-4 border-b-4"
+            style={{ borderColor: 'var(--color-primary)' }}></div>
+          <p className="mt-4 text-lg text-white">{t.loading}</p>
         </div>
       </div>
     );
