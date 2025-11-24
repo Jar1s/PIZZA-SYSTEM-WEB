@@ -49,7 +49,7 @@ export default function CustomizationModal({
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const root = getComputedStyle(document.documentElement);
-      const primaryColor = root.getPropertyValue('--color-primary').trim() || '#FF6B00';
+      const primaryColor = root.getPropertyValue('--color-primary').trim() || '#E91E63';
       setPrimaryColorRgba(hexToRgba(primaryColor, 0.3));
     }
   }, []);
@@ -214,13 +214,13 @@ export default function CustomizationModal({
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
               onClick={(e) => e.stopPropagation()}
-              className="bg-gradient-to-b from-white via-white to-[#fff8f2] rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col pointer-events-auto relative border border-orange-50"
+              className="bg-gradient-to-b from-white via-white to-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col pointer-events-auto relative border border-gray-100"
               style={{ zIndex: 999920 }}
               onWheel={(e) => e.stopPropagation()}
               onTouchMove={(e) => e.stopPropagation()}
             >
             {/* Header */}
-            <div className="relative p-6 border-b border-orange-100/60 bg-gradient-to-r from-white via-white to-[rgba(255,107,0,0.06)]">
+            <div className="relative p-6 border-b border-gray-100 bg-gradient-to-r from-white via-white to-white">
               <button
                 onClick={onClose}
                 className="absolute top-4 right-4 w-10 h-10 flex items-center justify-center rounded-full bg-gray-900 hover:bg-black text-white shadow-lg transition-colors z-10"
@@ -298,7 +298,7 @@ export default function CustomizationModal({
               onTouchMove={(e) => e.stopPropagation()}
             >
               {customizations.map((category) => (
-                <div key={category.id} className="bg-white rounded-xl p-5 border border-orange-50 shadow-[0_10px_30px_rgba(0,0,0,0.04)]">
+                <div key={category.id} className="bg-white rounded-xl p-5 border border-gray-100 shadow-[0_10px_30px_rgba(0,0,0,0.04)]">
                   <div className="flex items-center justify-between mb-4">
                     <h3 className="text-xl font-bold text-gray-900">
                       {language === 'sk' ? category.name : category.nameEn}

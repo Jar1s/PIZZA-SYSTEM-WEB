@@ -252,7 +252,7 @@ export const ProductCard = memo(function ProductCard({ product, index = 0, isBes
               isAdding 
                 ? 'bg-green-500' 
                 : isDark
-                  ? 'bg-gradient-to-r from-[#ff5e00] via-[#ff0066] to-[#ff2d55] shadow-lg'
+                  ? 'bg-gradient-to-r from-[#E91E63] via-[#ff0066] to-[#ff2d55] shadow-lg'
                   : 'shadow-md hover:shadow-lg'
             }`}
             style={!isAdding && !isDark ? { backgroundColor: 'var(--color-primary)' } : {}}

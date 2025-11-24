@@ -19,9 +19,9 @@ html {
 
 /* Custom Colors (Dynamic via CSS Variables) */
 :root {
-  --color-primary: #FF6B00;
-  --color-primary-dark: #e65a00;
-  --color-secondary: #2c3e50;
+  --color-primary: #E91E63; /* PornoPizza brand pink/red (no orange) */
+  --color-primary-dark: #C2185B; /* Darker shade for hover states */
+  --color-secondary: #0F141A; /* PornoPizza brand secondary */
   --font-family: 'Inter', sans-serif;
 }
 
