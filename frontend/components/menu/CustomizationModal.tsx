@@ -39,6 +39,7 @@ export default function CustomizationModal({
   const [totalPrice, setTotalPrice] = useState(product.priceCents);
   const [mounted, setMounted] = useState(false);
   const [primaryColorRgba, setPrimaryColorRgba] = useState<string>('rgba(255, 107, 0, 0.3)');
+  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     setMounted(true);
@@ -121,19 +122,46 @@ export default function CustomizationModal({
     return () => window.removeEventListener('keydown', handleEscape);
   }, [isOpen, onClose]);
 
-  // Initialize with default selections for required categories
+  // Initialize with default selections for required categories and expand required categories
   useEffect(() => {
     if (isOpen) {
       const defaults: Record<string, string[]> = {};
+      const requiredCategoryIds = new Set<string>();
+      
       customizations.forEach(category => {
         if (category.required && category.options.length > 0) {
           defaults[category.id] = [category.options[0].id];
+          requiredCategoryIds.add(category.id);
         }
       });
+      
       setSelections(defaults);
       calculateTotal(defaults);
+      // Auto-expand required categories and first category if no required
+      if (requiredCategoryIds.size > 0) {
+        setExpandedCategories(requiredCategoryIds);
+      } else if (customizations.length > 0) {
+        // Expand first category if no required categories
+        setExpandedCategories(new Set([customizations[0].id]));
+      }
+    } else {
+      // Reset expanded categories when modal closes
+      setExpandedCategories(new Set());
     }
   }, [isOpen, product, calculateTotal, customizations]);
+  
+  // Toggle category expansion
+  const toggleCategory = (categoryId: string) => {
+    setExpandedCategories(prev => {
+      const next = new Set(prev);
+      if (next.has(categoryId)) {
+        next.delete(categoryId);
+      } else {
+        next.add(categoryId);
+      }
+      return next;
+    });
+  };
 
   const handleOptionToggle = (categoryId: string, optionId: string) => {
     const category = customizations.find(c => c.id === categoryId);
@@ -214,13 +242,14 @@ export default function CustomizationModal({
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
               onClick={(e) => e.stopPropagation()}
-              className="bg-gradient-to-b from-white via-white to-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col pointer-events-auto relative border border-gray-100"
+              className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col pointer-events-auto relative border border-gray-100"
               style={{ zIndex: 999920 }}
               onWheel={(e) => e.stopPropagation()}
               onTouchMove={(e) => e.stopPropagation()}
             >
-            {/* Header */}
-            <div className="relative p-6 border-b border-gray-100 bg-gradient-to-r from-white via-white to-white">
+            {/* Sticky Header */}
+            <div className="sticky top-0 z-20 bg-white border-b border-gray-100 shadow-sm">
+              <div className="relative p-4 sm:p-6">
               <button
                 onClick={onClose}
                 className="absolute top-4 right-4 w-10 h-10 flex items-center justify-center rounded-full bg-gray-900 hover:bg-black text-white shadow-lg transition-colors z-10"
@@ -231,182 +260,218 @@ export default function CustomizationModal({
                 </svg>
               </button>
 
-              <div className="flex gap-4">
-                {product.image && (
-                  <div className="relative w-24 h-24 rounded-xl overflow-hidden flex-shrink-0 shadow-md">
-                    <Image
-                      src={product.image}
-                      alt={product.name}
-                      fill
-                      sizes="96px"
-                      className="object-cover"
-                    />
-                  </div>
-                )}
-                <div>
-                  <h2 className="text-3xl font-extrabold text-gray-900 mb-2">{displayName}</h2>
-                  {displayDescription && (
-                    <p className="text-gray-700 mb-3 leading-relaxed">{displayDescription}</p>
-                  )}
-                  
-                  {/* Weight and Allergens */}
-                  {(translation.weight || translation.allergens) && (
-                    <div className="flex items-center gap-4 mb-3 text-sm text-gray-500 flex-wrap">
-                      {translation.weight && (
-                        <div className="flex items-center gap-1">
-                          <span>⚖️</span>
-                          <span>{translation.weight}</span>
-                        </div>
-                      )}
-                      {translation.allergens && translation.allergens.length > 0 && (
-                        <div className="flex items-center gap-1 flex-wrap">
-                          <span>⚠️</span>
-                          <span className="font-semibold">
-                            {language === 'sk' ? 'Alergény:' : 'Allergens:'}
-                          </span>
-                          <span className="text-xs italic text-gray-600">
-                            {translation.allergens.map((code, index) => (
-                              <span key={code}>
-                                <span className="font-semibold">{code}</span>
-                                {' - '}
-                                <span>{getAllergenDescription(code, language)}</span>
-                                {index < translation.allergens!.length - 1 && ', '}
-                              </span>
-                            ))}
-                          </span>
-                        </div>
-                      )}
+                <div className="flex gap-3 sm:gap-4 items-start">
+                  {product.image && (
+                    <div className="relative w-16 h-16 sm:w-20 sm:h-20 rounded-lg overflow-hidden flex-shrink-0 shadow-md">
+                      <Image
+                        src={product.image}
+                        alt={product.name}
+                        fill
+                        sizes="80px"
+                        className="object-cover"
+                      />
                     </div>
                   )}
-                  
-                  <div className="flex items-center gap-2 mt-2">
-                    <span className="text-sm text-gray-500">
-                      {language === 'sk' ? 'Základná cena:' : 'Base price:'}
-                    </span>
-                    <span className="text-xl font-bold" style={{ color: 'var(--color-primary)' }}>
-                      €{(product.priceCents / 100).toFixed(2)}
-                    </span>
+                  <div className="flex-1 min-w-0">
+                    <h2 className="text-xl sm:text-2xl font-extrabold text-gray-900 mb-1 line-clamp-2">{displayName}</h2>
+                    {displayDescription && (
+                      <p className="text-sm text-gray-600 mb-2 line-clamp-2">{displayDescription}</p>
+                    )}
+                    
+                    {/* Weight and Allergens - Compact */}
+                    {(translation.weight || translation.allergens) && (
+                      <div className="flex items-center gap-3 mb-2 text-xs text-gray-500 flex-wrap">
+                        {translation.weight && (
+                          <div className="flex items-center gap-1">
+                            <span>⚖️</span>
+                            <span>{translation.weight}</span>
+                          </div>
+                        )}
+                        {translation.allergens && translation.allergens.length > 0 && (
+                          <div className="flex items-center gap-1 flex-wrap">
+                            <span>⚠️</span>
+                            <span className="font-semibold">
+                              {language === 'sk' ? 'Alergény:' : 'Allergens:'}
+                            </span>
+                            <span className="text-xs">
+                              {translation.allergens.map((code, index) => (
+                                <span key={code}>
+                                  <span className="font-semibold">{code}</span>
+                                  {index < translation.allergens!.length - 1 && ', '}
+                                </span>
+                              ))}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-gray-500">
+                        {language === 'sk' ? 'Základná cena:' : 'Base price:'}
+                      </span>
+                      <span className="text-lg font-bold" style={{ color: 'var(--color-primary)' }}>
+                        €{(product.priceCents / 100).toFixed(2)}
+                      </span>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Content */}
+            {/* Scrollable Content */}
             <div 
-              className="flex-1 overflow-y-auto p-6 space-y-6"
+              className="flex-1 overflow-y-auto p-4 sm:p-6"
               onWheel={(e) => e.stopPropagation()}
               onTouchMove={(e) => e.stopPropagation()}
             >
-              {customizations.map((category) => (
-                <div key={category.id} className="bg-white rounded-xl p-5 border border-gray-100 shadow-[0_10px_30px_rgba(0,0,0,0.04)]">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-xl font-bold text-gray-900">
-                      {language === 'sk' ? category.name : category.nameEn}
-                      {category.required && (
-                        <span className="ml-2 text-sm font-semibold text-[var(--color-primary)]">POVINNÉ</span>
-                      )}
-                    </h3>
-                    <span className="text-sm text-gray-500">
-                      {language === 'sk' 
-                        ? `Vyberte ${category.maxSelection === 1 ? '1' : `max. ${category.maxSelection}`}`
-                        : `Select ${category.maxSelection === 1 ? '1' : `up to ${category.maxSelection}`}`
-                      }
-                    </span>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    {category.options.map((option) => {
-                      const isSelected = isOptionSelected(category.id, option.id);
-                      // For radio buttons (maxSelection=1), never disable
-                      // For checkboxes, only disable if max reached and this is not selected
-                      const isDisabled = category.maxSelection > 1 && !isSelected && !canAddMore(category.id);
-
-                      return (
-                        <button
-                          key={option.id}
-                          onClick={() => handleOptionToggle(category.id, option.id)}
-                          disabled={isDisabled}
-                          className={`
-                            relative p-4 rounded-xl border-2 text-left transition-all cursor-pointer
-                            ${isSelected 
-                              ? 'shadow-[0_12px_28px_rgba(255,107,0,0.18)]'
-                              : isDisabled
-                                ? 'border-gray-200 bg-gray-100 opacity-50 cursor-not-allowed'
-                                : 'border-gray-200 hover:border-[var(--color-primary)] hover:shadow-[0_10px_20px_rgba(0,0,0,0.06)]'
+              {customizations.map((category) => {
+                const isExpanded = expandedCategories.has(category.id);
+                
+                return (
+                  <div key={category.id} className="mb-3 border border-gray-200 rounded-lg overflow-hidden bg-white">
+                    {/* Category Header - Clickable */}
+                    <button
+                      onClick={() => toggleCategory(category.id)}
+                      className="w-full p-4 flex items-center justify-between hover:bg-gray-50 transition-colors"
+                    >
+                      <div className="flex items-center gap-3 flex-1 text-left">
+                        <div className={`w-5 h-5 flex items-center justify-center transition-transform ${isExpanded ? 'rotate-90' : ''}`}>
+                          <svg className="w-4 h-4 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                          </svg>
+                        </div>
+                        <div className="flex-1">
+                          <h3 className="text-base sm:text-lg font-bold text-gray-900 flex items-center gap-2">
+                            {language === 'sk' ? category.name : category.nameEn}
+                            {category.required && (
+                              <span className="text-xs font-semibold px-2 py-0.5 rounded text-white" style={{ backgroundColor: 'var(--color-primary)' }}>
+                                {language === 'sk' ? 'POVINNÉ' : 'REQUIRED'}
+                              </span>
+                            )}
+                          </h3>
+                          <p className="text-xs text-gray-500 mt-0.5">
+                            {language === 'sk' 
+                              ? `Vyberte ${category.maxSelection === 1 ? '1' : `max. ${category.maxSelection}`}`
+                              : `Select ${category.maxSelection === 1 ? '1' : `up to ${category.maxSelection}`}`
                             }
-                          `}
-                          style={isSelected ? {
-                            borderColor: 'var(--color-primary)',
-                            backgroundColor: primaryColorRgba
-                          } : {
-                            backgroundColor: '#ffffff'
-                          }}
+                          </p>
+                        </div>
+                      </div>
+                    </button>
+
+                    {/* Category Options - Collapsible */}
+                    <AnimatePresence>
+                      {isExpanded && (
+                        <motion.div
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: 'auto', opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          transition={{ duration: 0.2 }}
+                          className="overflow-hidden"
                         >
-                          <div className="flex items-start justify-between gap-3">
-                            <div className="flex-1">
-                              <div 
-                                className="font-semibold"
-                                style={{ 
-                                  color: '#000000', 
-                                  fontWeight: 600,
-                                  WebkitTextFillColor: '#000000'
+                          <div className="p-4 pt-0">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                              {category.options.map((option) => {
+                                const isSelected = isOptionSelected(category.id, option.id);
+                                // For radio buttons (maxSelection=1), never disable
+                                // For checkboxes, only disable if max reached and this is not selected
+                                const isDisabled = category.maxSelection > 1 && !isSelected && !canAddMore(category.id);
+
+                                return (
+                                  <button
+                                key={option.id}
+                                onClick={() => handleOptionToggle(category.id, option.id)}
+                                disabled={isDisabled}
+                                className={`
+                                  relative p-3 rounded-lg border-2 text-left transition-all cursor-pointer
+                                  ${isSelected 
+                                    ? 'shadow-md'
+                                    : isDisabled
+                                      ? 'border-gray-200 bg-gray-50 opacity-50 cursor-not-allowed'
+                                      : 'border-gray-200 hover:border-[var(--color-primary)] hover:shadow-sm'
+                                  }
+                                `}
+                                style={isSelected ? {
+                                  borderColor: 'var(--color-primary)',
+                                  backgroundColor: primaryColorRgba
+                                } : {
+                                  backgroundColor: '#ffffff'
                                 }}
                               >
-                                {language === 'sk' ? option.name : option.nameEn}
-                              </div>
-                              {option.price > 0 && (
-                                <div 
-                                  className="font-bold mt-1" 
-                                  style={{ 
-                                    color: isSelected ? '#000000' : 'var(--color-primary)',
-                                    WebkitTextFillColor: isSelected ? '#000000' : 'var(--color-primary)'
-                                  }}
-                                >
-                                  +€{(option.price / 100).toFixed(2)}
+                                <div className="flex items-center justify-between gap-2">
+                                  <div className="flex-1 min-w-0">
+                                    <div 
+                                      className="font-semibold text-sm truncate"
+                                      style={{ 
+                                        color: '#000000', 
+                                        fontWeight: 600,
+                                        WebkitTextFillColor: '#000000'
+                                      }}
+                                    >
+                                      {language === 'sk' ? option.name : option.nameEn}
+                                    </div>
+                                    {option.price > 0 && (
+                                      <div 
+                                        className="font-bold text-xs mt-0.5" 
+                                        style={{ 
+                                          color: isSelected ? '#000000' : 'var(--color-primary)',
+                                          WebkitTextFillColor: isSelected ? '#000000' : 'var(--color-primary)'
+                                        }}
+                                      >
+                                        +€{(option.price / 100).toFixed(2)}
+                                      </div>
+                                    )}
+                                  </div>
+                                  <div 
+                                    className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${!isSelected ? 'border-gray-300' : ''}`}
+                                    style={isSelected ? {
+                                      borderColor: 'var(--color-primary)',
+                                      backgroundColor: 'var(--color-primary)'
+                                    } : {}}
+                                  >
+                                    {isSelected && (
+                                      <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                      </svg>
+                                    )}
+                                  </div>
                                 </div>
-                              )}
-                            </div>
-                            <div 
-                              className={`w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${!isSelected ? 'border-gray-300' : ''}`}
-                              style={isSelected ? {
-                                borderColor: 'var(--color-primary)',
-                                backgroundColor: 'var(--color-primary)'
-                              } : {}}
-                            >
-                              {isSelected && (
-                                <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
-                                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                                </svg>
-                              )}
+                              </button>
+                                );
+                              })}
                             </div>
                           </div>
-                        </button>
-                      );
-                    })}
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
 
-            {/* Footer */}
-            <div className="border-t p-6 bg-gray-50">
-              <div className="flex items-center justify-between">
-                <div>
-                          <div className="text-sm text-gray-600 mb-1">
-                            {language === 'sk' ? 'Celková cena:' : 'Total price:'}
-                          </div>
-                          <div className="text-4xl font-extrabold" style={{ color: 'var(--color-primary)' }}>
-                            €{(totalPrice / 100).toFixed(2)}
-                          </div>
-                        </div>
-                        <button
-                          onClick={handleAddToCart}
-                          className="px-8 py-4 rounded-xl font-bold text-white text-lg shadow-lg hover:shadow-xl transition-all transform hover:scale-105 inline-flex items-center gap-2"
-                          style={{ backgroundColor: 'var(--color-primary)', boxShadow: '0 14px 30px rgba(255,107,0,0.25)' }}
-                        >
-                          🛒 {language === 'sk' ? 'Pridať do košíka' : 'Add to Cart'}
-                        </button>
-                      </div>
+            {/* Sticky Footer */}
+            <div className="sticky bottom-0 border-t border-gray-200 bg-white p-4 sm:p-6 shadow-lg">
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex-1">
+                  <div className="text-xs sm:text-sm text-gray-600 mb-1">
+                    {language === 'sk' ? 'Celková cena:' : 'Total price:'}
+                  </div>
+                  <div className="text-2xl sm:text-3xl font-extrabold" style={{ color: 'var(--color-primary)' }}>
+                    €{(totalPrice / 100).toFixed(2)}
+                  </div>
+                </div>
+                <button
+                  onClick={handleAddToCart}
+                  className="px-6 sm:px-8 py-3 sm:py-4 rounded-xl font-bold text-white text-base sm:text-lg shadow-lg hover:shadow-xl transition-all transform hover:scale-105 active:scale-95 inline-flex items-center gap-2 flex-shrink-0"
+                  style={{ backgroundColor: 'var(--color-primary)' }}
+                >
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+                  </svg>
+                  {language === 'sk' ? 'Pridať do košíka' : 'Add to Cart'}
+                </button>
+              </div>
             </div>
           </motion.div>
         </div>
