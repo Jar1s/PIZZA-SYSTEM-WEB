@@ -47,7 +47,7 @@ export const productTranslations: Record<string, ProductTranslation> = {
     allergens: ['1', '7']
   },
   'Capri': {
-    name: { sk: 'Corny Love', en: 'Corny Love' },
+    name: { sk: 'Capri Quickie', en: 'Capri Quickie' },
     description: {
       sk: 'Paradajkový základ, mozzarella, šunka, kukurica – sladká nevinnosť.',
       en: 'Tomato base, mozzarella, ham, corn – sweet innocence.'
@@ -56,7 +56,7 @@ export const productTranslations: Record<string, ProductTranslation> = {
     allergens: ['1', '7']
   },
   'Fregata': {
-    name: { sk: 'Pizza Fregata', en: 'Pizza Fregata' },
+    name: { sk: 'Fregata Missionary', en: 'Fregata Missionary' },
     description: {
       sk: 'Paradajkový základ, mozzarella, niva, šampiňóny, cibuľa, olivy, vajce',
       en: 'Tomato base, mozzarella, blue cheese, mushrooms, onion, olives, egg'
@@ -74,7 +74,7 @@ export const productTranslations: Record<string, ProductTranslation> = {
     allergens: ['1', '7']
   },
   'Pivárska': {
-    name: { sk: 'Pizza Pivárska', en: 'Pizza Beer Lovers' },
+    name: { sk: 'Hotline Pizza', en: 'Hotline Pizza' },
     description: {
       sk: 'Paradajkový základ, mozzarella, saláma, slanina, klobása, cibuľa, niva',
       en: 'Tomato base, mozzarella, salami, bacon, sausage, onion, blue cheese'
@@ -128,6 +128,15 @@ export const productTranslations: Record<string, ProductTranslation> = {
     weight: '520g',
     allergens: ['1', '4', '7']
   },
+  'Tuniaková': {
+    name: { sk: 'Tuna Affair', en: 'Tuna Affair' },
+    description: {
+      sk: 'Paradajkový základ, mozzarella, tuniak, cibuľa – pre milovníkov morských radostí.',
+      en: 'Tomato base, mozzarella, tuna, onion – for lovers of sea pleasures.'
+    },
+    weight: '520g',
+    allergens: ['1', '4', '7']
+  },
   
   // 🍑 PREMIUM SINS
   'Basil Pesto Premium': {
@@ -149,7 +158,7 @@ export const productTranslations: Record<string, ProductTranslation> = {
     allergens: ['1', '7']
   },
   'Calimero': {
-    name: { sk: 'Calimero Quickie', en: 'Calimero Quickie' },
+    name: { sk: 'Calimero Love', en: 'Calimero Love' },
     description: {
       sk: 'Paradajkový základ, mozzarella, šunka, vajce – rýchle, ale stojí za to.',
       en: 'Tomato base, mozzarella, ham, egg – quick, but worth it.'
@@ -167,7 +176,16 @@ export const productTranslations: Record<string, ProductTranslation> = {
     allergens: ['1', '7']
   },
   'Diavola Premium': {
-    name: { sk: 'Diavola Dominant', en: 'Diavola Dominant' },
+    name: { sk: 'Hot Dominant', en: 'Hot Dominant' },
+    description: {
+      sk: 'Paradajkový základ, mozzarella, pikantná saláma, feferóny – trochu bolí, ale chceš viac.',
+      en: 'Tomato base, mozzarella, spicy salami, peppers – it hurts a bit, but you want more.'
+    },
+    weight: '520g',
+    allergens: ['1', '7']
+  },
+  'Diavola': {
+    name: { sk: 'Hot Dominant', en: 'Hot Dominant' },
     description: {
       sk: 'Paradajkový základ, mozzarella, pikantná saláma, feferóny – trochu bolí, ale chceš viac.',
       en: 'Tomato base, mozzarella, spicy salami, peppers – it hurts a bit, but you want more.'
@@ -185,6 +203,15 @@ export const productTranslations: Record<string, ProductTranslation> = {
     allergens: ['1', '7']
   },
   // 😈 MAIN ACTION / HLAVNÉ ČÍSLO
+  'Mayday': {
+    name: { sk: 'Mayday Affair', en: 'Mayday Affair' },
+    description: {
+      sk: 'Paradajkový základ, mozzarella, šunka, slanina, vajce, cibuľa - guilty pleasure, čo nikdy nesklame.',
+      en: 'Tomato base, mozzarella, ham, bacon, egg, onion - guilty pleasure that never fails.'
+    },
+    weight: '520g',
+    allergens: ['1', '3', '7']
+  },
   'Mayday Special': {
     name: { sk: 'Bacon Affair', en: 'Bacon Affair' },
     description: {
@@ -253,6 +280,15 @@ export const productTranslations: Record<string, ProductTranslation> = {
     description: {
       sk: 'Paradajkový základ, mozzarella, šunka, šampiňóny, olivy, artičoky – všetko, čo by si nemal… ale chceš.',
       en: 'Tomato base, mozzarella, ham, mushrooms, olives, artichokes – everything you shouldn\'t have… but want.'
+    },
+    weight: '520g',
+    allergens: ['1', '7']
+  },
+  'Vegetariana': {
+    name: { sk: 'Veggie Pleasure', en: 'Veggie Pleasure' },
+    description: {
+      sk: 'Paradajkový základ, mozzarella, paprika, kukurica, cibuľa, olivy – čisté potešenie bez výčitiek.',
+      en: 'Tomato base, mozzarella, peppers, corn, onion, olives – pure pleasure without guilt.'
     },
     weight: '520g',
     allergens: ['1', '7']
