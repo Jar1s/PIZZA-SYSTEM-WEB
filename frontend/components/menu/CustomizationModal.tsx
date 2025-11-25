@@ -244,8 +244,6 @@ export default function CustomizationModal({
               onClick={(e) => e.stopPropagation()}
               className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col pointer-events-auto relative border border-gray-100"
               style={{ zIndex: 999920 }}
-              onWheel={(e) => e.stopPropagation()}
-              onTouchMove={(e) => e.stopPropagation()}
             >
             {/* Sticky Header */}
             <div className="sticky top-0 z-20 bg-white border-b border-gray-100 shadow-sm">
@@ -322,8 +320,6 @@ export default function CustomizationModal({
             {/* Scrollable Content */}
             <div 
               className="flex-1 overflow-y-auto p-4 sm:p-6"
-              onWheel={(e) => e.stopPropagation()}
-              onTouchMove={(e) => e.stopPropagation()}
             >
               {customizations.map((category) => {
                 const isExpanded = expandedCategories.has(category.id);

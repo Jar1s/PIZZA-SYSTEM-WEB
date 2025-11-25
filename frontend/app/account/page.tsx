@@ -192,7 +192,7 @@ export default function AccountPage() {
                 <button
                   key={item.id}
                   onClick={() => setActiveSection(item.id)}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border transition-all ${
+                  className={`w-full flex items-start gap-3 px-4 py-3 rounded-xl border transition-all ${
                     activeSection === item.id
                       ? isDark
                         ? 'bg-white/10 border-white/40 shadow-lg'
@@ -202,10 +202,10 @@ export default function AccountPage() {
                         : 'border-transparent hover:bg-gray-50'
                   }`}
                 >
-                  <span className={isDark ? 'text-white' : 'text-gray-700'}>{item.icon}</span>
-                  <span className={`font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>{item.label}</span>
+                  <span className={`flex-shrink-0 mt-0.5 ${isDark ? 'text-white' : 'text-gray-700'}`}>{item.icon}</span>
+                  <span className={`font-medium flex-1 text-left leading-tight ${isDark ? 'text-white' : 'text-gray-900'}`}>{item.label}</span>
                   <svg
-                    className={`w-5 h-5 ml-auto ${isDark ? 'text-gray-400' : 'text-gray-400'}`}
+                    className={`w-5 h-5 ml-auto flex-shrink-0 mt-0.5 ${isDark ? 'text-gray-400' : 'text-gray-400'}`}
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
