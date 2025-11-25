@@ -53,3 +53,4 @@ Po zadaní `main`:
 - ✅ Tlačidlo "Create Deployment" je aktívne (nie šedé)
 - ✅ Môžeš kliknúť na "Create Deployment"
 
+

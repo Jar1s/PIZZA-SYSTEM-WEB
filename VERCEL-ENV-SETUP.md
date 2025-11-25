@@ -171,3 +171,4 @@ Otvori Developer Tools (F12) → Console:
 
 **Hotovo!** 🎉 Frontend by teraz mal fungovať s backendom na Render.com.
 
+

@@ -138,3 +138,4 @@ https://pizza-system-web.onrender.com
 
 **Status:** ✅ Backend je pripravený pre frontend integráciu!
 
+

@@ -73,3 +73,4 @@ Ak máš problémy:
 2. Skontroluj, či sú nastavené environment variables
 3. Skontroluj, či je Root Directory nastavený na `frontend`
 
+

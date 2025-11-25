@@ -109,3 +109,4 @@ Po úspešnom nastavení:
 - ✅ Automatické vytvorenie/aktualizácia účtu
 - ✅ SMS verification stále potrebná (ak phone nie je verified)
 
+

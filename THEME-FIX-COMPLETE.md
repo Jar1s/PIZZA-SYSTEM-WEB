@@ -81,3 +81,4 @@ Nahradené všetky hardcoded orange farby za dynamické:
 
 **Status:** ✅ Theme fix dokončený!
 
+

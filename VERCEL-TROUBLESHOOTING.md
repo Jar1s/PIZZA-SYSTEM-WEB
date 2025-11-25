@@ -90,3 +90,4 @@ Ak už existuje nejaký deployment:
 ### Kontaktuj Support:
 - Vercel má dobrý support - môžeš im napísať
 
+

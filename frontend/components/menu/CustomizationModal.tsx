@@ -252,7 +252,7 @@ export default function CustomizationModal({
               <div className="relative p-4 sm:p-6">
               <button
                 onClick={onClose}
-                className="absolute top-4 right-4 w-10 h-10 flex items-center justify-center rounded-full bg-gray-900 hover:bg-black text-white shadow-lg transition-colors z-10"
+                className="absolute top-4 right-4 sm:top-6 sm:right-6 w-10 h-10 flex items-center justify-center rounded-full bg-gray-900 hover:bg-black text-white shadow-lg transition-colors z-10"
                 aria-label={language === 'sk' ? 'Zatvoriť' : 'Close'}
               >
                 <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
@@ -260,7 +260,7 @@ export default function CustomizationModal({
                 </svg>
               </button>
 
-                <div className="flex gap-3 sm:gap-4 items-start">
+                <div className="flex gap-3 sm:gap-4 items-start pr-12 sm:pr-14">
                   {product.image && (
                     <div className="relative w-16 h-16 sm:w-20 sm:h-20 rounded-lg overflow-hidden flex-shrink-0 shadow-md">
                       <Image
@@ -273,7 +273,7 @@ export default function CustomizationModal({
                     </div>
                   )}
                   <div className="flex-1 min-w-0">
-                    <h2 className="text-xl sm:text-2xl font-extrabold text-gray-900 mb-1 line-clamp-2">{displayName}</h2>
+                    <h2 className="text-xl sm:text-2xl font-extrabold text-gray-900 mb-1 line-clamp-2 pr-2">{displayName}</h2>
                     {displayDescription && (
                       <p className="text-sm text-gray-600 mb-2 line-clamp-2">{displayDescription}</p>
                     )}

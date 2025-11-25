@@ -54,3 +54,4 @@ Tieto deprecated warnings sú z:
 
 **Nemusíš sa o to starať** - Next.js a Vercel to zvládnu. Build by mal prejsť bez problémov.
 
+

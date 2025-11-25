@@ -59,3 +59,4 @@ Ak frontend beží na inom porte, môžeš pridať origin do `ALLOWED_ORIGINS` v
 
 **Status:** ✅ Frontend je pripravený na použitie s Render.com backendom!
 
+

@@ -42,3 +42,4 @@ Ak chceš deploynúť konkrétny commit, zadaj:
 - ✅ `50a8550` (commit hash)
 - ✅ `HEAD` (najnovší commit)
 
+

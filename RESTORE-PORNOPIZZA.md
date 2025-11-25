@@ -39,3 +39,4 @@ Po spustení skriptu by si mal vidieť v Brands Management:
 
 Skript používa `ON CONFLICT DO UPDATE`, takže je bezpečné ho spustiť viackrát - buď vytvorí nový brand, alebo aktualizuje existujúci.
 
+

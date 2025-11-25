@@ -54,3 +54,4 @@ Build by mal pokračovať a dokončiť sa úspešne. Počkaj na:
 - `Build completed`
 - `Deployment URL`
 
+

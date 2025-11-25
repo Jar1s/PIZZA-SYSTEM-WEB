@@ -100,3 +100,4 @@ Render.com používa dynamické IP adresy. Supabase môže blokovať neznáme IP
 
 Po týchto krokoch by malo pripojenie fungovať! 🚀
 
+

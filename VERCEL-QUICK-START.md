@@ -35,3 +35,4 @@ Po deploymente testuj:
 
 Pozri `VERCEL-DEPLOY-FRONTEND.md` pre kompletný guide.
 
+

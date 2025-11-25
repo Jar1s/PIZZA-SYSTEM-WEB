@@ -68,3 +68,4 @@ Po redeploymente na Render.com:
 
 Počkaj ~2-3 minúty na automatický redeploy na Render.com, potom obnov stránku.
 
+

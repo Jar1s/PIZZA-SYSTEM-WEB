@@ -146,3 +146,4 @@ Ak stará databáza nefunguje:
 - [ ] Skúsený pooler connection string
 - [ ] DATABASE_URL je nastavený v Render.com
 
+

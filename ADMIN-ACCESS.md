@@ -97,3 +97,4 @@ GET /api/admin/users
 2. **Vytvor admin účet** - cez API alebo manuálne v databáze
 3. **Skontroluj backend** - či beží a je dostupný
 
+

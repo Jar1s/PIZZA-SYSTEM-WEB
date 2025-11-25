@@ -219,10 +219,10 @@ export const ProductCard = memo(function ProductCard({ product, index = 0, isBes
         </div>
 
         {/* Price & Add Button - Always at bottom */}
-        <div className="flex items-center justify-between gap-3 pt-4">
-          <div>
+        <div className="flex items-center justify-between gap-2 sm:gap-3 pt-4 overflow-hidden">
+          <div className="flex-shrink-0 min-w-0">
             <div 
-              className="text-3xl font-bold" 
+              className="text-2xl sm:text-3xl font-bold truncate" 
               style={{ 
                 color: 'var(--color-primary)',
                 textShadow: 'none',
@@ -248,7 +248,7 @@ export const ProductCard = memo(function ProductCard({ product, index = 0, isBes
               e.stopPropagation();
             }}
             disabled={isAdding}
-            className={`relative z-10 px-4 sm:px-6 py-2.5 sm:py-3 rounded-full font-bold text-sm sm:text-base text-white transition-all hover:scale-105 active:scale-95 touch-manipulation min-h-[44px] ${
+            className={`relative z-10 flex-shrink-0 px-3 sm:px-4 md:px-6 py-2 sm:py-2.5 md:py-3 rounded-full font-bold text-xs sm:text-sm md:text-base text-white transition-all hover:scale-105 active:scale-95 touch-manipulation min-h-[40px] sm:min-h-[44px] whitespace-nowrap ${
               isAdding 
                 ? 'bg-green-500' 
                 : isDark
@@ -258,8 +258,8 @@ export const ProductCard = memo(function ProductCard({ product, index = 0, isBes
             style={!isAdding && !isDark ? { backgroundColor: 'var(--color-primary)' } : {}}
           >
             {isAdding ? (
-              <span className="flex items-center gap-2">
-                ✓ {t.added}
+              <span className="flex items-center gap-1 sm:gap-2">
+                ✓ <span className="hidden sm:inline">{t.added}</span>
               </span>
             ) : (
               <span>{t.add}</span>

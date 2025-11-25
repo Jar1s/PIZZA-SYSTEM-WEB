@@ -100,3 +100,4 @@ Ak nechceš používať MCP server, môžeš pokračovať s manuálnym nastaven�
 
 **Poznámka**: Render MCP server je relatívne nový feature. Ak máš problémy s nastavením, môžeš vždy použiť manuálne nastavenie cez dashboard.
 
+

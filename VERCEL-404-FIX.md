@@ -76,3 +76,4 @@ Po oprave:
 3. **Skontroluj, či sú súbory pushnuté na GitHub**
 4. **Skús manuálny redeploy**
 
+

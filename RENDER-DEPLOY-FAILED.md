@@ -128,3 +128,4 @@ Po pridaní všetkých environment variables:
 - `RENDER-DATABASE-FIX.md` - Oprava databázového pripojenia
 - `RENDER-IPV4-FIX.md` - IPv4 kompatibilita s Supabase
 
+

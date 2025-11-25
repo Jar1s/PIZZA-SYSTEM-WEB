@@ -78,3 +78,4 @@ Po vytvorení deploymentu:
 2. ✅ Klikni na neho pre build logs
 3. ✅ Po dokončení dostaneš URL: `https://your-project.vercel.app`
 
+

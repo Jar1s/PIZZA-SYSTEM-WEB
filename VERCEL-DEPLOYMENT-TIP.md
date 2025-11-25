@@ -58,3 +58,4 @@ Po úspešnom deploymente:
 - Testuj: `https://your-project.vercel.app?tenant=pornopizza`
 - Skontroluj, či sa načítajú produkty z API
 
+

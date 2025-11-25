@@ -102,3 +102,4 @@ Po úspešnom deploymente:
 - ✅ Dostaneš URL aplikácie
 - ✅ Môžeš testovať frontend s backendom na Render.com
 
+
