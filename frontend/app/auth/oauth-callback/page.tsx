@@ -94,14 +94,17 @@ export default function OAuthCallbackPage() {
         const finalRedirect = redirect.startsWith('/') ? redirect : `/${redirect}`;
         console.log('OAuth callback - final redirect URL:', finalRedirect);
 
-        // If redirecting to account (or other non-checkout page), redirect immediately
-        // Don't wait - we want to get user to their intended destination ASAP
+        // If redirecting to account (or other non-checkout page), wait a bit for context to update
+        // Give CustomerAuthContext time to load user from localStorage
         if (!finalRedirect.includes('/checkout')) {
-          console.log('OAuth callback - redirecting immediately to non-checkout page:', finalRedirect);
+          console.log('OAuth callback - waiting for context update before redirecting to:', finalRedirect);
           // Clear any OAuth flags since we're not going to checkout
           sessionStorage.removeItem('oauth_redirect');
-          // Redirect immediately without delay
-          window.location.href = finalRedirect;
+          // Wait a bit to ensure CustomerAuthContext has time to load user from localStorage
+          setTimeout(() => {
+            console.log('OAuth callback - redirecting now to non-checkout page:', finalRedirect);
+            window.location.href = finalRedirect;
+          }, 300);
           return;
         }
         

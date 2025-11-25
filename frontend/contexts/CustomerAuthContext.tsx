@@ -108,7 +108,10 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
     // Listen for custom event (dispatched by OAuth callback in same window)
     const handleCustomStorage = () => {
       console.log('CustomerAuthContext - custom storage event, reloading user');
-      loadUser();
+      // Small delay to ensure localStorage is written
+      setTimeout(() => {
+        loadUser();
+      }, 100);
     };
 
     window.addEventListener('storage', handleStorageChange);
