@@ -277,32 +277,38 @@ export default function CustomizationModal({
                     )}
                     
                     {/* Weight and Allergens - Compact */}
-                    {(translation.weight || translation.allergens) && (
-                      <div className="flex items-center gap-3 mb-2 text-xs text-gray-500 flex-wrap">
-                        {translation.weight && (
-                          <div className="flex items-center gap-1">
-                            <span>⚖️</span>
-                            <span>{translation.weight}</span>
-                          </div>
-                        )}
-                        {translation.allergens && translation.allergens.length > 0 && (
-                          <div className="flex items-center gap-1 flex-wrap">
-                            <span>⚠️</span>
-                            <span className="font-semibold">
-                              {language === 'sk' ? 'Alergény:' : 'Allergens:'}
-                            </span>
-                            <span className="text-xs">
-                              {translation.allergens.map((code, index) => (
-                                <span key={code}>
-                                  <span className="font-semibold">{code}</span>
-                                  {index < translation.allergens!.length - 1 && ', '}
-                                </span>
-                              ))}
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                    )}
+                    {(() => {
+                      // Používame weightGrams a allergens z databázy, fallback na translation
+                      const weight = product.weightGrams ? `${product.weightGrams}g` : translation.weight;
+                      const allergens = (product.allergens && product.allergens.length > 0) ? product.allergens : translation.allergens;
+                      
+                      return (weight || allergens) ? (
+                        <div className="flex items-center gap-3 mb-2 text-xs text-gray-500 flex-wrap">
+                          {weight && (
+                            <div className="flex items-center gap-1">
+                              <span>⚖️</span>
+                              <span>{weight}</span>
+                            </div>
+                          )}
+                          {allergens && allergens.length > 0 && (
+                            <div className="flex items-center gap-1 flex-wrap">
+                              <span>⚠️</span>
+                              <span className="font-semibold">
+                                {language === 'sk' ? 'Alergény:' : 'Allergens:'}
+                              </span>
+                              <span className="text-xs">
+                                {allergens.map((code, index) => (
+                                  <span key={code}>
+                                    <span className="font-semibold">{code}</span>
+                                    {index < allergens.length - 1 && ', '}
+                                  </span>
+                                ))}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      ) : null;
+                    })()}
                     
                     <div className="flex items-center gap-2">
                       <span className="text-xs text-gray-500">

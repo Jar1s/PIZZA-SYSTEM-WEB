@@ -10,6 +10,8 @@ export interface Product {
   modifiers: Modifier[] | null;
   isActive: boolean;
   isBestSeller: boolean;
+  weightGrams?: number | null;  // Gramáž v gramoch (napr. 450, 500, 520)
+  allergens?: string[] | null; // Pole alergénov (napr. ["1", "7"])
   createdAt: Date;
   updatedAt: Date;
 }

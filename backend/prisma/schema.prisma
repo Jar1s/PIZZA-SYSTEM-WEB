@@ -1,9 +1,6 @@
 generator client {
-  provider = "prisma-client-js"
-  output   = "../node_modules/.prisma/client"
-  // Include both musl (Alpine) and debian (Render.com) binaries built against OpenSSL 3
-  // linux-musl-openssl-3.0.x for Alpine/Docker
-  // debian-openssl-3.0.x for Render.com Debian runtime
+  provider      = "prisma-client-js"
+  output        = "../node_modules/.prisma/client"
   binaryTargets = ["linux-musl-openssl-3.0.x", "debian-openssl-3.0.x"]
 }
 
@@ -13,56 +10,46 @@ datasource db {
 }
 
 model Tenant {
-  id        String  @id @default(cuid())
-  slug      String  @unique
-  name      String
-  domain    String? @unique
-  subdomain String  @unique
-  isActive  Boolean @default(true)
-
-  // Payment provider
-  paymentProvider String @default("adyen")
-  
-  // Currency (ISO 4217 code: EUR, CZK, USD, etc.)
-  currency String @default("EUR")
-
-  // JSON fields
-  theme          Json
-  paymentConfig  Json
-  deliveryConfig Json
-
-  // Relations
-  products        Product[]
-  orders          Order[]
+  id              String           @id @default(cuid())
+  slug            String           @unique
+  name            String
+  domain          String?          @unique
+  subdomain       String           @unique
+  isActive        Boolean          @default(true)
+  paymentProvider String           @default("adyen")
+  theme           Json
+  paymentConfig   Json
+  deliveryConfig  Json
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  currency        String           @default("EUR")
   deliveries      Delivery[]
-  productMappings ProductMapping[]
   deliveryZones   DeliveryZone[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  orders          Order[]
+  productMappings ProductMapping[]
+  products        Product[]
 
   @@map("tenants")
 }
 
 model Product {
-  id       String @id @default(cuid())
-  tenantId String
-  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-
+  id           String      @id @default(cuid())
+  tenantId     String
   name         String
   description  String?
   priceCents   Int
-  taxRate      Float   @default(20.0)
+  taxRate      Float       @default(20.0)
   category     String
   image        String?
   modifiers    Json?
-  isActive     Boolean @default(true)
-  isBestSeller Boolean @default(false)
-
-  orderItems OrderItem[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  isActive     Boolean     @default(true)
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  isBestSeller Boolean     @default(false)
+  weightGrams  Int?        // Gramáž v gramoch (napr. 450, 500, 520)
+  allergens    String[]    // Pole alergénov (napr. ["1", "7"])
+  orderItems   OrderItem[]
+  tenant       Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@index([tenantId, isActive])
   @@index([tenantId, category])
@@ -70,43 +57,177 @@ model Product {
 }
 
 model Order {
-  id       String @id @default(cuid())
-  tenantId String
-  tenant   Tenant @relation(fields: [tenantId], references: [id])
-
-  status OrderStatus @default(PENDING)
-
-  // User reference (can be null for guest orders)
-  userId String?
-  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
-
-  // JSON fields
-  customer Json
-  address  Json
-
-  // Pricing
+  id               String      @id @default(cuid())
+  tenantId         String
+  status           OrderStatus @default(PENDING)
+  customer         Json
+  address          Json
   subtotalCents    Int
   taxCents         Int
   deliveryFeeCents Int
   totalCents       Int
-
-  // References
-  paymentRef      String?
-  paymentStatus   String?
-  deliveryId      String?
-  delivery        Delivery? @relation(fields: [deliveryId], references: [id])
-  storyousOrderId String?
-
-  items OrderItem[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  paymentRef       String?
+  paymentStatus    String?
+  deliveryId       String?
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+  storyousOrderId  String?
+  userId           String?
+  items            OrderItem[]
+  delivery         Delivery?   @relation(fields: [deliveryId], references: [id])
+  tenant           Tenant      @relation(fields: [tenantId], references: [id])
+  user             User?       @relation(fields: [userId], references: [id])
 
   @@index([tenantId, status])
-  @@index([tenantId, createdAt]) // Performance: Optimizes queries sorted by date
+  @@index([tenantId, createdAt])
   @@index([paymentRef])
   @@index([userId])
   @@map("orders")
+}
+
+model OrderItem {
+  id          String  @id @default(cuid())
+  orderId     String
+  productId   String
+  productName String
+  quantity    Int
+  priceCents  Int
+  modifiers   Json?
+  order       Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product     Product @relation(fields: [productId], references: [id])
+
+  @@map("order_items")
+}
+
+model Delivery {
+  id          String   @id @default(cuid())
+  tenantId    String
+  provider    String   @default("wolt")
+  jobId       String?
+  status      String
+  trackingUrl String?
+  quote       Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+  orders      Order[]
+
+  @@index([jobId])
+  @@map("deliveries")
+}
+
+model User {
+  id                   String                @id @default(cuid())
+  password             String?
+  name                 String
+  role                 UserRole              @default(OPERATOR)
+  isActive             Boolean               @default(true)
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
+  username             String?               @unique
+  phone                String?               @unique
+  phoneVerified        Boolean               @default(false)
+  appleId              String?               @unique
+  email                String?               @unique
+  googleId             String?               @unique
+  passwordResetExpires DateTime?
+  passwordResetToken   String?               @unique
+  addresses            Address[]
+  orders               Order[]
+  refreshTokens        RefreshToken[]
+  smsVerificationCodes SmsVerificationCode[]
+
+  @@index([username])
+  @@index([email])
+  @@index([phone])
+  @@index([passwordResetToken])
+  @@map("users")
+}
+
+model RefreshToken {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  isRevoked Boolean  @default(false)
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([token])
+  @@index([expiresAt])
+  @@map("refresh_tokens")
+}
+
+model SmsVerificationCode {
+  id        String   @id @default(cuid())
+  userId    String?
+  phone     String
+  code      String
+  expiresAt DateTime
+  isUsed    Boolean  @default(false)
+  attempts  Int      @default(0)
+  createdAt DateTime @default(now())
+  user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([phone])
+  @@index([code])
+  @@index([expiresAt])
+  @@map("sms_verification_codes")
+}
+
+model Address {
+  id          String   @id @default(cuid())
+  userId      String
+  street      String
+  description String?
+  city        String
+  postalCode  String
+  country     String   @default("SK")
+  isPrimary   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([userId, isPrimary])
+  @@map("addresses")
+}
+
+model ProductMapping {
+  id                  String   @id @default(cuid())
+  tenantId            String
+  externalIdentifier  String
+  internalProductName String
+  source              String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  tenant              Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, externalIdentifier, source])
+  @@index([tenantId, externalIdentifier])
+  @@index([internalProductName])
+  @@map("product_mappings")
+}
+
+model DeliveryZone {
+  id               String   @id @default(cuid())
+  tenantId         String
+  name             String
+  deliveryFeeCents Int
+  minOrderCents    Int?
+  postalCodes      String[]
+  cityNames        String[]
+  cityParts        String[]
+  isActive         Boolean  @default(true)
+  priority         Int      @default(0)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  tenant           Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, isActive])
+  @@index([tenantId, name])
+  @@map("delivery_zones")
 }
 
 enum OrderStatus {
@@ -119,178 +240,8 @@ enum OrderStatus {
   CANCELED
 }
 
-model OrderItem {
-  id      String @id @default(cuid())
-  orderId String
-  order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
-
-  productId String
-  product   Product @relation(fields: [productId], references: [id])
-
-  productName String // Snapshot
-  quantity    Int
-  priceCents  Int
-  modifiers   Json?
-
-  @@map("order_items")
-}
-
-model Delivery {
-  id       String @id @default(cuid())
-  tenantId String
-  tenant   Tenant @relation(fields: [tenantId], references: [id])
-
-  provider    String  @default("wolt")
-  jobId       String?
-  status      String
-  trackingUrl String?
-  quote       Json?
-
-  orders Order[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([jobId])
-  @@map("deliveries")
-}
-
 enum UserRole {
   ADMIN
   OPERATOR
   CUSTOMER
-}
-
-model User {
-  id            String   @id @default(cuid())
-  username      String?  @unique // Optional for customers (they use email)
-  password      String? // Optional for OAuth users
-  name          String
-  email         String?  @unique // Email for customer login
-  googleId      String?  @unique // Google OAuth ID
-  appleId       String?  @unique // Apple OAuth ID
-  phone         String?  @unique // Phone number for SMS verification
-  phoneVerified Boolean  @default(false) // Whether phone is verified
-  role          UserRole @default(OPERATOR)
-  isActive      Boolean  @default(true)
-  
-  // Password reset token for account setup
-  passwordResetToken      String?  @unique
-  passwordResetExpires    DateTime?
-
-  refreshTokens        RefreshToken[]
-  smsVerificationCodes SmsVerificationCode[]
-  addresses            Address[] // Customer addresses
-  orders               Order[] // Customer orders
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([username])
-  @@index([email])
-  @@index([phone])
-  @@index([passwordResetToken])
-  @@map("users")
-}
-
-model RefreshToken {
-  id        String   @id @default(cuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  token     String   @unique
-  expiresAt DateTime
-  isRevoked Boolean  @default(false)
-
-  createdAt DateTime @default(now())
-
-  @@index([userId])
-  @@index([token])
-  @@index([expiresAt])
-  @@map("refresh_tokens")
-}
-
-model SmsVerificationCode {
-  id        String   @id @default(cuid())
-  userId    String?
-  user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  phone     String // Phone number (can be used before user exists)
-  code      String // 6-digit verification code
-  expiresAt DateTime // Code expires in 10 minutes
-  isUsed    Boolean  @default(false)
-  attempts  Int      @default(0) // Number of verification attempts
-
-  createdAt DateTime @default(now())
-
-  @@index([phone])
-  @@index([code])
-  @@index([expiresAt])
-  @@map("sms_verification_codes")
-}
-
-model Address {
-  id          String  @id @default(cuid())
-  userId      String
-  user        User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  street      String
-  description String? // Apartment number, floor, entrance
-  city        String
-  postalCode  String
-  country     String  @default("SK")
-  isPrimary   Boolean @default(false)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([userId])
-  @@index([userId, isPrimary])
-  @@map("addresses")
-}
-
-// Mapovanie externých názvov/kódov na interné názvy produktov
-model ProductMapping {
-  id       String @id @default(cuid())
-  tenantId String
-  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-
-  // Externý identifikátor (môže byť kód alebo názov)
-  externalIdentifier String // Napr. "#69", "Hawaii Premium", "Hawaiian"
-
-  // Interný názov produktu (ako je v databáze)
-  internalProductName String // Napr. "Hawaii"
-
-  // Voliteľne: zdroj (napr. "website1", "website2")
-  source String?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@unique([tenantId, externalIdentifier, source])
-  @@index([tenantId, externalIdentifier])
-  @@index([internalProductName])
-  @@map("product_mappings")
-}
-
-model DeliveryZone {
-  id       String @id @default(cuid())
-  tenantId String
-  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-
-  name            String  // ZONA1, ZONA2, ZONA3, atď.
-  deliveryFeeCents Int    // Cena dopravy v centoch (100 = 1€)
-  minOrderCents    Int?   // Minimálna objednávka v centoch (3000 = 30€), null = žiadne minimum
-  
-  // Mapovanie adries na zónu - môže byť podľa PSČ, mesta, alebo časti mesta
-  postalCodes      String[] // Zoznam PSČ (napr. ["81101", "81102"])
-  cityNames        String[] // Zoznam názvov miest/častí (napr. ["Jarovce", "Staré Mesto"])
-  cityParts        String[] // Zoznam častí mesta (napr. ["Jarovce", "Petržalka"])
-  
-  isActive         Boolean @default(true)
-  priority         Int     @default(0) // Vyššia priorita = skoršie kontrolovanie (pre presnejšie zóny)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([tenantId, isActive])
-  @@index([tenantId, name])
-  @@map("delivery_zones")
 }

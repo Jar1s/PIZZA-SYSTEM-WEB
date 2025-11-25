@@ -38,6 +38,8 @@ export class ProductsService {
         modifiers: true,
         isActive: true,
         isBestSeller: true,
+        weightGrams: true,    // Gramáž z databázy
+        allergens: true,      // Alergény z databázy
         createdAt: true,
         updatedAt: true,
       },
@@ -81,9 +83,21 @@ export class ProductsService {
   }
 
   async updateProduct(id: string, data: UpdateProductDto): Promise<Product> {
+    // Chránené polia: name, description, priceCents - NEDAJÚ SA MENIŤ
+    // Odstránime ich z dát pred update, aby sme zabezpečili, že sa nezmenia
+    const { name, description, priceCents, ...allowedFields } = data as any;
+    
+    // Log warning ak sa niekto pokúša zmeniť chránené polia
+    if (name !== undefined || description !== undefined || priceCents !== undefined) {
+      this.logger.warn(
+        `Attempted to update protected fields (name, description, priceCents) for product ${id}. ` +
+        `These fields are locked and cannot be changed.`
+      );
+    }
+    
     const product = await this.prisma.product.update({
       where: { id },
-      data: data as any,
+      data: allowedFields,
     });
     return product as any as Product;
   }

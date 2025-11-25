@@ -204,19 +204,27 @@ export const ProductCard = memo(function ProductCard({ product, index = 0, isBes
         <div className="flex-grow"></div>
 
         {/* Weight and Allergens - Just above price */}
-        <div className={`flex items-center gap-4 mb-2 text-xs h-5 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-          {translation.weight && (
-            <div className="flex items-center gap-1">
-              <span>⚖️</span>
-              <span>{translation.weight}</span>
+        {/* Používame weightGrams a allergens z databázy, fallback na translation */}
+        {(() => {
+          const weight = product.weightGrams ? `${product.weightGrams}g` : translation.weight;
+          const allergens = (product.allergens && product.allergens.length > 0) ? product.allergens : translation.allergens;
+          
+          return (weight || allergens) ? (
+            <div className={`flex items-center gap-4 mb-2 text-xs h-5 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+              {weight && (
+                <div className="flex items-center gap-1">
+                  <span>⚖️</span>
+                  <span>{weight}</span>
+                </div>
+              )}
+              {allergens && allergens.length > 0 && (
+                <div className="flex items-center gap-1">
+                  <span>{allergens.join(', ')}</span>
+                </div>
+              )}
             </div>
-          )}
-          {translation.allergens && translation.allergens.length > 0 && (
-            <div className="flex items-center gap-1">
-              <span>{translation.allergens.join(', ')}</span>
-            </div>
-          )}
-        </div>
+          ) : null;
+        })()}
 
         {/* Price & Add Button - Always at bottom */}
         <div className="flex items-center justify-between gap-2 sm:gap-3 pt-4 overflow-hidden">
