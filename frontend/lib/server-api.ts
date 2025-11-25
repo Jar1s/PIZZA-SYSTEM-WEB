@@ -10,74 +10,107 @@ import { TenantSchema, ProductSchema, safeParse } from '@/lib/schemas/api.schema
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
 
 export async function getTenantServer(slug: string): Promise<Tenant | null> {
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 15000); // Increased to 15s for Render.com
-    
-    const url = `${API_URL}/api/tenants/${slug}`;
-    console.log(`[getTenantServer] Fetching from: ${url}`);
-    console.log(`[getTenantServer] API_URL: ${API_URL}`);
-    
-    const res = await fetch(url, {
-      cache: 'no-store',
-      signal: controller.signal,
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      // Add timeout to fetch options as well
-      next: { revalidate: 0 },
-    });
-    
-    clearTimeout(timeoutId);
-    
-    if (!res.ok) {
-      const errorText = await res.text();
-      console.error(`[getTenantServer] HTTP ${res.status}: ${errorText.substring(0, 200)}`);
-      console.error(`[getTenantServer] Response headers:`, Object.fromEntries(res.headers.entries()));
+  const maxRetries = 3;
+  const retryDelay = 1000; // 1 second base delay
+  
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s timeout
       
-      // If backend returns FUNCTION_INVOCATION_FAILED, log it
-      if (errorText.includes('FUNCTION_INVOCATION_FAILED')) {
-        console.error('[getTenantServer] Backend function failed - check backend logs on Render.com');
+      const url = `${API_URL}/api/tenants/${slug}`;
+      if (attempt === 1) {
+        console.log(`[getTenantServer] Fetching from: ${url}`);
+        console.log(`[getTenantServer] API_URL: ${API_URL}`);
+      } else {
+        console.log(`[getTenantServer] Retry attempt ${attempt}/${maxRetries} - Fetching from: ${url}`);
       }
       
-      // Log the full error for debugging
-      console.error(`[getTenantServer] Full error response:`, errorText);
+      const res = await fetch(url, {
+        cache: 'no-store',
+        signal: controller.signal,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        next: { revalidate: 0 },
+      });
       
-      return null;
+      clearTimeout(timeoutId);
+      
+      if (!res.ok) {
+        const errorText = await res.text();
+        console.error(`[getTenantServer] HTTP ${res.status}: ${errorText.substring(0, 200)}`);
+        
+        // If backend returns FUNCTION_INVOCATION_FAILED, log it
+        if (errorText.includes('FUNCTION_INVOCATION_FAILED')) {
+          console.error('[getTenantServer] Backend function failed - check backend logs on Render.com');
+        }
+        
+        // Log the full error for debugging
+        console.error(`[getTenantServer] Full error response:`, errorText);
+        
+        // Retry on server errors (5xx) or 500 specifically
+        if (res.status >= 500 && attempt < maxRetries) {
+          const delay = retryDelay * attempt; // Exponential backoff: 1s, 2s, 3s
+          console.log(`[getTenantServer] Server error (${res.status}), retrying in ${delay}ms...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+          continue;
+        }
+        
+        // Don't retry on client errors (4xx)
+        return null;
+      }
+      
+      const data = await res.json();
+      console.log(`[getTenantServer] Received tenant data:`, { name: data.name, slug: data.slug, hasTheme: !!data.theme });
+      
+      const validated = safeParse(TenantSchema, data, data as any);
+      const result = withTenantThemeDefaults(validated);
+      
+      if (!result) {
+        console.error('[getTenantServer] Failed to normalize tenant data');
+        return null;
+      }
+      
+      console.log(`[getTenantServer] Validated tenant:`, { name: result.name, slug: result.slug });
+      
+      return result;
+    } catch (error: any) {
+      console.error(`[getTenantServer] Attempt ${attempt} failed:`, error.message || error);
+      
+      // Retry on timeout or network errors
+      if ((error.name === 'AbortError' || error.message?.includes('fetch failed')) && attempt < maxRetries) {
+        const delay = retryDelay * attempt; // Exponential backoff: 1s, 2s, 3s
+        console.log(`[getTenantServer] Network/timeout error, retrying in ${delay}ms...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        continue;
+      }
+      
+      // Log error details on last attempt
+      if (attempt === maxRetries) {
+        console.error('[getTenantServer] All retry attempts failed');
+        console.error('[getTenantServer] Error stack:', error.stack);
+        console.error('[getTenantServer] Error name:', error.name);
+        
+        if (error.name === 'AbortError') {
+          console.error('[getTenantServer] Request timeout - backend is not responding within 15s');
+          console.error('[getTenantServer] Check if backend is running on:', API_URL);
+        } else if (error.message?.includes('fetch failed')) {
+          console.error('[getTenantServer] Network error - check NEXT_PUBLIC_API_URL:', API_URL);
+          console.error('[getTenantServer] This might be a DNS or connection issue');
+        } else if (error.message?.includes('ECONNREFUSED')) {
+          console.error('[getTenantServer] Connection refused - backend is not running or not accessible');
+        }
+      }
+      
+      // Last attempt failed
+      if (attempt === maxRetries) {
+        return null;
+      }
     }
-    
-    const data = await res.json();
-    console.log(`[getTenantServer] Received tenant data:`, { name: data.name, slug: data.slug, hasTheme: !!data.theme });
-    
-    const validated = safeParse(TenantSchema, data, data as any);
-    const result = withTenantThemeDefaults(validated);
-    
-    if (!result) {
-      console.error('[getTenantServer] Failed to normalize tenant data');
-      return null;
-    }
-    
-    console.log(`[getTenantServer] Validated tenant:`, { name: result.name, slug: result.slug });
-    
-    return result;
-  } catch (error: any) {
-    console.error('[getTenantServer] Error:', error.message || error);
-    console.error('[getTenantServer] Error stack:', error.stack);
-    console.error('[getTenantServer] Error name:', error.name);
-    
-    // Log more details about the error
-    if (error.name === 'AbortError') {
-      console.error('[getTenantServer] Request timeout - backend is not responding within 15s');
-      console.error('[getTenantServer] Check if backend is running on:', API_URL);
-    } else if (error.message?.includes('fetch failed')) {
-      console.error('[getTenantServer] Network error - check NEXT_PUBLIC_API_URL:', API_URL);
-      console.error('[getTenantServer] This might be a DNS or connection issue');
-    } else if (error.message?.includes('ECONNREFUSED')) {
-      console.error('[getTenantServer] Connection refused - backend is not running or not accessible');
-    }
-    
-    return null;
   }
+  
+  return null;
 }
 
 export async function getProductsServer(tenantSlug: string): Promise<Product[]> {

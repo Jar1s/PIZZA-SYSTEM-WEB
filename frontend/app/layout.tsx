@@ -19,6 +19,15 @@ const inter = Inter({
   variable: '--font-inter',
 });
 
+export function generateViewport() {
+  return {
+    width: 'device-width',
+    initialScale: 1,
+    maximumScale: 5,
+    userScalable: true,
+  };
+}
+
 export async function generateMetadata(): Promise<Metadata> {
   const headersList = await headers();
   // Get tenant from x-tenant header (set by middleware) or default
@@ -48,12 +57,6 @@ export async function generateMetadata(): Promise<Metadata> {
     
     return {
       metadataBase: new URL(baseUrl),
-      viewport: {
-        width: 'device-width',
-        initialScale: 1,
-        maximumScale: 5,
-        userScalable: true,
-      },
       title: {
         default: siteName,
         template: `%s | ${siteName}`,
