@@ -74,12 +74,12 @@ export class CustomerController {
   @Get('addresses')
   async getAddresses(@Request() req: any) {
     try {
-      console.log('[CustomerController] getAddresses - user from request:', req.user ? { id: req.user.id, email: req.user.email, role: req.user.role } : 'null');
-      const user = req.user;
-      if (!user || user.role !== 'CUSTOMER') {
-        console.error('[CustomerController] getAddresses - Unauthorized:', { user: !!user, role: user?.role });
-        throw new UnauthorizedException('Unauthorized');
-      }
+    console.log('[CustomerController] getAddresses - user from request:', req.user ? { id: req.user.id, email: req.user.email, role: req.user.role } : 'null');
+    const user = req.user;
+    if (!user || user.role !== 'CUSTOMER') {
+      console.error('[CustomerController] getAddresses - Unauthorized:', { user: !!user, role: user?.role });
+      throw new UnauthorizedException('Unauthorized');
+    }
 
       const result = await this.customerService.getCustomerAddresses(user.id);
       return result;
