@@ -71,7 +71,7 @@ export const HeroSection = ({ tenantName, primaryColor, isDark = false }: HeroSe
       </div>
 
       {/* Content */}
-      <div className="relative z-10 container mx-auto px-4 sm:px-6 h-full pt-20 sm:pt-12 md:pt-16 lg:pt-20 pb-10 sm:pb-12 md:pb-16 lg:pb-20 flex flex-col justify-start sm:justify-center items-center">
+      <div className="relative z-10 container mx-auto px-4 sm:px-6 h-full pt-20 sm:pt-12 md:pt-16 lg:pt-20 pb-10 sm:pb-12 md:pb-16 lg:pb-20 flex flex-col justify-start sm:justify-center">
         <motion.div
           initial={{ opacity: 0, x: -30 }}
           animate={{ opacity: 1, x: 0 }}
@@ -115,7 +115,7 @@ export const HeroSection = ({ tenantName, primaryColor, isDark = false }: HeroSe
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2, duration: 0.4 }}
-            className="text-base sm:text-base md:text-lg lg:text-xl mb-8 sm:mb-10 max-w-2xl leading-relaxed mx-auto sm:mx-0"
+            className="text-base sm:text-base md:text-lg lg:text-xl mb-5 sm:mb-6 max-w-2xl leading-relaxed"
             style={{
               color: isDark ? '#e5e5e5' : '#f3f4f6',
               textShadow: isDark ? '0 1px 2px rgba(0,0,0,0.5)' : '0 1px 2px rgba(0,0,0,0.3)'
@@ -128,7 +128,7 @@ export const HeroSection = ({ tenantName, primaryColor, isDark = false }: HeroSe
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.35, duration: 0.4 }}
-            className="flex flex-wrap gap-3 sm:gap-4 items-center justify-center sm:justify-start mb-8 sm:mb-10"
+            className="flex flex-wrap gap-3 sm:gap-4 items-center mb-6 sm:mb-0"
           >
             <button
               onClick={scrollToMenu}
