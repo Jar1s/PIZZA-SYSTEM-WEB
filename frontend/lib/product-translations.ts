@@ -46,6 +46,60 @@ export const productTranslations: Record<string, ProductTranslation> = {
     weight: '450g',
     allergens: ['1', '7']
   },
+  'Prosciutto': {
+    name: { sk: 'Prosciutto Tease', en: 'Prosciutto Tease' },
+    description: {
+      sk: 'Paradajkový základ, mozzarella, šunka – jemne vyzývavá.',
+      en: 'Tomato base, mozzarella, ham – gently provocative.'
+    },
+    weight: '500g',
+    allergens: ['1', '7']
+  },
+  'Bon Salami': {
+    name: { sk: 'Salami 69', en: 'Salami 69' },
+    description: {
+      sk: 'Paradajkový základ, mozzarella, saláma – spicy in all the right places.',
+      en: 'Tomato base, mozzarella, salami – spicy in all the right places.'
+    },
+    weight: '500g',
+    allergens: ['1', '7']
+  },
+  'Picante': {
+    name: { sk: 'Hot Fantasy', en: 'Hot Fantasy' },
+    description: {
+      sk: 'Paradajkový základ, mozzarella, feferóny, pikantná saláma – horúce spojenie.',
+      en: 'Tomato base, mozzarella, peppers, spicy salami – hot connection.'
+    },
+    weight: '520g',
+    allergens: ['1', '7']
+  },
+  'Calimero': {
+    name: { sk: 'Calimero Love', en: 'Calimero Love' },
+    description: {
+      sk: 'Paradajkový základ, mozzarella, šunka, vajce – rýchle, ale stojí za to.',
+      en: 'Tomato base, mozzarella, ham, egg – quick, but worth it.'
+    },
+    weight: '520g',
+    allergens: ['1', '3', '7']
+  },
+  'Prosciutto Funghi': {
+    name: { sk: 'Shroom Affair', en: 'Shroom Affair' },
+    description: {
+      sk: 'Paradajkový základ, mozzarella, šunka, šampiňóny – jemne zakázaná kombinácia, čo prekvapí každým sústom.',
+      en: 'Tomato base, mozzarella, ham, mushrooms – gently forbidden combination that surprises with every bite.'
+    },
+    weight: '520g',
+    allergens: ['1', '7']
+  },
+  'Hawaii Premium': {
+    name: { sk: 'Hawai Crush', en: 'Hawai Crush' },
+    description: {
+      sk: 'Paradajkový základ, mozzarella, šunka, ananás – tropický flirt.',
+      en: 'Tomato base, mozzarella, ham, pineapple – tropical flirt.'
+    },
+    weight: '520g',
+    allergens: ['1', '7']
+  },
   'Capri': {
     name: { sk: 'Capri Quickie', en: 'Capri Quickie' },
     description: {
@@ -55,14 +109,42 @@ export const productTranslations: Record<string, ProductTranslation> = {
     weight: '520g',
     allergens: ['1', '7']
   },
-  'Fregata': {
-    name: { sk: 'Fregata Missionary', en: 'Fregata Missionary' },
+  'Da Vinci': {
+    name: { sk: 'Da Vinci Desire', en: 'Da Vinci Desire' },
     description: {
-      sk: 'Paradajkový základ, mozzarella, niva, šampiňóny, cibuľa, olivy, vajce',
-      en: 'Tomato base, mozzarella, blue cheese, mushrooms, onion, olives, egg'
+      sk: 'Paradajkový základ, mozzarella, šunka, šampiňóny, kukurica.',
+      en: 'Tomato base, mozzarella, ham, mushrooms, corn.'
     },
-    weight: '550g',
-    allergens: ['1', '3', '7'] // lepok, vajíčka, mlieko
+    weight: '520g',
+    allergens: ['1', '7']
+  },
+  'Quattro Stagioni': {
+    name: { sk: 'Mixtape of Sins', en: 'Mixtape of Sins' },
+    description: {
+      sk: 'Paradajkový základ, mozzarella, šunka, šampiňóny, olivy, artičoky – všetko, čo by si nemal… ale chceš.',
+      en: 'Tomato base, mozzarella, ham, mushrooms, olives, artichokes – everything you shouldn\'t have… but want.'
+    },
+    weight: '520g',
+    allergens: ['1', '7']
+  },
+  // 😈 MAIN ACTION / HLAVNÉ ČÍSLO
+  'Mayday Special': {
+    name: { sk: 'Bacon Affair', en: 'Bacon Affair' },
+    description: {
+      sk: 'Paradajkový základ, mozzarella, šunka, slanina, vajce, cibuľa - guilty pleasure, čo nikdy nesklame.',
+      en: 'Tomato base, mozzarella, ham, bacon, egg, onion - guilty pleasure that never fails.'
+    },
+    weight: '520g',
+    allergens: ['1', '3', '7']
+  },
+  'Mayday': {
+    name: { sk: 'Mayday Affair', en: 'Mayday Affair' },
+    description: {
+      sk: 'Paradajkový základ, mozzarella, šunka, slanina, vajce, cibuľa - guilty pleasure, čo nikdy nesklame.',
+      en: 'Tomato base, mozzarella, ham, bacon, egg, onion - guilty pleasure that never fails.'
+    },
+    weight: '520g',
+    allergens: ['1', '3', '7']
   },
   'Gazdovská': {
     name: { sk: 'Gazda Deluxe', en: 'Gazda Deluxe' },
@@ -82,25 +164,44 @@ export const productTranslations: Record<string, ProductTranslation> = {
     weight: '450g',
     allergens: ['1', '7']
   },
-  'Korpus': {
-    name: { sk: 'Pizza Korpus', en: 'Pizza Meat Feast' },
+  'Diavola Premium': {
+    name: { sk: 'Hot Dominant', en: 'Hot Dominant' },
     description: {
-      sk: 'Slanina, šunka, klobása, pepperoni',
-      en: 'Bacon, ham, sausage, pepperoni'
+      sk: 'Paradajkový základ, mozzarella, pikantná saláma, feferóny – trochu bolí, ale chceš viac.',
+      en: 'Tomato base, mozzarella, spicy salami, peppers – it hurts a bit, but you want more.'
     },
-    weight: '450g',
+    weight: '520g',
     allergens: ['1', '7']
   },
-  'Prosciutto': {
-    name: { sk: 'Prosciutto Tease', en: 'Prosciutto Tease' },
+  'Diavola': {
+    name: { sk: 'Hot Dominant', en: 'Hot Dominant' },
     description: {
-      sk: 'Paradajkový základ, mozzarella, šunka – jemne vyzývavá.',
-      en: 'Tomato base, mozzarella, ham – gently provocative.'
+      sk: 'Paradajkový základ, mozzarella, pikantná saláma, feferóny – trochu bolí, ale chceš viac.',
+      en: 'Tomato base, mozzarella, spicy salami, peppers – it hurts a bit, but you want more.'
     },
-    weight: '500g',
+    weight: '520g',
     allergens: ['1', '7']
   },
+  'Provinciale': {
+    name: { sk: 'Country Affair', en: 'Country Affair' },
+    description: {
+      sk: 'Paradajkový základ, mozzarella, šunka, slanina, kukurica – jednoduché, ale maximálne uspokojivé.',
+      en: 'Tomato base, mozzarella, ham, bacon, corn – simple, but maximally satisfying.'
+    },
+    weight: '520g',
+    allergens: ['1', '7']
+  },
+  
   // 💋 DELUXE FETISH
+  'Fregata': {
+    name: { sk: 'Fregata Missionary', en: 'Fregata Missionary' },
+    description: {
+      sk: 'Paradajkový základ, mozzarella, niva, šampiňóny, cibuľa, olivy, vajce',
+      en: 'Tomato base, mozzarella, blue cheese, mushrooms, onion, olives, egg'
+    },
+    weight: '550g',
+    allergens: ['1', '3', '7'] // lepok, vajíčka, mlieko
+  },
   'Quattro Formaggi': {
     name: { sk: 'Four Cheese Fetish', en: 'Four Cheese Fetish' },
     description: {
@@ -137,153 +238,6 @@ export const productTranslations: Record<string, ProductTranslation> = {
     weight: '520g',
     allergens: ['1', '4', '7']
   },
-  
-  // 🍑 PREMIUM SINS
-  'Basil Pesto Premium': {
-    name: { sk: 'Pesto Affair', en: 'Pesto Affair' },
-    description: {
-      sk: 'Bazalkové pesto, mozzarella, cherry paradajky – green and naughty.',
-      en: 'Basil pesto, mozzarella, cherry tomatoes – green and naughty.'
-    },
-    weight: '520g',
-    allergens: ['1', '7', '8']
-  },
-  'Bon Salami': {
-    name: { sk: 'Salami 69', en: 'Salami 69' },
-    description: {
-      sk: 'Paradajkový základ, mozzarella, saláma – spicy in all the right places.',
-      en: 'Tomato base, mozzarella, salami – spicy in all the right places.'
-    },
-    weight: '500g',
-    allergens: ['1', '7']
-  },
-  'Calimero': {
-    name: { sk: 'Calimero Love', en: 'Calimero Love' },
-    description: {
-      sk: 'Paradajkový základ, mozzarella, šunka, vajce – rýchle, ale stojí za to.',
-      en: 'Tomato base, mozzarella, ham, egg – quick, but worth it.'
-    },
-    weight: '520g',
-    allergens: ['1', '3', '7']
-  },
-  'Da Vinci': {
-    name: { sk: 'Da Vinci Desire', en: 'Da Vinci Desire' },
-    description: {
-      sk: 'Paradajkový základ, mozzarella, šunka, šampiňóny, kukurica.',
-      en: 'Tomato base, mozzarella, ham, mushrooms, corn.'
-    },
-    weight: '520g',
-    allergens: ['1', '7']
-  },
-  'Diavola Premium': {
-    name: { sk: 'Hot Dominant', en: 'Hot Dominant' },
-    description: {
-      sk: 'Paradajkový základ, mozzarella, pikantná saláma, feferóny – trochu bolí, ale chceš viac.',
-      en: 'Tomato base, mozzarella, spicy salami, peppers – it hurts a bit, but you want more.'
-    },
-    weight: '520g',
-    allergens: ['1', '7']
-  },
-  'Diavola': {
-    name: { sk: 'Hot Dominant', en: 'Hot Dominant' },
-    description: {
-      sk: 'Paradajkový základ, mozzarella, pikantná saláma, feferóny – trochu bolí, ale chceš viac.',
-      en: 'Tomato base, mozzarella, spicy salami, peppers – it hurts a bit, but you want more.'
-    },
-    weight: '520g',
-    allergens: ['1', '7']
-  },
-  'Hawaii Premium': {
-    name: { sk: 'Hawai Crush', en: 'Hawai Crush' },
-    description: {
-      sk: 'Paradajkový základ, mozzarella, šunka, ananás – tropický flirt.',
-      en: 'Tomato base, mozzarella, ham, pineapple – tropical flirt.'
-    },
-    weight: '520g',
-    allergens: ['1', '7']
-  },
-  // 😈 MAIN ACTION / HLAVNÉ ČÍSLO
-  'Mayday': {
-    name: { sk: 'Mayday Affair', en: 'Mayday Affair' },
-    description: {
-      sk: 'Paradajkový základ, mozzarella, šunka, slanina, vajce, cibuľa - guilty pleasure, čo nikdy nesklame.',
-      en: 'Tomato base, mozzarella, ham, bacon, egg, onion - guilty pleasure that never fails.'
-    },
-    weight: '520g',
-    allergens: ['1', '3', '7']
-  },
-  'Mayday Special': {
-    name: { sk: 'Bacon Affair', en: 'Bacon Affair' },
-    description: {
-      sk: 'Paradajkový základ, mozzarella, šunka, slanina, vajce, cibuľa - guilty pleasure, čo nikdy nesklame.',
-      en: 'Tomato base, mozzarella, ham, bacon, egg, onion - guilty pleasure that never fails.'
-    },
-    weight: '520g',
-    allergens: ['1', '3', '7']
-  },
-  'Honey Chilli': {
-    name: { sk: 'Honey Temptation', en: 'Honey Temptation' },
-    description: {
-      sk: 'Paradajkový základ, mozzarella, kuracie mäso, medovo-chilli omáčka – sweet & hot.',
-      en: 'Tomato base, mozzarella, chicken, honey-chilli sauce – sweet & hot.'
-    },
-    weight: '520g',
-    allergens: ['1', '7']
-  },
-  'Picante': {
-    name: { sk: 'Hot Fantasy', en: 'Hot Fantasy' },
-    description: {
-      sk: 'Paradajkový základ, mozzarella, feferóny, pikantná saláma – horúce spojenie.',
-      en: 'Tomato base, mozzarella, peppers, spicy salami – hot connection.'
-    },
-    weight: '520g',
-    allergens: ['1', '7']
-  },
-  'Pollo Crema': {
-    name: { sk: 'Pollo Creamy Dream', en: 'Pollo Creamy Dream' },
-    description: {
-      sk: 'Smotanový základ, mozzarella, kuracie mäso, kukurica – jemné, ale nebezpečne návykové.',
-      en: 'Cream base, mozzarella, chicken, corn – gentle, but dangerously addictive.'
-    },
-    weight: '520g',
-    allergens: ['1', '7']
-  },
-  'Prosciutto Crudo Premium': {
-    name: { sk: 'Crudo Affair', en: 'Crudo Affair' },
-    description: {
-      sk: 'Paradajkový základ, mozzarella, prosciutto crudo, rukola, parmezán – talianska vášeň.',
-      en: 'Tomato base, mozzarella, prosciutto crudo, arugula, parmesan – Italian passion.'
-    },
-    weight: '520g',
-    allergens: ['1', '7']
-  },
-  'Prosciutto Funghi': {
-    name: { sk: 'Shroom Affair', en: 'Shroom Affair' },
-    description: {
-      sk: 'Paradajkový základ, mozzarella, šunka, šampiňóny – jemne zakázaná kombinácia, čo prekvapí každým sústom.',
-      en: 'Tomato base, mozzarella, ham, mushrooms – gently forbidden combination that surprises with every bite.'
-    },
-    weight: '520g',
-    allergens: ['1', '7']
-  },
-  'Provinciale': {
-    name: { sk: 'Country Affair', en: 'Country Affair' },
-    description: {
-      sk: 'Paradajkový základ, mozzarella, šunka, slanina, kukurica – jednoduché, ale maximálne uspokojivé.',
-      en: 'Tomato base, mozzarella, ham, bacon, corn – simple, but maximally satisfying.'
-    },
-    weight: '520g',
-    allergens: ['1', '7']
-  },
-  'Quattro Stagioni': {
-    name: { sk: 'Mixtape of Sins', en: 'Mixtape of Sins' },
-    description: {
-      sk: 'Paradajkový základ, mozzarella, šunka, šampiňóny, olivy, artičoky – všetko, čo by si nemal… ale chceš.',
-      en: 'Tomato base, mozzarella, ham, mushrooms, olives, artichokes – everything you shouldn\'t have… but want.'
-    },
-    weight: '520g',
-    allergens: ['1', '7']
-  },
   'Vegetariana': {
     name: { sk: 'Veggie Pleasure', en: 'Veggie Pleasure' },
     description: {
@@ -309,6 +263,55 @@ export const productTranslations: Record<string, ProductTranslation> = {
       en: 'Tomato base, mozzarella, ham, mushrooms, peppers – classic, but with a proper spark.'
     },
     weight: '520g',
+    allergens: ['1', '7']
+  },
+  
+  // 🍑 PREMIUM SINS
+  'Basil Pesto Premium': {
+    name: { sk: 'Pesto Affair', en: 'Pesto Affair' },
+    description: {
+      sk: 'Bazalkové pesto, mozzarella, cherry paradajky – green and naughty.',
+      en: 'Basil pesto, mozzarella, cherry tomatoes – green and naughty.'
+    },
+    weight: '520g',
+    allergens: ['1', '7', '8']
+  },
+  'Honey Chilli': {
+    name: { sk: 'Honey Temptation', en: 'Honey Temptation' },
+    description: {
+      sk: 'Paradajkový základ, mozzarella, kuracie mäso, medovo-chilli omáčka – sweet & hot.',
+      en: 'Tomato base, mozzarella, chicken, honey-chilli sauce – sweet & hot.'
+    },
+    weight: '520g',
+    allergens: ['1', '7']
+  },
+  'Pollo Crema': {
+    name: { sk: 'Pollo Creamy Dream', en: 'Pollo Creamy Dream' },
+    description: {
+      sk: 'Smotanový základ, mozzarella, kuracie mäso, kukurica – jemné, ale nebezpečne návykové.',
+      en: 'Cream base, mozzarella, chicken, corn – gentle, but dangerously addictive.'
+    },
+    weight: '520g',
+    allergens: ['1', '7']
+  },
+  'Prosciutto Crudo Premium': {
+    name: { sk: 'Crudo Affair', en: 'Crudo Affair' },
+    description: {
+      sk: 'Paradajkový základ, mozzarella, prosciutto crudo, rukola, parmezán – talianska vášeň.',
+      en: 'Tomato base, mozzarella, prosciutto crudo, arugula, parmesan – Italian passion.'
+    },
+    weight: '520g',
+    allergens: ['1', '7']
+  },
+  
+  // Extra products (not in main categories)
+  'Korpus': {
+    name: { sk: 'Pizza Korpus', en: 'Pizza Meat Feast' },
+    description: {
+      sk: 'Slanina, šunka, klobása, pepperoni',
+      en: 'Bacon, ham, sausage, pepperoni'
+    },
+    weight: '450g',
     allergens: ['1', '7']
   },
   
