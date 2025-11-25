@@ -76,7 +76,8 @@ export default function MyAddress({ tenant, isDark = false }: MyAddressProps) {
       return;
     }
     fetchAddresses();
-  }, [authLoading, user, fetchAddresses]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authLoading, user?.id]);
 
   const handleAddressSelect = (address: string, details?: any) => {
     if (details) {

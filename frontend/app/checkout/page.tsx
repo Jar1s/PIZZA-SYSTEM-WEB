@@ -525,7 +525,8 @@ export default function CheckoutPage() {
     return () => {
       cancelled = true;
     };
-  }, [user, fetchAddresses, fetchUserProfile]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
   
   // Real-time address validation with geocoding (debounced)
   const validateAddressWithGeocoding = (street: string, city: string, postalCode: string) => {

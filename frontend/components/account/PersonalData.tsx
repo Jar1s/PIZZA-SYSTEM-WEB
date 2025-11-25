@@ -77,7 +77,8 @@ export default function PersonalData({ tenant, isDark = false }: PersonalDataPro
       return;
     }
     fetchPersonalData();
-  }, [authLoading, user, fetchPersonalData]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authLoading, user?.id]);
 
   const handleSave = async (field: string) => {
     try {

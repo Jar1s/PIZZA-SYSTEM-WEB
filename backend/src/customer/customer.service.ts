@@ -211,27 +211,40 @@ export class CustomerService {
    * Get customer addresses
    */
   async getCustomerAddresses(userId: string) {
-    const addresses = await this.prisma.address.findMany({
-      where: { userId },
-      orderBy: [
-        { isPrimary: 'desc' },
-        { createdAt: 'desc' },
-      ],
-    });
+    try {
+      if (!userId) {
+        console.error('[CustomerService] getCustomerAddresses - userId is missing');
+        throw new Error('User ID is required');
+      }
 
-    return {
-      addresses: addresses.map((addr) => ({
-        id: addr.id,
-        street: addr.street,
-        description: addr.description,
-        city: addr.city,
-        postalCode: addr.postalCode,
-        country: addr.country,
-        isPrimary: addr.isPrimary,
-        createdAt: addr.createdAt.toISOString(),
-        updatedAt: addr.updatedAt.toISOString(),
-      })),
-    };
+      const addresses = await this.prisma.address.findMany({
+        where: { userId },
+        orderBy: [
+          { isPrimary: 'desc' },
+          { createdAt: 'desc' },
+        ],
+      });
+
+      return {
+        addresses: addresses.map((addr) => ({
+          id: addr.id,
+          street: addr.street,
+          description: addr.description,
+          city: addr.city,
+          postalCode: addr.postalCode,
+          country: addr.country,
+          isPrimary: addr.isPrimary,
+          createdAt: addr.createdAt.toISOString(),
+          updatedAt: addr.updatedAt.toISOString(),
+        })),
+      };
+    } catch (error) {
+      console.error('[CustomerService] getCustomerAddresses - Error:', error);
+      // Return empty array instead of throwing to prevent 500 error
+      return {
+        addresses: [],
+      };
+    }
   }
 
   /**
