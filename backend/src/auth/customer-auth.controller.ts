@@ -302,20 +302,16 @@ export class CustomerAuthController {
         // Always redirect to oauth-callback to store tokens, then redirect to appropriate page
         const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3001';
         
-        // Determine if we should use URL params (development/localhost) or cookies (production)
-        // Use URL params if:
-        // 1. NODE_ENV is not production, OR
-        // 2. Frontend URL is localhost (to avoid cross-origin cookie issues)
-        const isLocalhost = frontendUrl.includes('localhost') || frontendUrl.includes('127.0.0.1');
-        const isDevelopment = process.env.NODE_ENV !== 'production';
-        const useUrlParams = isDevelopment || isLocalhost;
+        // Always use URL params for better cross-domain compatibility
+        // Cookies don't work well when backend and frontend are on different domains
+        // (e.g., pizza-system-web.onrender.com -> p0rnopizza.sk)
+        const useUrlParams = true;
         
         console.log('OAuth callback mode:', {
           frontendUrl,
-          isLocalhost,
-          isDevelopment,
-          useUrlParams,
-          NODE_ENV: process.env.NODE_ENV
+          useUrlParams: true,
+          NODE_ENV: process.env.NODE_ENV,
+          reason: 'Using URL params for cross-domain compatibility'
         });
         
         if (useUrlParams) {
@@ -590,33 +586,33 @@ export class CustomerAuthController {
       // Always redirect to oauth-callback to store tokens, then redirect to appropriate page
       const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3001';
       
-      // Determine if we should use URL params (development/localhost) or cookies (production)
-      // Use URL params if:
-      // 1. NODE_ENV is not production, OR
-      // 2. Frontend URL is localhost (to avoid cross-origin cookie issues)
-      const isLocalhost = frontendUrl.includes('localhost') || frontendUrl.includes('127.0.0.1');
-      const isDevelopment = process.env.NODE_ENV !== 'production';
-      const useUrlParams = isDevelopment || isLocalhost;
+      // Always use URL params for better cross-domain compatibility
+      // Cookies don't work well when backend and frontend are on different domains
+      // (e.g., pizza-system-web.onrender.com -> p0rnopizza.sk)
+      const useUrlParams = true;
       
       console.log('Apple OAuth callback mode:', {
         frontendUrl,
-        isLocalhost,
-        isDevelopment,
-        useUrlParams,
-        NODE_ENV: process.env.NODE_ENV
+        useUrlParams: true,
+        NODE_ENV: process.env.NODE_ENV,
+        reason: 'Using URL params for cross-domain compatibility'
       });
       
       if (useUrlParams) {
-        // Development: Pass tokens in URL params (only in development)
-        const userData = {
-          id: result.user.id,
-          email: result.user.email,
-          name: result.user.name,
+        // Use the same format as Google OAuth for consistency
+        const tokens = {
+          access_token: result.access_token,
+          refresh_token: result.refresh_token,
+          user: result.user,
           needsSmsVerification: result.needsSmsVerification,
         };
         
+        // Encode tokens for URL (will be stored in localStorage on frontend)
+        const tokensParam = Buffer.from(JSON.stringify(tokens)).toString('base64');
+        
         let redirectUrl: string;
         if (result.needsSmsVerification) {
+          // If SMS verification needed, redirect to verify-phone page
           const verifyUrl = `/auth/verify-phone?userId=${result.user.id}`;
           if (returnUrl) {
             redirectUrl = `${verifyUrl}&returnUrl=${encodeURIComponent(returnUrl)}`;
@@ -626,6 +622,7 @@ export class CustomerAuthController {
             redirectUrl = verifyUrl;
           }
         } else {
+          // Redirect to returnUrl if exists, otherwise to account page
           if (returnUrl) {
             redirectUrl = returnUrl;
           } else {
@@ -634,14 +631,10 @@ export class CustomerAuthController {
           }
         }
         
-        const tokenParams = new URLSearchParams({
-          access_token: result.access_token,
-          refresh_token: result.refresh_token || '',
-          user_data: JSON.stringify(userData),
-        });
+        console.log('Apple OAuth callback - redirecting to oauth-callback with redirect:', redirectUrl, 'needsSmsVerification:', result.needsSmsVerification);
         
-        console.log('Apple OAuth callback (dev) - redirecting with tokens in URL');
-        res.redirect(`${frontendUrl}/auth/oauth-callback?${tokenParams.toString()}&redirect=${encodeURIComponent(redirectUrl)}`);
+        // Redirect to a page that will store tokens in localStorage and then redirect
+        res.redirect(`${frontendUrl}/auth/oauth-callback?tokens=${encodeURIComponent(tokensParam)}&redirect=${encodeURIComponent(redirectUrl)}`);
       } else {
         // Production: Use cookies with proper domain settings
         const oauthCookieOptions = getOAuthCookieOptions(frontendUrl);
