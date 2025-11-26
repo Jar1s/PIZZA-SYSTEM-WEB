@@ -189,7 +189,6 @@ export const translations = {
     addressDescriptionPlaceholder: 'Číslo bytu, Poschodie, Číslo vchodu',
     setAsPrimary: 'Nastaviť ako primárnu adresu',
     addAddress: 'Pridať adresu',
-    email: 'E-mail',
     edit: 'Upraviť',
     save: 'Uložiť',
     cancel: 'Zrušiť',
