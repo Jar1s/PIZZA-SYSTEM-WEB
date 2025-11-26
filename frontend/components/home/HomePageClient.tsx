@@ -131,6 +131,7 @@ export function HomePageClient({ products, tenant }: HomePageClientProps) {
   // Pizza sub-category mapping - moved inside useMemo to fix dependency warning
   const productsBySubCategory = useMemo(() => {
     const pizzaSubCategoryMap: Record<string, 'FOREPLAY' | 'MAIN_ACTION' | 'DELUXE_FETISH' | 'PREMIUM_SINS'> = {
+      // 🔥 PREDOHRA / FOREPLAY
       'Margherita': 'FOREPLAY',
       'Prosciutto': 'FOREPLAY',
       'Bon Salami': 'FOREPLAY',
@@ -141,16 +142,24 @@ export function HomePageClient({ products, tenant }: HomePageClientProps) {
       'Capri': 'FOREPLAY',
       'Da Vinci': 'FOREPLAY',
       'Quattro Stagioni': 'FOREPLAY',
-      'Fregata': 'MAIN_ACTION',
-      'Pivárska': 'MAIN_ACTION',
+      // 😈 MAIN ACTION / HLAVNÉ ČÍSLO
       'Mayday Special': 'MAIN_ACTION',
+      'Mayday': 'MAIN_ACTION',
       'Gazdovská': 'MAIN_ACTION',
+      'Pivárska': 'MAIN_ACTION',
       'Diavola Premium': 'MAIN_ACTION',
+      'Diavola': 'MAIN_ACTION',
       'Provinciale': 'MAIN_ACTION',
+      // 💋 DELUXE FETISH
+      'Fregata': 'DELUXE_FETISH',
       'Quattro Formaggi': 'DELUXE_FETISH',
       'Quattro Formaggi Bianco': 'DELUXE_FETISH',
       'Tonno': 'DELUXE_FETISH',
+      'Tuniaková': 'DELUXE_FETISH',
+      'Vegetariana': 'DELUXE_FETISH',
       'Vegetariana Premium': 'DELUXE_FETISH',
+      'Hot Missionary': 'DELUXE_FETISH',
+      // 🍑 PREMIUM SINS
       'Basil Pesto Premium': 'PREMIUM_SINS',
       'Honey Chilli': 'PREMIUM_SINS',
       'Pollo Crema': 'PREMIUM_SINS',
