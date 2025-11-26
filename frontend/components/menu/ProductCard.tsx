@@ -158,15 +158,15 @@ export const ProductCard = memo(function ProductCard({ product, index = 0, isBes
         
         {/* Premium Badge */}
         {(isBestSeller || isPremium) && (
-          <div className="absolute inset-x-0 top-4 px-4 flex justify-between gap-2">
+          <div className="absolute inset-x-0 top-2 sm:top-3 md:top-4 px-2 sm:px-3 md:px-4 flex justify-between items-start gap-1 sm:gap-2 z-10">
             {isBestSeller && (
-              <span className={`${isDark ? 'hero-badge text-[0.6rem]' : 'rounded-full bg-red-600 text-white text-xs font-semibold px-3 py-1 shadow'} whitespace-nowrap`}>
-                🔥 {t.bestSellersTitle}
+              <span className={`${isDark ? 'hero-badge text-[0.5rem] sm:text-[0.6rem]' : 'rounded-full bg-red-600 text-white text-[0.6rem] sm:text-xs font-semibold px-2 sm:px-3 py-0.5 sm:py-1 shadow'} whitespace-nowrap flex-shrink-0`}>
+                🔥 <span className="hidden sm:inline">{t.bestSellersTitle}</span>
               </span>
             )}
             {isPremium && (
-              <span className={`ml-auto rounded-full px-3 py-1 text-xs font-bold shadow ${
-                isDark ? 'bg-white/15 border border-white/30 text-white backdrop-blur' : 'bg-red-500 text-white'
+              <span className={`ml-auto rounded-full px-2 sm:px-3 py-0.5 sm:py-1 text-[0.6rem] sm:text-xs font-bold shadow flex-shrink-0 ${
+                isDark ? 'bg-white/20 border border-white/40 text-white backdrop-blur-sm' : 'bg-red-500 text-white'
               }`}>
                 {t.premium}
               </span>
@@ -228,9 +228,9 @@ export const ProductCard = memo(function ProductCard({ product, index = 0, isBes
 
         {/* Price & Add Button - Always at bottom */}
         <div className="flex items-center justify-between gap-2 sm:gap-3 pt-4 overflow-hidden">
-          <div className="flex-shrink-0 min-w-0">
+          <div className="flex-shrink-0 min-w-0 flex-1">
             <div 
-              className="text-2xl sm:text-3xl font-bold truncate" 
+              className="text-xl sm:text-2xl md:text-3xl font-bold truncate" 
               style={{ 
                 color: 'var(--color-primary)',
                 textShadow: 'none',
@@ -240,7 +240,7 @@ export const ProductCard = memo(function ProductCard({ product, index = 0, isBes
               €{price}
             </div>
             {isPremium && (
-              <p className="text-xs uppercase tracking-widest text-gray-400">{t.premium}</p>
+              <p className="text-[0.6rem] sm:text-xs uppercase tracking-widest text-gray-400 hidden sm:block">{t.premium}</p>
             )}
           </div>
           
@@ -256,7 +256,7 @@ export const ProductCard = memo(function ProductCard({ product, index = 0, isBes
               e.stopPropagation();
             }}
             disabled={isAdding}
-            className={`relative z-10 flex-shrink-0 px-3 sm:px-4 md:px-6 py-2 sm:py-2.5 md:py-3 rounded-full font-bold text-xs sm:text-sm md:text-base text-white transition-all hover:scale-105 active:scale-95 touch-manipulation min-h-[40px] sm:min-h-[44px] whitespace-nowrap ${
+            className={`relative z-10 flex-shrink-0 px-3 sm:px-4 md:px-5 lg:px-6 py-2 sm:py-2.5 md:py-3 rounded-full font-bold text-[0.7rem] sm:text-xs md:text-sm lg:text-base text-white transition-all hover:scale-105 active:scale-95 touch-manipulation min-h-[36px] sm:min-h-[40px] md:min-h-[44px] whitespace-nowrap ${
               isAdding 
                 ? 'bg-green-500' 
                 : isDark
