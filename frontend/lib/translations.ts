@@ -325,7 +325,7 @@ export const translations = {
     emptyCart: 'Your cart is empty',
     
     // Hero Section  
-    heroTitle: 'Welcome to',
+    heroTitle: 'Welcome to ',
     heroSubtitle: 'Authentic Italian pizza delivered hot to your door. Choose from delicious varieties made with love.',
     heroBadge: 'Fast delivery within 90 minutes',
     heroFeatureOneTitle: 'Hand-tossed dough',
