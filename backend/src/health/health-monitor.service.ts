@@ -6,7 +6,7 @@ import { TenantsService } from '../tenants/tenants.service';
 export class HealthMonitorService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(HealthMonitorService.name);
   private consecutiveErrors = 0;
-  private readonly ERROR_THRESHOLD = 3; // Number of consecutive errors before enabling maintenance mode
+  private readonly ERROR_THRESHOLD = 10; // Number of consecutive errors before enabling maintenance mode
   private readonly CHECK_INTERVAL = 30000; // Check every 30 seconds
   private healthCheckInterval: NodeJS.Timeout | null = null;
   private isAutoMaintenanceEnabled = false;
