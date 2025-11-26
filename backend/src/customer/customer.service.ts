@@ -122,60 +122,81 @@ export class CustomerService {
       }
     }
 
+    // Normalize phone number (remove spaces, keep only digits and +)
+    const normalizePhone = (phone: string | undefined | null): string | null => {
+      if (!phone || phone.trim() === '') return null;
+      // Remove all non-digit characters except +
+      const cleaned = phone.replace(/[^\d+]/g, '');
+      return cleaned || null;
+    };
+
+    const normalizedPhone = normalizePhone(data.phone);
+    const normalizedCurrentPhone = normalizePhone(user.phone);
+    
     // Check if phone is already taken by another user
-    const phoneChanged = data.phone && data.phone !== user.phone;
+    const phoneChanged = normalizedPhone && normalizedPhone !== normalizedCurrentPhone;
     let shouldVerify = false;
     let phoneAlreadyVerified = false;
     
-    if (phoneChanged) {
-      const existingUser = (await this.prisma.user.findUnique({
-        where: { phone: data.phone } as any,
-        select: {
-          id: true,
-          phoneVerified: true,
-        } as any,
-      })) as unknown as { id: string; phoneVerified: boolean } | null;
+    if (phoneChanged && normalizedPhone) {
+      try {
+        const existingUser = (await this.prisma.user.findUnique({
+          where: { phone: normalizedPhone } as any,
+          select: {
+            id: true,
+            phoneVerified: true,
+          } as any,
+        })) as unknown as { id: string; phoneVerified: boolean } | null;
       
-      if (existingUser && existingUser.id !== userId) {
-        throw new BadRequestException('Phone number is already taken');
-      }
-      
-      // Check if this phone number was already verified for this specific user
-      // First check if this user had this phone verified before (check SMS verification history)
-      const userVerifiedCode = await (this.prisma as any).smsVerificationCode.findFirst({
-        where: {
-          phone: data.phone,
-          userId: userId,
-          isUsed: true,
-        },
-        orderBy: { createdAt: 'desc' },
-      });
-      
-      if (userVerifiedCode) {
-        // This user already verified this phone number before
-        phoneAlreadyVerified = true;
-      } else if (existingUser && existingUser.phoneVerified) {
-        // Another user has this phone verified - we can trust it's a valid number
-        // But for security, we still require verification for the new user
-        shouldVerify = true;
-      } else {
-        // Check if there's any verified SMS code for this phone (within last 30 days)
-        // This handles cases where user verified it but then changed to different number
-        const recentVerifiedCode = await (this.prisma as any).smsVerificationCode.findFirst({
+        if (existingUser && existingUser.id !== userId) {
+          throw new BadRequestException('Phone number is already taken');
+        }
+        
+        // Check if this phone number was already verified for this specific user
+        // First check if this user had this phone verified before (check SMS verification history)
+        const userVerifiedCode = await (this.prisma as any).smsVerificationCode.findFirst({
           where: {
-            phone: data.phone,
+            phone: normalizedPhone,
+            userId: userId,
             isUsed: true,
-            expiresAt: { gt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) }, // Within last 30 days
           },
           orderBy: { createdAt: 'desc' },
         });
         
-        if (recentVerifiedCode && recentVerifiedCode.userId === userId) {
-          // This user verified this phone recently
+        if (userVerifiedCode) {
+          // This user already verified this phone number before
           phoneAlreadyVerified = true;
-        } else {
+        } else if (existingUser && existingUser.phoneVerified) {
+          // Another user has this phone verified - we can trust it's a valid number
+          // But for security, we still require verification for the new user
           shouldVerify = true;
+        } else {
+          // Check if there's any verified SMS code for this phone (within last 30 days)
+          // This handles cases where user verified it but then changed to different number
+          const recentVerifiedCode = await (this.prisma as any).smsVerificationCode.findFirst({
+            where: {
+              phone: normalizedPhone,
+              isUsed: true,
+              expiresAt: { gt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) }, // Within last 30 days
+            },
+            orderBy: { createdAt: 'desc' },
+          });
+          
+          if (recentVerifiedCode && recentVerifiedCode.userId === userId) {
+            // This user verified this phone recently
+            phoneAlreadyVerified = true;
+          } else {
+            shouldVerify = true;
+          }
         }
+      } catch (error: any) {
+        // If findUnique fails (e.g., phone is null or invalid), log and continue
+        console.error('[CustomerService] Error checking phone uniqueness:', error.message);
+        // If it's a unique constraint violation, re-throw as BadRequestException
+        if (error.code === 'P2002' || error.message?.includes('Unique constraint')) {
+          throw new BadRequestException('Phone number is already taken');
+        }
+        // Otherwise, continue with update (phone might be null/empty)
       }
     }
 
@@ -184,9 +205,9 @@ export class CustomerService {
       data: {
         ...(data.name && { name: data.name }),
         ...(data.email && { email: data.email }),
-        ...(data.phone && { phone: data.phone }),
+        ...(normalizedPhone && { phone: normalizedPhone }),
         // If phone changed, mark as verified only if it was already verified before
-        ...(phoneChanged && { phoneVerified: phoneAlreadyVerified } as any),
+        ...(phoneChanged && normalizedPhone && { phoneVerified: phoneAlreadyVerified } as any),
       },
       select: {
         id: true,

@@ -9,6 +9,8 @@ import {
   UseGuards,
   Request,
   UnauthorizedException,
+  BadRequestException,
+  NotFoundException,
 } from '@nestjs/common';
 import { CustomerService } from './customer.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -60,12 +62,22 @@ export class CustomerController {
    */
   @Patch('profile')
   async updateProfile(@Request() req: any, @Body() data: { name?: string; email?: string; phone?: string }) {
-    const user = req.user;
-    if (!user || user.role !== 'CUSTOMER') {
-      throw new UnauthorizedException('Unauthorized');
-    }
+    try {
+      const user = req.user;
+      if (!user || user.role !== 'CUSTOMER') {
+        throw new UnauthorizedException('Unauthorized');
+      }
 
-    return this.customerService.updateCustomerProfile(user.id, data);
+      return await this.customerService.updateCustomerProfile(user.id, data);
+    } catch (error: any) {
+      console.error('[CustomerController] updateProfile error:', error);
+      // Re-throw known exceptions
+      if (error instanceof UnauthorizedException || error instanceof BadRequestException || error instanceof NotFoundException) {
+        throw error;
+      }
+      // For unknown errors, throw generic error
+      throw new BadRequestException(error.message || 'Failed to update profile');
+    }
   }
 
   /**
