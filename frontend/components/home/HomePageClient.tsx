@@ -156,7 +156,6 @@ export function HomePageClient({ products, tenant }: HomePageClientProps) {
       // 😈 MAIN ACTION / HLAVNÉ ČÍSLO
       'Mayday Special': 'MAIN_ACTION',
       'Mayday': 'MAIN_ACTION',
-      'Pizza Mayday': 'MAIN_ACTION',
       'Gazdovská': 'MAIN_ACTION',
       'Pizza Gazdovská': 'MAIN_ACTION',
       'Pivárska': 'MAIN_ACTION',
@@ -181,7 +180,6 @@ export function HomePageClient({ products, tenant }: HomePageClientProps) {
       'Pizza Vegetariana': 'DELUXE_FETISH',
       'Vegetariana Premium': 'DELUXE_FETISH',
       'Hot Missionary': 'DELUXE_FETISH',
-      'Pizza Hot Missionary': 'DELUXE_FETISH',
       // 🍑 PREMIUM SINS
       'Basil Pesto Premium': 'PREMIUM_SINS',
       'Pizza Bazila Pesto': 'PREMIUM_SINS',
