@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { Product, Tenant } from '@pizza-ecosystem/shared';
 import { ProductCard } from '@/components/menu/ProductCard';
 import { HeroSection } from '@/components/home/HeroSection';
@@ -30,6 +30,32 @@ export function HomePageClient({ products, tenant }: HomePageClientProps) {
   const { addItem } = useCart();
   const toast = useToastContext();
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>('PIZZA');
+  const categoryTabsRef = useRef<HTMLDivElement>(null);
+
+  // Setup non-passive wheel event listener to prevent horizontal scroll when scrolling vertically
+  useEffect(() => {
+    const node = categoryTabsRef.current;
+    if (!node) return;
+
+    const handleWheel = (e: WheelEvent) => {
+      // Prevent horizontal scroll when scrolling vertically
+      // Only allow horizontal scroll if user is intentionally scrolling horizontally
+      if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
+        // User is scrolling vertically - completely prevent horizontal scroll
+        e.preventDefault();
+        // Manually scroll the page vertically instead
+        window.scrollBy({
+          top: e.deltaY,
+          behavior: 'auto'
+        });
+      }
+    };
+
+    node.addEventListener('wheel', handleWheel, { passive: false });
+    return () => {
+      node.removeEventListener('wheel', handleWheel);
+    };
+  }, []);
 
   // Debug: Log prices for specific products when component mounts
   useEffect(() => {
@@ -420,19 +446,7 @@ export function HomePageClient({ products, tenant }: HomePageClientProps) {
               msOverflowStyle: 'none',
               overscrollBehaviorX: 'none',
             }}
-            onWheel={(e) => {
-              // Prevent horizontal scroll when scrolling vertically
-              // Only allow horizontal scroll if user is intentionally scrolling horizontally
-              if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
-                // User is scrolling vertically - completely prevent horizontal scroll
-                e.preventDefault();
-                // Manually scroll the page vertically instead
-                window.scrollBy({
-                  top: e.deltaY,
-                  behavior: 'auto'
-                });
-              }
-            }}
+            ref={categoryTabsRef}
           >
             {(Object.keys(categoryCounts) as CategoryFilter[]).map((category) => {
               if (categoryCounts[category] === 0 || category === 'all') return null;
