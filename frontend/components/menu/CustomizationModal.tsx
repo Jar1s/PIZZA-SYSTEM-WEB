@@ -279,8 +279,8 @@ export default function CustomizationModal({
                     {/* Weight and Allergens - Compact */}
                     {(() => {
                       // Používame weightGrams a allergens z databázy, fallback na translation
-                      const weight = product.weightGrams ? `${product.weightGrams}g` : translation.weight;
-                      const allergens = (product.allergens && product.allergens.length > 0) ? product.allergens : translation.allergens;
+                      const weight = (product as any).weightGrams ? `${(product as any).weightGrams}g` : translation.weight;
+                      const allergens = ((product as any).allergens && (product as any).allergens.length > 0) ? (product as any).allergens : translation.allergens;
                       
                       return (weight || allergens) ? (
                         <div className="flex items-center gap-3 mb-2 text-xs text-gray-500 flex-wrap">
@@ -297,7 +297,7 @@ export default function CustomizationModal({
                                 {language === 'sk' ? 'Alergény:' : 'Allergens:'}
                               </span>
                               <span className="text-xs">
-                                {allergens.map((code, index) => (
+                                {(allergens || []).map((code: string, index: number) => (
                                   <span key={code}>
                                     <span className="font-semibold">{code}</span>
                                     {index < allergens.length - 1 && ', '}

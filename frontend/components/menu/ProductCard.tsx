@@ -10,6 +10,20 @@ import { motion } from 'framer-motion';
 import { useState, useMemo, useCallback, memo, useEffect } from 'react';
 import CustomizationModal from './CustomizationModal';
 
+const drinkImageMap: Record<string, string> = {
+  'bonaqua nesýtená 1,5l': '/images/drinks/bonaqua-nesytna.svg',
+  'bonaqua nesytena 1,5l': '/images/drinks/bonaqua-nesytna.svg',
+  'bonaqua sýtená 1,5l': '/images/drinks/bonaqua-sytena.svg',
+  'bonaqua sytena 1,5l': '/images/drinks/bonaqua-sytena.svg',
+  'kofola 2l': '/images/drinks/kofola-2l.svg',
+  'pepsi 1l': '/images/drinks/pepsi-1l.svg',
+  'pepsi zero 1l': '/images/drinks/pepsi-zero-1l.svg',
+  'sprite 1l': '/images/drinks/sprite-1l.svg',
+  'fanta 1l': '/images/drinks/fanta-1l.svg',
+  'coca cola 1l': '/images/drinks/coca-cola-1l.svg',
+  'cola zero 1l': '/images/drinks/cola-zero-1l.svg',
+};
+
 interface ProductCardProps {
   product: Product;
   index?: number;
@@ -33,7 +47,7 @@ export const ProductCard = memo(function ProductCard({ product, index = 0, isBes
     setImageError(false);
     setImageLoading(true);
     setRetryCount(0);
-  }, [product.image]);
+  }, [product.image, product.name]);
   
   // Get tenant from context
   // Memoize computed values
@@ -43,6 +57,12 @@ export const ProductCard = memo(function ProductCard({ product, index = 0, isBes
   const translation = useMemo(() => getProductTranslation(product.name, language), [product.name, language]);
   const displayName = useMemo(() => translation.name || product.name, [translation.name, product.name]);
   const displayDescription = useMemo(() => translation.description || product.description, [translation.description, product.description]);
+  const fallbackImage = useMemo(() => {
+    const key = product.name.toLowerCase();
+    const translatedKey = translation.name?.toLowerCase();
+    return drinkImageMap[key] || (translatedKey ? drinkImageMap[translatedKey] : undefined);
+  }, [product.name, translation.name]);
+  const displayImage = product.image || fallbackImage;
   
   // Check if product needs customization (PIZZA or STANGLE)
   const needsCustomization = useMemo(() => {
@@ -102,7 +122,7 @@ export const ProductCard = memo(function ProductCard({ product, index = 0, isBes
       {isDark && <span className="product-card-gradient" aria-hidden />}
       {/* Image Container */}
       <div className="relative h-48 sm:h-56 md:h-64 overflow-hidden bg-gray-100 flex-shrink-0">
-        {product.image && !imageError ? (
+        {displayImage && !imageError ? (
           <>
             {/* Loading skeleton */}
             {imageLoading && (
@@ -110,7 +130,7 @@ export const ProductCard = memo(function ProductCard({ product, index = 0, isBes
             )}
             
             <Image
-              src={product.image}
+              src={displayImage}
               alt={product.name}
               fill
               sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
@@ -206,8 +226,8 @@ export const ProductCard = memo(function ProductCard({ product, index = 0, isBes
         {/* Weight and Allergens - Just above price */}
         {/* Používame weightGrams a allergens z databázy, fallback na translation */}
         {(() => {
-          const weight = product.weightGrams ? `${product.weightGrams}g` : translation.weight;
-          const allergens = (product.allergens && product.allergens.length > 0) ? product.allergens : translation.allergens;
+          const weight = (product as any).weightGrams ? `${(product as any).weightGrams}g` : translation.weight;
+          const allergens = ((product as any).allergens && (product as any).allergens.length > 0) ? (product as any).allergens : translation.allergens;
           
           return (weight || allergens) ? (
             <div className={`flex items-center gap-4 mb-2 text-xs h-5 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>

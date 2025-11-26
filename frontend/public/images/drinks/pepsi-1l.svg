@@ -1,0 +1,27 @@
+<svg width="360" height="640" viewBox="0 0 360 640" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="body" x1="0" y1="120" x2="0" y2="600" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0D275A"/>
+      <stop offset="1" stop-color="#001836"/>
+    </linearGradient>
+    <linearGradient id="glass" x1="0" y1="80" x2="0" y2="620" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#ffffff" stop-opacity="0.15"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0.03"/>
+    </linearGradient>
+  </defs>
+  <rect width="360" height="640" fill="none"/>
+  <g filter="url(#shadow)">
+    <rect x="130" y="70" width="100" height="40" rx="8" fill="#0B4DA2"/>
+    <rect x="100" y="90" width="160" height="480" rx="60" fill="url(#body)"/>
+    <rect x="110" y="120" width="140" height="420" rx="55" fill="url(#glass)"/>
+    <rect x="115" y="260" width="130" height="150" rx="18" fill="#0B4DA2"/>
+    <rect x="120" y="270" width="120" height="130" rx="14" fill="#FFFFFF" opacity="0.95"/>
+    <circle cx="180" cy="335" r="34" fill="#FFFFFF"/>
+    <path d="M146 335c12-8 28-8 34-8 10 0 26 0 34-8-6 22-22 30-34 30-14 0-27-8-34-14z" fill="#E0002B"/>
+    <path d="M214 335c-12 8-28 8-34 8-10 0-26 0-34 8 6-22 22-30 34-30 14 0 27 8 34 14z" fill="#0B4DA2"/>
+    <text x="180" y="368" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="12" font-weight="700" fill="#0B4DA2">Pepsi 1l</text>
+  </g>
+  <filter id="shadow" x="60" y="40" width="240" height="560" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+    <feDropShadow dx="0" dy="18" stdDeviation="26" flood-color="#0B4DA2" flood-opacity="0.25"/>
+  </filter>
+</svg>
