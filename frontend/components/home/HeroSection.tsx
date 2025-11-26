@@ -98,8 +98,7 @@ export const HeroSection = ({ tenantName, primaryColor, isDark = false }: HeroSe
               letterSpacing: '0.03em'
             }}
           >
-            {t.heroTitle}
-            <br className="hidden sm:block" />
+            {t.heroTitle}{' '}
             <span
               style={{
                 color: accentColor,
