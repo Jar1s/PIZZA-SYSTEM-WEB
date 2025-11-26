@@ -58,10 +58,10 @@ export const Footer = ({ tenantName, primaryColor }: FooterProps) => {
                 <li>
                   <a 
                     href="tel:+421914363363" 
-                    className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 border border-white/20 hover:border-white/30 transition-all hover:scale-105 active:scale-95 cursor-pointer"
+                    className="inline-flex items-center gap-2 hover:text-white transition-colors cursor-pointer"
                   >
                     <span>📞</span>
-                    <span className="font-semibold">0914 363 363</span>
+                    <span>0914 363 363</span>
                   </a>
                 </li>
                 <li>✉️ info@{tenantName.toLowerCase()}.sk</li>
