@@ -303,25 +303,16 @@ export const productTranslations: Record<string, ProductTranslation> = {
     weight: '520g',
     allergens: ['1', '7', '8']
   },
+  'Basil Pesto': {
+    name: { sk: 'Pesto Affair', en: 'Pesto Affair' },
+    description: {
+      sk: 'Bazalkové pesto, mozzarella, cherry paradajky – green and naughty.',
+      en: 'Basil pesto, mozzarella, cherry tomatoes – green and naughty.'
+    },
+    weight: '520g',
+    allergens: ['1', '7', '8']
+  },
   'Honey Chilli': {
-    name: { sk: 'Honey Temptation', en: 'Honey Temptation' },
-    description: {
-      sk: 'Paradajkový základ, mozzarella, kuracie mäso, medovo-chilli omáčka – sweet & hot.',
-      en: 'Tomato base, mozzarella, chicken, honey-chilli sauce – sweet & hot.'
-    },
-    weight: '520g',
-    allergens: ['1', '7']
-  },
-  'med chilli': {
-    name: { sk: 'Honey Temptation', en: 'Honey Temptation' },
-    description: {
-      sk: 'Paradajkový základ, mozzarella, kuracie mäso, medovo-chilli omáčka – sweet & hot.',
-      en: 'Tomato base, mozzarella, chicken, honey-chilli sauce – sweet & hot.'
-    },
-    weight: '520g',
-    allergens: ['1', '7']
-  },
-  'Med chilli': {
     name: { sk: 'Honey Temptation', en: 'Honey Temptation' },
     description: {
       sk: 'Paradajkový základ, mozzarella, kuracie mäso, medovo-chilli omáčka – sweet & hot.',
@@ -344,6 +335,33 @@ export const productTranslations: Record<string, ProductTranslation> = {
     description: {
       sk: 'Paradajkový základ, mozzarella, prosciutto crudo, rukola, parmezán – talianska vášeň.',
       en: 'Tomato base, mozzarella, prosciutto crudo, arugula, parmesan – Italian passion.'
+    },
+    weight: '520g',
+    allergens: ['1', '7']
+  },
+  'Prosciutto Crudo': {
+    name: { sk: 'Crudo Affair', en: 'Crudo Affair' },
+    description: {
+      sk: 'Paradajkový základ, mozzarella, prosciutto crudo, rukola, parmezán – talianska vášeň.',
+      en: 'Tomato base, mozzarella, prosciutto crudo, arugula, parmesan – Italian passion.'
+    },
+    weight: '520g',
+    allergens: ['1', '7']
+  },
+  'med chilli': {
+    name: { sk: 'Honey Temptation', en: 'Honey Temptation' },
+    description: {
+      sk: 'Paradajkový základ, mozzarella, kuracie mäso, medovo-chilli omáčka – sweet & hot.',
+      en: 'Tomato base, mozzarella, chicken, honey-chilli sauce – sweet & hot.'
+    },
+    weight: '520g',
+    allergens: ['1', '7']
+  },
+  'Med chilli': {
+    name: { sk: 'Honey Temptation', en: 'Honey Temptation' },
+    description: {
+      sk: 'Paradajkový základ, mozzarella, kuracie mäso, medovo-chilli omáčka – sweet & hot.',
+      en: 'Tomato base, mozzarella, chicken, honey-chilli sauce – sweet & hot.'
     },
     weight: '520g',
     allergens: ['1', '7']
