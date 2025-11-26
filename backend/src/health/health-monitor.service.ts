@@ -10,6 +10,7 @@ export class HealthMonitorService implements OnModuleInit, OnModuleDestroy {
   private readonly CHECK_INTERVAL = 30000; // Check every 30 seconds
   private healthCheckInterval: NodeJS.Timeout | null = null;
   private isAutoMaintenanceEnabled = false;
+  private pendingMaintenanceUpdate: { reason: string; timestamp: Date } | null = null;
 
   constructor(
     private prisma: PrismaService,
@@ -61,6 +62,14 @@ export class HealthMonitorService implements OnModuleInit, OnModuleDestroy {
         // If auto-maintenance was enabled and health is restored, disable it
         if (this.isAutoMaintenanceEnabled) {
           await this.disableAutoMaintenance();
+        }
+        
+        // If there's a pending maintenance update, try to apply it now that DB is healthy
+        if (this.pendingMaintenanceUpdate) {
+          this.logger.log('🔄 Database restored, applying pending maintenance mode update...');
+          const reason = this.pendingMaintenanceUpdate.reason;
+          this.pendingMaintenanceUpdate = null;
+          await this.enableAutoMaintenance(reason);
         }
       } else {
         // Database connection failed
@@ -139,8 +148,20 @@ export class HealthMonitorService implements OnModuleInit, OnModuleDestroy {
       }
 
       this.isAutoMaintenanceEnabled = true;
+      this.pendingMaintenanceUpdate = null; // Clear pending update on success
     } catch (error) {
-      this.logger.error('❌ Failed to enable automatic maintenance mode:', error);
+      // If DB update fails (e.g., DB is disconnected), store in memory and retry later
+      this.logger.error('❌ Failed to enable maintenance mode via DB, storing in memory for retry:', error);
+      this.pendingMaintenanceUpdate = { reason, timestamp: new Date() };
+      this.isAutoMaintenanceEnabled = true; // Mark as enabled in memory
+      
+      // Retry after a delay
+      setTimeout(() => {
+        if (this.pendingMaintenanceUpdate) {
+          this.logger.log('🔄 Retrying maintenance mode update...');
+          this.enableAutoMaintenance(this.pendingMaintenanceUpdate.reason);
+        }
+      }, 60000); // Retry after 1 minute
     }
   }
 
