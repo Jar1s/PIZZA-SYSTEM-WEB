@@ -16,6 +16,7 @@ export default function PersonalData({ tenant, isDark = false }: PersonalDataPro
   const { t } = useLanguage();
   const router = useRouter();
   const [editing, setEditing] = useState<string | null>(null);
+  const [phonePrefix, setPhonePrefix] = useState('+421');
   const [formData, setFormData] = useState({
     name: user?.name || '',
     email: user?.email || '',
@@ -40,10 +41,28 @@ export default function PersonalData({ tenant, isDark = false }: PersonalDataPro
 
       if (res.ok) {
         const data = await res.json();
+        // Parse phone number to extract prefix and number
+        const phone = data.phone || '';
+        let prefix = '+421';
+        let phoneNumber = phone;
+        
+        if (phone.startsWith('+421')) {
+          prefix = '+421';
+          phoneNumber = phone.replace(/^\+421/, '').trim();
+        } else if (phone.startsWith('+')) {
+          // Extract prefix (first 1-4 digits after +)
+          const match = phone.match(/^(\+\d{1,4})/);
+          if (match) {
+            prefix = match[1];
+            phoneNumber = phone.replace(match[1], '').trim();
+          }
+        }
+        
+        setPhonePrefix(prefix);
         setFormData({
           name: data.name || user?.name || '',
           email: data.email || user?.email || '',
-          phone: data.phone || '',
+          phone: phoneNumber,
         });
         
         // Update user in context and localStorage with fetched data
@@ -90,13 +109,18 @@ export default function PersonalData({ tenant, isDark = false }: PersonalDataPro
         return;
       }
       
+      // Combine phone prefix and number for phone field
+      const valueToSend = field === 'phone' 
+        ? `${phonePrefix}${formData.phone.replace(/\D/g, '')}`
+        : formData[field as keyof typeof formData];
+      
       const res = await fetch(`${API_URL}/api/customer/account/profile`, {
         method: 'PATCH',
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ [field]: formData[field as keyof typeof formData] }),
+        body: JSON.stringify({ [field]: valueToSend }),
       });
 
       if (res.ok) {
@@ -143,11 +167,23 @@ export default function PersonalData({ tenant, isDark = false }: PersonalDataPro
     }
   };
 
+  // Parse phone for display
+  const getDisplayPhone = () => {
+    if (!formData.phone) return '';
+    // If phone already includes prefix, show as is
+    if (formData.phone.startsWith('+')) {
+      return formData.phone;
+    }
+    // Otherwise combine prefix and number
+    return `${phonePrefix} ${formData.phone}`;
+  };
+
   const fields = [
     {
       key: 'phone',
       label: t.phone,
       value: formData.phone || '',
+      displayValue: getDisplayPhone(),
       editable: true,
     },
     {
@@ -195,15 +231,51 @@ export default function PersonalData({ tenant, isDark = false }: PersonalDataPro
               <div className="flex-1">
                 <div className={`font-semibold mb-1 ${isDark ? 'text-white' : 'text-gray-900'}`}>{field.label}</div>
                 {editing === field.key ? (
-                  <input
-                    type={field.key === 'email' ? 'email' : field.key === 'phone' ? 'tel' : 'text'}
-                    value={formData[field.key as keyof typeof formData]}
-                    onChange={(e) => setFormData({ ...formData, [field.key]: e.target.value })}
-                    className={inputClass}
-                    autoFocus
-                  />
+                  field.key === 'phone' ? (
+                    <div className="flex gap-2">
+                      <select
+                        value={phonePrefix}
+                        onChange={(e) => setPhonePrefix(e.target.value)}
+                        className={isDark
+                          ? 'px-3 py-2 border border-white/20 bg-white/5 text-white rounded-lg focus:border-white/40 focus:outline-none'
+                          : 'px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-orange-500 bg-white'}
+                      >
+                        <option value="+421">🇸🇰 +421</option>
+                        <option value="+420">🇨🇿 +420</option>
+                        <option value="+48">🇵🇱 +48</option>
+                        <option value="+36">🇭🇺 +36</option>
+                        <option value="+43">🇦🇹 +43</option>
+                        <option value="+49">🇩🇪 +49</option>
+                        <option value="+1">🇺🇸 +1</option>
+                        <option value="+44">🇬🇧 +44</option>
+                        <option value="+33">🇫🇷 +33</option>
+                        <option value="+39">🇮🇹 +39</option>
+                        <option value="+34">🇪🇸 +34</option>
+                      </select>
+                      <input
+                        type="tel"
+                        value={formData.phone}
+                        onChange={(e) => setFormData({ ...formData, phone: e.target.value.replace(/\D/g, '') })}
+                        className={`flex-1 ${inputClass}`}
+                        placeholder={t.phonePlaceholder || '912345678'}
+                        autoFocus
+                      />
+                    </div>
+                  ) : (
+                    <input
+                      type={field.key === 'email' ? 'email' : 'text'}
+                      value={formData[field.key as keyof typeof formData]}
+                      onChange={(e) => setFormData({ ...formData, [field.key]: e.target.value })}
+                      className={inputClass}
+                      autoFocus
+                    />
+                  )
                 ) : (
-                  <div className={mutedText}>{field.value || '-'}</div>
+                  <div className={mutedText}>
+                    {field.key === 'phone' && (field as any).displayValue
+                      ? (field as any).displayValue
+                      : field.value || '-'}
+                  </div>
                 )}
               </div>
               {editing === field.key ? (
