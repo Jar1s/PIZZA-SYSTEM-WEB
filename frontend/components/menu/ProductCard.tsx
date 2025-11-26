@@ -58,11 +58,46 @@ export const ProductCard = memo(function ProductCard({ product, index = 0, isBes
   const displayName = useMemo(() => translation.name || product.name, [translation.name, product.name]);
   const displayDescription = useMemo(() => translation.description || product.description, [translation.description, product.description]);
   const fallbackImage = useMemo(() => {
-    const key = product.name.toLowerCase();
-    const translatedKey = translation.name?.toLowerCase();
-    return drinkImageMap[key] || (translatedKey ? drinkImageMap[translatedKey] : undefined);
-  }, [product.name, translation.name]);
-  const displayImage = product.image || fallbackImage;
+    // Check if product is a drink and has a fallback image
+    if (product.category === 'DRINKS') {
+      const key = product.name.toLowerCase().trim();
+      const translatedKey = translation.name?.toLowerCase().trim();
+      // Try multiple variations
+      const variations = [
+        key,
+        translatedKey,
+        key.replace(/[.,]/g, ''), // Remove dots and commas
+        translatedKey?.replace(/[.,]/g, ''),
+        key.replace(/\s+/g, ' '), // Normalize spaces
+        translatedKey?.replace(/\s+/g, ' '),
+      ].filter(Boolean);
+      
+      for (const variation of variations) {
+        if (variation && drinkImageMap[variation]) {
+          console.log(`[ProductCard] Found fallback for "${product.name}": ${drinkImageMap[variation]} (matched: "${variation}")`);
+          return drinkImageMap[variation];
+        }
+      }
+      console.log(`[ProductCard] No fallback found for drink "${product.name}" (key: "${key}", translated: "${translatedKey}")`);
+    }
+    return undefined;
+  }, [product.name, product.category, translation.name]);
+  
+  // Use fallback if image is null, empty string, or undefined
+  const displayImage = (product.image && product.image.trim() !== '') ? product.image : fallbackImage;
+  
+  // Debug logging
+  useEffect(() => {
+    if (product.category === 'DRINKS') {
+      console.log(`[ProductCard] Drink product:`, {
+        name: product.name,
+        category: product.category,
+        image: product.image,
+        fallbackImage,
+        displayImage,
+      });
+    }
+  }, [product.name, product.category, product.image, fallbackImage, displayImage]);
   
   // Check if product needs customization (PIZZA or STANGLE)
   const needsCustomization = useMemo(() => {
@@ -145,7 +180,18 @@ export const ProductCard = memo(function ProductCard({ product, index = 0, isBes
                 setRetryCount(0);
               }}
               onError={(e) => {
-                console.error('Image failed to load:', product.image, product.name, 'retry:', retryCount);
+                console.error('Image failed to load:', displayImage, 'Product:', product.name, 'Category:', product.category, 'Fallback:', fallbackImage, 'retry:', retryCount);
+                
+                // If we're using fallback and it fails, or if we tried product.image and it failed, try fallback
+                if (displayImage === product.image && fallbackImage && retryCount === 0) {
+                  // Try fallback image instead
+                  console.log('Trying fallback image:', fallbackImage);
+                  setRetryCount(1);
+                  setImageLoading(true);
+                  const img = e.currentTarget as HTMLImageElement;
+                  img.src = fallbackImage;
+                  return;
+                }
                 
                 // Retry logic - try again max 2 times
                 if (retryCount < 2) {
@@ -156,11 +202,12 @@ export const ProductCard = memo(function ProductCard({ product, index = 0, isBes
                     const img = e.currentTarget as HTMLImageElement;
                     if (img.src && !img.src.includes('retry=')) {
                       const separator = img.src.includes('?') ? '&' : '?';
-                      img.src = `${product.image}${separator}retry=${retryCount + 1}&t=${Date.now()}`;
+                      img.src = `${displayImage}${separator}retry=${retryCount + 1}&t=${Date.now()}`;
                     }
                   }, 1000 * (retryCount + 1)); // Exponential backoff: 1s, 2s
                 } else {
                   // After 2 retries, show placeholder
+                  console.log('All image loading attempts failed, showing placeholder');
                   setImageError(true);
                   setImageLoading(false);
                 }
