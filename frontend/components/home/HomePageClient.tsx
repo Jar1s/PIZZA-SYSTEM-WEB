@@ -190,6 +190,7 @@ export function HomePageClient({ products, tenant }: HomePageClientProps) {
       'Med-Chilli': 'PREMIUM_SINS',
       'med chilli': 'PREMIUM_SINS',
       'Med chilli': 'PREMIUM_SINS',
+      'Med Chilli': 'PREMIUM_SINS',
       'Pizza Med-Chilli': 'PREMIUM_SINS',
       'Pollo Crema': 'PREMIUM_SINS',
       'Pizza Pollo Crema': 'PREMIUM_SINS',
