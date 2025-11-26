@@ -377,7 +377,9 @@ export function HomePageClient({ products, tenant }: HomePageClientProps) {
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
+                viewport={{ once: true, margin: '-50px' }}
+                onViewportEnter={() => {}}
+                onViewportLeave={() => {}}
                 className="text-center mb-12"
               >
                 <h2 
@@ -398,8 +400,10 @@ export function HomePageClient({ products, tenant }: HomePageClientProps) {
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
+                viewport={{ once: true, margin: '-50px' }}
                 transition={{ delay: 0.1 }}
+                onViewportEnter={() => {}}
+                onViewportLeave={() => {}}
                 className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 gap-4 sm:gap-5 md:gap-6"
               >
                 {productsToShow.map((product, index) => (
@@ -439,7 +443,9 @@ export function HomePageClient({ products, tenant }: HomePageClientProps) {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
+            viewport={{ once: true, margin: '-50px' }}
+            onViewportEnter={() => {}}
+            onViewportLeave={() => {}}
             className="flex gap-2 sm:gap-3 md:gap-4 overflow-x-auto overflow-y-visible pb-4 sm:pb-4 pt-2 sm:pt-2 -mx-3 sm:mx-0 px-3 sm:px-0 scrollbar-hide mb-8 sm:mb-12 justify-start sm:justify-center"
             style={{
               scrollbarWidth: 'none',
