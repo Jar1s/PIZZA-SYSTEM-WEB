@@ -182,12 +182,17 @@ export function HomePageClient({ products, tenant }: HomePageClientProps) {
       'Hot Missionary': 'DELUXE_FETISH',
       // 🍑 PREMIUM SINS
       'Basil Pesto Premium': 'PREMIUM_SINS',
+      'Basil Pesto': 'PREMIUM_SINS',
+      'Bazila Pesto': 'PREMIUM_SINS',
       'Pizza Bazila Pesto': 'PREMIUM_SINS',
       'Honey Chilli': 'PREMIUM_SINS',
+      'Honey Chilli Premium': 'PREMIUM_SINS',
+      'Med-Chilli': 'PREMIUM_SINS',
       'Pizza Med-Chilli': 'PREMIUM_SINS',
       'Pollo Crema': 'PREMIUM_SINS',
       'Pizza Pollo Crema': 'PREMIUM_SINS',
       'Prosciutto Crudo Premium': 'PREMIUM_SINS',
+      'Prosciutto Crudo': 'PREMIUM_SINS',
       'Pizza Prosciutto Crudo': 'PREMIUM_SINS',
     };
 
