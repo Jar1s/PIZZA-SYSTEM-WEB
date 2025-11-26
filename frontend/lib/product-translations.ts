@@ -285,6 +285,24 @@ export const productTranslations: Record<string, ProductTranslation> = {
     weight: '520g',
     allergens: ['1', '7']
   },
+  'med chilli': {
+    name: { sk: 'Honey Temptation', en: 'Honey Temptation' },
+    description: {
+      sk: 'Paradajkový základ, mozzarella, kuracie mäso, medovo-chilli omáčka – sweet & hot.',
+      en: 'Tomato base, mozzarella, chicken, honey-chilli sauce – sweet & hot.'
+    },
+    weight: '520g',
+    allergens: ['1', '7']
+  },
+  'Med chilli': {
+    name: { sk: 'Honey Temptation', en: 'Honey Temptation' },
+    description: {
+      sk: 'Paradajkový základ, mozzarella, kuracie mäso, medovo-chilli omáčka – sweet & hot.',
+      en: 'Tomato base, mozzarella, chicken, honey-chilli sauce – sweet & hot.'
+    },
+    weight: '520g',
+    allergens: ['1', '7']
+  },
   'Pollo Crema': {
     name: { sk: 'Pollo Creamy Dream', en: 'Pollo Creamy Dream' },
     description: {
