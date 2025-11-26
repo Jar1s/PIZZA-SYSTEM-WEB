@@ -100,6 +100,33 @@ export const productTranslations: Record<string, ProductTranslation> = {
     weight: '520g',
     allergens: ['1', '7']
   },
+  'Hawaii': {
+    name: { sk: 'Hawai Crush', en: 'Hawai Crush' },
+    description: {
+      sk: 'Paradajkový základ, mozzarella, šunka, ananás – tropický flirt.',
+      en: 'Tomato base, mozzarella, ham, pineapple – tropical flirt.'
+    },
+    weight: '520g',
+    allergens: ['1', '7']
+  },
+  'Hawai': {
+    name: { sk: 'Hawai Crush', en: 'Hawai Crush' },
+    description: {
+      sk: 'Paradajkový základ, mozzarella, šunka, ananás – tropický flirt.',
+      en: 'Tomato base, mozzarella, ham, pineapple – tropical flirt.'
+    },
+    weight: '520g',
+    allergens: ['1', '7']
+  },
+  'Pizza Hawai': {
+    name: { sk: 'Hawai Crush', en: 'Hawai Crush' },
+    description: {
+      sk: 'Paradajkový základ, mozzarella, šunka, ananás – tropický flirt.',
+      en: 'Tomato base, mozzarella, ham, pineapple – tropical flirt.'
+    },
+    weight: '520g',
+    allergens: ['1', '7']
+  },
   'Capri': {
     name: { sk: 'Capri Quickie', en: 'Capri Quickie' },
     description: {
