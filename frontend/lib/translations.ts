@@ -182,6 +182,7 @@ export const translations = {
     myAddress: 'Moja adresa',
     settingsAndPersonalData: 'Nastavenia a osobné údaje',
     logout: 'Odhlásiť sa',
+    email: 'E-mail',
     emailCannotBeChanged: 'Email sa nedá zmeniť',
     streetAndBuilding: 'Ulica a číslo budovy',
     enterAddress: 'Zadajte adresu',
