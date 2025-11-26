@@ -112,14 +112,10 @@ export class CustomerService {
       throw new NotFoundException('Customer not found');
     }
 
-    // Check if email is already taken by another user
+    // Email cannot be changed - ignore email updates
     if (data.email && data.email !== user.email) {
-      const existingUser = await this.prisma.user.findUnique({
-        where: { email: data.email } as any,
-      });
-      if (existingUser && existingUser.id !== userId) {
-        throw new BadRequestException('Email is already taken');
-      }
+      // Silently ignore email changes - email is locked
+      delete data.email;
     }
 
     // Normalize phone number (remove spaces, keep only digits and +)
