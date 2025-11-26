@@ -22,112 +22,104 @@ export function PornoPizzaLogo({ className = '', width = 200, height = 50 }: Por
       className={className}
       preserveAspectRatio="xMidYMid meet"
     >
+      {/* Background - black */}
+      <rect width="200" height="50" fill="#000000" />
+      
       {/* PORNO text - top line */}
-      <g transform="translate(0, 0)">
+      <g transform="translate(5, 5)">
         {/* P */}
         <text
           x="0"
-          y="22"
-          fontSize="20"
+          y="18"
+          fontSize="22"
           fontWeight="900"
           fontFamily="Arial Black, sans-serif"
           fill="#FFFFFF"
           style={{
-            letterSpacing: '2px',
+            letterSpacing: '3px',
           }}
         >
-          <tspan
-            stroke="#000000"
-            strokeWidth="3"
-            strokeLinejoin="round"
-            strokeLinecap="round"
-            paintOrder="stroke fill"
-          >
-            P
-          </tspan>
+          P
         </text>
 
-        {/* Devil emoji (replacing first O) */}
-        <g transform="translate(20, 0)">
-          {/* Devil face - purple */}
-          <circle cx="10" cy="12" r="10" fill="#8B00FF" />
-          {/* Horns */}
-          <path d="M 5 5 L 8 2 L 10 5" stroke="#6A0DAD" strokeWidth="1.5" fill="none" />
-          <path d="M 15 5 L 12 2 L 10 5" stroke="#6A0DAD" strokeWidth="1.5" fill="none" />
-          {/* Eyes */}
-          <circle cx="7" cy="11" r="1.5" fill="#FFFFFF" />
-          <circle cx="13" cy="11" r="1.5" fill="#FFFFFF" />
-          {/* Smile */}
-          <path d="M 7 15 Q 10 17 13 15" stroke="#FFFFFF" strokeWidth="1.5" fill="none" strokeLinecap="round" />
+        {/* Devil emoji (replacing first O) - positioned after P */}
+        <g transform="translate(25, -2)">
+          {/* Devil face - purple circle */}
+          <circle cx="12" cy="12" r="11" fill="#8B00FF" />
+          <circle cx="12" cy="12" r="10" fill="#9B1FFF" />
+          {/* Horns - pointed */}
+          <path d="M 6 4 L 9 1 L 12 4" fill="#6A0DAD" stroke="#4A0080" strokeWidth="0.5" />
+          <path d="M 18 4 L 15 1 L 12 4" fill="#6A0DAD" stroke="#4A0080" strokeWidth="0.5" />
+          {/* Eyes - white circles */}
+          <circle cx="9" cy="11" r="2" fill="#FFFFFF" />
+          <circle cx="15" cy="11" r="2" fill="#FFFFFF" />
+          {/* Eyebrows - raised */}
+          <path d="M 7 8 Q 9 6 11 8" stroke="#FFFFFF" strokeWidth="1.5" fill="none" strokeLinecap="round" />
+          <path d="M 13 8 Q 15 6 17 8" stroke="#FFFFFF" strokeWidth="1.5" fill="none" strokeLinecap="round" />
+          {/* Smile - mischievous */}
+          <path d="M 8 15 Q 12 18 16 15" stroke="#FFFFFF" strokeWidth="2" fill="none" strokeLinecap="round" />
         </g>
 
-        {/* R N O */}
+        {/* R N O - positioned after devil */}
         <text
-          x="40"
-          y="22"
-          fontSize="20"
+          x="50"
+          y="18"
+          fontSize="22"
           fontWeight="900"
           fontFamily="Arial Black, sans-serif"
           fill="#FFFFFF"
           style={{
-            letterSpacing: '2px',
+            letterSpacing: '3px',
           }}
         >
-          <tspan
-            stroke="#000000"
-            strokeWidth="3"
-            strokeLinejoin="round"
-            strokeLinecap="round"
-            paintOrder="stroke fill"
-          >
-            RNO
-          </tspan>
+          RNO
         </text>
       </g>
 
       {/* PIZZ text - bottom line */}
-      <g transform="translate(0, 25)">
+      <g transform="translate(5, 28)">
         {/* P I Z Z */}
         <text
           x="0"
-          y="22"
-          fontSize="20"
+          y="18"
+          fontSize="22"
           fontWeight="900"
           fontFamily="Arial Black, sans-serif"
           fill="#FFFFFF"
           style={{
-            letterSpacing: '2px',
+            letterSpacing: '3px',
           }}
         >
-          <tspan
-            stroke="#000000"
-            strokeWidth="3"
-            strokeLinejoin="round"
-            strokeLinecap="round"
-            paintOrder="stroke fill"
-          >
-            PIZZ
-          </tspan>
+          PIZZ
         </text>
 
-        {/* Pizza slice emoji (replacing A) */}
-        <g transform="translate(80, 0)">
-          {/* Pizza slice - triangular */}
-          <path
-            d="M 0 20 L 20 0 L 20 20 Z"
-            fill="#D4A574"
-            stroke="#8B4513"
-            strokeWidth="2"
-          />
-          {/* Cheese layer */}
-          <path
-            d="M 2 18 L 18 2 L 18 18 Z"
-            fill="#FFD700"
-          />
-          {/* Pepperoni slices */}
-          <circle cx="8" cy="8" r="3" fill="#FF0000" stroke="#8B0000" strokeWidth="1" />
-          <circle cx="14" cy="10" r="2.5" fill="#FF0000" stroke="#8B0000" strokeWidth="1" />
-          <circle cx="10" cy="14" r="2.5" fill="#FF0000" stroke="#8B0000" strokeWidth="1" />
+        {/* Pizza slice emoji (replacing A) - positioned after PIZZ */}
+        <g transform="translate(90, -2)">
+          {/* Pizza slice - triangular, angled slightly */}
+          <g transform="rotate(-5 10 10)">
+            <path
+              d="M 0 18 L 18 0 L 18 18 Z"
+              fill="#D4A574"
+              stroke="#8B4513"
+              strokeWidth="1.5"
+            />
+            {/* Cheese layer - yellow */}
+            <path
+              d="M 1.5 16.5 L 16.5 1.5 L 16.5 16.5 Z"
+              fill="#FFD700"
+            />
+            {/* Pepperoni slices - red circles */}
+            <circle cx="7" cy="7" r="3.5" fill="#FF0000" stroke="#8B0000" strokeWidth="1" />
+            <circle cx="12" cy="9" r="3" fill="#FF0000" stroke="#8B0000" strokeWidth="1" />
+            <circle cx="9" cy="13" r="3" fill="#FF0000" stroke="#8B0000" strokeWidth="1" />
+            {/* Crust detail */}
+            <path
+              d="M 0 18 L 18 0"
+              stroke="#8B4513"
+              strokeWidth="1"
+              opacity="0.5"
+            />
+          </g>
         </g>
       </g>
     </svg>
