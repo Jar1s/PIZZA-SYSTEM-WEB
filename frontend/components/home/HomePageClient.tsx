@@ -321,14 +321,14 @@ export function HomePageClient({ products, tenant }: HomePageClientProps) {
         // Get products marked as best sellers from ALL categories
         const bestSellerProducts = products.filter(
           p => p.isBestSeller === true && p.isActive === true
-        ).slice(0, 4);
+        ).slice(0, 3);
         
-        // If no best sellers, use first 4 pizzas as fallback
+        // If no best sellers, use first 3 pizzas as fallback
         const productsToShow = bestSellerProducts.length > 0 
           ? bestSellerProducts 
           : (productsByCategory.PIZZA || []).filter(
               p => p.name !== 'Vyskladaj si vlastnú pizzu' && p.name !== 'Build Your Own Pizza'
-            ).slice(0, 4);
+            ).slice(0, 3);
         
         if (productsToShow.length === 0) return null;
         
@@ -361,7 +361,7 @@ export function HomePageClient({ products, tenant }: HomePageClientProps) {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: 0.1 }}
-                className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5 md:gap-6"
+                className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 gap-4 sm:gap-5 md:gap-6"
               >
                 {productsToShow.map((product, index) => (
                   <ProductCard key={product.id} product={product} index={index} isBestSeller={true} isDark={isDarkTheme} />
