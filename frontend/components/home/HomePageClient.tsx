@@ -221,6 +221,11 @@ export function HomePageClient({ products, tenant }: HomePageClientProps) {
       }
     });
     
+    // Sort each subcategory by price (lowest to highest)
+    Object.keys(grouped).forEach(subCat => {
+      grouped[subCat].sort((a, b) => a.priceCents - b.priceCents);
+    });
+    
     return grouped;
   }, [productsByCategory.PIZZA]);
 
