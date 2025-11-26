@@ -176,6 +176,7 @@ export const translations = {
     phoneDescription: 'Zadajte telefónne číslo pre budúce potvrdenia objednávok',
     phoneNumber: 'Telefónne číslo',
     phonePlaceholder: '900 123 456',
+    emailCannotBeChanged: 'Email sa nedá zmeniť',
     
     // Account Management
     myAccount: 'Moje konto',
@@ -447,6 +448,7 @@ export const translations = {
     phone: 'Phone',
     email: 'Email',
     name: 'Name',
+    emailCannotBeChanged: 'Email cannot be changed',
     edit: 'Edit',
     save: 'Save',
     cancel: 'Cancel',
