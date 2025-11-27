@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
 import { Language, translations } from '@/lib/translations';
 
 interface LanguageContextType {
@@ -12,28 +12,18 @@ interface LanguageContextType {
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
 
 export function LanguageProvider({ children }: { children: React.ReactNode }) {
-  // Default to Slovak, but check localStorage immediately
-  const getInitialLanguage = (): Language => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('language') as Language;
-      if (saved && (saved === 'sk' || saved === 'en')) {
-        return saved;
-      }
-    }
-    return 'sk';
-  };
+  // Default to Slovak for SSR, will be updated on client mount
+  const [language, setLanguageState] = useState<Language>('sk');
+  const [isMounted, setIsMounted] = useState(false);
 
-  const [language, setLanguageState] = useState<Language>(getInitialLanguage);
-
-  // Load language from localStorage on mount (for SSR compatibility)
+  // Load language from localStorage on mount (client-side only)
   useEffect(() => {
+    setIsMounted(true);
     const saved = localStorage.getItem('language') as Language;
     if (saved && (saved === 'sk' || saved === 'en')) {
-      if (saved !== language) {
-        setLanguageState(saved);
-      }
+      setLanguageState(saved);
     }
-  }, [language]);
+  }, []); // Empty dependency array - only run once on mount
 
   const setLanguage = (lang: Language) => {
     setLanguageState(lang);
@@ -41,7 +31,10 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
   };
 
   // Use current language to get translations
-  const t = translations[language];
+  // During SSR, use Slovak as default to avoid hydration mismatch
+  const t = useMemo(() => {
+    return translations[isMounted ? language : 'sk'];
+  }, [isMounted, language]);
 
   return (
     <LanguageContext.Provider value={{ language, setLanguage, t }}>
