@@ -8,6 +8,7 @@ import { getTenant, checkEmailExists } from '@/lib/api';
 import { Tenant } from '@pizza-ecosystem/shared';
 import Image from 'next/image';
 import { validateReturnUrl } from '@/lib/validate-return-url';
+import { withTenantThemeDefaults } from '@/lib/tenant-utils';
 
 type Step = 'email' | 'password' | 'register';
 
@@ -240,25 +241,28 @@ export default function CustomerLoginPage() {
 
           {/* Logo */}
           <div className="mb-8">
-            {tenant.theme?.logo ? (
-              <div className="mb-6">
-                <Image
-                  src={tenant.theme.logo}
-                  alt={tenant.name}
-                  width={200}
-                  height={60}
-                  className="h-12 w-auto mb-4"
-                />
-              </div>
-            ) : (
-              <div className="w-16 h-16 bg-black rounded-full flex items-center justify-center mb-4">
-                <span className="text-white font-bold text-xl">
-                  {tenant.name.charAt(0).toUpperCase()}
-                </span>
-              </div>
-            )}
+            {(() => {
+              const normalizedTenant = withTenantThemeDefaults(tenant);
+              return normalizedTenant?.theme?.logo ? (
+                <div className="mb-6">
+                  <Image
+                    src={normalizedTenant.theme.logo}
+                    alt={normalizedTenant.name}
+                    width={200}
+                    height={60}
+                    className="h-12 w-auto mb-4"
+                  />
+                </div>
+              ) : (
+                <div className="w-16 h-16 bg-black rounded-full flex items-center justify-center mb-4">
+                  <span className="text-white font-bold text-xl">
+                    {(normalizedTenant?.name || tenant.name).charAt(0).toUpperCase()}
+                  </span>
+                </div>
+              );
+            })()}
             <h1 className="text-2xl font-bold">
-              {t.customerLoginTitle} {tenant.name}
+              {t.customerLoginTitle} {withTenantThemeDefaults(tenant)?.name || tenant.name}
             </h1>
           </div>
 

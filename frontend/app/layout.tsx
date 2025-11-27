@@ -53,7 +53,7 @@ export async function generateMetadata(): Promise<Metadata> {
     const siteName = normalizedTenant?.name || 'Pizza Ordering';
     const theme = typeof normalizedTenant?.theme === 'object' && normalizedTenant?.theme !== null ? normalizedTenant.theme as any : {};
     const description = tenantData.description || (theme.description as string) || `Order delicious pizza online from ${siteName}. Fast delivery, fresh ingredients, and great prices.`;
-    const imageUrl = tenantData.logo || (theme.logo as string) || `${baseUrl}/images/og-default.jpg`;
+    const imageUrl = (theme.logo as string) || tenantData.logo || `${baseUrl}/images/og-default.jpg`;
     
     return {
       metadataBase: new URL(baseUrl),
@@ -191,8 +191,8 @@ export default async function RootLayout({
     name: siteName,
     description: tenantData.description || (theme.description as string) || `Order delicious pizza online from ${siteName}`,
     url: baseUrl,
-    logo: tenantData.logo || (theme.logo as string) || `${baseUrl}/logo.png`,
-    image: tenantData.logo || (theme.logo as string) || `${baseUrl}/images/og-default.jpg`,
+    logo: (theme.logo as string) || tenantData.logo || `${baseUrl}/logo.png`,
+    image: (theme.logo as string) || tenantData.logo || `${baseUrl}/images/og-default.jpg`,
     address: {
       '@type': 'PostalAddress',
       addressCountry: 'SK',
