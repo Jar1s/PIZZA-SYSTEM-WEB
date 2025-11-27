@@ -25,7 +25,7 @@ export function PornoPizzaLogo({ className = '', width = 200, height = 50 }: Por
       {/* Background - black */}
       <rect width="200" height="50" fill="#000000" />
       
-      {/* PORNO text - top line */}
+      {/* P ORNO text - top line */}
       <g transform="translate(5, 5)">
         {/* P */}
         <text
@@ -42,27 +42,35 @@ export function PornoPizzaLogo({ className = '', width = 200, height = 50 }: Por
           P
         </text>
 
-        {/* Devil emoji (replacing first O) - positioned after P */}
-        <g transform="translate(25, -2)">
-          {/* Devil face - purple circle */}
-          <circle cx="12" cy="12" r="11" fill="#8B00FF" />
-          <circle cx="12" cy="12" r="10" fill="#9B1FFF" />
-          {/* Horns - pointed */}
-          <path d="M 6 4 L 9 1 L 12 4" fill="#6A0DAD" stroke="#4A0080" strokeWidth="0.5" />
-          <path d="M 18 4 L 15 1 L 12 4" fill="#6A0DAD" stroke="#4A0080" strokeWidth="0.5" />
-          {/* Eyes - white circles */}
-          <circle cx="9" cy="11" r="2" fill="#FFFFFF" />
-          <circle cx="15" cy="11" r="2" fill="#FFFFFF" />
-          {/* Eyebrows - raised */}
-          <path d="M 7 8 Q 9 6 11 8" stroke="#FFFFFF" strokeWidth="1.5" fill="none" strokeLinecap="round" />
-          <path d="M 13 8 Q 15 6 17 8" stroke="#FFFFFF" strokeWidth="1.5" fill="none" strokeLinecap="round" />
-          {/* Smile - mischievous */}
-          <path d="M 8 15 Q 12 18 16 15" stroke="#FFFFFF" strokeWidth="2" fill="none" strokeLinecap="round" />
+        {/* Space after P */}
+        <text
+          x="20"
+          y="18"
+          fontSize="22"
+          fontWeight="900"
+          fontFamily="Arial Black, sans-serif"
+          fill="#FFFFFF"
+        >
+          {' '}
+        </text>
+
+        {/* Blueberry emoji (replacing O in ORNO) - light purple face with white eyes and smile */}
+        <g transform="translate(30, -2)">
+          {/* Blueberry body - light purple/blue */}
+          <circle cx="12" cy="12" r="11" fill="#9370DB" />
+          <circle cx="12" cy="12" r="10" fill="#9B7DD9" />
+          {/* Stem on top */}
+          <ellipse cx="12" cy="2" rx="2" ry="3" fill="#6A0DAD" />
+          {/* White oval eyes */}
+          <ellipse cx="9" cy="10" rx="2.5" ry="3.5" fill="#FFFFFF" />
+          <ellipse cx="15" cy="10" rx="2.5" ry="3.5" fill="#FFFFFF" />
+          {/* Wide white smiling mouth */}
+          <ellipse cx="12" cy="15" rx="5" ry="3" fill="#FFFFFF" />
         </g>
 
-        {/* R N O - positioned after devil */}
+        {/* R N O - positioned after blueberry */}
         <text
-          x="50"
+          x="55"
           y="18"
           fontSize="22"
           fontWeight="900"
@@ -103,22 +111,15 @@ export function PornoPizzaLogo({ className = '', width = 200, height = 50 }: Por
               stroke="#8B4513"
               strokeWidth="1.5"
             />
-            {/* Cheese layer - yellow */}
+            {/* Cheese layer - yellow-orange */}
             <path
               d="M 1.5 16.5 L 16.5 1.5 L 16.5 16.5 Z"
-              fill="#FFD700"
+              fill="#FFA500"
             />
             {/* Pepperoni slices - red circles */}
             <circle cx="7" cy="7" r="3.5" fill="#FF0000" stroke="#8B0000" strokeWidth="1" />
             <circle cx="12" cy="9" r="3" fill="#FF0000" stroke="#8B0000" strokeWidth="1" />
             <circle cx="9" cy="13" r="3" fill="#FF0000" stroke="#8B0000" strokeWidth="1" />
-            {/* Crust detail */}
-            <path
-              d="M 0 18 L 18 0"
-              stroke="#8B4513"
-              strokeWidth="1"
-              opacity="0.5"
-            />
           </g>
         </g>
       </g>
