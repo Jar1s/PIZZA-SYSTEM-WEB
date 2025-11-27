@@ -216,7 +216,7 @@ export function CookieConsent() {
       return;
     }
 
-    // Load Facebook Pixel
+    // Load Facebook Pixel with error handling
     const script = document.createElement('script');
     script.innerHTML = `
       !function(f,b,e,v,n,t,s)
@@ -230,6 +230,17 @@ export function CookieConsent() {
       fbq('init', '${fbPixelId}');
       fbq('track', 'PageView');
     `;
+    
+    // Handle script loading errors (e.g., blocked by adblocker)
+    script.onerror = () => {
+      console.warn('Facebook Pixel failed to load (likely blocked by adblocker)');
+      // Don't throw error, just silently fail
+    };
+    
+    script.onload = () => {
+      // Script loaded successfully
+    };
+    
     document.head.appendChild(script);
 
     // Create noscript fallback
