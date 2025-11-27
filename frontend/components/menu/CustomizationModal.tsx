@@ -216,7 +216,7 @@ export default function CustomizationModal({
     onClose();
   };
 
-  if (!isOpen || !mounted) return null;
+  if (!isOpen || !mounted || typeof window === 'undefined' || !document.body) return null;
 
   const modalContent = (
     <AnimatePresence>
@@ -481,6 +481,9 @@ export default function CustomizationModal({
       )}
     </AnimatePresence>
   );
+
+  // Ensure document.body exists before creating portal
+  if (!document.body) return null;
 
   return createPortal(modalContent, document.body);
 }

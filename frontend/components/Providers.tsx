@@ -14,11 +14,14 @@ export function Providers({ children }: { children: React.ReactNode }) {
     const handleError = (event: ErrorEvent) => {
       // Suppress InvalidNodeTypeError from Framer Motion/Intersection Observer
       // This happens when nodes are removed from DOM during animations
+      // Also suppress deferred DOM Node errors from portals
       if (
         event.error?.name === 'InvalidNodeTypeError' ||
         event.message?.includes('selectNode') ||
         event.message?.includes('Range') ||
-        event.message?.includes('has no parent')
+        event.message?.includes('has no parent') ||
+        event.message?.includes('deferred DOM Node') ||
+        event.message?.includes('could not be resolved to a valid node')
       ) {
         event.preventDefault();
         return false;
@@ -27,11 +30,14 @@ export function Providers({ children }: { children: React.ReactNode }) {
 
     const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
       // Suppress InvalidNodeTypeError from promises
+      // Also suppress deferred DOM Node errors from portals
       if (
         event.reason?.name === 'InvalidNodeTypeError' ||
         event.reason?.message?.includes('selectNode') ||
         event.reason?.message?.includes('Range') ||
-        event.reason?.message?.includes('has no parent')
+        event.reason?.message?.includes('has no parent') ||
+        event.reason?.message?.includes('deferred DOM Node') ||
+        event.reason?.message?.includes('could not be resolved to a valid node')
       ) {
         event.preventDefault();
         return false;

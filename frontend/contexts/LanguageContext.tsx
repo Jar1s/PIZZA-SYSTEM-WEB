@@ -12,22 +12,35 @@ interface LanguageContextType {
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
 
 export function LanguageProvider({ children }: { children: React.ReactNode }) {
-  // Default to Slovak
-  const [language, setLanguageState] = useState<Language>('sk');
+  // Default to Slovak, but check localStorage immediately
+  const getInitialLanguage = (): Language => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('language') as Language;
+      if (saved && (saved === 'sk' || saved === 'en')) {
+        return saved;
+      }
+    }
+    return 'sk';
+  };
 
-  // Load language from localStorage on mount
+  const [language, setLanguageState] = useState<Language>(getInitialLanguage);
+
+  // Load language from localStorage on mount (for SSR compatibility)
   useEffect(() => {
     const saved = localStorage.getItem('language') as Language;
     if (saved && (saved === 'sk' || saved === 'en')) {
-      setLanguageState(saved);
+      if (saved !== language) {
+        setLanguageState(saved);
+      }
     }
-  }, []);
+  }, [language]);
 
   const setLanguage = (lang: Language) => {
     setLanguageState(lang);
     localStorage.setItem('language', lang);
   };
 
+  // Use current language to get translations
   const t = translations[language];
 
   return (
