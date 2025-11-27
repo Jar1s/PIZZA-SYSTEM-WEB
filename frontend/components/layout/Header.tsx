@@ -87,6 +87,10 @@ export function Header({ tenant }: HeaderProps) {
               height={60}
               className="h-8 sm:h-10 w-auto max-w-[140px] sm:max-w-[180px] md:max-w-[200px]"
               priority
+              unoptimized={normalizedTenant.theme.logo.includes(' ') || normalizedTenant.theme.logo.includes('%20')}
+              onError={(e) => {
+                console.error('Logo failed to load:', normalizedTenant.theme.logo);
+              }}
             />
           ) : (
             <h1

@@ -251,6 +251,10 @@ export default function CustomerLoginPage() {
                     width={200}
                     height={60}
                     className="h-12 w-auto mb-4"
+                    unoptimized={normalizedTenant.theme.logo.includes(' ') || normalizedTenant.theme.logo.includes('%20')}
+                    onError={(e) => {
+                      console.error('Logo failed to load:', normalizedTenant.theme.logo);
+                    }}
                   />
                 </div>
               ) : (

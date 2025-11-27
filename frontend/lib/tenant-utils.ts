@@ -22,7 +22,8 @@ export function withTenantThemeDefaults(tenant: Tenant | null): Tenant | null {
   if (slug === 'pornopizza') {
     const brandPrimary = '#E91E63'; // vivid pink/red brand tone (no orange)
     const brandSecondary = '#0F141A'; // darker secondary
-    const brandLogo = '/PORNO PIZZA PINK GRANDIENT.png';
+    // URL encode the logo path to handle spaces in filename
+    const brandLogo = encodeURI('/PORNO PIZZA PINK GRANDIENT.png');
     const theme = tenant.theme || ({} as Tenant['theme']);
     const layout = theme.layout || {};
     
