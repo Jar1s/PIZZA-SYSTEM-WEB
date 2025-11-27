@@ -18,7 +18,7 @@ export function Sidebar() {
   const adminLinks = [
     { href: '/admin/products', label: 'Products', icon: '📦', roles: ['ADMIN'] },
     { href: '/admin/brands', label: 'Brands', icon: '🏢', roles: ['ADMIN'] },
-    { href: '/admin/customers', label: 'Customers', icon: '👥', roles: ['ADMIN', 'OPERATOR'] },
+    { href: '/admin/customers', label: 'Customers', icon: '👥', roles: ['ADMIN'] },
     { href: '/admin/analytics', label: 'Analytics', icon: '📈', roles: ['ADMIN'] },
   ];
 

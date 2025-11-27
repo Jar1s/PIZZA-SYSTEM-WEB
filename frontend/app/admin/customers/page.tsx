@@ -56,8 +56,8 @@ export default function CustomersPage() {
         throw new Error('Not authenticated - Please log in again');
       }
 
-      if (!user || (user.role !== 'ADMIN' && user.role !== 'OPERATOR')) {
-        throw new Error('Access denied - Only admins and operators can view customers');
+      if (!user || user.role !== 'ADMIN') {
+        throw new Error('Access denied - Only admins can view customers');
       }
 
       const params = new URLSearchParams({
@@ -136,11 +136,11 @@ export default function CustomersPage() {
     );
   }
 
-  if (user.role !== 'ADMIN' && user.role !== 'OPERATOR') {
+  if (user.role !== 'ADMIN') {
     return (
       <div className="bg-red-50 border border-red-200 rounded-lg p-6">
         <h2 className="text-xl font-bold text-red-800 mb-2">Access Denied</h2>
-        <p className="text-red-600">Only administrators and operators can view the customer list.</p>
+        <p className="text-red-600">Only administrators can view the customer list.</p>
         <p className="text-sm text-red-500 mt-2">Your role: {user.role}</p>
       </div>
     );

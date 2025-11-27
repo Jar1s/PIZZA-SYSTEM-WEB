@@ -26,9 +26,9 @@ export class AdminCustomersController {
   ) {
     const user = req.user;
     
-    // ADMIN and OPERATOR can access this endpoint
-    if (!user || (user.role !== 'ADMIN' && user.role !== 'OPERATOR')) {
-      throw new UnauthorizedException('Only admins and operators can access customer list');
+    // Only ADMIN can access this endpoint
+    if (!user || user.role !== 'ADMIN') {
+      throw new UnauthorizedException('Only admins can access customer list');
     }
 
     const pageNum = parseInt(page || '1', 10);
