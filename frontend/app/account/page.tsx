@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, startTransition } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useCustomerAuth } from '@/contexts/CustomerAuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -214,7 +214,12 @@ export default function AccountPage() {
               {menuItems.map((item) => (
                 <button
                   key={item.id}
-                  onClick={() => setActiveSection(item.id)}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    startTransition(() => {
+                      setActiveSection(item.id);
+                    });
+                  }}
                   className={`w-full flex items-start gap-3 px-4 py-3 rounded-xl border transition-all ${
                     activeSection === item.id
                       ? isDark
