@@ -22,6 +22,7 @@ export function withTenantThemeDefaults(tenant: Tenant | null): Tenant | null {
   if (slug === 'pornopizza') {
     const brandPrimary = '#E91E63'; // vivid pink/red brand tone (no orange)
     const brandSecondary = '#0F141A'; // darker secondary
+    const brandLogo = '/PORNO PIZZA PINK GRANDIENT.png';
     const theme = tenant.theme || ({} as Tenant['theme']);
     const layout = theme.layout || {};
     
@@ -39,11 +40,12 @@ export function withTenantThemeDefaults(tenant: Tenant | null): Tenant | null {
         ...theme,
         primaryColor: normalizedPrimary,
         secondaryColor: brandSecondary, // Always use brand secondary for PornoPizza
+        logo: brandLogo,
         layout: {
           headerStyle: layout.headerStyle || 'dark',
           backgroundStyle: layout.backgroundStyle || 'black',
-          useCustomLogo: layout.useCustomLogo ?? true,
-          customLogoComponent: layout.customLogoComponent || 'PornoPizzaLogo',
+          useCustomLogo: false,
+          customLogoComponent: undefined,
           useCustomBackground: layout.useCustomBackground ?? true,
           customBackgroundClass: layout.customBackgroundClass || 'porno-bg',
           bodyBackgroundClass: layout.bodyBackgroundClass || 'bg-porno-vibe',
@@ -67,8 +69,8 @@ export function getLayoutConfig(tenant: Tenant | null): LayoutConfig {
   return {
     headerStyle: (layout.headerStyle as 'dark' | 'light') || (slug === 'pornopizza' ? 'dark' : 'light'),
     backgroundStyle: (layout.backgroundStyle as 'black' | 'white' | 'gradient') || (slug === 'pornopizza' ? 'black' : 'white'),
-    useCustomLogo: layout.useCustomLogo ?? (slug === 'pornopizza'),
-    customLogoComponent: layout.customLogoComponent || (slug === 'pornopizza' ? 'PornoPizzaLogo' : undefined),
+    useCustomLogo: layout.useCustomLogo ?? false, // Always use logo from theme.logo, not custom components
+    customLogoComponent: layout.customLogoComponent || undefined, // Always use logo from theme.logo
     useCustomBackground: layout.useCustomBackground ?? (slug === 'pornopizza'),
     customBackgroundClass: layout.customBackgroundClass || (slug === 'pornopizza' ? 'porno-bg' : undefined),
     bodyBackgroundClass: layout.bodyBackgroundClass || (slug === 'pornopizza' ? 'bg-porno-vibe' : undefined),
