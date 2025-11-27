@@ -5,10 +5,13 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { useCookieSettings } from '@/hooks/useCookieSettings';
+import { useTenant } from '@/contexts/TenantContext';
+import { isDarkTheme, getBackgroundClass, withTenantThemeDefaults } from '@/lib/tenant-utils';
 
 export default function CookiePolicyPage() {
   const { language } = useLanguage();
   const router = useRouter();
+  const { tenant: tenantData } = useTenant();
   const isSlovak = language === 'sk';
   const [showCookieModal, setShowCookieModal] = useState(false);
   const { settings: cookieSettings, updateSettings, isLoaded } = useCookieSettings();
@@ -21,31 +24,36 @@ export default function CookiePolicyPage() {
     }
   }, [isLoaded, cookieSettings]);
 
+  const normalizedTenant = withTenantThemeDefaults(tenantData);
+  const isDark = isDarkTheme(normalizedTenant);
+  const backgroundClass = getBackgroundClass(normalizedTenant);
+  const primaryColor = normalizedTenant?.theme?.primaryColor || 'var(--color-primary)';
+
   return (
-    <div className="min-h-screen bg-gray-50 py-12">
+    <div className={`min-h-screen ${backgroundClass} ${isDark ? 'text-white' : 'text-gray-900'} py-12`}>
       <div className="container mx-auto px-4 max-w-4xl">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-white rounded-lg shadow-md p-8 md:p-12"
+          className={`${isDark ? 'bg-black/40 backdrop-blur-sm border border-white/10' : 'bg-white shadow-md'} rounded-lg p-8 md:p-12`}
         >
           <div className="flex items-center gap-4 mb-8">
             <button
               onClick={() => router.back()}
               className="flex items-center justify-center w-12 h-12 rounded-lg transition-colors hover:opacity-90"
-              style={{ backgroundColor: 'var(--color-primary)', color: 'white' }}
+              style={{ backgroundColor: primaryColor, color: 'white' }}
               aria-label={isSlovak ? 'Späť' : 'Back'}
             >
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
               </svg>
             </button>
-            <h1 className="text-4xl font-bold" style={{ color: 'var(--color-primary)' }}>
+            <h1 className="text-4xl font-bold" style={{ color: primaryColor }}>
               {isSlovak ? 'Zásady používania súborov cookie' : 'Cookie Policy'}
             </h1>
           </div>
 
-          <div className="prose prose-lg max-w-none space-y-6 text-gray-700">
+          <div className={`prose prose-lg max-w-none space-y-6 ${isDark ? 'text-gray-200 prose-headings:text-white prose-a:text-blue-400' : 'text-gray-700'}`}>
             <section>
               <h2 className="text-2xl font-bold mb-4 mt-8">
                 {isSlovak ? 'Čo sú súbory cookie?' : 'What are cookies?'}
@@ -78,87 +86,87 @@ export default function CookiePolicyPage() {
               </p>
               
               <div className="overflow-x-auto mt-6">
-                <table className="min-w-full border-collapse border border-gray-300">
+                <table className={`min-w-full border-collapse ${isDark ? 'border border-white/20' : 'border border-gray-300'}`}>
                   <thead>
-                    <tr className="bg-gray-100">
-                      <th className="border border-gray-300 px-4 py-2 text-left font-bold">{isSlovak ? 'NÁZOV' : 'NAME'}</th>
-                      <th className="border border-gray-300 px-4 py-2 text-left font-bold">{isSlovak ? 'POPIS' : 'DESCRIPTION'}</th>
-                      <th className="border border-gray-300 px-4 py-2 text-left font-bold">{isSlovak ? 'TYP' : 'TYPE'}</th>
-                      <th className="border border-gray-300 px-4 py-2 text-left font-bold">{isSlovak ? 'EXPIRÁCIA' : 'EXPIRES'}</th>
+                    <tr className={isDark ? 'bg-white/10' : 'bg-gray-100'}>
+                      <th className={`${isDark ? 'border border-white/20' : 'border border-gray-300'} px-4 py-2 text-left font-bold`}>{isSlovak ? 'NÁZOV' : 'NAME'}</th>
+                      <th className={`${isDark ? 'border border-white/20' : 'border border-gray-300'} px-4 py-2 text-left font-bold`}>{isSlovak ? 'POPIS' : 'DESCRIPTION'}</th>
+                      <th className={`${isDark ? 'border border-white/20' : 'border border-gray-300'} px-4 py-2 text-left font-bold`}>{isSlovak ? 'TYP' : 'TYPE'}</th>
+                      <th className={`${isDark ? 'border border-white/20' : 'border border-gray-300'} px-4 py-2 text-left font-bold`}>{isSlovak ? 'EXPIRÁCIA' : 'EXPIRES'}</th>
                     </tr>
                   </thead>
                   <tbody>
                     <tr>
-                      <td className="border border-gray-300 px-4 py-2 font-mono text-sm">cart-storage</td>
-                      <td className="border border-gray-300 px-4 py-2">
+                      <td className={`${isDark ? 'border border-white/20' : 'border border-gray-300'}} px-4 py-2 font-mono text-sm`}>cart-storage</td>
+                      <td className={`${isDark ? 'border border-white/20' : 'border border-gray-300'}} px-4 py-2`}>
                         {isSlovak ? 'Ukladá obsah košíka (produkty, množstvo, úpravy) pre zachovanie medzi reláciami a stránkami' : 'Stores cart contents (products, quantities, customizations) to persist between sessions and pages'}
                       </td>
-                      <td className="border border-gray-300 px-4 py-2">localStorage</td>
-                      <td className="border border-gray-300 px-4 py-2">{isSlovak ? 'Trvalé (do vymazania)' : 'Persistent (until cleared)'}</td>
+                      <td className={`${isDark ? 'border border-white/20' : 'border border-gray-300'}} px-4 py-2`}>localStorage</td>
+                      <td className={`${isDark ? 'border border-white/20' : 'border border-gray-300'}} px-4 py-2`}>{isSlovak ? 'Trvalé (do vymazania)' : 'Persistent (until cleared)'}</td>
                     </tr>
                     <tr>
-                      <td className="border border-gray-300 px-4 py-2 font-mono text-sm">auth_token</td>
-                      <td className="border border-gray-300 px-4 py-2">
+                      <td className={`${isDark ? 'border border-white/20' : 'border border-gray-300'}} px-4 py-2 font-mono text-sm`}>auth_token</td>
+                      <td className={`${isDark ? 'border border-white/20' : 'border border-gray-300'}} px-4 py-2`}>
                         {isSlovak ? 'JWT access token pre autentifikáciu administrátora alebo operátora (v produkcii je v HttpOnly cookie)' : 'JWT access token for admin/operator authentication (in production stored in HttpOnly cookie)'}
                       </td>
-                      <td className="border border-gray-300 px-4 py-2">{isSlovak ? 'localStorage / HttpOnly Cookie' : 'localStorage / HttpOnly Cookie'}</td>
-                      <td className="border border-gray-300 px-4 py-2">{isSlovak ? '1 hodina' : '1 hour'}</td>
+                      <td className={`${isDark ? 'border border-white/20' : 'border border-gray-300'}} px-4 py-2`}>{isSlovak ? 'localStorage / HttpOnly Cookie' : 'localStorage / HttpOnly Cookie'}</td>
+                      <td className={`${isDark ? 'border border-white/20' : 'border border-gray-300'}} px-4 py-2`}>{isSlovak ? '1 hodina' : '1 hour'}</td>
                     </tr>
                     <tr>
-                      <td className="border border-gray-300 px-4 py-2 font-mono text-sm">refresh_token</td>
-                      <td className="border border-gray-300 px-4 py-2">
+                      <td className={`${isDark ? 'border border-white/20' : 'border border-gray-300'}} px-4 py-2 font-mono text-sm`}>refresh_token</td>
+                      <td className={`${isDark ? 'border border-white/20' : 'border border-gray-300'}} px-4 py-2`}>
                         {isSlovak ? 'Refresh token pre obnovenie access tokenu administrátora alebo operátora (v produkcii je v HttpOnly cookie)' : 'Refresh token for renewing admin/operator access token (in production stored in HttpOnly cookie)'}
                       </td>
-                      <td className="border border-gray-300 px-4 py-2">{isSlovak ? 'localStorage / HttpOnly Cookie' : 'localStorage / HttpOnly Cookie'}</td>
-                      <td className="border border-gray-300 px-4 py-2">{isSlovak ? '7 dní' : '7 days'}</td>
+                      <td className={`${isDark ? 'border border-white/20' : 'border border-gray-300'}} px-4 py-2`}>{isSlovak ? 'localStorage / HttpOnly Cookie' : 'localStorage / HttpOnly Cookie'}</td>
+                      <td className={`${isDark ? 'border border-white/20' : 'border border-gray-300'}} px-4 py-2`}>{isSlovak ? '7 dní' : '7 days'}</td>
                     </tr>
                     <tr>
-                      <td className="border border-gray-300 px-4 py-2 font-mono text-sm">auth_user</td>
-                      <td className="border border-gray-300 px-4 py-2">
+                      <td className={`${isDark ? 'border border-white/20' : 'border border-gray-300'}} px-4 py-2 font-mono text-sm`}>auth_user</td>
+                      <td className={`${isDark ? 'border border-white/20' : 'border border-gray-300'}} px-4 py-2`}>
                         {isSlovak ? 'Ukladá informácie o prihlásenom administrátorovi alebo operátorovi (ID, meno, rola)' : 'Stores information about logged-in admin/operator (ID, name, role)'}
                       </td>
-                      <td className="border border-gray-300 px-4 py-2">localStorage</td>
-                      <td className="border border-gray-300 px-4 py-2">{isSlovak ? 'Trvalé (do odhlásenia)' : 'Persistent (until logout)'}</td>
+                      <td className={`${isDark ? 'border border-white/20' : 'border border-gray-300'}} px-4 py-2`}>localStorage</td>
+                      <td className={`${isDark ? 'border border-white/20' : 'border border-gray-300'}} px-4 py-2`}>{isSlovak ? 'Trvalé (do odhlásenia)' : 'Persistent (until logout)'}</td>
                     </tr>
                     <tr>
-                      <td className="border border-gray-300 px-4 py-2 font-mono text-sm">customer_auth_token</td>
-                      <td className="border border-gray-300 px-4 py-2">
+                      <td className={`${isDark ? 'border border-white/20' : 'border border-gray-300'}} px-4 py-2 font-mono text-sm`}>customer_auth_token</td>
+                      <td className={`${isDark ? 'border border-white/20' : 'border border-gray-300'}} px-4 py-2`}>
                         {isSlovak ? 'JWT access token pre autentifikáciu zákazníka' : 'JWT access token for customer authentication'}
                       </td>
-                      <td className="border border-gray-300 px-4 py-2">localStorage</td>
-                      <td className="border border-gray-300 px-4 py-2">{isSlovak ? '1 hodina' : '1 hour'}</td>
+                      <td className={`${isDark ? 'border border-white/20' : 'border border-gray-300'}} px-4 py-2`}>localStorage</td>
+                      <td className={`${isDark ? 'border border-white/20' : 'border border-gray-300'}} px-4 py-2`}>{isSlovak ? '1 hodina' : '1 hour'}</td>
                     </tr>
                     <tr>
-                      <td className="border border-gray-300 px-4 py-2 font-mono text-sm">customer_auth_refresh_token</td>
-                      <td className="border border-gray-300 px-4 py-2">
+                      <td className={`${isDark ? 'border border-white/20' : 'border border-gray-300'}} px-4 py-2 font-mono text-sm`}>customer_auth_refresh_token</td>
+                      <td className={`${isDark ? 'border border-white/20' : 'border border-gray-300'}} px-4 py-2`}>
                         {isSlovak ? 'Refresh token pre obnovenie access tokenu zákazníka' : 'Refresh token for renewing customer access token'}
                       </td>
-                      <td className="border border-gray-300 px-4 py-2">localStorage</td>
-                      <td className="border border-gray-300 px-4 py-2">{isSlovak ? '7 dní' : '7 days'}</td>
+                      <td className={`${isDark ? 'border border-white/20' : 'border border-gray-300'}} px-4 py-2`}>localStorage</td>
+                      <td className={`${isDark ? 'border border-white/20' : 'border border-gray-300'}} px-4 py-2`}>{isSlovak ? '7 dní' : '7 days'}</td>
                     </tr>
                     <tr>
-                      <td className="border border-gray-300 px-4 py-2 font-mono text-sm">customer_auth_user</td>
-                      <td className="border border-gray-300 px-4 py-2">
+                      <td className={`${isDark ? 'border border-white/20' : 'border border-gray-300'}} px-4 py-2 font-mono text-sm`}>customer_auth_user</td>
+                      <td className={`${isDark ? 'border border-white/20' : 'border border-gray-300'}} px-4 py-2`}>
                         {isSlovak ? 'Ukladá informácie o prihlásenom zákazníkovi (ID, meno, email, telefón)' : 'Stores information about logged-in customer (ID, name, email, phone)'}
                       </td>
-                      <td className="border border-gray-300 px-4 py-2">localStorage</td>
-                      <td className="border border-gray-300 px-4 py-2">{isSlovak ? 'Trvalé (do odhlásenia)' : 'Persistent (until logout)'}</td>
+                      <td className={`${isDark ? 'border border-white/20' : 'border border-gray-300'}} px-4 py-2`}>localStorage</td>
+                      <td className={`${isDark ? 'border border-white/20' : 'border border-gray-300'}} px-4 py-2`}>{isSlovak ? 'Trvalé (do odhlásenia)' : 'Persistent (until logout)'}</td>
                     </tr>
                     <tr>
-                      <td className="border border-gray-300 px-4 py-2 font-mono text-sm">language</td>
-                      <td className="border border-gray-300 px-4 py-2">
+                      <td className={`${isDark ? 'border border-white/20' : 'border border-gray-300'}} px-4 py-2 font-mono text-sm`}>language</td>
+                      <td className={`${isDark ? 'border border-white/20' : 'border border-gray-300'}} px-4 py-2`}>
                         {isSlovak ? 'Ukladá preferovaný jazyk používateľa (slovenčina/angličtina)' : 'Stores user\'s preferred language (Slovak/English)'}
                       </td>
-                      <td className="border border-gray-300 px-4 py-2">localStorage</td>
-                      <td className="border border-gray-300 px-4 py-2">{isSlovak ? 'Trvalé' : 'Persistent'}</td>
+                      <td className={`${isDark ? 'border border-white/20' : 'border border-gray-300'}} px-4 py-2`}>localStorage</td>
+                      <td className={`${isDark ? 'border border-white/20' : 'border border-gray-300'}} px-4 py-2`}>{isSlovak ? 'Trvalé' : 'Persistent'}</td>
                     </tr>
                     <tr>
-                      <td className="border border-gray-300 px-4 py-2 font-mono text-sm">cookie_analytics<br/>cookie_marketing</td>
-                      <td className="border border-gray-300 px-4 py-2">
+                      <td className={`${isDark ? 'border border-white/20' : 'border border-gray-300'}} px-4 py-2 font-mono text-sm`}>cookie_analytics<br/>cookie_marketing</td>
+                      <td className={`${isDark ? 'border border-white/20' : 'border border-gray-300'}} px-4 py-2`}>
                         {isSlovak ? 'Ukladá vaše preferencie týkajúce sa analytických a marketingových cookies (per používateľ)' : 'Stores your preferences regarding analytics and marketing cookies (per user)'}
                       </td>
-                      <td className="border border-gray-300 px-4 py-2">localStorage</td>
-                      <td className="border border-gray-300 px-4 py-2">{isSlovak ? 'Trvalé' : 'Persistent'}</td>
+                      <td className={`${isDark ? 'border border-white/20' : 'border border-gray-300'}} px-4 py-2`}>localStorage</td>
+                      <td className={`${isDark ? 'border border-white/20' : 'border border-gray-300'}} px-4 py-2`}>{isSlovak ? 'Trvalé' : 'Persistent'}</td>
                     </tr>
                   </tbody>
                 </table>
@@ -396,8 +404,8 @@ export default function CookiePolicyPage() {
               </p>
               <button
                 onClick={() => setShowCookieModal(true)}
-                className="px-6 py-3 rounded-lg text-white font-semibold"
-                style={{ backgroundColor: 'var(--color-primary)' }}
+                className="px-6 py-3 rounded-lg text-white font-semibold transition-opacity hover:opacity-90"
+                style={{ backgroundColor: primaryColor }}
               >
                 {isSlovak ? 'Nastavenia súborov cookie' : 'Cookie Settings'}
               </button>
@@ -412,16 +420,16 @@ export default function CookiePolicyPage() {
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+            className={`${isDark ? 'bg-black/90 backdrop-blur-sm border border-white/20' : 'bg-white shadow-xl'} rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto`}
           >
-            <div className="p-6">
+              <div className="p-6">
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-bold" style={{ color: 'var(--color-primary)' }}>
+                <h2 className="text-2xl font-bold" style={{ color: primaryColor }}>
                   {isSlovak ? 'Nastavenia súborov cookie' : 'Cookie Settings'}
                 </h2>
                 <button
                   onClick={() => setShowCookieModal(false)}
-                  className="text-gray-500 hover:text-gray-700"
+                  className={isDark ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-gray-700'}
                   aria-label={isSlovak ? 'Zavrieť' : 'Close'}
                 >
                   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -432,13 +440,13 @@ export default function CookiePolicyPage() {
 
               <div className="space-y-6 mb-6">
                 {/* Necessary Cookies */}
-                <div className="border-b pb-4">
+                <div className={`border-b ${isDark ? 'border-white/20' : 'border-gray-200'} pb-4`}>
                   <div className="flex items-center justify-between mb-2">
                     <div>
-                      <h3 className="font-semibold text-lg">
+                      <h3 className={`font-semibold text-lg ${isDark ? 'text-white' : 'text-gray-900'}`}>
                         {isSlovak ? 'Nevyhnutné súbory cookie' : 'Necessary Cookies'}
                       </h3>
-                      <p className="text-sm text-gray-600">
+                      <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
                         {isSlovak
                           ? 'Tieto súbory cookie sú nevyhnutné pre fungovanie stránky a nemôžu byť vypnuté.'
                           : 'These cookies are necessary for the website to function and cannot be disabled.'}
@@ -456,13 +464,13 @@ export default function CookiePolicyPage() {
                 </div>
 
                 {/* Analytics Cookies */}
-                <div className="border-b pb-4">
+                <div className={`border-b ${isDark ? 'border-white/20' : 'border-gray-200'} pb-4`}>
                   <div className="flex items-center justify-between mb-2">
                     <div>
-                      <h3 className="font-semibold text-lg">
+                      <h3 className={`font-semibold text-lg ${isDark ? 'text-white' : 'text-gray-900'}`}>
                         {isSlovak ? 'Analytické súbory cookie' : 'Analytics Cookies'}
                       </h3>
-                      <p className="text-sm text-gray-600">
+                      <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
                         {isSlovak
                           ? 'Pomáhajú nám pochopiť, ako návštevníci používajú našu stránku.'
                           : 'Help us understand how visitors use our website.'}
@@ -485,13 +493,13 @@ export default function CookiePolicyPage() {
                 </div>
 
                 {/* Marketing Cookies */}
-                <div className="border-b pb-4">
+                <div className={`border-b ${isDark ? 'border-white/20' : 'border-gray-200'} pb-4`}>
                   <div className="flex items-center justify-between mb-2">
                     <div>
-                      <h3 className="font-semibold text-lg">
+                      <h3 className={`font-semibold text-lg ${isDark ? 'text-white' : 'text-gray-900'}`}>
                         {isSlovak ? 'Marketingové súbory cookie' : 'Marketing Cookies'}
                       </h3>
-                      <p className="text-sm text-gray-600">
+                      <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
                         {isSlovak
                           ? 'Používajú sa na zobrazovanie relevantných reklám a sledovanie kampaní.'
                           : 'Used to display relevant ads and track campaigns.'}
@@ -530,14 +538,18 @@ export default function CookiePolicyPage() {
                       alert(isSlovak ? 'Chyba pri ukladaní nastavení' : 'Error saving settings');
                     }
                   }}
-                  className="flex-1 px-6 py-3 rounded-lg text-white font-semibold"
-                  style={{ backgroundColor: 'var(--color-primary)' }}
+                  className="flex-1 px-6 py-3 rounded-lg text-white font-semibold transition-opacity hover:opacity-90"
+                  style={{ backgroundColor: primaryColor }}
                 >
                   {isSlovak ? 'Uložiť nastavenia' : 'Save Settings'}
                 </button>
                 <button
                   onClick={() => setShowCookieModal(false)}
-                  className="px-6 py-3 rounded-lg border border-gray-300 font-semibold hover:bg-gray-50"
+                  className={`px-6 py-3 rounded-lg border font-semibold transition-colors ${
+                    isDark 
+                      ? 'border-white/20 text-white hover:bg-white/10' 
+                      : 'border-gray-300 hover:bg-gray-50'
+                  }`}
                 >
                   {isSlovak ? 'Zrušiť' : 'Cancel'}
                 </button>

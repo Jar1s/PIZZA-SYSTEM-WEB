@@ -3,37 +3,45 @@
 import { useLanguage } from '@/contexts/LanguageContext';
 import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
+import { useTenant } from '@/contexts/TenantContext';
+import { isDarkTheme, getBackgroundClass, withTenantThemeDefaults } from '@/lib/tenant-utils';
 
 export default function PrivacyPolicyPage() {
   const { language } = useLanguage();
   const router = useRouter();
+  const { tenant: tenantData } = useTenant();
   const isSlovak = language === 'sk';
 
+  const normalizedTenant = withTenantThemeDefaults(tenantData);
+  const isDark = isDarkTheme(normalizedTenant);
+  const backgroundClass = getBackgroundClass(normalizedTenant);
+  const primaryColor = normalizedTenant?.theme?.primaryColor || 'var(--color-primary)';
+
   return (
-    <div className="min-h-screen bg-gray-50 py-12">
+    <div className={`min-h-screen ${backgroundClass} ${isDark ? 'text-white' : 'text-gray-900'} py-12`}>
       <div className="container mx-auto px-4 max-w-4xl">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-white rounded-lg shadow-md p-8 md:p-12"
+          className={`${isDark ? 'bg-black/40 backdrop-blur-sm border border-white/10' : 'bg-white shadow-md'} rounded-lg p-8 md:p-12`}
         >
           <div className="flex items-center gap-4 mb-8">
             <button
               onClick={() => router.back()}
               className="flex items-center justify-center w-12 h-12 rounded-lg transition-colors hover:opacity-90"
-              style={{ backgroundColor: 'var(--color-primary)', color: 'white' }}
+              style={{ backgroundColor: primaryColor, color: 'white' }}
               aria-label={isSlovak ? 'Späť' : 'Back'}
             >
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
               </svg>
             </button>
-            <h1 className="text-4xl font-bold" style={{ color: 'var(--color-primary)' }}>
+            <h1 className="text-4xl font-bold" style={{ color: primaryColor }}>
               {isSlovak ? 'Zásady ochrany osobných údajov' : 'Privacy Policy'}
             </h1>
           </div>
 
-          <div className="prose prose-lg max-w-none space-y-6 text-gray-700">
+          <div className={`prose prose-lg max-w-none space-y-6 ${isDark ? 'text-gray-200 prose-headings:text-white prose-a:text-blue-400' : 'text-gray-700'}`}>
             <section>
               <h2 className="text-2xl font-bold mb-4 mt-8">
                 {isSlovak ? '1. ÚVODNÉ USTANOVENIA' : '1. INTRODUCTORY PROVISIONS'}
