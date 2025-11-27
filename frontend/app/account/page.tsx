@@ -9,7 +9,7 @@ import OrderHistory from '@/components/account/OrderHistory';
 import MyAddress from '@/components/account/MyAddress';
 import PersonalData from '@/components/account/PersonalData';
 import { useTenant } from '@/contexts/TenantContext';
-import { isDarkTheme, getButtonGradientClass } from '@/lib/tenant-utils';
+import { isDarkTheme, getButtonGradientClass, getBackgroundClass, withTenantThemeDefaults } from '@/lib/tenant-utils';
 
 type AccountSection = 'orders' | 'address' | 'settings';
 
@@ -18,13 +18,38 @@ export default function AccountPage() {
   const searchParams = useSearchParams();
   const { user, logout, loading: authLoading } = useCustomerAuth();
   const { t } = useLanguage();
-  const { tenant: tenantData } = useTenant();
+  const { tenant: tenantData, loading: tenantLoading } = useTenant();
   const initialSection = searchParams.get('section') as AccountSection | null;
   const [activeSection, setActiveSection] = useState<AccountSection>(initialSection || 'orders');
   const tenant = searchParams.get('tenant') || 'pornopizza';
-  const isDark = isDarkTheme(tenantData);
-  const gradientClass = getButtonGradientClass(tenantData);
-  const primaryColor = tenantData?.theme?.primaryColor || '#E91E63';
+  
+  // Get tenant slug from URL for fallback during loading
+  const [tenantSlug, setTenantSlug] = useState<string>('pornopizza');
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const hostname = window.location.hostname;
+      const params = new URLSearchParams(window.location.search);
+      let slug = 'pornopizza';
+      if (hostname.includes('pornopizza.sk') || hostname.includes('p0rnopizza.sk') || hostname.includes('pornopizza') || hostname.includes('p0rnopizza')) {
+        slug = 'pornopizza';
+      } else if (hostname.includes('pizzavnudzi.sk') || hostname.includes('pizzavnudzi')) {
+        slug = 'pizzavnudzi';
+      } else {
+        slug = params.get('tenant') || 'pornopizza';
+      }
+      setTenantSlug(slug);
+    }
+  }, []);
+
+  // Use fallback during loading to prevent white flash
+  const normalizedTenant = tenantLoading ? null : withTenantThemeDefaults(tenantData);
+  const isDark = isDarkTheme(normalizedTenant);
+  // Use default dark background for pornopizza, light for others during loading
+  const fallbackBackground = tenantSlug === 'pornopizza' ? 'bg-porno-vibe' : 'bg-gray-50';
+  const backgroundClass = tenantLoading ? fallbackBackground : getBackgroundClass(normalizedTenant);
+  const fallbackIsDark = tenantSlug === 'pornopizza';
+  const gradientClass = getButtonGradientClass(normalizedTenant);
+  const primaryColor = normalizedTenant?.theme?.primaryColor || '#E91E63';
   
   // Update active section when section query param changes
   useEffect(() => {
@@ -81,7 +106,7 @@ export default function AccountPage() {
     // If timeout, show error message
     if (loadingTimeout && !user) {
       return (
-        <div className={`min-h-screen ${isDark ? 'porno-bg text-white' : 'bg-gray-50'} flex items-center justify-center`}>
+        <div className={`min-h-screen ${backgroundClass} ${isDark || (tenantLoading && fallbackIsDark) ? 'text-white' : 'text-gray-900'} flex items-center justify-center`}>
           <div className="text-center">
             <div className="text-6xl mb-4">⚠️</div>
             <h2 className="text-2xl font-bold mb-4">{t.error || 'Chyba'}</h2>
@@ -101,7 +126,7 @@ export default function AccountPage() {
     }
     
     return (
-      <div className={`min-h-screen ${isDark ? 'porno-bg text-white' : 'bg-gray-50'} flex items-center justify-center`}>
+      <div className={`min-h-screen ${backgroundClass} ${isDark || (tenantLoading && fallbackIsDark) ? 'text-white' : 'text-gray-900'} flex items-center justify-center`}>
         <div className="text-center">
           <div className={`inline-block animate-spin rounded-full h-16 w-16 border-t-4 border-b-4`}
           style={{ borderColor: isDark ? '#ff5e00' : primaryColor }}></div>
@@ -152,7 +177,7 @@ export default function AccountPage() {
   };
 
   return (
-    <div className={`min-h-screen py-8 ${isDark ? 'porno-bg text-white' : 'bg-gray-50 text-gray-900'}`}>
+    <div className={`min-h-screen py-8 ${backgroundClass} ${isDark || (tenantLoading && fallbackIsDark) ? 'text-white' : 'text-gray-900'}`}>
       <div className="container mx-auto px-4 max-w-6xl">
         <div className="mb-8">
           <div className="flex items-center justify-between mb-4">
