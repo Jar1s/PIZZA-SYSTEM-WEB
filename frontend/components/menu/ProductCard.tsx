@@ -11,8 +11,12 @@ import { useState, useMemo, useCallback, memo, useEffect } from 'react';
 import CustomizationModal from './CustomizationModal';
 
 const drinkImageMap: Record<string, string> = {
-  'bonaqua nesýtená 1,5l': '/images/drinks/bonaqua-nesytna.svg',
-  'bonaqua nesytena 1,5l': '/images/drinks/bonaqua-nesytna.svg',
+  'bonaqua nesýtená 1,5l': '/images/drinks/bonaqua-nesytena.png',
+  'bonaqua nesytena 1,5l': '/images/drinks/bonaqua-nesytena.png',
+  'bonaqua nesýtená': '/images/drinks/bonaqua-nesytena.png',
+  'bonaqua nesytena': '/images/drinks/bonaqua-nesytena.png',
+  'bon aqua nesýtená': '/images/drinks/bonaqua-nesytena.png',
+  'bon aqua nesytena': '/images/drinks/bonaqua-nesytena.png',
   'bonaqua sýtená 1,5l': '/images/drinks/bonaqua-sytena.png',
   'bonaqua sytena 1,5l': '/images/drinks/bonaqua-sytena.png',
   'bonaqua sýtená': '/images/drinks/bonaqua-sytena.png',
