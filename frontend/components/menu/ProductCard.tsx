@@ -10,6 +10,11 @@ import { motion } from 'framer-motion';
 import { useState, useMemo, useCallback, memo, useEffect } from 'react';
 import CustomizationModal from './CustomizationModal';
 
+const dessertImageMap: Record<string, string> = {
+  'tiramisu': '/images/desserts/tiramissu.png',
+  'tiramissu': '/images/desserts/tiramissu.png',
+};
+
 const drinkImageMap: Record<string, string> = {
   'bonaqua nesýtená 1,5l': '/images/drinks/bonaqua-nesytena.png',
   'bonaqua nesytena 1,5l': '/images/drinks/bonaqua-nesytena.png',
@@ -104,6 +109,30 @@ export const ProductCard = memo(function ProductCard({ product, index = 0, isBes
       }
       console.log(`[ProductCard] No fallback found for drink "${product.name}" (key: "${key}", translated: "${translatedKey}")`);
     }
+    
+    // Check if product is a dessert and has a fallback image
+    if (product.category === 'DESSERTS') {
+      const key = product.name.toLowerCase().trim();
+      const translatedKey = translation.name?.toLowerCase().trim();
+      // Try multiple variations
+      const variations = [
+        key,
+        translatedKey,
+        key.replace(/[.,]/g, ''), // Remove dots and commas
+        translatedKey?.replace(/[.,]/g, ''),
+        key.replace(/\s+/g, ' '), // Normalize spaces
+        translatedKey?.replace(/\s+/g, ' '),
+      ].filter(Boolean);
+      
+      for (const variation of variations) {
+        if (variation && dessertImageMap[variation]) {
+          console.log(`[ProductCard] Found fallback for "${product.name}": ${dessertImageMap[variation]} (matched: "${variation}")`);
+          return dessertImageMap[variation];
+        }
+      }
+      console.log(`[ProductCard] No fallback found for dessert "${product.name}" (key: "${key}", translated: "${translatedKey}")`);
+    }
+    
     return undefined;
   }, [product.name, product.category, translation.name]);
   
