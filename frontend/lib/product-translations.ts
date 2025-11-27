@@ -484,20 +484,74 @@ export const productTranslations: Record<string, ProductTranslation> = {
   // Drinks - Based on Mayday Pizza menu
   'Coca Cola': {
     name: { sk: 'Coca Cola 1l', en: 'Coca Cola 1l' },
-    description: { sk: '1l', en: '1l' },
+    description: { sk: 'Klasická Coca-Cola', en: 'Classic Coca-Cola' },
+    weight: '1l',
+    allergens: []
+  },
+  'Coca Cola 1l': {
+    name: { sk: 'Coca Cola 1l', en: 'Coca Cola 1l' },
+    description: { sk: 'Klasická Coca-Cola', en: 'Classic Coca-Cola' },
+    weight: '1l',
+    allergens: []
+  },
+  'Cola Zero 1l': {
+    name: { sk: 'Cola Zero 1l', en: 'Cola Zero 1l' },
+    description: { sk: 'Coca-Cola bez cukru', en: 'Zero sugar Coca-Cola' },
     weight: '1l',
     allergens: []
   },
   'Fanta': {
     name: { sk: 'Fanta 1l', en: 'Fanta 1l' },
-    description: { sk: '1l', en: '1l' },
+    description: { sk: 'Pomarančová Fanta', en: 'Orange Fanta' },
+    weight: '1l',
+    allergens: []
+  },
+  'Fanta 1l': {
+    name: { sk: 'Fanta 1l', en: 'Fanta 1l' },
+    description: { sk: 'Pomarančová Fanta', en: 'Orange Fanta' },
     weight: '1l',
     allergens: []
   },
   'Sprite': {
     name: { sk: 'Sprite 1l', en: 'Sprite 1l' },
-    description: { sk: '1l', en: '1l' },
+    description: { sk: 'Citrónovo-limetkový Sprite', en: 'Lemon-lime Sprite' },
     weight: '1l',
+    allergens: []
+  },
+  'Sprite 1l': {
+    name: { sk: 'Sprite 1l', en: 'Sprite 1l' },
+    description: { sk: 'Citrónovo-limetkový Sprite', en: 'Lemon-lime Sprite' },
+    weight: '1l',
+    allergens: []
+  },
+  'Pepsi 1l': {
+    name: { sk: 'Pepsi 1l', en: 'Pepsi 1l' },
+    description: { sk: 'Klasická Pepsi', en: 'Classic Pepsi' },
+    weight: '1l',
+    allergens: []
+  },
+  'Pepsi Zero 1l': {
+    name: { sk: 'Pepsi Zero 1l', en: 'Pepsi Zero 1l' },
+    description: { sk: 'Pepsi bez cukru', en: 'Zero sugar Pepsi' },
+    weight: '1l',
+    allergens: []
+  },
+  'Kofola 2l': {
+    name: { sk: 'Kofola 2l', en: 'Kofola 2l' },
+    description: { sk: 'Klasická Kofola', en: 'Classic Kofola' },
+    weight: '2l',
+    allergens: []
+  },
+  'Bonaqua Nesýtená 1,5l': {
+    name: { sk: 'Bonaqua Nesýtená 1,5l', en: 'Bonaqua Still 1.5l' },
+    description: { sk: 'Nesýtená minerálna voda', en: 'Still mineral water' },
+    weight: '1.5l',
+    allergens: []
+  },
+  'Bonaqua Sýtená 1,5l': {
+    name: { sk: 'Bonaqua Sýtená 1,5l', en: 'Bonaqua Sparkling 1.5l' },
+    description: { sk: 'Sýtená minerálna voda', en: 'Sparkling mineral water' },
+    weight: '1.5l',
     allergens: []
   },
   'Beer': {
@@ -514,7 +568,7 @@ export const productTranslations: Record<string, ProductTranslation> = {
   },
   'Water': {
     name: { sk: 'Bonaqua Nesýtená 1,5l', en: 'Bonaqua Still 1.5l' },
-    description: { sk: '1.5l', en: '1.5l' },
+    description: { sk: 'Nesýtená minerálna voda', en: 'Still mineral water' },
     weight: '1.5l',
     allergens: []
   },
