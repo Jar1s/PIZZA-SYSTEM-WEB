@@ -48,82 +48,114 @@ export default function CookiePolicyPage() {
           <div className="prose prose-lg max-w-none space-y-6 text-gray-700">
             <section>
               <h2 className="text-2xl font-bold mb-4 mt-8">
-                {isSlovak ? 'Ako používame súbory cookie?' : 'How we use Cookie?'}
+                {isSlovak ? 'Čo sú súbory cookie?' : 'What are cookies?'}
               </h2>
               <p className="mb-4">
                 {isSlovak
-                  ? 'Súbor cookie je malý textový súbor, ktorý stránka ukladá na vašom počítači alebo mobilnom zariadení pri návšteve stránky. Prehliadače podporujú súbory cookie a podobné technológie (ako je lokálne úložisko a pixely), aby stránky ako naša mohli zapamätať si informácie o vašej návšteve a použiť tieto informácie na zlepšenie vášho zážitku a vytvorenie agregovaných anonymných štatistík o používaní stránky. V tejto podmienke používame termín "súbory cookie" na označenie súborov cookie aj podobných technológií.'
-                  : 'A cookie is a small text file that a site stores on your computer or mobile device when you visit the site. Browsers support cookies and similar technologies (such as local storage and pixels) so that sites like ours can remember information about your visit and use that information to improve your experience and create aggregate anonymous statistics about site usage. In this condition, we use the term \'cookies\' to refer to both cookies and similar technologies.'}
+                  ? 'Súbory cookie sú malé textové súbory, ktoré webová stránka ukladá na vašom počítači alebo mobilnom zariadení pri návšteve stránky. Tieto súbory umožňujú webovej stránke zapamätať si vaše akcie a preferencie (ako je prihlásenie, jazyk, veľkosť písma a iné nastavenia zobrazenia) počas určitého obdobia, takže ich nemusíte znova zadávať pri každej návšteve stránky alebo prechode z jednej stránky na druhú.'
+                  : 'Cookies are small text files that a website stores on your computer or mobile device when you visit the site. These files allow the website to remember your actions and preferences (such as login, language, font size, and other display settings) for a certain period, so you don\'t have to re-enter them every time you visit the site or move from one page to another.'}
+              </p>
+              <p className="mb-4">
+                {isSlovak
+                  ? 'Okrem súborov cookie používame aj podobné technológie, ako je lokálne úložisko (localStorage) a sessionStorage, ktoré fungujú podobne ako súbory cookie a umožňujú nám ukladať informácie vo vašom prehliadači. V tejto zásade používame termín "súbory cookie" na označenie súborov cookie aj týchto podobných technológií.'
+                  : 'In addition to cookies, we also use similar technologies such as local storage (localStorage) and sessionStorage, which work similarly to cookies and allow us to store information in your browser. In this policy, we use the term "cookies" to refer to both cookies and these similar technologies.'}
               </p>
               <p className="mb-4">
                 {isSlovak
                   ? 'Súbory cookie môžu byť nastavené stránkou, ktorú navštevujete (takzvané "súbory cookie prvej strany") alebo inou stranou, ako sú tí, ktorí poskytujú analytické alebo reklamné služby alebo interaktívny obsah na stránke ("súbory cookie tretích strán").'
-                  : 'Cookies may be set by the site you are visiting (so-called \'first party cookies\') or by the other side, such as those who provide analytical or advertising services or interactive content on the site (\'third-party cookies\').'}
-              </p>
-              <p>
-                {isSlovak
-                  ? 'Naše základné súbory cookie zahŕňajú Nevyhnutné súbory cookie, Funkčné súbory cookie, Analytické/Výkonnostné súbory cookie a Reklamné súbory cookie.'
-                  : 'Our essential cookies include Strictly Necessary Cookies, Functional Cookies, Analytics/Performance Cookies, and Advertising Cookies.'}
+                  : 'Cookies may be set by the site you are visiting (so-called "first-party cookies") or by another party, such as those who provide analytical or advertising services or interactive content on the site ("third-party cookies").'}
               </p>
             </section>
 
             <section>
               <h2 className="text-2xl font-bold mb-4 mt-8">
-                {isSlovak ? 'Nevyhnutné súbory cookie' : 'Necessary Cookie files'}
+                {isSlovak ? '1. Nevyhnutné súbory cookie' : '1. Strictly Necessary Cookies'}
               </h2>
               <p className="mb-4">
                 {isSlovak
-                  ? 'Tieto súbory cookie sú nevyhnutné pre fungovanie webovej stránky a nemožno ich vypnúť v našich systémoch. Môžete nastaviť prehliadač tak, aby blokoval alebo upozorňoval na tieto súbory cookie, ale to môže spôsobiť, že niektoré časti stránky nebudú fungovať. Patria sem:'
-                  : 'These cookies are essential for the website to function and cannot be switched off in our systems. You can set your browser to block or alert you about these cookies, but that will cause some parts of the site to not work. These include:'}
+                  ? 'Tieto súbory cookie sú nevyhnutné pre fungovanie webovej stránky a nemožno ich vypnúť v našich systémoch. Sú potrebné pre základné funkcie stránky, ako je bezpečné prihlásenie, ukladanie obsahu košíka a správa relácií. Môžete nastaviť prehliadač tak, aby blokoval alebo upozorňoval na tieto súbory cookie, ale to môže spôsobiť, že niektoré časti stránky nebudú fungovať správne.'
+                  : 'These cookies are essential for the website to function and cannot be switched off in our systems. They are necessary for basic site functions such as secure login, cart storage, and session management. You can set your browser to block or alert you about these cookies, but that will cause some parts of the site to not work properly.'}
               </p>
               
               <div className="overflow-x-auto mt-6">
                 <table className="min-w-full border-collapse border border-gray-300">
                   <thead>
                     <tr className="bg-gray-100">
-                      <th className="border border-gray-300 px-4 py-2 text-left font-bold">NAME</th>
-                      <th className="border border-gray-300 px-4 py-2 text-left font-bold">DESCRIPTION</th>
-                      <th className="border border-gray-300 px-4 py-2 text-left font-bold">TYPE</th>
-                      <th className="border border-gray-300 px-4 py-2 text-left font-bold">EXPIRES</th>
+                      <th className="border border-gray-300 px-4 py-2 text-left font-bold">{isSlovak ? 'NÁZOV' : 'NAME'}</th>
+                      <th className="border border-gray-300 px-4 py-2 text-left font-bold">{isSlovak ? 'POPIS' : 'DESCRIPTION'}</th>
+                      <th className="border border-gray-300 px-4 py-2 text-left font-bold">{isSlovak ? 'TYP' : 'TYPE'}</th>
+                      <th className="border border-gray-300 px-4 py-2 text-left font-bold">{isSlovak ? 'EXPIRÁCIA' : 'EXPIRES'}</th>
                     </tr>
                   </thead>
                   <tbody>
                     <tr>
-                      <td className="border border-gray-300 px-4 py-2">cart-storage</td>
+                      <td className="border border-gray-300 px-4 py-2 font-mono text-sm">cart-storage</td>
                       <td className="border border-gray-300 px-4 py-2">
-                        {isSlovak ? 'Ukladá obsah košíka (produkty, množstvo, customizácie) pre zachovanie medzi reláciami' : 'Stores cart contents (products, quantities, customizations) to persist between sessions'}
+                        {isSlovak ? 'Ukladá obsah košíka (produkty, množstvo, úpravy) pre zachovanie medzi reláciami a stránkami' : 'Stores cart contents (products, quantities, customizations) to persist between sessions and pages'}
                       </td>
                       <td className="border border-gray-300 px-4 py-2">localStorage</td>
-                      <td className="border border-gray-300 px-4 py-2">{isSlovak ? 'Trvalé' : 'Persistent'}</td>
+                      <td className="border border-gray-300 px-4 py-2">{isSlovak ? 'Trvalé (do vymazania)' : 'Persistent (until cleared)'}</td>
                     </tr>
                     <tr>
-                      <td className="border border-gray-300 px-4 py-2">auth_token</td>
+                      <td className="border border-gray-300 px-4 py-2 font-mono text-sm">auth_token</td>
                       <td className="border border-gray-300 px-4 py-2">
-                        {isSlovak ? 'JWT access token pre autentifikáciu používateľa (v produkcii je v HttpOnly cookie)' : 'JWT access token for user authentication (in production stored in HttpOnly cookie)'}
+                        {isSlovak ? 'JWT access token pre autentifikáciu administrátora alebo operátora (v produkcii je v HttpOnly cookie)' : 'JWT access token for admin/operator authentication (in production stored in HttpOnly cookie)'}
                       </td>
-                      <td className="border border-gray-300 px-4 py-2">{isSlovak ? 'localStorage / Cookie' : 'localStorage / Cookie'}</td>
-                      <td className="border border-gray-300 px-4 py-2">1 hour</td>
+                      <td className="border border-gray-300 px-4 py-2">{isSlovak ? 'localStorage / HttpOnly Cookie' : 'localStorage / HttpOnly Cookie'}</td>
+                      <td className="border border-gray-300 px-4 py-2">1 hodina</td>
                     </tr>
                     <tr>
-                      <td className="border border-gray-300 px-4 py-2">refresh_token</td>
+                      <td className="border border-gray-300 px-4 py-2 font-mono text-sm">refresh_token</td>
                       <td className="border border-gray-300 px-4 py-2">
-                        {isSlovak ? 'Refresh token pre obnovenie access tokenu (v produkcii je v HttpOnly cookie)' : 'Refresh token for renewing access token (in production stored in HttpOnly cookie)'}
+                        {isSlovak ? 'Refresh token pre obnovenie access tokenu administrátora alebo operátora (v produkcii je v HttpOnly cookie)' : 'Refresh token for renewing admin/operator access token (in production stored in HttpOnly cookie)'}
                       </td>
-                      <td className="border border-gray-300 px-4 py-2">{isSlovak ? 'localStorage / Cookie' : 'localStorage / Cookie'}</td>
-                      <td className="border border-gray-300 px-4 py-2">7 days</td>
+                      <td className="border border-gray-300 px-4 py-2">{isSlovak ? 'localStorage / HttpOnly Cookie' : 'localStorage / HttpOnly Cookie'}</td>
+                      <td className="border border-gray-300 px-4 py-2">7 dní</td>
                     </tr>
                     <tr>
-                      <td className="border border-gray-300 px-4 py-2">auth_user</td>
+                      <td className="border border-gray-300 px-4 py-2 font-mono text-sm">auth_user</td>
                       <td className="border border-gray-300 px-4 py-2">
-                        {isSlovak ? 'Ukladá informácie o prihlásenom používateľovi (ID, meno, rola)' : 'Stores information about logged-in user (ID, name, role)'}
+                        {isSlovak ? 'Ukladá informácie o prihlásenom administrátorovi alebo operátorovi (ID, meno, rola)' : 'Stores information about logged-in admin/operator (ID, name, role)'}
                       </td>
                       <td className="border border-gray-300 px-4 py-2">localStorage</td>
-                      <td className="border border-gray-300 px-4 py-2">{isSlovak ? 'Trvalé' : 'Persistent'}</td>
+                      <td className="border border-gray-300 px-4 py-2">{isSlovak ? 'Trvalé (do odhlásenia)' : 'Persistent (until logout)'}</td>
                     </tr>
                     <tr>
-                      <td className="border border-gray-300 px-4 py-2">language</td>
+                      <td className="border border-gray-300 px-4 py-2 font-mono text-sm">customer_auth_token</td>
+                      <td className="border border-gray-300 px-4 py-2">
+                        {isSlovak ? 'JWT access token pre autentifikáciu zákazníka' : 'JWT access token for customer authentication'}
+                      </td>
+                      <td className="border border-gray-300 px-4 py-2">localStorage</td>
+                      <td className="border border-gray-300 px-4 py-2">1 hodina</td>
+                    </tr>
+                    <tr>
+                      <td className="border border-gray-300 px-4 py-2 font-mono text-sm">customer_auth_refresh_token</td>
+                      <td className="border border-gray-300 px-4 py-2">
+                        {isSlovak ? 'Refresh token pre obnovenie access tokenu zákazníka' : 'Refresh token for renewing customer access token'}
+                      </td>
+                      <td className="border border-gray-300 px-4 py-2">localStorage</td>
+                      <td className="border border-gray-300 px-4 py-2">7 dní</td>
+                    </tr>
+                    <tr>
+                      <td className="border border-gray-300 px-4 py-2 font-mono text-sm">customer_auth_user</td>
+                      <td className="border border-gray-300 px-4 py-2">
+                        {isSlovak ? 'Ukladá informácie o prihlásenom zákazníkovi (ID, meno, email, telefón)' : 'Stores information about logged-in customer (ID, name, email, phone)'}
+                      </td>
+                      <td className="border border-gray-300 px-4 py-2">localStorage</td>
+                      <td className="border border-gray-300 px-4 py-2">{isSlovak ? 'Trvalé (do odhlásenia)' : 'Persistent (until logout)'}</td>
+                    </tr>
+                    <tr>
+                      <td className="border border-gray-300 px-4 py-2 font-mono text-sm">language</td>
                       <td className="border border-gray-300 px-4 py-2">
                         {isSlovak ? 'Ukladá preferovaný jazyk používateľa (slovenčina/angličtina)' : 'Stores user\'s preferred language (Slovak/English)'}
+                      </td>
+                      <td className="border border-gray-300 px-4 py-2">localStorage</td>
+                      <td className="border border-gray-300 px-4 py-2">{isSlovak ? 'Trvalé' : 'Persistent'}</td>
+                    </tr>
+                    <tr>
+                      <td className="border border-gray-300 px-4 py-2 font-mono text-sm">cookie_analytics<br/>cookie_marketing</td>
+                      <td className="border border-gray-300 px-4 py-2">
+                        {isSlovak ? 'Ukladá vaše preferencie týkajúce sa analytických a marketingových cookies (per používateľ)' : 'Stores your preferences regarding analytics and marketing cookies (per user)'}
                       </td>
                       <td className="border border-gray-300 px-4 py-2">localStorage</td>
                       <td className="border border-gray-300 px-4 py-2">{isSlovak ? 'Trvalé' : 'Persistent'}</td>
@@ -131,61 +163,138 @@ export default function CookiePolicyPage() {
                   </tbody>
                 </table>
               </div>
-              <p className="mt-4 text-sm text-gray-600">
+              <p className="mt-4 text-sm text-gray-600 italic">
                 {isSlovak
-                  ? '* V produkcii sú auth_token a refresh_token uložené v HttpOnly cookies pre zvýšenú bezpečnosť. V development móde sú uložené v localStorage.'
-                  : '* In production, auth_token and refresh_token are stored in HttpOnly cookies for enhanced security. In development mode, they are stored in localStorage.'}
+                  ? '* V produkcii sú auth_token a refresh_token pre administrátorov/operátorov uložené v HttpOnly cookies pre zvýšenú bezpečnosť. V development móde sú uložené v localStorage.'
+                  : '* In production, auth_token and refresh_token for admins/operators are stored in HttpOnly cookies for enhanced security. In development mode, they are stored in localStorage.'}
               </p>
             </section>
 
             <section>
-              <h2 className="text-2xl font-bold mb-4 mt-8">Adyen</h2>
+              <h2 className="text-2xl font-bold mb-4 mt-8">
+                {isSlovak ? '2. Analytické súbory cookie' : '2. Analytics Cookies'}
+              </h2>
               <p className="mb-4">
                 {isSlovak
-                  ? 'Používame Adyen na spracovanie platieb na našej webovej stránke. Adyen je globálna služba spracovania platieb. Adyen ponúka bezpečnú a spoľahlivú platobnú platformu, ktorá nám umožňuje akceptovať rôzne platobné metódy od našich zákazníkov, vrátane kreditných kariet, debetných kariet a digitálnych peňaženiek. Viac informácií o službe nájdete na stránke spoločnosti - ' : 'We use Adyen to process payments on our website. Adyen is a global payment processing service. Adyen offers a secure and reliable payment platform that allows us to accept various payment methods from our customers, including credit cards, debit cards, and digital wallets. More details about service can be found on the company page - '}
+                  ? 'Tieto súbory cookie nám umožňujú počítať návštevy a zdroje dopravy, aby sme mohli merať a zlepšovať výkon našej stránky. Pomáhajú nám zistiť, ktoré stránky sú najobľúbenejšie a najmenej obľúbené, a vidieť, ako sa návštevníci pohybujú po stránke. Všetky informácie, ktoré tieto súbory cookie zhromažďujú, sú agregované a preto anonymné.'
+                  : 'These cookies allow us to count visits and traffic sources so we can measure and improve the performance of our site. They help us know which pages are the most and least popular and see how visitors move around the site. All information these cookies collect is aggregated and therefore anonymous.'}
+              </p>
+              <p className="mb-4">
+                {isSlovak
+                  ? 'Ak tieto súbory cookie nepovolíte, nebudeme vedieť, kedy ste navštívili našu stránku a nebudeme môcť monitorovať jej výkon.'
+                  : 'If you do not allow these cookies, we will not know when you have visited our site and will not be able to monitor its performance.'}
+              </p>
+              
+              <h3 className="text-xl font-semibold mb-3 mt-6">
+                {isSlovak ? 'Google Analytics' : 'Google Analytics'}
+              </h3>
+              <p className="mb-4">
+                {isSlovak
+                  ? 'Naša stránka používa Google Analytics, webovú analytickú službu poskytovanú spoločnosťou Google LLC ("Google"). Google Analytics používa súbory cookie na analýzu toho, ako návštevníci používajú našu stránku. Informácie vygenerované súborom cookie o vašom používaní našej stránky (vrátane vašej IP adresy) sa zvyčajne prenášajú na server Google v USA a tam sa ukladajú.'
+                  : 'Our website uses Google Analytics, a web analytics service provided by Google LLC ("Google"). Google Analytics uses cookies to analyze how visitors use our website. The information generated by the cookie about your use of our website (including your IP address) is usually transmitted to a Google server in the USA and stored there.'}
+              </p>
+              <p className="mb-4">
+                {isSlovak
+                  ? 'Google použije tieto informácie na vyhodnotenie vášho používania našej stránky, zostavenie správ o aktivitách na stránke pre prevádzkovateľov stránok a poskytovanie ďalších služieb súvisiacich s používaním stránky a internetu. Google môže tieto údaje tiež preniesť na tretie strany, ak to vyžaduje zákon alebo ak tretie strany tieto údaje spracovávajú v mene Google.'
+                  : 'Google will use this information to evaluate your use of our website, compile reports on website activity for website operators, and provide other services related to website and internet usage. Google may also transfer this data to third parties if required by law or if third parties process this data on behalf of Google.'}
+              </p>
+              <p className="mb-4">
+                {isSlovak
+                  ? 'Viac informácií o ochrane údajov v Google Analytics: ' : 'More information on data protection in Google Analytics: '}
+                <a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                  {isSlovak ? 'Zásady ochrany súkromia Google' : 'Google Privacy Policy'}
+                </a>
+                {' | '}
+                <a href="https://support.google.com/analytics/answer/6004245" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                  {isSlovak ? 'Ochrana údajov v Google Analytics' : 'Data Protection in Google Analytics'}
+                </a>
+              </p>
+            </section>
+
+            <section>
+              <h2 className="text-2xl font-bold mb-4 mt-8">
+                {isSlovak ? '3. Marketingové súbory cookie' : '3. Marketing Cookies'}
+              </h2>
+              <p className="mb-4">
+                {isSlovak
+                  ? 'Tieto súbory cookie sa používajú na zobrazovanie relevantných reklám a sledovanie marketingových kampaní. Umožňujú nám meranie efektivity našich reklamných kampaní a personalizáciu reklám podľa vašich záujmov.'
+                  : 'These cookies are used to display relevant ads and track marketing campaigns. They allow us to measure the effectiveness of our advertising campaigns and personalize ads according to your interests.'}
+              </p>
+              
+              <h3 className="text-xl font-semibold mb-3 mt-6">
+                {isSlovak ? 'Facebook Pixel' : 'Facebook Pixel'}
+              </h3>
+              <p className="mb-4">
+                {isSlovak
+                  ? 'Naša stránka používa Facebook Pixel, ktorý je analytický nástroj spoločnosti Meta Platforms Ireland Limited. Facebook Pixel nám pomáha pochopiť, ako návštevníci interagujú s našou stránkou, a umožňuje nám zobrazovať relevantné reklamy na Facebooku a Instagrame.'
+                  : 'Our website uses Facebook Pixel, which is an analytics tool from Meta Platforms Ireland Limited. Facebook Pixel helps us understand how visitors interact with our website and allows us to display relevant ads on Facebook and Instagram.'}
+              </p>
+              <p className="mb-4">
+                {isSlovak
+                  ? 'Facebook Pixel používa súbory cookie a podobné technológie na zhromažďovanie informácií o vašom používaní našej stránky. Tieto informácie môžu zahŕňať vašu IP adresu, typ prehliadača, navštívené stránky a čas strávený na stránke.'
+                  : 'Facebook Pixel uses cookies and similar technologies to collect information about your use of our website. This information may include your IP address, browser type, pages visited, and time spent on the site.'}
+              </p>
+              <p className="mb-4">
+                {isSlovak
+                  ? 'Viac informácií o Facebook Pixel a ochrane údajov: ' : 'More information about Facebook Pixel and data protection: '}
+                <a href="https://www.facebook.com/privacy/explanation" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                  {isSlovak ? 'Zásady ochrany súkromia Meta' : 'Meta Privacy Policy'}
+                </a>
+                {' | '}
+                <a href="https://www.facebook.com/business/help/742478679120153" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                  {isSlovak ? 'Informácie o Facebook Pixel' : 'Facebook Pixel Information'}
+                </a>
+              </p>
+            </section>
+
+            <section>
+              <h2 className="text-2xl font-bold mb-4 mt-8">
+                {isSlovak ? '4. Súbory cookie tretích strán' : '4. Third-Party Cookies'}
+              </h2>
+              <p className="mb-4">
+                {isSlovak
+                  ? 'Naša stránka používa služby tretích strán, ktoré môžu nastavovať súbory cookie vo vašom prehliadači. Tieto služby sú nevyhnutné pre fungovanie určitých funkcií našej stránky.'
+                  : 'Our website uses third-party services that may set cookies in your browser. These services are necessary for the functioning of certain features of our website.'}
+              </p>
+
+              <h3 className="text-xl font-semibold mb-3 mt-6">
+                {isSlovak ? 'Adyen (Platobná služba)' : 'Adyen (Payment Service)'}
+              </h3>
+              <p className="mb-4">
+                {isSlovak
+                  ? 'Používame Adyen na spracovanie platieb na našej webovej stránke. Adyen je globálna služba spracovania platieb, ktorá nám umožňuje akceptovať rôzne platobné metódy od našich zákazníkov, vrátane kreditných kariet, debetných kariet a digitálnych peňaženiek.'
+                  : 'We use Adyen to process payments on our website. Adyen is a global payment processing service that allows us to accept various payment methods from our customers, including credit cards, debit cards, and digital wallets.'}
+              </p>
+              <p className="mb-4">
+                {isSlovak
+                  ? 'Adyen používa súbory cookie a podobné technológie na zlepšenie svojich služieb, zabezpečenie platieb a prevenciu podvodov. Tieto súbory cookie a technológie môžu zhromažďovať informácie o vašom zariadení, prehliadači a vzorcoch používania.'
+                  : 'Adyen uses cookies and similar technologies to improve its services, secure payments, and prevent fraud. These cookies and technologies may collect information about your device, browser, and usage patterns.'}
+              </p>
+              <p className="mb-4">
+                {isSlovak
+                  ? 'Viac informácií: ' : 'More information: '}
                 <a href="https://www.adyen.com" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">adyen.com</a>
-              </p>
-              <p className="mb-4">
-                {isSlovak
-                  ? 'Adyen tiež používa súbory cookie a podobné technológie na zlepšenie svojich služieb a personalizáciu vášho zážitku. Tieto súbory cookie a technológie môžu zhromažďovať informácie o vašom zariadení, prehliadači a vzorcoch používania.'
-                  : 'Adyen also uses cookies and similar technologies to improve its services and personalize your experience. These cookies and technologies may collect information about your device, browser, and usage patterns.'}
-              </p>
-              <p className="mb-4">
-                {isSlovak
-                  ? 'Pre viac informácií o používaní súborov cookie a technológií spoločnosťou Adyen si pozrite ich ' : 'For more information on Adyen\'s use of cookies and technologies, please refer to their '}
+                {' | '}
                 <a href="https://www.adyen.com/policies-and-terms/cookie-policy" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
                   {isSlovak ? 'Zásady používania súborov cookie' : 'Cookie Policy'}
-                </a>.
-              </p>
-              <p>
-                {isSlovak
-                  ? 'Okrem toho môže Adyen zdieľať niektoré z vašich osobných údajov s poskytovateľmi služieb tretích strán, ako sú agentúry na prevenciu podvodov, aby pomohli ochrániť pred podvodnými transakciami.'
-                  : 'In addition, Adyen may share some of your personal information with third-party service providers, such as fraud prevention agencies, to help protect against fraudulent transactions.'}
-              </p>
-              <p className="mt-4">
-                {isSlovak
-                  ? 'Pre viac informácií o postupe spracovania údajov spoločnosti Adyen a vašich právach ako subjektu údajov si pozrite ich ' : 'For more information on Adyen\'s data processing practices and your rights as a data subject, please refer to their '}
+                </a>
+                {' | '}
                 <a href="https://www.adyen.com/policies-and-terms/privacy-policy" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
                   {isSlovak ? 'Zásady ochrany súkromia' : 'Privacy Policy'}
-                </a>.
+                </a>
               </p>
-            </section>
 
-            <section>
-              <h2 className="text-2xl font-bold mb-4 mt-8">Google Maps</h2>
+              <h3 className="text-xl font-semibold mb-3 mt-6">
+                {isSlovak ? 'Google Maps API' : 'Google Maps API'}
+              </h3>
               <p className="mb-4">
                 {isSlovak
-                  ? 'Google Maps API je mapová služba poskytovaná spoločnosťou Google Inc., 1600 Amphitheater Parkway Mountain View, CA 94043, USA.'
-                  : 'Google Maps API is a map service provided by Google Inc., 1600 Amphitheater Parkway Mountain View, CA 94043, USA.'}
+                  ? 'Naša stránka používa Google Maps API, mapovú službu poskytovanú spoločnosťou Google LLC, aby ste mohli na mape označiť miesto doručenia vašej objednávky. Pri používaní Google Maps môžu byť informácie o vašom používaní tejto webovej stránky (vrátane vašej IP adresy) prenesené na server Google v USA a tam uložené.'
+                  : 'Our website uses Google Maps API, a map service provided by Google LLC, so that you can indicate the delivery location of your order on the map. When using Google Maps, information about your use of this website (including your IP address) can be transmitted to a Google server in the USA and stored there.'}
               </p>
               <p className="mb-4">
                 {isSlovak
-                  ? 'Potrebujeme použiť Google Maps API, aby ste mohli na mape označiť miesto doručenia vašej objednávky. Pri používaní Google Maps môžu byť informácie o vašom používaní tejto webovej stránky (vrátane vašej IP adresy) prenesené na server Google v USA a tam uložené.'
-                  : 'We need to use the Google Maps API so that you can indicate the delivery location of your order on the map. When using Google Maps, information about your use of this website (including your IP address) can be transmitted to a Google server in the USA and stored there.'}
-              </p>
-              <p>
-                {isSlovak
-                  ? 'Viac informácií o ochrane údajov a podmienkach používania Google Maps: ' : 'More information on data protection and Terms of Use on Google Maps: '}
+                  ? 'Viac informácií: ' : 'More information: '}
                 <a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
                   {isSlovak ? 'Zásady ochrany súkromia Google' : 'Google Privacy Policy'}
                 </a>
@@ -198,53 +307,81 @@ export default function CookiePolicyPage() {
 
             <section>
               <h2 className="text-2xl font-bold mb-4 mt-8">
-                {isSlovak ? 'Ako môžem ovládať súbory cookie a ako sa používajú moje údaje?' : 'How can I control cookies and how is my data used?'}
+                {isSlovak ? '5. Ako môžem ovládať súbory cookie?' : '5. How can I control cookies?'}
               </h2>
               <p className="mb-4">
                 {isSlovak
-                  ? 'Existuje niekoľko spôsobov, ktoré môžete použiť na kontrolu toho, aké informácie zhromažďujú súbory cookie na našej stránke a ako sa tieto informácie používajú.'
-                  : 'There are several ways you can use to control what information is collected by cookies on our site and how this information is used.'}
+                  ? 'Máte právo rozhodnúť sa, ktoré súbory cookie chcete prijať. Môžete nastaviť alebo upraviť svoje nastavenia súborov cookie kedykoľvek kliknutím na tlačidlo "Nastavenia súborov cookie" nižšie na tejto stránke.'
+                  : 'You have the right to decide which cookies you want to accept. You can set or adjust your cookie settings at any time by clicking the "Cookie Settings" button below on this page.'}
               </p>
 
-              <h3 className="text-xl font-bold mb-3 mt-6">
+              <h3 className="text-xl font-semibold mb-3 mt-6">
+                {isSlovak ? 'Nastavenia na našej stránke' : 'Settings on our website'}
+              </h3>
+              <p className="mb-4">
+                {isSlovak
+                  ? 'Na tejto stránke môžete upraviť nastavenia pre analytické a marketingové súbory cookie. Nevyhnutné súbory cookie nemožno vypnúť, pretože sú potrebné pre základné funkcie stránky.'
+                  : 'On this page, you can adjust settings for analytics and marketing cookies. Strictly necessary cookies cannot be turned off, as they are required for basic site functions.'}
+              </p>
+
+              <h3 className="text-xl font-semibold mb-3 mt-6">
                 {isSlovak ? 'Nastavenia vášho prehliadača' : 'Your browser settings'}
               </h3>
               <p className="mb-4">
                 {isSlovak
-                  ? 'Váš prehliadač má ovládacie prvky, ktoré vám umožňujú spravovať používanie súborov cookie webovými stránkami, ktoré navštevujete. Väčšina prehliadačov má funkcie, ktoré vám umožňujú zobraziť a vymazať súbory cookie uložené na vašom zariadení, ako aj blokovať súbory cookie zo všetkých alebo vybraných stránok. Pre viac informácií tu sú odkazy na externé referenčné materiály pre niektoré populárne prehliadače:'
-                  : 'Your browser has controls that allow you to manage the use of cookies by the websites you visit. Most browsers have features that allow you to view and delete the cookies stored on your device, as well as block cookies from all or selected sites. For more information, here are links to external reference materials for some popular browsers:'}
+                  ? 'Váš prehliadač má ovládacie prvky, ktoré vám umožňujú spravovať používanie súborov cookie webovými stránkami, ktoré navštevujete. Väčšina prehliadačov má funkcie, ktoré vám umožňujú zobraziť a vymazať súbory cookie uložené na vašom zariadení, ako aj blokovať súbory cookie zo všetkých alebo vybraných stránok.'
+                  : 'Your browser has controls that allow you to manage the use of cookies by the websites you visit. Most browsers have features that allow you to view and delete the cookies stored on your device, as well as block cookies from all or selected sites.'}
               </p>
-              <ul className="list-disc list-inside space-y-2 mb-4">
+              <p className="mb-4">
+                {isSlovak ? 'Odkazy na návody pre populárne prehliadače:' : 'Links to guides for popular browsers:'}
+              </p>
+              <ul className="list-disc list-inside space-y-2 mb-4 ml-4">
                 <li><a href="https://support.mozilla.org/en-US/kb/cookies-information-websites-store-on-your-computer" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">Mozilla Firefox</a></li>
                 <li><a href="https://support.apple.com/guide/safari/manage-cookies-and-website-data-sfri11471/mac" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">Apple Safari</a></li>
                 <li><a href="https://support.google.com/chrome/answer/95647" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">Google Chrome</a></li>
                 <li><a href="https://support.microsoft.com/en-us/microsoft-edge/delete-cookies-in-microsoft-edge-63947406-40ac-c3b8-57b9-2a946a29ae09" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">Microsoft Edge</a></li>
               </ul>
 
-              <h3 className="text-xl font-bold mb-3 mt-6">
-                {isSlovak ? 'Nastavenia vášho mobilného zariadenia' : 'Your mobile device settings'}
+              <h3 className="text-xl font-semibold mb-3 mt-6">
+                {isSlovak ? 'Nastavenia mobilného zariadenia' : 'Mobile device settings'}
               </h3>
               <p className="mb-4">
                 {isSlovak
-                  ? 'Vaše mobilné zariadenie môže mať tiež nastavenia prehliadača, ktoré vám umožňujú ovládať používanie súborov cookie, najmä ak zariadenie podporuje inštaláciu aplikácií, ako sú zariadenia iOS a Android. Zariadenia OS a Android tiež zahŕňajú dodatočné nastavenia zariadenia, ktoré ovládajú, či reklamní partneri môžu použiť informácie o vašej aktivite v aplikácii na reklamné účely. Na zariadeniach iOS môžete nájsť nastavenie nazvané "Obmedziť sledovanie reklám". Na zariadeniach Android môžete nájsť nastavenie nazvané "Vypnúť personalizáciu reklám".'
-                  : 'Your mobile device may also have browser settings that allow you to control the use of cookies, especially if the device supports the installation of applications such as iOS and Android devices. OS and Android devices also include additional device settings that control whether advertising partners can use information about your in-app activity for advertising purposes. On iOS devices, you can find a setting called \'Limit Ad Tracking\'. On Android devices, you can find a setting called \'Opt out of ad personalization\'.'}
+                  ? 'Vaše mobilné zariadenie môže mať tiež nastavenia prehliadača, ktoré vám umožňujú ovládať používanie súborov cookie. Na zariadeniach iOS môžete nájsť nastavenie nazvané "Obmedziť sledovanie reklám" v Nastaveniach > Súkromie. Na zariadeniach Android môžete nájsť nastavenie nazvané "Vypnúť personalizáciu reklám" v Nastaveniach > Google > Reklamy.'
+                  : 'Your mobile device may also have browser settings that allow you to control the use of cookies. On iOS devices, you can find a setting called "Limit Ad Tracking" in Settings > Privacy. On Android devices, you can find a setting called "Opt out of ad personalization" in Settings > Google > Ads.'}
               </p>
 
-              <h3 className="text-xl font-bold mb-3 mt-6">
-                {isSlovak ? 'Správa súborov cookie' : 'Cookie management'}
-              </h3>
-              <p>
+              <p className="mt-4 text-sm text-gray-600 italic">
                 {isSlovak
-                  ? 'Je tiež možné úplne zabrániť prijatiu súborov cookie prehliadačom zmenou nastavení súborov cookie prehliadača. Tieto nastavenia zvyčajne nájdete v ponukách "Možnosti" alebo "Nastavenia" vášho prehliadača. Upozorňujeme, že vymazanie našich súborov cookie alebo zakázanie budúcich súborov cookie alebo technológií sledovania vám môže zabrániť v prístupe k určitým oblastiam alebo funkciám našich služieb alebo inak nepriaznivo ovplyvniť váš zážitok.'
-                  : 'It is also possible to completely prevent the acceptance of cookies by the browser by changing the cookie settings of the browser. You can usually find these settings in the \'Options\' or \'Settings\' menus of your browser. Please note that deleting our cookies or disabling future cookies or tracking technologies may prevent you from accessing certain areas or features of our Services or otherwise adversely affect your experience.'}
+                  ? 'Upozorňujeme, že vymazanie našich súborov cookie alebo zakázanie budúcich súborov cookie alebo technológií sledovania vám môže zabrániť v prístupe k určitým oblastiam alebo funkciám našich služieb alebo inak nepriaznivo ovplyvniť váš zážitok.'
+                  : 'Please note that deleting our cookies or disabling future cookies or tracking technologies may prevent you from accessing certain areas or features of our Services or otherwise adversely affect your experience.'}
               </p>
             </section>
 
             <section>
-              <p className="mt-8 text-sm text-gray-600">
+              <h2 className="text-2xl font-bold mb-4 mt-8">
+                {isSlovak ? '6. Aktualizácie tejto zásady' : '6. Updates to this policy'}
+              </h2>
+              <p className="mb-4">
                 {isSlovak
-                  ? 'Môžeme aktualizovať tieto Zásady používania súborov cookie. Odporúčame vám pravidelne kontrolovať túto stránku, aby ste získali najnovšie informácie o súboroch cookie.'
-                  : 'We may update this Cookie Policy. We encourage you to periodically review this page for the latest information about cookies.'}
+                  ? 'Môžeme čas od času aktualizovať tieto Zásady používania súborov cookie, aby sme odzrkadlili zmeny v našich praktikách alebo z iných prevádzkových, právnych alebo regulačných dôvodov. Odporúčame vám pravidelne kontrolovať túto stránku, aby ste získali najnovšie informácie o súboroch cookie.'
+                  : 'We may update this Cookie Policy from time to time to reflect changes in our practices or for other operational, legal, or regulatory reasons. We encourage you to periodically review this page for the latest information about cookies.'}
+              </p>
+              <p className="mb-4">
+                {isSlovak
+                  ? 'Ak urobíme významné zmeny, upozorníme vás na to prostredníctvom oznámenia na našej stránke alebo iným spôsobom.'
+                  : 'If we make significant changes, we will notify you through a notice on our website or by other means.'}
+              </p>
+            </section>
+
+            <section>
+              <h2 className="text-2xl font-bold mb-4 mt-8">
+                {isSlovak ? '7. Kontakt' : '7. Contact'}
+              </h2>
+              <p className="mb-4">
+                {isSlovak
+                  ? 'Ak máte akékoľvek otázky týkajúce sa týchto Zásad používania súborov cookie, môžete nás kontaktovať prostredníctvom kontaktných údajov uvedených v našich Zásadách ochrany súkromia.'
+                  : 'If you have any questions regarding this Cookie Policy, you can contact us through the contact details provided in our Privacy Policy.'}
               </p>
             </section>
 
