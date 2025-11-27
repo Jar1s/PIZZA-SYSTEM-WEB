@@ -20,6 +20,9 @@ const soupImageMap: Record<string, string> = {
   'tomato-soup': '/images/soups/tomato-soup.jpg',
   'paradajková polievka': '/images/soups/tomato-soup.jpg',
   'paradajkova polievka': '/images/soups/tomato-soup.jpg',
+  'paradajková': '/images/soups/tomato-soup.jpg',
+  'paradajkova': '/images/soups/tomato-soup.jpg',
+  'polievka': '/images/soups/tomato-soup.jpg',
 };
 
 const drinkImageMap: Record<string, string> = {
