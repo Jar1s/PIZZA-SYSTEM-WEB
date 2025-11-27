@@ -14,22 +14,20 @@ export default function TermsOfServicePage() {
   const isSlovak = language === 'sk';
 
   // Get tenant slug from URL for fallback during loading
-  const [tenantSlug, setTenantSlug] = useState<string>('pornopizza');
-  useEffect(() => {
+  const [tenantSlug] = useState<string>(() => {
     if (typeof window !== 'undefined') {
       const hostname = window.location.hostname;
       const params = new URLSearchParams(window.location.search);
-      let slug = 'pornopizza';
       if (hostname.includes('pornopizza.sk') || hostname.includes('p0rnopizza.sk') || hostname.includes('pornopizza') || hostname.includes('p0rnopizza')) {
-        slug = 'pornopizza';
+        return 'pornopizza';
       } else if (hostname.includes('pizzavnudzi.sk') || hostname.includes('pizzavnudzi')) {
-        slug = 'pizzavnudzi';
+        return 'pizzavnudzi';
       } else {
-        slug = params.get('tenant') || 'pornopizza';
+        return params.get('tenant') || 'pornopizza';
       }
-      setTenantSlug(slug);
     }
-  }, []);
+    return 'pornopizza';
+  });
 
   // Use fallback during loading to prevent white flash
   const normalizedTenant = tenantLoading ? null : withTenantThemeDefaults(tenantData);

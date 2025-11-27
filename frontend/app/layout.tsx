@@ -231,6 +231,31 @@ export default async function RootLayout({
         }} />
       </head>
       <body className={inter.className} suppressHydrationWarning>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                // Set background immediately to prevent white flash
+                const hostname = window.location.hostname;
+                const params = new URLSearchParams(window.location.search);
+                let tenantSlug = 'pornopizza';
+                if (hostname.includes('pornopizza.sk') || hostname.includes('p0rnopizza.sk') || hostname.includes('pornopizza') || hostname.includes('p0rnopizza')) {
+                  tenantSlug = 'pornopizza';
+                } else if (hostname.includes('pizzavnudzi.sk') || hostname.includes('pizzavnudzi')) {
+                  tenantSlug = 'pizzavnudzi';
+                } else {
+                  tenantSlug = params.get('tenant') || 'pornopizza';
+                }
+                if (tenantSlug === 'pornopizza') {
+                  document.body.classList.add('bg-porno-vibe');
+                  document.body.style.backgroundColor = '#040404';
+                } else {
+                  document.body.style.backgroundColor = '#f8f8f8';
+                }
+              })();
+            `
+          }}
+        />
         <Providers>
           {children}
         </Providers>
