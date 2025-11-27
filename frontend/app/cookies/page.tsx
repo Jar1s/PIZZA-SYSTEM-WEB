@@ -102,7 +102,7 @@ export default function CookiePolicyPage() {
                         {isSlovak ? 'JWT access token pre autentifikáciu administrátora alebo operátora (v produkcii je v HttpOnly cookie)' : 'JWT access token for admin/operator authentication (in production stored in HttpOnly cookie)'}
                       </td>
                       <td className="border border-gray-300 px-4 py-2">{isSlovak ? 'localStorage / HttpOnly Cookie' : 'localStorage / HttpOnly Cookie'}</td>
-                      <td className="border border-gray-300 px-4 py-2">1 hodina</td>
+                      <td className="border border-gray-300 px-4 py-2">{isSlovak ? '1 hodina' : '1 hour'}</td>
                     </tr>
                     <tr>
                       <td className="border border-gray-300 px-4 py-2 font-mono text-sm">refresh_token</td>
@@ -110,7 +110,7 @@ export default function CookiePolicyPage() {
                         {isSlovak ? 'Refresh token pre obnovenie access tokenu administrátora alebo operátora (v produkcii je v HttpOnly cookie)' : 'Refresh token for renewing admin/operator access token (in production stored in HttpOnly cookie)'}
                       </td>
                       <td className="border border-gray-300 px-4 py-2">{isSlovak ? 'localStorage / HttpOnly Cookie' : 'localStorage / HttpOnly Cookie'}</td>
-                      <td className="border border-gray-300 px-4 py-2">7 dní</td>
+                      <td className="border border-gray-300 px-4 py-2">{isSlovak ? '7 dní' : '7 days'}</td>
                     </tr>
                     <tr>
                       <td className="border border-gray-300 px-4 py-2 font-mono text-sm">auth_user</td>
@@ -126,7 +126,7 @@ export default function CookiePolicyPage() {
                         {isSlovak ? 'JWT access token pre autentifikáciu zákazníka' : 'JWT access token for customer authentication'}
                       </td>
                       <td className="border border-gray-300 px-4 py-2">localStorage</td>
-                      <td className="border border-gray-300 px-4 py-2">1 hodina</td>
+                      <td className="border border-gray-300 px-4 py-2">{isSlovak ? '1 hodina' : '1 hour'}</td>
                     </tr>
                     <tr>
                       <td className="border border-gray-300 px-4 py-2 font-mono text-sm">customer_auth_refresh_token</td>
@@ -134,7 +134,7 @@ export default function CookiePolicyPage() {
                         {isSlovak ? 'Refresh token pre obnovenie access tokenu zákazníka' : 'Refresh token for renewing customer access token'}
                       </td>
                       <td className="border border-gray-300 px-4 py-2">localStorage</td>
-                      <td className="border border-gray-300 px-4 py-2">7 dní</td>
+                      <td className="border border-gray-300 px-4 py-2">{isSlovak ? '7 dní' : '7 days'}</td>
                     </tr>
                     <tr>
                       <td className="border border-gray-300 px-4 py-2 font-mono text-sm">customer_auth_user</td>
