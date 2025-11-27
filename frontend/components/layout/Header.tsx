@@ -10,6 +10,7 @@ import Image from 'next/image';
 import LanguageSwitcher from './LanguageSwitcher';
 import { PornoPizzaLogo } from './PornoPizzaLogo';
 import { PizzaPoundLogo } from './PizzaPoundLogo';
+import { withTenantThemeDefaults, getLayoutConfig } from '@/lib/tenant-utils';
 
 interface HeaderProps {
   tenant: Tenant;
@@ -34,13 +35,12 @@ export function Header({ tenant }: HeaderProps) {
 
   const tenantSlug = getTenantSlug();
 
-  // Get layout config from tenant theme (replaces hardcoded isPornopizza)
-  const layout = tenant.theme?.layout || {};
-  const headerStyle = layout.headerStyle || 'light';
-  // Always use PornoPizzaLogo for pornopizza tenant
-  const isPornopizza = tenant.slug?.toLowerCase() === 'pornopizza';
-  const useCustomLogo = isPornopizza ? true : (layout.useCustomLogo || false);
-  const customLogoComponent = isPornopizza ? 'PornoPizzaLogo' : (layout.customLogoComponent || '');
+  // Get normalized tenant with theme defaults applied
+  const normalizedTenant = withTenantThemeDefaults(tenant);
+  const layoutConfig = getLayoutConfig(normalizedTenant);
+  const headerStyle = layoutConfig.headerStyle;
+  const useCustomLogo = layoutConfig.useCustomLogo;
+  const customLogoComponent = layoutConfig.customLogoComponent;
   const isDarkTheme = headerStyle === 'dark';
 
   const navItems = [
@@ -87,10 +87,10 @@ export function Header({ tenant }: HeaderProps) {
             <PornoPizzaLogo className="h-8 sm:h-9 md:h-10 w-auto max-w-[140px] sm:max-w-[160px] md:max-w-[200px]" width={200} height={50} />
           ) : useCustomLogo && customLogoComponent === 'PizzaPoundLogo' ? (
             <PizzaPoundLogo className="h-8 sm:h-9 md:h-10 w-auto max-w-[140px] sm:max-w-[160px] md:max-w-[200px]" width={200} height={50} />
-          ) : tenant.theme.logo ? (
+          ) : normalizedTenant?.theme?.logo ? (
             <Image
-              src={tenant.theme.logo}
-              alt={tenant.name}
+              src={normalizedTenant.theme.logo}
+              alt={normalizedTenant.name}
               width={200}
               height={60}
               className="h-8 sm:h-10 w-auto max-w-[140px] sm:max-w-[180px] md:max-w-[200px]"
