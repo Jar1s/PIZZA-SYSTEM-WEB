@@ -8,8 +8,6 @@ import { useCustomerAuth } from '@/contexts/CustomerAuthContext';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import LanguageSwitcher from './LanguageSwitcher';
-import { PornoPizzaLogo } from './PornoPizzaLogo';
-import { PizzaPoundLogo } from './PizzaPoundLogo';
 import { withTenantThemeDefaults, getLayoutConfig } from '@/lib/tenant-utils';
 
 interface HeaderProps {
@@ -39,8 +37,6 @@ export function Header({ tenant }: HeaderProps) {
   const normalizedTenant = withTenantThemeDefaults(tenant);
   const layoutConfig = getLayoutConfig(normalizedTenant);
   const headerStyle = layoutConfig.headerStyle;
-  const useCustomLogo = layoutConfig.useCustomLogo;
-  const customLogoComponent = layoutConfig.customLogoComponent;
   const isDarkTheme = headerStyle === 'dark';
 
   const navItems = [
@@ -83,11 +79,7 @@ export function Header({ tenant }: HeaderProps) {
       )}
       <div className="mx-auto flex h-14 sm:h-16 items-center justify-between gap-2 sm:gap-3 md:gap-4 px-3 sm:px-4 md:px-6 lg:px-8">
         <div className="flex flex-1 items-center gap-4 min-w-0">
-          {useCustomLogo && customLogoComponent === 'PornoPizzaLogo' ? (
-            <PornoPizzaLogo className="h-8 sm:h-9 md:h-10 w-auto max-w-[140px] sm:max-w-[160px] md:max-w-[200px]" width={200} height={50} />
-          ) : useCustomLogo && customLogoComponent === 'PizzaPoundLogo' ? (
-            <PizzaPoundLogo className="h-8 sm:h-9 md:h-10 w-auto max-w-[140px] sm:max-w-[160px] md:max-w-[200px]" width={200} height={50} />
-          ) : normalizedTenant?.theme?.logo ? (
+          {normalizedTenant?.theme?.logo ? (
             <Image
               src={normalizedTenant.theme.logo}
               alt={normalizedTenant.name}
@@ -102,7 +94,7 @@ export function Header({ tenant }: HeaderProps) {
                 isDarkTheme ? 'text-[#ff9900]' : 'text-[var(--color-primary)]'
               }`}
             >
-              {tenant.name}
+              {normalizedTenant?.name || tenant.name}
             </h1>
           )}
 
