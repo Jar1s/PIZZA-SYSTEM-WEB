@@ -20,7 +20,30 @@ Environment: ✅ Production, ✅ Preview, ✅ Development
 
 ### 🟡 VOLITEĽNÉ (pre tracking a monitoring)
 
-#### 2. NEXT_PUBLIC_GA_ID (Google Analytics)
+#### 2. NEXT_PUBLIC_GOOGLE_MAPS_API_KEY (Google Maps - pre adresy)
+```
+Key: NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
+Value: AIzaSy...tvoj_api_key
+Environment: ✅ Production, ✅ Preview, ✅ Development
+```
+
+**Ako získať:**
+1. Choď na [Google Cloud Console](https://console.cloud.google.com/)
+2. Vyber projekt (alebo vytvor nový)
+3. Choď do **APIs & Services** → **Credentials**
+4. Klikni na **+ CREATE CREDENTIALS** → **API Key**
+5. Skopíruj vytvorený API key
+6. V **APIs & Services** → **Library** povol:
+   - **Places API** (pre autocomplete)
+   - **Maps JavaScript API** (pre mapu)
+   - **Geocoding API** (pre konverziu súradníc)
+
+**Dôležité:**
+- Google Maps API vyžaduje aktivovaný billing account
+- Google poskytuje $200 mesačný kredit (dostatočné pre vývoj a testovanie)
+- Odporúča sa nastaviť API restrictions v Google Cloud Console
+
+#### 3. NEXT_PUBLIC_GA_ID (Google Analytics)
 ```
 Key: NEXT_PUBLIC_GA_ID
 Value: G-XXXXXXXXXX
@@ -30,7 +53,7 @@ Environment: ✅ Production, ✅ Preview
 **Ako získať:**
 - Google Analytics → Admin → Data Streams → Copy Measurement ID
 
-#### 3. NEXT_PUBLIC_FB_PIXEL_ID (Facebook Pixel)
+#### 4. NEXT_PUBLIC_FB_PIXEL_ID (Facebook Pixel)
 ```
 Key: NEXT_PUBLIC_FB_PIXEL_ID
 Value: XXXXXXXXXX
@@ -40,7 +63,7 @@ Environment: ✅ Production, ✅ Preview
 **Ako získať:**
 - Facebook Events Manager → Create Pixel → Copy Pixel ID
 
-#### 4. NEXT_PUBLIC_SENTRY_DSN (Error Tracking)
+#### 5. NEXT_PUBLIC_SENTRY_DSN (Error Tracking)
 ```
 Key: NEXT_PUBLIC_SENTRY_DSN
 Value: https://xxx@xxx.ingest.sentry.io/xxx
@@ -70,6 +93,16 @@ Environment: ✅ Production, ✅ Preview
 2. **Value:** `https://pizza-ecosystem-api.onrender.com`
 3. **Environment:** Zaškrtni všetky (Production, Preview, Development)
 4. Klikni **Save**
+
+#### NEXT_PUBLIC_GOOGLE_MAPS_API_KEY (pre adresy)
+1. **Key:** `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`
+2. **Value:** `AIzaSy...tvoj_api_key` (tvoj Google Maps API key)
+3. **Environment:** Zaškrtni všetky (Production, Preview, Development)
+4. Klikni **Save**
+
+**Poznámka:** Po pridaní API key musíš v Google Cloud Console nastaviť HTTP referrer restrictions:
+- `https://tvoj-projekt.vercel.app/*`
+- `https://*.vercel.app/*` (pre preview deployments)
 
 #### NEXT_PUBLIC_GA_ID (ak máš)
 1. **Key:** `NEXT_PUBLIC_GA_ID`
@@ -162,13 +195,18 @@ Otvori Developer Tools (F12) → Console:
 ## 🎯 Rýchly Checklist
 
 - [ ] `NEXT_PUBLIC_API_URL` nastavené na Render.com backend URL
+- [ ] `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` nastavené (ak používaš adresy)
 - [ ] Environment variables pridané pre Production a Preview
 - [ ] Projekt redeployovaný po pridaní premenných
 - [ ] Backend beží a je dostupný
 - [ ] Frontend úspešne komunikuje s backendom
+- [ ] Google Maps API key má nastavené restrictions v Google Cloud Console
 
 ---
 
 **Hotovo!** 🎉 Frontend by teraz mal fungovať s backendom na Render.com.
+
+
+
 
 

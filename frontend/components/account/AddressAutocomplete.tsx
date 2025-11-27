@@ -32,6 +32,9 @@ export default function AddressAutocomplete({ value, onChange, onSelectFromMap }
       new window.google.maps.LatLng(48.25, 17.25)  // Northeast
     );
 
+    // Note: Autocomplete is deprecated but still works. 
+    // Will migrate to PlaceAutocompleteElement in future update.
+    // See: https://developers.google.com/maps/documentation/javascript/places-migration-overview
     const autocomplete = new window.google.maps.places.Autocomplete(inputRef.current, {
       componentRestrictions: { country: ['sk'] },
       bounds: bratislavaBounds,
@@ -127,7 +130,7 @@ export default function AddressAutocomplete({ value, onChange, onSelectFromMap }
       }
 
       const script = document.createElement('script');
-      script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places&language=sk`;
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places&language=sk&loading=async`;
       script.async = true;
       script.defer = true;
       script.onerror = () => {
