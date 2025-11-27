@@ -167,7 +167,10 @@ export const ProductCard = memo(function ProductCard({ product, index = 0, isBes
   }, [product.name, product.category, translation.name]);
   
   // Use fallback if image is null, empty string, or undefined
-  const displayImage = (product.image && product.image.trim() !== '') ? product.image : fallbackImage;
+  // For soups, always prefer fallback image if available (to override wrong DB images)
+  const displayImage = (product.category === 'SOUP' || product.category === 'SOUPS') 
+    ? (fallbackImage || (product.image && product.image.trim() !== '' ? product.image : undefined))
+    : ((product.image && product.image.trim() !== '') ? product.image : fallbackImage);
   
   // Debug logging
   useEffect(() => {
