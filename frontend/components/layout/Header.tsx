@@ -37,8 +37,10 @@ export function Header({ tenant }: HeaderProps) {
   // Get layout config from tenant theme (replaces hardcoded isPornopizza)
   const layout = tenant.theme?.layout || {};
   const headerStyle = layout.headerStyle || 'light';
-  const useCustomLogo = layout.useCustomLogo || false;
-  const customLogoComponent = layout.customLogoComponent || '';
+  // Always use PornoPizzaLogo for pornopizza tenant
+  const isPornopizza = tenant.slug?.toLowerCase() === 'pornopizza';
+  const useCustomLogo = isPornopizza ? true : (layout.useCustomLogo || false);
+  const customLogoComponent = isPornopizza ? 'PornoPizzaLogo' : (layout.customLogoComponent || '');
   const isDarkTheme = headerStyle === 'dark';
 
   const navItems = [
