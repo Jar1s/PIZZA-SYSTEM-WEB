@@ -210,7 +210,11 @@ export default async function RootLayout({
   return (
     <html lang="sk" suppressHydrationWarning>
       <head>
-        <link rel="icon" href={theme.favicon || '/favicon.ico'} />
+        <link rel="icon" href="/favicon.ico" sizes="any" />
+        <link rel="icon" href="/favicon-32x32.png" type="image/png" sizes="32x32" />
+        <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+        <link rel="icon" href="/android-chrome-192x192.png" type="image/png" sizes="192x192" />
+        <link rel="icon" href="/android-chrome-512x512.png" type="image/png" sizes="512x512" />
         <link rel="canonical" href={baseUrl} />
         <meta name="theme-color" content={primaryColor} />
         <script
