@@ -26,12 +26,12 @@ const drinkImageMap: Record<string, string> = {
   'kofola 2l': '/images/drinks/kofola-2l.svg',
   'pepsi 1l': '/images/drinks/pepsi-1l.png',
   'pepsi': '/images/drinks/pepsi-1l.png',
-  'pepsi zero 1l': '/images/drinks/pepsi cola zero.png',
-  'pepsi cola zero': '/images/drinks/pepsi cola zero.png',
-  'pepsi cola zero 1l': '/images/drinks/pepsi cola zero.png',
-  'pepsi zero': '/images/drinks/pepsi cola zero.png',
-  'pepsi-cola-zero': '/images/drinks/pepsi cola zero.png',
-  'pepsi-cola-zero-1l': '/images/drinks/pepsi cola zero.png',
+  'pepsi zero 1l': '/images/drinks/pepsi%20cola%20zero.png',
+  'pepsi cola zero': '/images/drinks/pepsi%20cola%20zero.png',
+  'pepsi cola zero 1l': '/images/drinks/pepsi%20cola%20zero.png',
+  'pepsi zero': '/images/drinks/pepsi%20cola%20zero.png',
+  'pepsi-cola-zero': '/images/drinks/pepsi%20cola%20zero.png',
+  'pepsi-cola-zero-1l': '/images/drinks/pepsi%20cola%20zero.png',
   'sprite 1l': '/images/drinks/sprite-1l.svg',
   'fanta 1l': '/images/drinks/fanta-1l.png',
   'fanta': '/images/drinks/fanta-1l.png',
@@ -194,6 +194,7 @@ export const ProductCard = memo(function ProductCard({ product, index = 0, isBes
               priority={index < 4 || isBestSeller}
               quality={85}
               loading={index < 4 ? "eager" : "lazy"}
+              unoptimized={displayImage?.includes(' ') || displayImage?.includes('%20')}
               className={`object-cover group-hover:scale-110 transition-all duration-500 ${
                 imageLoading ? 'opacity-0' : 'opacity-100'
               }`}
