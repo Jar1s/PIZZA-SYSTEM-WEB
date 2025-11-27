@@ -41,8 +41,8 @@ export default function PrivacyPolicyPage() {
               
               <p className="mb-4">
                 <strong>1.1.</strong> {isSlovak
-                  ? 'Tento dokument predstavuje Zásady ochrany osobných údajov spoločnosti Choice QR s.r.o., IČ: 095 17 600, so sídlom: Na příkopě 857/18, Nové Město, 110 00 Praha 1, Česká republika, zapísaná u Mestského súdu v Prahe pod sp. zn. C 337491 (ďalej tiež „Choice QR" alebo „my", alebo „naša spoločnosť"), ako vlastníka a prevádzkovateľa Choice QR. V týchto Zásadách ochrany osobných údajov označujeme všetky naše produkty, služby, webové stránky a aplikácie súhrnne ako „služby Choice QR". Pre vylúčenie pochybností sa stanovuje, že služby Choice QR nezahŕňajú spracovanie osobných údajov, ku ktorému dochádza v súvislosti s uzatvorením zmluvy medzi našimi klientmi a vami ako fyzickou osobou.'
-                  : 'This document represents the Privacy Policy of Choice QR s.r.o., ID: 095 17 600, with registered office at: Na příkopě 857/18, Nové Město, 110 00 Praha 1, Czech Republic, registered with the Municipal Court in Prague under file no. C 337491 (hereinafter also "Choice QR" or "we" or "our company"), as the owner and operator of Choice QR. In these Privacy Policy, we refer to all our products, services, websites and applications collectively as "Choice QR services". For the avoidance of doubt, it is stipulated that Choice QR services do not include the processing of personal data that occurs in connection with the conclusion of a contract between our clients and you as a natural person.'}
+                  ? 'Tento dokument predstavuje Zásady ochrany osobných údajov spoločnosti Gastro Corner s.r.o., IČ: 53182120, so sídlom: Námestie Hraničiarov 2581/4A, 851 03 Bratislava - mestská časť Petržalka, zapísaná v obchodnom registri vedenom Mestským súdom Bratislava III, vložka číslo 146881/B (ďalej tiež „Prevádzkovateľ" alebo „my", alebo „naša spoločnosť"), ako vlastníka a prevádzkovateľa online objednávkového systému. V týchto Zásadách ochrany osobných údajov označujeme všetky naše produkty, služby, webové stránky a aplikácie súhrnne ako „naše služby".'
+                  : 'This document represents the Privacy Policy of Gastro Corner s.r.o., ID: 53182120, with registered office at: Námestie Hraničiarov 2581/4A, 851 03 Bratislava - mestská časť Petržalka, registered in the Commercial Register kept by the Municipal Court Bratislava III, file number 146881/B (hereinafter also "Operator" or "we" or "our company"), as the owner and operator of the online ordering system. In these Privacy Policy, we refer to all our products, services, websites and applications collectively as "our services".'}
               </p>
 
               <p className="mb-4">
@@ -59,8 +59,8 @@ export default function PrivacyPolicyPage() {
 
               <p className="mb-4">
                 <strong>1.4.</strong> {isSlovak
-                  ? 'Prečítajte si prosím pozorne tieto Zásady ochrany osobných údajov, aby ste pochopili, ako zhromažďujeme, spracúvame a chránime osobné údaje, ak používate služby Choice QR, a aké práva v tejto súvislosti máte. Používaním služieb Choice QR a/alebo poskytnutím akýchkoľvek osobných údajov nám súhlasíte s tým, že budete viazaní týmito Zásadami ochrany osobných údajov, a zaručujete, že všetky vámi poskytnuté osobné údaje sú presné a že ste oprávnení nám tieto osobné údaje poskytnúť.'
-                  : 'Please read this Privacy Policy carefully to understand how we collect, process and protect personal data when you use Choice QR services, and what rights you have in this regard. By using Choice QR services and/or providing any personal data to us, you agree to be bound by this Privacy Policy and warrant that all personal data you provide is accurate and that you are authorized to provide us with such personal data.'}
+                  ? 'Prečítajte si prosím pozorne tieto Zásady ochrany osobných údajov, aby ste pochopili, ako zhromažďujeme, spracúvame a chránime osobné údaje, ak používate naše služby, a aké práva v tejto súvislosti máte. Používaním našich služieb a/alebo poskytnutím akýchkoľvek osobných údajov nám súhlasíte s tým, že budete viazaní týmito Zásadami ochrany osobných údajov, a zaručujete, že všetky vámi poskytnuté osobné údaje sú presné a že ste oprávnení nám tieto osobné údaje poskytnúť.'
+                  : 'Please read this Privacy Policy carefully to understand how we collect, process and protect personal data when you use our services, and what rights you have in this regard. By using our services and/or providing any personal data to us, you agree to be bound by this Privacy Policy and warrant that all personal data you provide is accurate and that you are authorized to provide us with such personal data.'}
               </p>
             </section>
 
@@ -85,8 +85,8 @@ export default function PrivacyPolicyPage() {
 
               <p className="mb-4">
                 {isSlovak
-                  ? 'Pri používaní služieb Choice QR vás môžeme požiadať, aby ste nám poskytli vyššie uvedené osobné údaje, ktoré môžu byť použité na vaše kontaktovanie alebo identifikáciu. Ak nám poskytnete príslušný súhlas, môžeme osobné údaje použiť aj na to, aby sme vás kontaktovali prostredníctvom newsletterov, marketingových alebo propagačných materiálov a poskytli vám ďalšie informácie, ktoré by vás mohli zaujímať.'
-                  : 'When using Choice QR services, we may ask you to provide us with the above personal data, which may be used to contact or identify you. If you provide us with the appropriate consent, we may also use personal data to contact you through newsletters, marketing or promotional materials and provide you with additional information that may interest you.'}
+                  ? 'Pri používaní našich služieb vás môžeme požiadať, aby ste nám poskytli vyššie uvedené osobné údaje, ktoré môžu byť použité na vaše kontaktovanie alebo identifikáciu. Ak nám poskytnete príslušný súhlas, môžeme osobné údaje použiť aj na to, aby sme vás kontaktovali prostredníctvom newsletterov, marketingových alebo propagačných materiálov a poskytli vám ďalšie informácie, ktoré by vás mohli zaujímať.'
+                  : 'When using our services, we may ask you to provide us with the above personal data, which may be used to contact or identify you. If you provide us with the appropriate consent, we may also use personal data to contact you through newsletters, marketing or promotional materials and provide you with additional information that may interest you.'}
               </p>
             </section>
 
@@ -104,13 +104,13 @@ export default function PrivacyPolicyPage() {
               <ul className="list-disc list-inside space-y-2 mb-4 ml-4">
                 <li>
                   {isSlovak
-                    ? 'a) Plnenie a dodržiavanie našich zmluvných a zákonných povinností, ako je poskytovanie služieb Choice QR dohodnutých medzi vami a nami - právnym základom pre spracovanie je článok 6 ods. 1 písm. „b" GDPR (spracovanie je nevyhnutné pre splnenie zmluvy, ktorej stranou je subjekt údajov);'
-                    : 'a) Fulfillment and compliance with our contractual and legal obligations, such as providing Choice QR services agreed between you and us - the legal basis for processing is Article 6(1)(b) GDPR (processing is necessary for the performance of a contract to which the data subject is a party);'}
+                    ? 'a) Plnenie a dodržiavanie našich zmluvných a zákonných povinností, ako je poskytovanie našich služieb dohodnutých medzi vami a nami - právnym základom pre spracovanie je článok 6 ods. 1 písm. „b" GDPR (spracovanie je nevyhnutné pre splnenie zmluvy, ktorej stranou je subjekt údajov);'
+                    : 'a) Fulfillment and compliance with our contractual and legal obligations, such as providing our services agreed between you and us - the legal basis for processing is Article 6(1)(b) GDPR (processing is necessary for the performance of a contract to which the data subject is a party);'}
                 </li>
                 <li>
                   {isSlovak
-                    ? 'b) Priame marketingové aktivity súvisiace so službami Choice QR - právnym základom pre spracovanie je článok 6 ods. 1 písm. „f" GDPR (spracovanie je nevyhnutné pre účely oprávnených záujmov správcu, t.j. vykonávanie nášho priameho marketingu);'
-                    : 'b) Direct marketing activities related to Choice QR services - the legal basis for processing is Article 6(1)(f) GDPR (processing is necessary for the purposes of the legitimate interests of the controller, i.e., conducting our direct marketing);'}
+                    ? 'b) Priame marketingové aktivity súvisiace s našimi službami - právnym základom pre spracovanie je článok 6 ods. 1 písm. „f" GDPR (spracovanie je nevyhnutné pre účely oprávnených záujmov správcu, t.j. vykonávanie nášho priameho marketingu);'
+                    : 'b) Direct marketing activities related to our services - the legal basis for processing is Article 6(1)(f) GDPR (processing is necessary for the purposes of the legitimate interests of the controller, i.e., conducting our direct marketing);'}
                 </li>
                 <li>
                   {isSlovak
@@ -119,8 +119,8 @@ export default function PrivacyPolicyPage() {
                 </li>
                 <li>
                   {isSlovak
-                    ? 'd) Zlepšovanie vybraných služieb Choice QR - právnym základom pre spracovanie je článok 6 ods. 1 písm. „a" GDPR (subjekt údajov udelil súhlas so spracovaním);'
-                    : 'd) Improving selected Choice QR services - the legal basis for processing is Article 6(1)(a) GDPR (the data subject has given consent to the processing);'}
+                    ? 'd) Zlepšovanie vybraných služieb - právnym základom pre spracovanie je článok 6 ods. 1 písm. „a" GDPR (subjekt údajov udelil súhlas so spracovaním);'
+                    : 'd) Improving selected services - the legal basis for processing is Article 6(1)(a) GDPR (the data subject has given consent to the processing);'}
                 </li>
                 <li>
                   {isSlovak
@@ -161,8 +161,8 @@ export default function PrivacyPolicyPage() {
               <ul className="list-disc list-inside space-y-2 mb-4 ml-4">
                 <li>
                   {isSlovak
-                    ? 'a) Poskytovanie služieb Choice QR;'
-                    : 'a) Providing Choice QR services;'}
+                    ? 'a) Poskytovanie našich služieb;'
+                    : 'a) Providing our services;'}
                 </li>
                 <li>
                   {isSlovak
@@ -195,14 +195,14 @@ export default function PrivacyPolicyPage() {
               
               <p className="mb-4">
                 <strong>6.1.</strong> {isSlovak
-                  ? 'Cookies sú počítačové súbory s malým množstvom dát, ktoré môžu obsahovať anonymný jedinečný identifikátor. Súbory cookies sú odosielané do vášho prehliadača z webovej stránky a uložené vo vašom zariadení. Sledovacie technológie tiež používajú majáky, značky a skripty na zhromažďovanie a sledovanie informácií a na zlepšenie a analýzu služieb Choice QR.'
-                  : 'Cookies are computer files with a small amount of data that may contain an anonymous unique identifier. Cookies are sent to your browser from a website and stored on your device. Tracking technologies also use beacons, tags and scripts to collect and track information and to improve and analyze Choice QR services.'}
+                  ? 'Cookies sú počítačové súbory s malým množstvom dát, ktoré môžu obsahovať anonymný jedinečný identifikátor. Súbory cookies sú odosielané do vášho prehliadača z webovej stránky a uložené vo vašom zariadení. Sledovacie technológie tiež používajú majáky, značky a skripty na zhromažďovanie a sledovanie informácií a na zlepšenie a analýzu našich služieb.'
+                  : 'Cookies are computer files with a small amount of data that may contain an anonymous unique identifier. Cookies are sent to your browser from a website and stored on your device. Tracking technologies also use beacons, tags and scripts to collect and track information and to improve and analyze our services.'}
               </p>
 
               <p className="mb-4">
                 <strong>6.2.</strong> {isSlovak
-                  ? 'Ak sa chcete dozvedieť viac o používaní súborov cookies spoločnosťou Choice, prečítajte si prosím naše zásady používania súborov cookies na adrese: '
-                  : 'If you would like to learn more about Choice\'s use of cookies, please read our cookie policy at: '}
+                  ? 'Ak sa chcete dozvedieť viac o používaní súborov cookies, prečítajte si prosím naše zásady používania súborov cookie na adrese: '
+                  : 'If you would like to learn more about our use of cookies, please read our cookie policy at: '}
                 <a href="/cookies" className="text-blue-600 hover:underline">/cookies</a>.
               </p>
             </section>
@@ -214,14 +214,14 @@ export default function PrivacyPolicyPage() {
               
               <p className="mb-4">
                 <strong>7.1.</strong> {isSlovak
-                  ? 'Udením príslušného súhlasu s priamym marketingom pri registrácii ako používateľ služieb Choice QR alebo udelením príslušného súhlasu pri používaní služieb Choice QR bez predchádzajúcej registrácie, alebo udelením príslušného súhlasu pri prihlásení sa na odber marketingových správ, prieskumov atď., súhlasíte s tým, že môžeme použiť vaše elektronické kontaktné údaje, aby sme vás mohli kontaktovať elektronickými prostriedkami (napríklad e-mailom) s marketingovými informáciami o službách Choice QR.'
-                  : 'By granting the appropriate consent to direct marketing when registering as a user of Choice QR services or by granting the appropriate consent when using Choice QR services without prior registration, or by granting the appropriate consent when subscribing to marketing messages, surveys, etc., you agree that we may use your electronic contact details to contact you by electronic means (e.g., email) with marketing information about Choice QR services.'}
+                  ? 'Udením príslušného súhlasu s priamym marketingom pri registrácii ako používateľ našich služieb alebo udelením príslušného súhlasu pri používaní našich služieb bez predchádzajúcej registrácie, alebo udelením príslušného súhlasu pri prihlásení sa na odber marketingových správ, prieskumov atď., súhlasíte s tým, že môžeme použiť vaše elektronické kontaktné údaje, aby sme vás mohli kontaktovať elektronickými prostriedkami (napríklad e-mailom) s marketingovými informáciami o našich službách.'
+                  : 'By granting the appropriate consent to direct marketing when registering as a user of our services or by granting the appropriate consent when using our services without prior registration, or by granting the appropriate consent when subscribing to marketing messages, surveys, etc., you agree that we may use your electronic contact details to contact you by electronic means (e.g., email) with marketing information about our services.'}
               </p>
 
               <p className="mb-4">
                 <strong>7.2.</strong> {isSlovak
-                  ? 'Z marketingovej komunikácie sa môžete odhlásiť deaktiváciou tejto funkcie prostredníctvom odkazu na odhlásenie, ktorý je uvedený v každom e-maile alebo inej komunikácii, ktorú obdržíte, alebo zaslaním e-mailovej žiadosti na adresu info@choiceqr.com, v ktorej uvediete, že si želáte odhlásiť sa z odberu marketingových správ od našich klientov.'
-                  : 'You can unsubscribe from marketing communications by deactivating this function through the unsubscribe link provided in each email or other communication you receive, or by sending an email request to info@choiceqr.com stating that you wish to unsubscribe from marketing messages from our clients.'}
+                  ? 'Z marketingovej komunikácie sa môžete odhlásiť deaktiváciou tejto funkcie prostredníctvom odkazu na odhlásenie, ktorý je uvedený v každom e-maile alebo inej komunikácii, ktorú obdržíte, alebo zaslaním e-mailovej žiadosti na adresu info@gastrocorner.sk, v ktorej uvediete, že si želáte odhlásiť sa z odberu marketingových správ.'
+                  : 'You can unsubscribe from marketing communications by deactivating this function through the unsubscribe link provided in each email or other communication you receive, or by sending an email request to info@gastrocorner.sk stating that you wish to unsubscribe from marketing messages.'}
               </p>
             </section>
 
@@ -309,16 +309,16 @@ export default function PrivacyPolicyPage() {
 
               <p className="mb-4">
                 <strong>9.2.</strong> {isSlovak
-                  ? 'Ak máte pocit, že vaše osobné údaje boli spracované nezákonne, kontaktujte nás na info@choiceqr.com a my problém vyriešime. Máte právo podať sťažnosť u príslušného dozorného úradu. Zoznam príslušných dozorných úradov v Európskej únii je k dispozícii na stránkach '
-                  : 'If you feel that your personal data has been processed unlawfully, contact us at info@choiceqr.com and we will resolve the issue. You have the right to file a complaint with the relevant supervisory authority. A list of relevant supervisory authorities in the European Union is available at '}
+                  ? 'Ak máte pocit, že vaše osobné údaje boli spracované nezákonne, kontaktujte nás na info@gastrocorner.sk a my problém vyriešime. Máte právo podať sťažnosť u príslušného dozorného úradu. Zoznam príslušných dozorných úradov v Európskej únii je k dispozícii na stránkach '
+                  : 'If you feel that your personal data has been processed unlawfully, contact us at info@gastrocorner.sk and we will resolve the issue. You have the right to file a complaint with the relevant supervisory authority. A list of relevant supervisory authorities in the European Union is available at '}
                 <a href="https://ec.europa.eu/digital-single-market/en/news/list-personal-data-protection-competent-authorities" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
                   {isSlovak ? 'Európska komisia' : 'European Commission'}
                 </a>.
                 {isSlovak
-                  ? ' V České republike je príslušným dozorným úradom Úrad pre ochranu osobných údajov. Viac sa dozviete na '
-                  : ' In the Czech Republic, the relevant supervisory authority is the Office for Personal Data Protection. Learn more at '}
-                <a href="https://www.uoou.cz/en/" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
-                  uoou.cz
+                  ? ' V Slovenskej republike je príslušným dozorným úradom Úrad na ochranu osobných údajov Slovenskej republiky. Viac sa dozviete na '
+                  : ' In the Slovak Republic, the relevant supervisory authority is the Office for Personal Data Protection of the Slovak Republic. Learn more at '}
+                <a href="https://dataprotection.gov.sk/uoou/" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                  dataprotection.gov.sk
                 </a>.
               </p>
             </section>
@@ -348,14 +348,14 @@ export default function PrivacyPolicyPage() {
 
               <p className="mb-4">
                 <strong>11.2.</strong> {isSlovak
-                  ? 'Služby Choice QR môžu čas od času obsahovať odkazy na webové stránky našich partnerských sietí, inzerentov a pridružených spoločností. Ak kliknete na odkaz na ktorúkoľvek z týchto webových stránok, vezmite prosím na vedomie, že tieto webové stránky majú svoje vlastné zásady ochrany osobných údajov a že za tieto zásady nepreberáme žiadnu zodpovednosť.'
-                  : 'Choice QR services may from time to time contain links to websites of our partner networks, advertisers and affiliated companies. If you click on a link to any of these websites, please note that these websites have their own privacy policies and that we do not accept any responsibility for these policies.'}
+                  ? 'Naše služby môžu čas od času obsahovať odkazy na webové stránky našich partnerských sietí, inzerentov a pridružených spoločností. Ak kliknete na odkaz na ktorúkoľvek z týchto webových stránok, vezmite prosím na vedomie, že tieto webové stránky majú svoje vlastné zásady ochrany osobných údajov a že za tieto zásady nepreberáme žiadnu zodpovednosť.'
+                  : 'Our services may from time to time contain links to websites of our partner networks, advertisers and affiliated companies. If you click on a link to any of these websites, please note that these websites have their own privacy policies and that we do not accept any responsibility for these policies.'}
               </p>
 
               <p className="mb-4">
                 <strong>11.3.</strong> {isSlovak
-                  ? 'Služby Choice QR nie sú určené osobám mladším ako 18 rokov. Ak je nám známe, nezhromažďujeme osobné údaje od osôb mladších ako 18 rokov.'
-                  : 'Choice QR services are not intended for persons under 18 years of age. To our knowledge, we do not collect personal data from persons under 18 years of age.'}
+                  ? 'Naše služby nie sú určené osobám mladším ako 18 rokov. Ak je nám známe, nezhromažďujeme osobné údaje od osôb mladších ako 18 rokov.'
+                  : 'Our services are not intended for persons under 18 years of age. To our knowledge, we do not collect personal data from persons under 18 years of age.'}
               </p>
 
               <p className="mb-4">
@@ -366,14 +366,14 @@ export default function PrivacyPolicyPage() {
 
               <p className="mb-4">
                 <strong>11.5.</strong> {isSlovak
-                  ? 'Ak máte akékoľvek otázky týkajúce sa týchto Zásad ochrany osobných údajov alebo našich postupov v oblasti ochrany osobných údajov, kontaktujte nás tu alebo e-mailom na adrese info@choiceqr.com'
-                  : 'If you have any questions regarding this Privacy Policy or our privacy practices, contact us here or by email at info@choiceqr.com'}
+                  ? 'Ak máte akékoľvek otázky týkajúce sa týchto Zásad ochrany osobných údajov alebo našich postupov v oblasti ochrany osobných údajov, kontaktujte nás e-mailom na adrese info@gastrocorner.sk alebo na adresu sídla Prevádzkovateľa: Námestie Hraničiarov 2581/4A, 851 03 Bratislava - mestská časť Petržalka.'
+                  : 'If you have any questions regarding this Privacy Policy or our privacy practices, contact us by email at info@gastrocorner.sk or at the registered office address of the Operator: Námestie Hraničiarov 2581/4A, 851 03 Bratislava - mestská časť Petržalka.'}
               </p>
 
               <p className="mt-6 text-sm text-gray-600">
                 {isSlovak
-                  ? 'Tieto Zásady ochrany osobných údajov nadobúdajú platnosť a účinnosť dňom 1.5.2024.'
-                  : 'This Privacy Policy becomes valid and effective on May 1, 2024.'}
+                  ? 'Tieto Zásady ochrany osobných údajov nadobúdajú platnosť a účinnosť dňom 27.11.2025.'
+                  : 'This Privacy Policy becomes valid and effective on November 27, 2025.'}
               </p>
             </section>
           </div>
