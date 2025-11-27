@@ -95,7 +95,7 @@ export default function OrderHistory({ tenant, isDark = false }: OrderHistoryPro
           className={`mt-6 px-6 py-3 rounded-full font-semibold ${isDark ? 'bg-gradient-to-r from-[#ff5e00] via-[#ff0066] to-[#ff2d55]' : 'text-white'}`}
           style={!isDark ? { backgroundColor: 'var(--color-primary)' } : undefined}
         >
-          Objednať teraz
+          {t.orderNow}
         </button>
       </div>
     );
