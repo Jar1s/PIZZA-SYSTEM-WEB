@@ -15,6 +15,13 @@ const dessertImageMap: Record<string, string> = {
   'tiramissu': '/images/desserts/tiramissu.png',
 };
 
+const soupImageMap: Record<string, string> = {
+  'tomato soup': '/images/soups/tomato-soup.jpg',
+  'tomato-soup': '/images/soups/tomato-soup.jpg',
+  'paradajková polievka': '/images/soups/tomato-soup.jpg',
+  'paradajkova polievka': '/images/soups/tomato-soup.jpg',
+};
+
 const drinkImageMap: Record<string, string> = {
   'bonaqua nesýtená 1,5l': '/images/drinks/bonaqua-nesytena.png',
   'bonaqua nesytena 1,5l': '/images/drinks/bonaqua-nesytena.png',
@@ -131,6 +138,29 @@ export const ProductCard = memo(function ProductCard({ product, index = 0, isBes
         }
       }
       console.log(`[ProductCard] No fallback found for dessert "${product.name}" (key: "${key}", translated: "${translatedKey}")`);
+    }
+    
+    // Check if product is a soup and has a fallback image
+    if (product.category === 'SOUP' || product.category === 'SOUPS') {
+      const key = product.name.toLowerCase().trim();
+      const translatedKey = translation.name?.toLowerCase().trim();
+      // Try multiple variations
+      const variations = [
+        key,
+        translatedKey,
+        key.replace(/[.,]/g, ''), // Remove dots and commas
+        translatedKey?.replace(/[.,]/g, ''),
+        key.replace(/\s+/g, ' '), // Normalize spaces
+        translatedKey?.replace(/\s+/g, ' '),
+      ].filter(Boolean);
+      
+      for (const variation of variations) {
+        if (variation && soupImageMap[variation]) {
+          console.log(`[ProductCard] Found fallback for "${product.name}": ${soupImageMap[variation]} (matched: "${variation}")`);
+          return soupImageMap[variation];
+        }
+      }
+      console.log(`[ProductCard] No fallback found for soup "${product.name}" (key: "${key}", translated: "${translatedKey}")`);
     }
     
     return undefined;
