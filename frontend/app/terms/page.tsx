@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
@@ -9,21 +10,43 @@ import { isDarkTheme, getBackgroundClass, withTenantThemeDefaults } from '@/lib/
 export default function TermsOfServicePage() {
   const { language } = useLanguage();
   const router = useRouter();
-  const { tenant: tenantData } = useTenant();
+  const { tenant: tenantData, loading: tenantLoading } = useTenant();
   const isSlovak = language === 'sk';
 
-  const normalizedTenant = withTenantThemeDefaults(tenantData);
+  // Get tenant slug from URL for fallback during loading
+  const [tenantSlug, setTenantSlug] = useState<string>('pornopizza');
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const hostname = window.location.hostname;
+      const params = new URLSearchParams(window.location.search);
+      let slug = 'pornopizza';
+      if (hostname.includes('pornopizza.sk') || hostname.includes('p0rnopizza.sk') || hostname.includes('pornopizza') || hostname.includes('p0rnopizza')) {
+        slug = 'pornopizza';
+      } else if (hostname.includes('pizzavnudzi.sk') || hostname.includes('pizzavnudzi')) {
+        slug = 'pizzavnudzi';
+      } else {
+        slug = params.get('tenant') || 'pornopizza';
+      }
+      setTenantSlug(slug);
+    }
+  }, []);
+
+  // Use fallback during loading to prevent white flash
+  const normalizedTenant = tenantLoading ? null : withTenantThemeDefaults(tenantData);
   const isDark = isDarkTheme(normalizedTenant);
-  const backgroundClass = getBackgroundClass(normalizedTenant);
+  // Use default dark background for pornopizza, light for others during loading
+  const fallbackBackground = tenantSlug === 'pornopizza' ? 'bg-porno-vibe' : 'bg-gray-50';
+  const backgroundClass = tenantLoading ? fallbackBackground : getBackgroundClass(normalizedTenant);
+  const fallbackIsDark = tenantSlug === 'pornopizza';
   const primaryColor = normalizedTenant?.theme?.primaryColor || 'var(--color-primary)';
 
   return (
-    <div className={`min-h-screen ${backgroundClass} ${isDark ? 'text-white' : 'text-gray-900'} py-12`}>
+    <div className={`min-h-screen ${backgroundClass} ${isDark || (tenantLoading && fallbackIsDark) ? 'text-white' : 'text-gray-900'} py-12`}>
       <div className="container mx-auto px-4 max-w-4xl">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className={`${isDark ? 'bg-black/40 backdrop-blur-sm border border-white/10' : 'bg-white shadow-md'} rounded-lg p-8 md:p-12`}
+          className={`${isDark || (tenantLoading && fallbackIsDark) ? 'bg-black/40 backdrop-blur-sm border border-white/10' : 'bg-white shadow-md'} rounded-lg p-8 md:p-12`}
         >
           <div className="flex items-center gap-4 mb-8">
             <button
