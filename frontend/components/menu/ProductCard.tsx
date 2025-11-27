@@ -28,7 +28,11 @@ const drinkImageMap: Record<string, string> = {
   'coca-cola 1l': '/images/drinks/coca-cola-1l.png',
   'coca cola classic': '/images/drinks/coca-cola-1l.png',
   'coca-cola classic': '/images/drinks/coca-cola-1l.png',
-  'cola zero 1l': '/images/drinks/cola-zero-1l.svg',
+  'cola zero 1l': '/images/drinks/cola-zero-1l.png',
+  'coca cola zero': '/images/drinks/cola-zero-1l.png',
+  'coca-cola zero': '/images/drinks/cola-zero-1l.png',
+  'coca cola zero sugar': '/images/drinks/cola-zero-1l.png',
+  'coca-cola zero sugar': '/images/drinks/cola-zero-1l.png',
 };
 
 interface ProductCardProps {
@@ -284,19 +288,19 @@ export const ProductCard = memo(function ProductCard({ product, index = 0, isBes
           const allergens = ((product as any).allergens && (product as any).allergens.length > 0) ? (product as any).allergens : translation.allergens;
           
           return (weight || allergens) ? (
-            <div className={`flex items-center gap-4 mb-2 text-xs h-5 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+        <div className={`flex items-center gap-4 mb-2 text-xs h-5 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
               {weight && (
-                <div className="flex items-center gap-1">
-                  <span>⚖️</span>
+            <div className="flex items-center gap-1">
+              <span>⚖️</span>
                   <span>{weight}</span>
-                </div>
-              )}
-              {allergens && allergens.length > 0 && (
-                <div className="flex items-center gap-1">
-                  <span>{allergens.join(', ')}</span>
-                </div>
-              )}
             </div>
+          )}
+              {allergens && allergens.length > 0 && (
+            <div className="flex items-center gap-1">
+                  <span>{allergens.join(', ')}</span>
+            </div>
+          )}
+        </div>
           ) : null;
         })()}
 
