@@ -18,6 +18,18 @@ export default function AdminLayout({
   const [selectedTenant, setSelectedTenant] = useState<'all' | string>(() => getTenantSlug());
 
   useEffect(() => {
+    // Remove dark theme classes from body for admin dashboard
+    document.body.classList.remove('bg-porno-vibe');
+    document.body.style.backgroundColor = '#f3f4f6';
+    document.body.style.color = '#111827';
+    
+    // Cleanup: restore theme when component unmounts (optional)
+    return () => {
+      // Don't restore theme automatically - let other pages handle their own themes
+    };
+  }, []);
+
+  useEffect(() => {
     // Check if user explicitly logged out
     const loggedOut = sessionStorage.getItem('admin_logged_out');
     
@@ -50,14 +62,14 @@ export default function AdminLayout({
 
   return (
     <AdminContextProvider selectedTenant={selectedTenant}>
-      <div className="flex h-screen bg-gray-100">
+      <div className="flex h-screen bg-gray-100 text-gray-900" style={{ backgroundColor: '#f3f4f6', color: '#111827' }}>
         <Sidebar />
         <div className="flex-1 flex flex-col overflow-hidden">
           <Header 
             selectedTenant={selectedTenant} 
             onTenantChange={setSelectedTenant} 
           />
-          <main className="flex-1 overflow-y-auto p-6 bg-gray-50">
+          <main className="flex-1 overflow-y-auto p-6 bg-gray-50 text-gray-900" style={{ backgroundColor: '#f9fafb', color: '#111827' }}>
             {children}
           </main>
         </div>

@@ -33,13 +33,13 @@ export function SoundNotificationSettings() {
   }
 
   return (
-    <div className="bg-blue-50 rounded-lg p-3 border border-blue-200">
+    <div className="bg-blue-50 rounded-lg p-3 border border-blue-200" style={{ backgroundColor: '#eff6ff', borderColor: '#bfdbfe' }}>
       <div className="flex items-center justify-between">
         <div className="flex-1 min-w-0">
-          <h2 className="text-sm font-bold text-blue-700 mb-1">
+          <h2 className="text-sm font-bold text-blue-700 mb-1" style={{ color: '#1d4ed8' }}>
             Zvukové upozornenia
           </h2>
-          <div className="flex items-center gap-1.5 text-gray-600">
+          <div className="flex items-center gap-1.5 text-gray-600" style={{ color: '#4b5563' }}>
             <svg
               className="w-3.5 h-3.5 flex-shrink-0"
               fill="none"
@@ -54,14 +54,14 @@ export function SoundNotificationSettings() {
                 d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"
               />
             </svg>
-            <span className="text-xs truncate">
+            <span className="text-xs truncate" style={{ color: '#4b5563' }}>
               Zvuk pri novej objednávke
             </span>
           </div>
         </div>
         
         <div className="ml-3 flex items-center gap-2 flex-shrink-0">
-          <span className={`text-xs font-medium ${soundEnabled ? 'text-blue-600' : 'text-gray-500'}`}>
+          <span className={`text-xs font-medium ${soundEnabled ? 'text-blue-600' : 'text-gray-500'}`} style={{ color: soundEnabled ? '#2563eb' : '#6b7280' }}>
             {soundEnabled ? 'Zap.' : 'Vyp.'}
           </span>
           <button

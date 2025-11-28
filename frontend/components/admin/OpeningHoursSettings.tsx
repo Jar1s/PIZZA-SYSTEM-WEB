@@ -153,18 +153,18 @@ export function OpeningHoursSettings() {
   }
 
   return (
-    <div className="bg-white rounded-lg p-3 border border-gray-200">
+    <div className="bg-white rounded-lg p-3 border border-gray-200" style={{ backgroundColor: '#ffffff', borderColor: '#e5e7eb' }}>
       <div className="flex items-center justify-between">
         <div className="flex-1 min-w-0">
-          <h2 className="text-sm font-bold text-gray-900 mb-1">
+          <h2 className="text-sm font-bold text-gray-900 mb-1" style={{ color: '#111827' }}>
             Otváracie hodiny
           </h2>
-          <p className="text-xs text-gray-600 truncate">
+          <p className="text-xs text-gray-600 truncate" style={{ color: '#4b5563' }}>
             Automatické zap./vyp. maintenance mode
           </p>
         </div>
         <div className="ml-3 flex items-center gap-2 flex-shrink-0">
-          <span className={`text-xs font-medium ${openingHours.enabled ? 'text-green-600' : 'text-gray-500'}`}>
+          <span className={`text-xs font-medium ${openingHours.enabled ? 'text-green-600' : 'text-gray-500'}`} style={{ color: openingHours.enabled ? '#16a34a' : '#6b7280' }}>
             {openingHours.enabled ? 'Zap.' : 'Vyp.'}
           </span>
           <button
@@ -183,6 +183,7 @@ export function OpeningHoursSettings() {
             <button
               onClick={() => setIsExpanded(!isExpanded)}
               className="ml-1 text-xs text-blue-600 hover:text-blue-700 font-medium"
+              style={{ color: '#2563eb' }}
             >
               {isExpanded ? '▼' : '▶'}
             </button>
@@ -191,9 +192,9 @@ export function OpeningHoursSettings() {
       </div>
 
       {openingHours.enabled && isExpanded && (
-        <div className="mt-3 pt-3 border-t border-gray-200 space-y-3 max-h-96 overflow-y-auto">
+        <div className="mt-3 pt-3 border-t border-gray-200 space-y-3 max-h-96 overflow-y-auto" style={{ borderColor: '#e5e7eb' }}>
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">
+            <label className="block text-xs font-medium text-gray-700 mb-1" style={{ color: '#374151' }}>
               Časové pásmo
             </label>
             <select
@@ -213,8 +214,8 @@ export function OpeningHoursSettings() {
               const isClosed = daySchedule?.closed;
 
               return (
-                <div key={day.key} className="flex items-center gap-2 p-2 bg-gray-50 rounded text-xs">
-                  <div className="w-20 font-medium text-gray-700">
+                <div key={day.key} className="flex items-center gap-2 p-2 bg-gray-50 rounded text-xs" style={{ backgroundColor: '#f9fafb' }}>
+                  <div className="w-20 font-medium text-gray-700" style={{ color: '#374151' }}>
                     {day.label.substring(0, 3)}
                   </div>
                   
@@ -225,7 +226,7 @@ export function OpeningHoursSettings() {
                       onChange={(e) => handleDayChange(day.key, 'closed', e.target.checked)}
                       className="h-3.5 w-3.5 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                     />
-                    <span className="text-xs text-gray-600">Zatv.</span>
+                    <span className="text-xs text-gray-600" style={{ color: '#4b5563' }}>Zatv.</span>
                   </div>
 
                   {!isClosed && (

@@ -114,13 +114,13 @@ export function MaintenanceBanner() {
   const nextOpening = getNextOpeningTime(openingHours);
 
   return (
-    <div className="bg-[#fefaf5] rounded-lg p-3 border border-orange-200">
+    <div className="bg-[#fefaf5] rounded-lg p-3 border border-orange-200" style={{ backgroundColor: '#fefaf5', borderColor: '#fed7aa' }}>
       <div className="flex items-center justify-between">
         <div className="flex-1 min-w-0">
-          <h2 className="text-sm font-bold text-[#f97316] mb-1 truncate">
+          <h2 className="text-sm font-bold text-[#f97316] mb-1 truncate" style={{ color: '#f97316' }}>
             {t.maintenanceModeTitle}
           </h2>
-          <div className="flex items-center gap-1.5 text-gray-600">
+          <div className="flex items-center gap-1.5 text-gray-600" style={{ color: '#4b5563' }}>
             <svg
               className="w-3.5 h-3.5 flex-shrink-0"
               fill="none"
@@ -135,22 +135,22 @@ export function MaintenanceBanner() {
                 d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
               />
             </svg>
-            <span className="text-xs truncate">{t.maintenanceModeSubtitle}</span>
+            <span className="text-xs truncate" style={{ color: '#4b5563' }}>{t.maintenanceModeSubtitle}</span>
           </div>
           {openingHours?.enabled && (
             <div className="mt-1.5 flex items-center gap-1.5">
-              <span className={`text-xs px-1.5 py-0.5 rounded ${autoMaintenanceMode ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
+              <span className={`text-xs px-1.5 py-0.5 rounded ${autoMaintenanceMode ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`} style={autoMaintenanceMode ? { backgroundColor: '#fee2e2', color: '#b91c1c' } : { backgroundColor: '#dcfce7', color: '#15803d' }}>
                 {autoMaintenanceMode ? 'Zatvorené' : 'Otvorené'}
               </span>
               {autoMaintenanceMode && nextOpening && (
-                <span className="text-xs text-gray-500 truncate">{nextOpening}</span>
+                <span className="text-xs text-gray-500 truncate" style={{ color: '#6b7280' }}>{nextOpening}</span>
               )}
             </div>
           )}
         </div>
         
         <div className="ml-3 flex items-center gap-2 flex-shrink-0">
-          <span className={`text-xs font-medium ${maintenanceMode ? 'text-orange-600' : 'text-gray-500'}`}>
+          <span className={`text-xs font-medium ${maintenanceMode ? 'text-orange-600' : 'text-gray-500'}`} style={{ color: maintenanceMode ? '#ea580c' : '#6b7280' }}>
             {maintenanceMode ? 'Zap.' : 'Vyp.'}
           </span>
           <button

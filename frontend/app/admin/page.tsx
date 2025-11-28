@@ -77,8 +77,8 @@ export default function AdminDashboard() {
   const { selectedTenant } = useAdminContext();
   
   return (
-    <div>
-      <h1 className="text-3xl font-bold mb-4">Dashboard</h1>
+    <div className="text-gray-900">
+      <h1 className="text-3xl font-bold mb-4 text-gray-900">Dashboard</h1>
       
       {/* Compact Settings Grid - Top Section */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 mb-6">

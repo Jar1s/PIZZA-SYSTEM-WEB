@@ -73,13 +73,13 @@ export function PaymentSettings() {
   }
 
   return (
-    <div className="bg-white rounded-lg p-3 border border-gray-200">
+    <div className="bg-white rounded-lg p-3 border border-gray-200" style={{ backgroundColor: '#ffffff', borderColor: '#e5e7eb' }}>
       <div className="flex items-center justify-between mb-2">
         <div className="flex-1 min-w-0">
-          <h2 className="text-sm font-semibold text-gray-900">
+          <h2 className="text-sm font-semibold text-gray-900" style={{ color: '#111827' }}>
             Platby pri dodaní
           </h2>
-          <p className="text-xs text-gray-500 mt-0.5 truncate">
+          <p className="text-xs text-gray-500 mt-0.5 truncate" style={{ color: '#6b7280' }}>
             Aplikuje sa na všetky weby
           </p>
         </div>
@@ -95,7 +95,7 @@ export function PaymentSettings() {
       <div className="space-y-1.5">
         {/* Cash Payment Toggle */}
         <div className="flex items-center justify-between">
-          <label className="text-xs font-medium text-gray-900">
+          <label className="text-xs font-medium text-gray-900" style={{ color: '#111827' }}>
             Hotovosť
           </label>
           <button
@@ -115,7 +115,7 @@ export function PaymentSettings() {
         
         {/* Card Payment Toggle */}
         <div className="flex items-center justify-between">
-          <label className="text-xs font-medium text-gray-900">
+          <label className="text-xs font-medium text-gray-900" style={{ color: '#111827' }}>
             Platba kartou
           </label>
           <button

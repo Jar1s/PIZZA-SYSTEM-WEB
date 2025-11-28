@@ -243,11 +243,11 @@ export function OrderList({ todayOnly = false, selectedTenant }: OrderListProps 
   };
 
   return (
-    <div className="bg-white rounded-lg shadow">
-      <div className="p-6 border-b">
-        <h2 className="text-2xl font-bold">Orders</h2>
+    <div className="bg-white rounded-lg shadow text-gray-900" style={{ backgroundColor: '#ffffff', color: '#111827' }}>
+      <div className="p-6 border-b border-gray-200">
+        <h2 className="text-2xl font-bold text-gray-900" style={{ color: '#111827' }}>Orders</h2>
         {todayOnly ? (
-          <div className="mt-4 text-sm text-gray-600">
+          <div className="mt-4 text-sm text-gray-600" style={{ color: '#4b5563' }}>
             Showing orders from today ({new Date().toLocaleDateString('sk-SK')})
           </div>
         ) : (
@@ -256,9 +256,9 @@ export function OrderList({ todayOnly = false, selectedTenant }: OrderListProps 
       </div>
       
       {loading ? (
-        <div className="p-6 text-center">Loading...</div>
+        <div className="p-6 text-center text-gray-600" style={{ color: '#4b5563' }}>Loading...</div>
       ) : (
-        <div className="divide-y">
+        <div className="divide-y divide-gray-200">
           {orders.map(order => (
             <OrderCard
               key={order.id}
@@ -280,7 +280,7 @@ export function OrderList({ todayOnly = false, selectedTenant }: OrderListProps 
           ))}
           
           {orders.length === 0 && (
-            <div className="p-6 text-center text-gray-500">
+            <div className="p-6 text-center text-gray-500" style={{ color: '#6b7280' }}>
               No orders found
             </div>
           )}
