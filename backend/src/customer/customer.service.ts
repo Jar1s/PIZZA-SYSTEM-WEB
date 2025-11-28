@@ -128,7 +128,7 @@ export class CustomerService {
 
     const normalizedPhone = normalizePhone(data.phone);
     const normalizedCurrentPhone = normalizePhone(user.phone);
-    
+
     // Check if phone is already taken by another user
     const phoneChanged = normalizedPhone && normalizedPhone !== normalizedCurrentPhone;
     let shouldVerify = false;
@@ -136,54 +136,54 @@ export class CustomerService {
     
     if (phoneChanged && normalizedPhone) {
       try {
-        const existingUser = (await this.prisma.user.findUnique({
+      const existingUser = (await this.prisma.user.findUnique({
           where: { phone: normalizedPhone } as any,
-          select: {
-            id: true,
-            phoneVerified: true,
-          } as any,
-        })) as unknown as { id: string; phoneVerified: boolean } | null;
+        select: {
+          id: true,
+          phoneVerified: true,
+        } as any,
+      })) as unknown as { id: string; phoneVerified: boolean } | null;
       
-        if (existingUser && existingUser.id !== userId) {
-          throw new BadRequestException('Phone number is already taken');
-        }
-        
-        // Check if this phone number was already verified for this specific user
-        // First check if this user had this phone verified before (check SMS verification history)
-        const userVerifiedCode = await (this.prisma as any).smsVerificationCode.findFirst({
-          where: {
+      if (existingUser && existingUser.id !== userId) {
+        throw new BadRequestException('Phone number is already taken');
+      }
+      
+      // Check if this phone number was already verified for this specific user
+      // First check if this user had this phone verified before (check SMS verification history)
+      const userVerifiedCode = await (this.prisma as any).smsVerificationCode.findFirst({
+        where: {
             phone: normalizedPhone,
-            userId: userId,
+          userId: userId,
+          isUsed: true,
+        },
+        orderBy: { createdAt: 'desc' },
+      });
+      
+      if (userVerifiedCode) {
+        // This user already verified this phone number before
+        phoneAlreadyVerified = true;
+      } else if (existingUser && existingUser.phoneVerified) {
+        // Another user has this phone verified - we can trust it's a valid number
+        // But for security, we still require verification for the new user
+        shouldVerify = true;
+      } else {
+        // Check if there's any verified SMS code for this phone (within last 30 days)
+        // This handles cases where user verified it but then changed to different number
+        const recentVerifiedCode = await (this.prisma as any).smsVerificationCode.findFirst({
+          where: {
+              phone: normalizedPhone,
             isUsed: true,
+            expiresAt: { gt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) }, // Within last 30 days
           },
           orderBy: { createdAt: 'desc' },
         });
         
-        if (userVerifiedCode) {
-          // This user already verified this phone number before
+        if (recentVerifiedCode && recentVerifiedCode.userId === userId) {
+          // This user verified this phone recently
           phoneAlreadyVerified = true;
-        } else if (existingUser && existingUser.phoneVerified) {
-          // Another user has this phone verified - we can trust it's a valid number
-          // But for security, we still require verification for the new user
-          shouldVerify = true;
         } else {
-          // Check if there's any verified SMS code for this phone (within last 30 days)
-          // This handles cases where user verified it but then changed to different number
-          const recentVerifiedCode = await (this.prisma as any).smsVerificationCode.findFirst({
-            where: {
-              phone: normalizedPhone,
-              isUsed: true,
-              expiresAt: { gt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) }, // Within last 30 days
-            },
-            orderBy: { createdAt: 'desc' },
-          });
-          
-          if (recentVerifiedCode && recentVerifiedCode.userId === userId) {
-            // This user verified this phone recently
-            phoneAlreadyVerified = true;
-          } else {
-            shouldVerify = true;
-          }
+          shouldVerify = true;
+        }
         }
       } catch (error: any) {
         // If findUnique fails (e.g., phone is null or invalid), log and continue
@@ -286,37 +286,96 @@ export class CustomerService {
     country?: string;
     isPrimary?: boolean;
   }) {
-    // If setting as primary, unset other primary addresses
-    if (data.isPrimary) {
-      await this.prisma.address.updateMany({
-        where: { userId, isPrimary: true },
-        data: { isPrimary: false },
+    try {
+      // Validate userId
+      if (!userId || !userId.trim()) {
+        console.error('[CustomerService] createCustomerAddress - userId is missing');
+        throw new BadRequestException('User ID is required');
+      }
+
+      // Verify user exists
+      const user = await this.prisma.user.findUnique({
+        where: { id: userId },
+        select: { id: true },
       });
-    }
 
-    const address = await this.prisma.address.create({
-      data: {
+      if (!user) {
+        console.error('[CustomerService] createCustomerAddress - User not found:', userId);
+        throw new NotFoundException('User not found');
+      }
+
+      // Validate required fields
+      if (!data.street || !data.street.trim()) {
+        throw new BadRequestException('Street address is required');
+      }
+      if (!data.city || !data.city.trim()) {
+        throw new BadRequestException('City is required');
+      }
+      if (!data.postalCode || !data.postalCode.trim()) {
+        throw new BadRequestException('Postal code is required');
+      }
+
+      // If setting as primary, unset other primary addresses
+      if (data.isPrimary) {
+        await this.prisma.address.updateMany({
+          where: { userId, isPrimary: true },
+          data: { isPrimary: false },
+        });
+      }
+
+      const address = await this.prisma.address.create({
+        data: {
+          userId,
+          street: data.street.trim(),
+          description: data.description?.trim() || null,
+          city: data.city.trim(),
+          postalCode: data.postalCode.trim(),
+          country: data.country?.trim() || 'SK',
+          isPrimary: data.isPrimary || false,
+        },
+      });
+
+      return {
+        id: address.id,
+        street: address.street,
+        description: address.description,
+        city: address.city,
+        postalCode: address.postalCode,
+        country: address.country,
+        isPrimary: address.isPrimary,
+        createdAt: address.createdAt.toISOString(),
+        updatedAt: address.updatedAt.toISOString(),
+      };
+    } catch (error: any) {
+      console.error('[CustomerService] createCustomerAddress - Error:', error);
+      console.error('[CustomerService] createCustomerAddress - Error details:', {
+        message: error?.message,
+        stack: error?.stack,
+        name: error?.name,
+        code: error?.code,
         userId,
-        street: data.street,
-        description: data.description,
-        city: data.city || '',
-        postalCode: data.postalCode || '',
-        country: data.country || 'SK',
-        isPrimary: data.isPrimary || false,
-      },
-    });
-
-    return {
-      id: address.id,
-      street: address.street,
-      description: address.description,
-      city: address.city,
-      postalCode: address.postalCode,
-      country: address.country,
-      isPrimary: address.isPrimary,
-      createdAt: address.createdAt.toISOString(),
-      updatedAt: address.updatedAt.toISOString(),
-    };
+        data,
+      });
+      // Re-throw known exceptions
+      if (error instanceof BadRequestException || error instanceof NotFoundException || error instanceof UnauthorizedException) {
+        throw error;
+      }
+      // For Prisma errors, provide better error messages
+      if (error?.code === 'P2002') {
+        throw new BadRequestException('Address already exists');
+      }
+      if (error?.code === 'P2003') {
+        throw new BadRequestException('Invalid user reference');
+      }
+      if (error?.code === 'P2011') {
+        throw new BadRequestException('Required field is missing');
+      }
+      if (error?.code === 'P2012') {
+        throw new BadRequestException('Required field is null');
+      }
+      // For unknown errors, throw with original message
+      throw new BadRequestException(error.message || 'Failed to create address');
+    }
   }
 
   /**

@@ -139,12 +139,21 @@ export default function MyAddress({ tenant, isDark = false }: MyAddressProps) {
           isPrimary: false,
         });
       } else {
-        const error = await res.json().catch(() => ({ message: 'Nepodarilo sa uložiť adresu' }));
-        alert(error.message || 'Nepodarilo sa uložiť adresu');
+        let errorMessage = 'Nepodarilo sa uložiť adresu';
+        try {
+          const errorData = await res.json();
+          errorMessage = errorData.message || errorData.error || errorMessage;
+        } catch (e) {
+          // If JSON parsing fails, use status text
+          errorMessage = res.statusText || errorMessage;
+        }
+        console.error('Failed to save address:', res.status, errorMessage);
+        alert(errorMessage);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to save address:', error);
-      alert('Nepodarilo sa uložiť adresu');
+      const errorMessage = error?.message || 'Nepodarilo sa uložiť adresu';
+      alert(errorMessage);
     }
   };
 

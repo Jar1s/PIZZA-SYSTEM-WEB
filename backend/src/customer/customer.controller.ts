@@ -63,10 +63,10 @@ export class CustomerController {
   @Patch('profile')
   async updateProfile(@Request() req: any, @Body() data: { name?: string; email?: string; phone?: string }) {
     try {
-      const user = req.user;
-      if (!user || user.role !== 'CUSTOMER') {
-        throw new UnauthorizedException('Unauthorized');
-      }
+    const user = req.user;
+    if (!user || user.role !== 'CUSTOMER') {
+      throw new UnauthorizedException('Unauthorized');
+    }
 
       return await this.customerService.updateCustomerProfile(user.id, data);
     } catch (error: any) {
@@ -123,15 +123,46 @@ export class CustomerController {
       isPrimary?: boolean;
     },
   ) {
-    console.log('[CustomerController] createAddress - user from request:', req.user ? { id: req.user.id, email: req.user.email, role: req.user.role } : 'null');
-    console.log('[CustomerController] createAddress - data:', data);
-    const user = req.user;
-    if (!user || user.role !== 'CUSTOMER') {
-      console.error('[CustomerController] createAddress - Unauthorized:', { user: !!user, role: user?.role });
-      throw new UnauthorizedException('Unauthorized');
-    }
+    try {
+      console.log('[CustomerController] createAddress - user from request:', req.user ? { id: req.user.id, email: req.user.email, role: req.user.role } : 'null');
+      console.log('[CustomerController] createAddress - data:', data);
+      const user = req.user;
+      if (!user || user.role !== 'CUSTOMER') {
+        console.error('[CustomerController] createAddress - Unauthorized:', { user: !!user, role: user?.role });
+        throw new UnauthorizedException('Unauthorized');
+      }
 
-    return this.customerService.createCustomerAddress(user.id, data);
+      // Validate required fields
+      if (!data.street || !data.street.trim()) {
+        throw new BadRequestException('Street address is required');
+      }
+      if (!data.city || !data.city.trim()) {
+        throw new BadRequestException('City is required');
+      }
+      if (!data.postalCode || !data.postalCode.trim()) {
+        throw new BadRequestException('Postal code is required');
+      }
+
+      return await this.customerService.createCustomerAddress(user.id, data);
+    } catch (error: any) {
+      console.error('[CustomerController] createAddress - Error:', error);
+      console.error('[CustomerController] createAddress - Error details:', {
+        message: error?.message,
+        stack: error?.stack,
+        name: error?.name,
+        code: error?.code,
+      });
+      // Re-throw known exceptions
+      if (error instanceof UnauthorizedException || error instanceof BadRequestException || error instanceof NotFoundException) {
+        throw error;
+      }
+      // For database errors, provide a more user-friendly message
+      if (error?.code === 'P2002') {
+        throw new BadRequestException('Address already exists');
+      }
+      // For unknown errors, throw generic error with details
+      throw new BadRequestException(error.message || 'Failed to create address');
+    }
   }
 
   /**
