@@ -1032,12 +1032,12 @@ export default function CheckoutPage() {
   // Show message if no addresses
   if (!loadingAddresses && addresses.length === 0 && user) {
     return (
-      <div className={`min-h-screen ${backgroundClass} ${isDark ? 'text-white' : ''} flex items-center justify-center`}>
-        <div className="container mx-auto px-4 max-w-2xl">
+      <div className={`min-h-screen ${backgroundClass} ${isDark ? 'text-white' : ''} flex items-center justify-center py-8`}>
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-2xl w-full">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className={`${isDark ? 'checkout-card-dark text-center' : 'bg-white rounded-lg shadow-md p-8 text-center'}`}
+            className={`${isDark ? 'checkout-card-dark text-center' : 'bg-white rounded-lg shadow-md text-center'} p-8 sm:p-10 md:p-12`}
           >
             <h2 className="text-2xl font-bold mb-4" style={{ color: 'var(--color-primary)' }}>
               Adresa je povinná
