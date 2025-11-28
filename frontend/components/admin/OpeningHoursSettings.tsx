@@ -100,11 +100,47 @@ export function OpeningHoursSettings() {
     }));
   };
 
-  const handleToggleEnabled = () => {
-    setOpeningHours(prev => ({
-      ...prev,
-      enabled: !prev.enabled,
-    }));
+  const handleToggleEnabled = async () => {
+    if (!tenant) return;
+    
+    const newEnabled = !openingHours.enabled;
+    const updatedOpeningHours = {
+      ...openingHours,
+      enabled: newEnabled,
+    };
+    
+    // Update local state immediately for better UX
+    setOpeningHours(updatedOpeningHours);
+    
+    try {
+      const theme = typeof tenant.theme === 'object' && tenant.theme !== null 
+        ? tenant.theme as any
+        : {};
+      
+      await updateTenant(tenant.subdomain || tenant.slug, {
+        theme: {
+          ...theme,
+          openingHours: updatedOpeningHours,
+        },
+      });
+      
+      // Reload tenant to get updated data
+      const updatedTenant = await getTenant('pornopizza');
+      setTenant(updatedTenant);
+      
+      // Update opening hours from the server response to ensure consistency
+      const updatedTheme = typeof updatedTenant.theme === 'object' && updatedTenant.theme !== null 
+        ? updatedTenant.theme as any
+        : {};
+      if (updatedTheme.openingHours) {
+        setOpeningHours(updatedTheme.openingHours);
+      }
+    } catch (error: any) {
+      console.error('Failed to toggle opening hours:', error);
+      alert('Nepodarilo sa prepnúť otváracie hodiny: ' + (error.message || 'Unknown error'));
+      // Revert local state on error
+      setOpeningHours(openingHours);
+    }
   };
 
   if (loading) {

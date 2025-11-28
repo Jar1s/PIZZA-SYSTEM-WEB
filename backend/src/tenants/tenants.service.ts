@@ -147,10 +147,25 @@ export class TenantsService {
     if (data.theme && typeof data.theme === 'object') {
       if (existingTenant.theme) {
         const existingTheme = existingTenant.theme as any;
-        data.theme = {
-          ...existingTheme,
-          ...data.theme,
-        };
+        
+        // Special handling for openingHours - if it's provided, replace it entirely (don't deep merge)
+        if (data.theme.openingHours !== undefined) {
+          data.theme = {
+            ...existingTheme,
+            ...data.theme,
+            openingHours: data.theme.openingHours, // Replace entirely, don't merge
+          };
+          this.logger.log(`[updateTenant] Updating openingHours for ${slug}:`, {
+            enabled: data.theme.openingHours?.enabled,
+            hasDays: !!data.theme.openingHours?.days,
+          });
+        } else {
+          // Normal merge for other theme properties
+          data.theme = {
+            ...existingTheme,
+            ...data.theme,
+          };
+        }
       }
     }
     
@@ -181,6 +196,15 @@ export class TenantsService {
       where: { slug },
       data,
     });
+    
+    // Log openingHours state after update for debugging
+    const updatedTheme = tenant.theme as any;
+    if (updatedTheme?.openingHours) {
+      this.logger.log(`[updateTenant] OpeningHours after update for ${slug}:`, {
+        enabled: updatedTheme.openingHours.enabled,
+        timezone: updatedTheme.openingHours.timezone,
+      });
+    }
     
     this.logger.log(`Tenant ${slug} updated. isActive: ${tenant.isActive}`);
     return tenant as any as Tenant;
