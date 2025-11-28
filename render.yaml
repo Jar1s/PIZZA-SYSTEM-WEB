@@ -4,7 +4,7 @@ services:
     env: node
     region: frankfurt
     plan: starter
-    buildCommand: cd backend && npm ci && npm run build
+    buildCommand: cd backend && npm ci && npm run build && npm run prisma:deploy
     startCommand: cd backend && npm run start:prod
     envVars:
       - key: NODE_ENV
@@ -18,5 +18,8 @@ services:
       - key: JWT_REFRESH_SECRET
         sync: false
     healthCheckPath: /api/health
+
+
+
 
 
