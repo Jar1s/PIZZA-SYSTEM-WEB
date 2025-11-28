@@ -8,11 +8,15 @@ import { CustomerAuthController } from './customer-auth.controller';
 import { JwtStrategy } from './jwt.strategy';
 import { SmsService } from './sms.service';
 import { PrismaModule } from '../prisma/prisma.module';
+import { EmailModule } from '../email/email.module';
+import { TenantsModule } from '../tenants/tenants.module';
 
 @Module({
   imports: [
     PrismaModule,
     PassportModule,
+    EmailModule,
+    TenantsModule,
     JwtModule.register({
       secret: process.env.JWT_SECRET || 'your-secret-key-change-in-production',
       signOptions: { expiresIn: '1h' }, // Short-lived access token (improved security)

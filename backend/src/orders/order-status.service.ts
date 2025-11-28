@@ -83,24 +83,24 @@ export class OrderStatusService {
       // PAID a PENDING sa neposielajú (PENDING má confirmation email pri vytvorení objednávky)
       const statusMessages: Partial<Record<OrderStatus, { subject: string; message: string }>> = {
         [OrderStatus.PREPARING]: {
-          subject: `👨‍🍳 Order #${orderNumber} is Being Prepared`,
-          message: `Great news! Your order is now being prepared in our kitchen.`,
+          subject: `👨‍🍳 Objednávka #${orderNumber} je v príprave`,
+          message: `Skvelá správa! Vaša objednávka sa teraz pripravuje v našej kuchyni.`,
         },
         [OrderStatus.READY]: {
-          subject: `🍕 Order #${orderNumber} is Ready!`,
-          message: `Your order is ready! It will be delivered shortly.`,
+          subject: `🍕 Objednávka #${orderNumber} je pripravená!`,
+          message: `Vaša objednávka je pripravená! Čoskoro bude doručená.`,
         },
         [OrderStatus.OUT_FOR_DELIVERY]: {
-          subject: `🚗 Order #${orderNumber} is Out for Delivery`,
-          message: `Your order is on the way! Track your delivery: ${trackingUrl}`,
+          subject: `🚗 Objednávka #${orderNumber} odovzdaná kuriérovi`,
+          message: `Vaša objednávka je na ceste! Sledujte doručenie: ${trackingUrl}`,
         },
         [OrderStatus.DELIVERED]: {
-          subject: `✅ Order #${orderNumber} Delivered`,
-          message: `Your order has been delivered! Enjoy your meal! 🍕`,
+          subject: `✅ Objednávka #${orderNumber} doručená`,
+          message: `Vaša objednávka bola doručená! Dobrú chuť! 🍕`,
         },
         [OrderStatus.CANCELED]: {
-          subject: `❌ Order #${orderNumber} Cancelled`,
-          message: `Your order has been cancelled. If you have questions, please contact us.`,
+          subject: `❌ Objednávka #${orderNumber} zrušená`,
+          message: `Vaša objednávka bola zrušená. Ak máte otázky, kontaktujte nás prosím.`,
         },
         // PAID a PENDING sa neposielajú
       };
@@ -147,7 +147,7 @@ export class OrderStatusService {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Order Status Update</title>
+  <title>Aktualizácia stavu objednávky</title>
 </head>
 <body style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #f4f4f4;">
   <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f4f4f4; padding: 20px;">
@@ -161,20 +161,20 @@ export class OrderStatusService {
           </tr>
           <tr>
             <td style="padding: 40px;">
-              <h2 style="margin: 0 0 20px 0; color: #333333; font-size: 24px;">Order Status Update</h2>
+              <h2 style="margin: 0 0 20px 0; color: #333333; font-size: 24px;">Aktualizácia stavu objednávky</h2>
               <p style="margin: 0 0 20px 0; color: #666666; font-size: 16px; line-height: 1.6;">
-                Hello ${customer.name},
+                Ahoj ${customer.name},
               </p>
               <p style="margin: 0 0 20px 0; color: #666666; font-size: 16px; line-height: 1.6;">
                 ${message}
               </p>
               <p style="margin: 30px 0; text-align: center;">
                 <a href="${trackingUrl}" style="display: inline-block; padding: 12px 30px; background-color: #FF6B00; color: #ffffff; text-decoration: none; border-radius: 5px; font-weight: bold;">
-                  Track Your Order
+                  Sledovať objednávku
                 </a>
               </p>
               <p style="margin: 20px 0 0 0; color: #999999; font-size: 14px; line-height: 1.6;">
-                Order #${order.id.slice(0, 8).toUpperCase()}
+                Objednávka #${order.id.slice(0, 8).toUpperCase()}
               </p>
             </td>
           </tr>

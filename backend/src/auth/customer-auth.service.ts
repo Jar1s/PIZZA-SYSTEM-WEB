@@ -1,10 +1,12 @@
-import { Injectable, UnauthorizedException, BadRequestException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, BadRequestException, Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
 import * as crypto from 'crypto';
 import * as jwt from 'jsonwebtoken';
 import { PrismaService } from '../prisma/prisma.service';
 import { SmsService } from './sms.service';
+import { EmailService } from '../email/email.service';
+import { TenantsService } from '../tenants/tenants.service';
 
 export interface RegisterDto {
   email: string;
@@ -33,10 +35,14 @@ export interface CustomerAuthResult {
 
 @Injectable()
 export class CustomerAuthService {
+  private readonly logger = new Logger(CustomerAuthService.name);
+
   constructor(
     private prisma: PrismaService,
     private jwtService: JwtService,
     private smsService: SmsService,
+    private emailService: EmailService,
+    private tenantsService: TenantsService,
   ) {}
 
   /**
@@ -99,6 +105,12 @@ export class CustomerAuthService {
       },
     });
 
+    // Send welcome email (async, don't wait for it)
+    this.sendWelcomeEmailAsync(customer).catch((error) => {
+      this.logger.error(`Failed to send welcome email to ${customer.email}:`, error);
+      // Don't throw - email failure shouldn't break registration
+    });
+
     // Check if SMS verification needed
     return {
       access_token,
@@ -111,6 +123,37 @@ export class CustomerAuthService {
       },
       needsSmsVerification: false, // SMS verification disabled
     };
+  }
+
+  private async sendWelcomeEmailAsync(customer: { email: string | null; name: string }): Promise<void> {
+    if (!customer.email) {
+      return;
+    }
+
+    try {
+      // Get default tenant (pornopizza) or first active tenant
+      const tenants = await this.tenantsService.getAllTenants(true);
+      const defaultTenant = tenants.find(t => t.slug === 'pornopizza') || tenants.find(t => t.isActive) || tenants[0];
+
+      if (!defaultTenant) {
+        this.logger.warn('No tenant found for welcome email');
+        return;
+      }
+
+      const tenantDomain = defaultTenant.domain || `${defaultTenant.subdomain}.localhost:3001`;
+
+      await this.emailService.sendWelcomeEmail(
+        {
+          email: customer.email,
+          name: customer.name,
+        },
+        defaultTenant.name,
+        tenantDomain,
+      );
+    } catch (error) {
+      this.logger.error(`Error sending welcome email:`, error);
+      // Don't throw - email failure shouldn't break registration
+    }
   }
 
   /**
