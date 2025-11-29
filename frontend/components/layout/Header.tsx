@@ -47,6 +47,22 @@ export function Header({ tenant }: HeaderProps) {
   const scrollToSection = (targetId: string) => {
     if (typeof window === 'undefined') return;
 
+    // Check if we're on the home page (has #menu or #hero sections)
+    const isHomePage = window.location.pathname === '/' || 
+                       window.location.pathname === `/?tenant=${tenantSlug}` ||
+                       (window.location.pathname === '/' && !window.location.pathname.includes('/order') && !window.location.pathname.includes('/checkout'));
+
+    // If not on home page, navigate to home page with anchor
+    if (!isHomePage) {
+      if (targetId === 'hero') {
+        router.push(`/?tenant=${tenantSlug}`);
+      } else {
+        router.push(`/?tenant=${tenantSlug}#${targetId}`);
+      }
+      return;
+    }
+
+    // If on home page, use scroll behavior
     if (targetId === 'hero') {
       window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
@@ -60,6 +76,9 @@ export function Header({ tenant }: HeaderProps) {
         top: sectionTop - headerOffset,
         behavior: 'smooth',
       });
+    } else {
+      // If section not found, navigate with hash
+      router.push(`/?tenant=${tenantSlug}#${targetId}`);
     }
   };
 
@@ -79,28 +98,35 @@ export function Header({ tenant }: HeaderProps) {
       )}
       <div className="mx-auto flex h-14 sm:h-16 items-center justify-between gap-2 sm:gap-3 md:gap-4 px-3 sm:px-4 md:px-6 lg:px-8">
         <div className="flex flex-1 items-center gap-4 min-w-0">
-          {normalizedTenant?.theme?.logo ? (
-            <Image
-              src={normalizedTenant.theme.logo}
-              alt={normalizedTenant.name}
-              width={200}
-              height={60}
-              className="h-8 sm:h-10 w-auto max-w-[140px] sm:max-w-[180px] md:max-w-[200px]"
-              priority
-              unoptimized={normalizedTenant.theme.logo.includes(' ') || normalizedTenant.theme.logo.includes('%20')}
-              onError={(e) => {
-                console.error('Logo failed to load:', normalizedTenant.theme.logo);
-              }}
-            />
-          ) : (
-            <h1
-              className={`truncate text-lg sm:text-xl font-semibold ${
-                isDarkTheme ? 'text-[#ff9900]' : 'text-[var(--color-primary)]'
-              }`}
-            >
-              {normalizedTenant?.name || tenant.name}
-            </h1>
-          )}
+          <button
+            type="button"
+            onClick={() => router.push(`/?tenant=${tenantSlug}`)}
+            className="flex items-center min-w-0"
+            aria-label={t.home || 'Home'}
+          >
+            {normalizedTenant?.theme?.logo ? (
+              <Image
+                src={normalizedTenant.theme.logo}
+                alt={normalizedTenant.name}
+                width={200}
+                height={60}
+                className="h-8 sm:h-10 w-auto max-w-[140px] sm:max-w-[180px] md:max-w-[200px]"
+                priority
+                unoptimized={normalizedTenant.theme.logo.includes(' ') || normalizedTenant.theme.logo.includes('%20')}
+                onError={(e) => {
+                  console.error('Logo failed to load:', normalizedTenant.theme.logo);
+                }}
+              />
+            ) : (
+              <h1
+                className={`truncate text-lg sm:text-xl font-semibold ${
+                  isDarkTheme ? 'text-[#ff9900]' : 'text-[var(--color-primary)]'
+                }`}
+              >
+                {normalizedTenant?.name || tenant.name}
+              </h1>
+            )}
+          </button>
 
           {/* Desktop Navigation */}
           <nav className="hidden lg:flex items-center gap-4 text-sm font-semibold">
