@@ -125,19 +125,18 @@ export default function OrderSuccessPage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.6 }}
-          className="rounded-lg p-6 mb-8 text-left border-l-4"
+          className="rounded-lg p-6 mb-8 text-left border-l-4 bg-gray-800 border-gray-700"
           style={{ 
-            backgroundColor: `${primaryColor}15`,
             borderLeftColor: primaryColor,
           }}
         >
           <div className="flex items-start gap-3">
             <div className="text-3xl">📧</div>
             <div>
-              <h3 className="font-semibold mb-1" style={{ color: primaryColor }}>
+              <h3 className="font-semibold mb-1 text-white">
                 {t.checkYourEmail}
               </h3>
-              <p className="text-sm" style={{ color: `${primaryColor}DD` }}>
+              <p className="text-sm text-gray-300">
                 {t.emailConfirmationSent}
               </p>
             </div>
