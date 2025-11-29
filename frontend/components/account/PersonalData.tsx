@@ -301,15 +301,15 @@ export default function PersonalData({ tenant, isDark = false }: PersonalDataPro
                 </div>
               ) : (
                 field.editable ? (
-                  <svg
-                    className={`w-5 h-5 ml-4 cursor-pointer ${isDark ? 'text-gray-400' : 'text-gray-400'}`}
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
+                <svg
+                  className={`w-5 h-5 ml-4 cursor-pointer ${isDark ? 'text-gray-400' : 'text-gray-400'}`}
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
                     onClick={() => setEditing(field.key)}
-                  >
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                  </svg>
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
                 ) : (
                   <span className={`text-xs ml-4 ${mutedText}`}>
                     {t.emailCannotBeChanged || 'Email sa nedá zmeniť'}

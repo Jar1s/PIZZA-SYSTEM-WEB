@@ -147,3 +147,6 @@ Ak stará databáza nefunguje:
 - [ ] DATABASE_URL je nastavený v Render.com
 
 
+
+
+

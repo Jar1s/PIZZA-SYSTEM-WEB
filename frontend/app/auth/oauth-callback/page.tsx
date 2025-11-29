@@ -151,16 +151,24 @@ export default function OAuthCallbackPage() {
     
     // Fallback to redirectParam if no sessionStorage value
     if (!redirect) {
-      redirect = redirectParam 
-        ? decodeURIComponent(redirectParam)
-        : '/account?tenant=pornopizza'; // Default to account page instead of checkout
+      if (redirectParam) {
+        redirect = decodeURIComponent(redirectParam);
+      } else {
+        // Default to checkout instead of account, since most OAuth logins happen during checkout
+        // Try to get tenant from URL or use default
+        const tenantFromUrl = searchParams.get('tenant') || 'pornopizza';
+        redirect = `/checkout?tenant=${tenantFromUrl}`;
+        console.log('OAuth callback - no redirect URL found, defaulting to checkout:', redirect);
+      }
     }
     
     // Validate returnUrl to prevent open redirect attacks
     const validatedRedirect = validateReturnUrl(redirect);
     if (!validatedRedirect) {
-      console.warn('Invalid redirect URL, using default:', redirect);
-      redirect = '/account?tenant=pornopizza'; // Default to account page instead of checkout
+      console.warn('Invalid redirect URL, using default checkout:', redirect);
+      // Default to checkout instead of account
+      const tenantFromUrl = searchParams.get('tenant') || 'pornopizza';
+      redirect = `/checkout?tenant=${tenantFromUrl}`;
     } else {
       redirect = validatedRedirect;
     }

@@ -11,16 +11,18 @@ Google OAuth has been fully implemented and is ready to use once credentials are
 ### Backend:
 1. ✅ **Google OAuth Library** - `google-auth-library` installed
 2. ✅ **Google OAuth Redirect** - `/api/auth/customer/google` endpoint
-3. ✅ **Google OAuth Callback** - `/api/auth/customer/google/callback` endpoint
-4. ✅ **Token Verification** - Verifies Google ID token
-5. ✅ **User Creation/Update** - Automatically creates or updates customer account
-6. ✅ **SMS Verification Integration** - Redirects to SMS verification if needed
-7. ✅ **ReturnUrl Support** - Preserves returnUrl (e.g., /checkout) through OAuth flow
+3. ✅ **Google OAuth Exchange** - `/api/auth/customer/google/exchange` endpoint (POST)
+4. ✅ **Google OAuth Callback** - `/api/auth/customer/google/callback` endpoint (legacy, kept for compatibility)
+5. ✅ **Token Verification** - Verifies Google ID token
+6. ✅ **User Creation/Update** - Automatically creates or updates customer account
+7. ✅ **SMS Verification Integration** - Redirects to SMS verification if needed
+8. ✅ **ReturnUrl Support** - Preserves returnUrl (e.g., /checkout) through OAuth flow
 
 ### Frontend:
 1. ✅ **Google Login Button** - Updated to redirect to Google OAuth
-2. ✅ **ReturnUrl Handling** - Preserves returnUrl when redirecting to Google
-3. ✅ **Error Handling** - Shows proper error messages
+2. ✅ **Google OAuth Callback Page** - `/auth/google/callback` handles Google redirect
+3. ✅ **ReturnUrl Handling** - Preserves returnUrl when redirecting to Google
+4. ✅ **Error Handling** - Shows proper error messages
 
 ---
 
@@ -41,8 +43,10 @@ Google OAuth has been fully implemented and is ready to use once credentials are
    - **Application type**: Web application
    - **Name**: Pizza App OAuth Client
    - **Authorized redirect URIs**:
-     - Development: `http://localhost:3000/api/auth/customer/google/callback`
-     - Production: `https://your-backend-domain.com/api/auth/customer/google/callback`
+     - Development: `http://localhost:3001/auth/google/callback`
+     - Production: `https://p0rnopizza.sk/auth/google/callback`
+     - Production (www): `https://www.p0rnopizza.sk/auth/google/callback`
+   - **Note**: Redirect URI now points to frontend domain (not backend) - this ensures Google shows your domain in consent screen
 
 ### 2. Add Environment Variables
 
@@ -52,12 +56,14 @@ Add these to your `.env` file in the backend:
 # Google OAuth
 GOOGLE_CLIENT_ID=your_google_client_id_here
 GOOGLE_CLIENT_SECRET=your_google_client_secret_here
-GOOGLE_REDIRECT_URI=http://localhost:3000/api/auth/customer/google/callback
+GOOGLE_REDIRECT_URI=http://localhost:3001/auth/google/callback
 
 # URLs (optional - defaults provided)
 BACKEND_URL=http://localhost:3000
 FRONTEND_URL=http://localhost:3001
 ```
+
+**Important**: `GOOGLE_REDIRECT_URI` should point to your **frontend domain** (not backend), so Google shows your domain in the consent screen instead of backend domain.
 
 ### 3. Restart Backend Server
 
@@ -76,13 +82,15 @@ npm run start:dev
 ### Google OAuth Flow:
 
 1. **User clicks "Sign in with Google"** → Frontend redirects to `/api/auth/customer/google`
-2. **Backend redirects to Google** → Google OAuth consent screen
-3. **User authorizes** → Google redirects back with code
-4. **Backend exchanges code** → Gets ID token from Google
-5. **Backend verifies token** → Extracts user info (email, name, googleId)
-6. **Backend creates/updates customer** → Finds or creates customer account
-7. **Check SMS verification** → If phone not verified, redirect to SMS verification
-8. **Redirect to returnUrl** → Redirects to checkout or home page
+2. **Backend redirects to Google** → Google OAuth consent screen (shows frontend domain, e.g., "p0rnopizza.sk")
+3. **User authorizes** → Google redirects to frontend `/auth/google/callback?code=...`
+4. **Frontend sends code to backend** → POST `/api/auth/customer/google/exchange` with code
+5. **Backend exchanges code** → Gets ID token from Google
+6. **Backend verifies token** → Extracts user info (email, name, googleId)
+7. **Backend creates/updates customer** → Finds or creates customer account
+8. **Backend returns tokens** → Frontend stores tokens in localStorage
+9. **Check SMS verification** → If phone not verified, redirect to SMS verification
+10. **Redirect to returnUrl** → Redirects to checkout or home page
 
 ---
 
@@ -107,11 +115,12 @@ npm run start:dev
 
 ### Backend:
 - ✅ `backend/src/auth/customer-auth.service.ts` - Implemented `loginWithGoogle()`
-- ✅ `backend/src/auth/customer-auth.controller.ts` - Implemented `googleRedirect()` and `googleCallback()`
+- ✅ `backend/src/auth/customer-auth.controller.ts` - Implemented `googleRedirect()`, `googleExchange()`, and `googleCallback()`
 - ✅ `backend/package.json` - Added `google-auth-library` dependency
 
 ### Frontend:
 - ✅ `frontend/contexts/CustomerAuthContext.tsx` - Updated `loginWithGoogle()` to redirect properly
+- ✅ `frontend/app/auth/google/callback/page.tsx` - New callback page that handles Google redirect and exchanges code
 
 ---
 
@@ -122,6 +131,7 @@ npm run start:dev
 - ✅ Token verification on backend
 - ✅ HTTPS required in production
 - ✅ Redirect URIs must match exactly in Google Console
+- ✅ Frontend callback domain shown in Google consent screen (not backend domain)
 
 ---
 

@@ -83,25 +83,47 @@ export async function geocodeAddress(
     // Check if address is in Bratislava
     const cityName = address.city || address.town || address.village || address.municipality || '';
     const cityLower = cityName.toLowerCase();
-    const countryCode = address.country?.toUpperCase() || '';
     
-    // Check if it's in Slovakia
-    if (countryCode !== 'SK' && countryCode !== 'SLOVAKIA') {
-      return {
-        isValid: true,
-        isInBratislava: false,
-        message: 'Momentálne doručujeme len do Bratislavy, Slovensko.',
-        fullAddress: result.display_name,
-      };
-    }
+    // Check country code in multiple formats (Nominatim can return different formats)
+    const countryCode = (address.country?.toUpperCase() || '').trim();
+    const countryCodeNormalized = countryCode === 'SLOVAKIA' || countryCode === 'SLOVENSKO' || countryCode === 'SK' 
+      ? 'SK' 
+      : countryCode;
     
-    // Check if it's Bratislava
+    // Check postal code - if it matches Bratislava format (8xx xx or 9xx xx), trust it
+    const postcodeNormalized = address.postcode?.replace(/\s+/g, '') || '';
+    const isBratislavaPostcode = /^[89]\d{4}$/.test(postcodeNormalized);
+    
+    // Check if it's Bratislava by city name or postal code
     const isBratislava = 
       cityLower.includes('bratislava') ||
       cityLower.includes('pressburg') ||
       address.state?.toLowerCase().includes('bratislava') ||
-      // Check postal code if available
-      (address.postcode && /^[89]\d{4}$/.test(address.postcode.replace(/\s+/g, '')));
+      isBratislavaPostcode;
+    
+    // If postal code matches Bratislava format, trust it even if country code is missing/wrong
+    // (geocoding APIs can sometimes return incomplete data)
+    if (isBratislavaPostcode && cityLower.includes('bratislava')) {
+      return {
+        isValid: true,
+        isInBratislava: true,
+        fullAddress: result.display_name,
+      };
+    }
+    
+    // Check if it's in Slovakia (but be lenient - if city/postcode suggest Bratislava, trust it)
+    if (countryCodeNormalized !== 'SK' && !isBratislava) {
+      // Only show error if we're really sure it's not Slovakia
+      // If postal code or city suggest Bratislava, allow it
+      if (!isBratislavaPostcode && !cityLower.includes('bratislava')) {
+        return {
+          isValid: true,
+          isInBratislava: false,
+          message: 'Momentálne doručujeme len do Bratislavy, Slovensko.',
+          fullAddress: result.display_name,
+        };
+      }
+    }
     
     return {
       isValid: true,

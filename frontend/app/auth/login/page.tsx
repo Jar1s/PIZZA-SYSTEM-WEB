@@ -244,25 +244,25 @@ export default function CustomerLoginPage() {
             {(() => {
               const normalizedTenant = withTenantThemeDefaults(tenant);
               return normalizedTenant?.theme?.logo ? (
-                <div className="mb-6">
-                  <Image
+              <div className="mb-6">
+                <Image
                     src={normalizedTenant.theme.logo}
                     alt={normalizedTenant.name}
-                    width={200}
-                    height={60}
-                    className="h-12 w-auto mb-4"
+                  width={200}
+                  height={60}
+                  className="h-12 w-auto mb-4"
                     unoptimized={normalizedTenant.theme.logo.includes(' ') || normalizedTenant.theme.logo.includes('%20')}
                     onError={(e) => {
                       console.error('Logo failed to load:', normalizedTenant.theme.logo);
                     }}
-                  />
-                </div>
-              ) : (
-                <div className="w-16 h-16 bg-black rounded-full flex items-center justify-center mb-4">
-                  <span className="text-white font-bold text-xl">
+                />
+              </div>
+            ) : (
+              <div className="w-16 h-16 bg-black rounded-full flex items-center justify-center mb-4">
+                <span className="text-white font-bold text-xl">
                     {(normalizedTenant?.name || tenant.name).charAt(0).toUpperCase()}
-                  </span>
-                </div>
+                </span>
+              </div>
               );
             })()}
             <h1 className="text-2xl font-bold">

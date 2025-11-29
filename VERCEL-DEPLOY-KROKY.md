@@ -54,3 +54,6 @@ Po zadaní `main`:
 - ✅ Môžeš kliknúť na "Create Deployment"
 
 
+
+
+

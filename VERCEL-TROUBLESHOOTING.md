@@ -91,3 +91,6 @@ Ak už existuje nejaký deployment:
 - Vercel má dobrý support - môžeš im napísať
 
 
+
+
+

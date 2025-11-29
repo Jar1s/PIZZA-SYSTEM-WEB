@@ -90,3 +90,6 @@ To znamená, že redirect URI v Google Console **nezhoduje** s tým, čo backend
 - **Production:** Používaj `https://pizza-system-web.onrender.com/api/auth/customer/google/callback`
 - **NIKDY nemiešaj** development a production URLs v Google Console
 
+
+
+

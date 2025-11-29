@@ -59,3 +59,6 @@
 **Status:** ✅ Frontend beží na http://localhost:3001
 
 
+
+
+

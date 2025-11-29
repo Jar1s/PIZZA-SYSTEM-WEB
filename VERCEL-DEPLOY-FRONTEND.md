@@ -234,3 +234,6 @@ Po úspešnom deploymente:
 ✅ **Hotovo!** Frontend je nasadený na Vercel!
 
 
+
+
+

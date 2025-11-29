@@ -103,3 +103,6 @@ Po úspešnom deploymente:
 - ✅ Môžeš testovať frontend s backendom na Render.com
 
 
+
+
+

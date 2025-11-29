@@ -59,3 +59,6 @@ Po úspešnom deploymente:
 - Skontroluj, či sa načítajú produkty z API
 
 
+
+
+

@@ -218,6 +218,12 @@ export class CustomerAuthService {
       },
     });
 
+    // Send welcome email after login (async, don't wait for it)
+    this.sendWelcomeEmailAsync(user).catch((error) => {
+      this.logger.error(`Failed to send welcome email to ${user.email}:`, error);
+      // Don't throw - email failure shouldn't break login
+    });
+
     return {
       access_token,
       refresh_token: refreshToken,
@@ -464,6 +470,12 @@ export class CustomerAuthService {
       } as any,
     });
 
+    // Send welcome email for new OAuth customers (async, don't wait for it)
+    this.sendWelcomeEmailAsync(customer).catch((error) => {
+      this.logger.error(`Failed to send welcome email to ${customer.email}:`, error);
+      // Don't throw - email failure shouldn't break OAuth login
+    });
+
     return customer;
   }
 
@@ -502,6 +514,12 @@ export class CustomerAuthService {
         passwordResetToken: null,
         passwordResetExpires: null,
       } as any,
+    });
+
+    // Send welcome email after password setup (async, don't wait for it)
+    this.sendWelcomeEmailAsync(updatedUser).catch((error) => {
+      this.logger.error(`Failed to send welcome email to ${updatedUser.email}:`, error);
+      // Don't throw - email failure shouldn't break password setup
     });
 
     // Generate auth result (auto-login after password setup)

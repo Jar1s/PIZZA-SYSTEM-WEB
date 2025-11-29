@@ -98,3 +98,6 @@ GET /api/admin/users
 3. **Skontroluj backend** - či beží a je dostupný
 
 
+
+
+

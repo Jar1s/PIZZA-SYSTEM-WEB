@@ -43,3 +43,6 @@ Ak chceš deploynúť konkrétny commit, zadaj:
 - ✅ `HEAD` (najnovší commit)
 
 
+
+
+

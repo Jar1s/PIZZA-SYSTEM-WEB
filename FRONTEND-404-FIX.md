@@ -73,3 +73,6 @@
 **Poznámka:** 404 chyby pre Next.js súbory sú často spôsobené starou cache v prehliadači. Po vymazaní cache by malo všetko fungovať správne.
 
 
+
+
+

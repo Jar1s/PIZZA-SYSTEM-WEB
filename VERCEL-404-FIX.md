@@ -77,3 +77,6 @@ Po oprave:
 4. **Skús manuálny redeploy**
 
 
+
+
+

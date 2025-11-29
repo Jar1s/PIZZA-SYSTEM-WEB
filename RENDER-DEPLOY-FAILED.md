@@ -129,3 +129,6 @@ Po pridaní všetkých environment variables:
 - `RENDER-IPV4-FIX.md` - IPv4 kompatibilita s Supabase
 
 
+
+
+

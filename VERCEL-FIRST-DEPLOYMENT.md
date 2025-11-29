@@ -79,3 +79,6 @@ Po vytvorení deploymentu:
 3. ✅ Po dokončení dostaneš URL: `https://your-project.vercel.app`
 
 
+
+
+

@@ -110,3 +110,6 @@ Po úspešnom nastavení:
 - ✅ SMS verification stále potrebná (ak phone nie je verified)
 
 
+
+
+

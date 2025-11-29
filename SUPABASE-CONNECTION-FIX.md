@@ -102,3 +102,6 @@ postgresql://postgres.gsawehudurchkeysdqhm:011jarko@aws-1-eu-west-1.pooler.supab
 Prisma automaticky použije SSL parametr z `DATABASE_URL`, takže není potřeba měnit `schema.prisma`.
 
 
+
+
+

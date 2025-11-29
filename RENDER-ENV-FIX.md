@@ -64,3 +64,6 @@ postgresql://postgres.gsawehudurchkeysdqhm:011jarko@aws-1-eu-west-1.pooler.supab
 Po tejto oprave by deployment mal fungovať! 🚀
 
 
+
+
+

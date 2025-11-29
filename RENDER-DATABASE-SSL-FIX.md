@@ -116,3 +116,6 @@ Po uložení `DATABASE_URL` v Render.com:
 4. Mala by sa objaviť správa: `✅ Database connected successfully`
 
 
+
+
+
