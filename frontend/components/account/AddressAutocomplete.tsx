@@ -39,7 +39,7 @@ export default function AddressAutocomplete({ value, onChange, onSelectFromMap }
       componentRestrictions: { country: ['sk'] },
       bounds: bratislavaBounds,
       strictBounds: false,
-      fields: ['formatted_address', 'address_components', 'geometry', 'name'],
+      fields: ['formatted_address', 'address_components', 'geometry', 'name', 'place_id'],
       types: ['address'],
     });
 
@@ -106,17 +106,53 @@ export default function AddressAutocomplete({ value, onChange, onSelectFromMap }
 
         // If postal code is missing, try to extract from formatted address
         if (!postalCode) {
-          // Try Slovak postal code format (5 digits, sometimes with space: 851 01)
-          const postalCodeMatch = place.formatted_address.match(/\b(\d{3}\s?\d{2})\b/);
-          if (postalCodeMatch) {
-            postalCode = postalCodeMatch[1].replace(/\s/g, ''); // Remove spaces
-          } else {
-            // Try simple 5 digit format
-            const simpleMatch = place.formatted_address.match(/\b(\d{5})\b/);
-            if (simpleMatch) {
-              postalCode = simpleMatch[1];
+          // Try multiple patterns for Slovak postal codes
+          // Format: 851 01 or 85101 or 851-01
+          const patterns = [
+            /\b(\d{3}\s\d{2})\b/,           // 851 01 (with space)
+            /\b(\d{3}-\d{2})\b/,           // 851-01 (with dash)
+            /\b(\d{5})\b/,                  // 85101 (no separator)
+            /PSČ[:\s]*(\d{3}\s?\d{2})/i,    // PSČ: 851 01
+            /(\d{3}\s\d{2})\s*Bratislava/i, // 851 01 Bratislava
+          ];
+
+          for (const pattern of patterns) {
+            const match = place.formatted_address.match(pattern);
+            if (match) {
+              postalCode = match[1].replace(/[\s-]/g, ''); // Remove spaces and dashes
+              break;
             }
           }
+        }
+
+        // If postal code is still missing, use Geocoding API as fallback
+        if (!postalCode && place.place_id && window.google?.maps?.geocoder) {
+          const geocoder = new window.google.maps.Geocoder();
+          geocoder.geocode({ placeId: place.place_id }, (results: any[], status: string) => {
+            if (status === 'OK' && results && results[0]) {
+              const resultComponents = results[0].address_components || [];
+              let foundPostalCode = '';
+              
+              resultComponents.forEach((component: any) => {
+                if (component.types.includes('postal_code') && !foundPostalCode) {
+                  foundPostalCode = component.long_name;
+                }
+              });
+
+              // If found, update the form
+              if (foundPostalCode && inputRef.current) {
+                // Trigger onChange with updated postal code
+                onChange(place.formatted_address, {
+                  street: street || place.formatted_address,
+                  city: city || 'Bratislava',
+                  postalCode: foundPostalCode,
+                  country,
+                  formattedAddress: place.formatted_address,
+                  geometry: place.geometry,
+                });
+              }
+            }
+          });
         }
 
         // Check if address is in Bratislava
