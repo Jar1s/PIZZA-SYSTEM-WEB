@@ -39,7 +39,7 @@ export default function AddressAutocomplete({ value, onChange, onSelectFromMap }
       componentRestrictions: { country: ['sk'] },
       bounds: bratislavaBounds,
       strictBounds: false,
-      fields: ['formatted_address', 'address_components', 'geometry', 'name', 'place_id'],
+      fields: ['formatted_address', 'address_components', 'geometry', 'name', 'place_id', 'formatted_phone_number'],
       types: ['address'],
     });
 
@@ -125,10 +125,45 @@ export default function AddressAutocomplete({ value, onChange, onSelectFromMap }
           }
         }
 
+        // Helper function to call onChange with address details
+        const updateAddress = (finalPostalCode: string) => {
+          // Check if address is in Bratislava
+          const isBratislava = city.toLowerCase().includes('bratislava') || 
+                              place.formatted_address.toLowerCase().includes('bratislava') ||
+                              addressComponents.some((c: any) => 
+                                (c.types.includes('administrative_area_level_2') || 
+                                 c.types.includes('locality') ||
+                                 c.types.includes('administrative_area_level_1')) && 
+                                c.long_name.toLowerCase().includes('bratislava')
+                              );
+
+          if (!isBratislava) {
+            alert('Adresa musí byť v Bratislave. Prosím, vyberte adresu v Bratislave.');
+            onChange('');
+            if (inputRef.current) inputRef.current.value = '';
+            return;
+          }
+
+          onChange(place.formatted_address, {
+            street: street || place.formatted_address,
+            city: city || 'Bratislava',
+            postalCode: finalPostalCode || '',
+            country,
+            formattedAddress: place.formatted_address,
+            geometry: place.geometry,
+          });
+        };
+
         // If postal code is still missing, use Geocoding API as fallback
-        if (!postalCode && place.place_id && window.google?.maps?.geocoder) {
+        if (!postalCode && (place.place_id || place.geometry?.location) && window.google?.maps?.Geocoder) {
           const geocoder = new window.google.maps.Geocoder();
-          geocoder.geocode({ placeId: place.place_id }, (results: any[], status: string) => {
+          
+          // Use place_id if available, otherwise use coordinates
+          const geocodeRequest = place.place_id 
+            ? { placeId: place.place_id }
+            : { location: place.geometry.location };
+
+          geocoder.geocode(geocodeRequest, (results: any[], status: string) => {
             if (status === 'OK' && results && results[0]) {
               const resultComponents = results[0].address_components || [];
               let foundPostalCode = '';
@@ -139,47 +174,17 @@ export default function AddressAutocomplete({ value, onChange, onSelectFromMap }
                 }
               });
 
-              // If found, update the form
-              if (foundPostalCode && inputRef.current) {
-                // Trigger onChange with updated postal code
-                onChange(place.formatted_address, {
-                  street: street || place.formatted_address,
-                  city: city || 'Bratislava',
-                  postalCode: foundPostalCode,
-                  country,
-                  formattedAddress: place.formatted_address,
-                  geometry: place.geometry,
-                });
-              }
+              // Update with found postal code
+              updateAddress(foundPostalCode);
+            } else {
+              // If geocoding fails, update without postal code
+              updateAddress('');
             }
           });
+        } else {
+          // If we have postal code or can't use geocoding, update immediately
+          updateAddress(postalCode);
         }
-
-        // Check if address is in Bratislava
-        const isBratislava = city.toLowerCase().includes('bratislava') || 
-                            place.formatted_address.toLowerCase().includes('bratislava') ||
-                            addressComponents.some((c: any) => 
-                              (c.types.includes('administrative_area_level_2') || 
-                               c.types.includes('locality') ||
-                               c.types.includes('administrative_area_level_1')) && 
-                              c.long_name.toLowerCase().includes('bratislava')
-                            );
-
-        if (!isBratislava) {
-          alert('Adresa musí byť v Bratislave. Prosím, vyberte adresu v Bratislave.');
-          onChange('');
-          if (inputRef.current) inputRef.current.value = '';
-          return;
-        }
-
-        onChange(place.formatted_address, {
-          street: street || place.formatted_address,
-          city: city || 'Bratislava',
-          postalCode: postalCode || '',
-          country,
-          formattedAddress: place.formatted_address,
-          geometry: place.geometry,
-        });
       }
     });
     };
