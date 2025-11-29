@@ -1717,8 +1717,12 @@ export default function CheckoutPage() {
               (!user && (!guestData.name || !guestData.email || !guestData.phone || !guestData.street || !guestData.city || !guestData.postalCode)) ||
               (paymentType === 'cash_on_delivery' && !cashOnDeliveryMethod)
             }
-            className={`w-full py-3 rounded-2xl font-semibold text-lg disabled:opacity-50 disabled:cursor-not-allowed ${getButtonGradientClass(tenantData)}`}
-            style={getButtonStyle(tenantData, isDark)}
+            className="w-full py-3 rounded-2xl font-semibold text-lg disabled:opacity-50 disabled:cursor-not-allowed text-white shadow-lg hover:brightness-110 active:brightness-90 transition-all"
+            style={{
+              background: isDark 
+                ? 'linear-gradient(to right, #E91E63, #ff0066, #ff2d55)'
+                : (primaryColor || '#E91E63'),
+            }}
           >
             {loading ? t.processing : paymentType === 'cash_on_delivery' ? t.confirmOrder : t.pay}
           </motion.button>
