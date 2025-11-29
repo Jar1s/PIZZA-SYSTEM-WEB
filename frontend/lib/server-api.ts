@@ -114,29 +114,98 @@ export async function getTenantServer(slug: string): Promise<Tenant | null> {
 }
 
 export async function getProductsServer(tenantSlug: string): Promise<Product[]> {
-  try {
-    // Use no-store and add timestamp to prevent caching
-    const timestamp = Date.now();
-    const res = await fetch(`${API_URL}/api/${tenantSlug}/products?t=${timestamp}`, {
-      cache: 'no-store',
-      next: { revalidate: 0 }, // Disable Next.js cache
-      headers: {
-        'Content-Type': 'application/json',
-        'Cache-Control': 'no-cache, no-store, must-revalidate',
-        'Pragma': 'no-cache',
-        'Expires': '0',
-      },
-    });
-    
-    if (!res.ok) {
+  const maxRetries = 3;
+  const retryDelay = 1000; // 1 second base delay
+  
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
+      
+      // Use no-store and add timestamp to prevent caching
+      const timestamp = Date.now();
+      const url = `${API_URL}/api/${tenantSlug}/products?t=${timestamp}`;
+      
+      if (attempt === 1) {
+        console.log(`[getProductsServer] Fetching from: ${url}`);
+      } else {
+        console.log(`[getProductsServer] Retry attempt ${attempt}/${maxRetries} - Fetching from: ${url}`);
+      }
+      
+      const res = await fetch(url, {
+        cache: 'no-store',
+        signal: controller.signal,
+        next: { revalidate: 0 }, // Disable Next.js cache
+        headers: {
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0',
+        },
+      });
+      
+      clearTimeout(timeoutId);
+      
+      if (!res.ok) {
+        const errorText = await res.text();
+        console.error(`[getProductsServer] HTTP ${res.status}: ${errorText.substring(0, 200)}`);
+        
+        // Retry on server errors (5xx)
+        if (res.status >= 500 && attempt < maxRetries) {
+          const delay = retryDelay * attempt; // Exponential backoff: 1s, 2s, 3s
+          console.log(`[getProductsServer] Server error (${res.status}), retrying in ${delay}ms...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+          continue;
+        }
+        
+        // Don't retry on client errors (4xx) - return empty array
+        return [];
+      }
+      
+      const data = await res.json();
+      
+      // Validate products array
+      if (Array.isArray(data)) {
+        const validated = data.map(product => safeParse(ProductSchema, product, product as any)) as Product[];
+        console.log(`[getProductsServer] Loaded ${validated.length} products`);
+        return validated;
+      }
+      
+      console.warn('[getProductsServer] Response is not an array, returning empty array');
       return [];
+    } catch (error: any) {
+      console.error(`[getProductsServer] Attempt ${attempt} failed:`, error.message || error);
+      
+      // Retry on timeout or network errors
+      if ((error.name === 'AbortError' || error.message?.includes('fetch failed')) && attempt < maxRetries) {
+        const delay = retryDelay * attempt; // Exponential backoff: 1s, 2s, 3s
+        console.log(`[getProductsServer] Network/timeout error, retrying in ${delay}ms...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        continue;
+      }
+      
+      // Log error details on last attempt
+      if (attempt === maxRetries) {
+        console.error('[getProductsServer] All retry attempts failed');
+        console.error('[getProductsServer] Error stack:', error.stack);
+        console.error('[getProductsServer] Error name:', error.name);
+        
+        if (error.name === 'AbortError') {
+          console.error('[getProductsServer] Request timeout - backend is not responding within 10s');
+          console.error('[getProductsServer] Check if backend is running on:', API_URL);
+        } else if (error.message?.includes('fetch failed')) {
+          console.error('[getProductsServer] Network error - check NEXT_PUBLIC_API_URL:', API_URL);
+        }
+      }
+      
+      // Last attempt failed - return empty array to show skeleton
+      if (attempt === maxRetries) {
+        return [];
+      }
     }
-    
-    return res.json();
-  } catch (error) {
-    console.error('Failed to fetch products:', error);
-    return [];
   }
+  
+  return [];
 }
 
 /**

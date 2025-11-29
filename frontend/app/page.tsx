@@ -82,7 +82,7 @@ export default async function HomePage({
     );
   }
 
-  // If no products, show loading skeleton
+  // If no products, show loading skeleton with timeout fallback
   if (products.length === 0) {
     return (
       <div className="min-h-screen bg-porno-vibe">
@@ -92,6 +92,11 @@ export default async function HomePage({
             {[...Array(6)].map((_, i) => (
               <ProductSkeleton key={i} />
             ))}
+          </div>
+          <div className="mt-8 text-center">
+            <p className="text-gray-400 text-sm">
+              {tenant ? 'Načítavam produkty...' : 'Načítavam...'}
+            </p>
           </div>
         </div>
       </div>
