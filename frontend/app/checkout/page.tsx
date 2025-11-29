@@ -923,7 +923,8 @@ export default function CheckoutPage() {
       }
       
       // If no redirect URL, go to success page
-      router.push(`/order/success?orderId=${order.id}`);
+      console.log('[Checkout] Order created successfully, redirecting to success page:', { orderId: order.id });
+      router.push(`/order/success?orderId=${order.id}&tenant=${tenantSlug}`);
     } catch (error) {
       console.error('Checkout error:', error);
       const errorMessage = error instanceof Error ? error.message : 'Failed to process order';

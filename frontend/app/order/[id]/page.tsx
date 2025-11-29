@@ -97,32 +97,64 @@ export default function OrderTrackingPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchOrder = useCallback(async () => {
+  const fetchOrder = useCallback(async (retryCount = 0) => {
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
-      // Use tenant-specific endpoint instead of track endpoint
-      const response = await fetch(`${apiUrl}/api/${tenant}/orders/${orderId}`);
+      const url = `${apiUrl}/api/track/${orderId}`;
+      console.log(`[Order Tracking] Fetching order: ${url} (retry ${retryCount})`);
+      
+      // Use public tracking endpoint
+      const response = await fetch(url);
+      
+      console.log(`[Order Tracking] Response status: ${response.status}`, { orderId, retryCount });
       
       if (!response.ok) {
-        throw new Error('Order not found');
+        if (response.status === 404) {
+          // If order not found and we haven't retried yet, wait a bit and retry
+          // (order might still be saving to database)
+          if (retryCount < 3) {
+            console.log(`[Order Tracking] Order not found, retrying in ${retryCount + 1}s... (${retryCount + 1}/3)`);
+            setTimeout(() => {
+              fetchOrder(retryCount + 1);
+            }, 1000 * (retryCount + 1)); // Exponential backoff: 1s, 2s, 3s
+            return;
+          }
+          console.error(`[Order Tracking] Order not found after ${retryCount + 1} retries`);
+          throw new Error('Order not found');
+        }
+        const errorText = await response.text().catch(() => response.statusText);
+        console.error(`[Order Tracking] Failed to load order: ${response.status} - ${errorText}`);
+        throw new Error(`Failed to load order: ${response.statusText}`);
       }
       
       const data = await response.json();
+      console.log(`[Order Tracking] Order loaded successfully:`, { orderId: data.id, status: data.status });
       setOrder(data);
       setError(null);
-    } catch (err: any) {
-      setError(err.message || 'Failed to load order');
-    } finally {
       setLoading(false);
+    } catch (err: any) {
+      console.error('[Order Tracking] Error fetching order:', err);
+      // Only set error if we've exhausted retries
+      if (retryCount >= 3) {
+        setError(err.message || 'Failed to load order');
+        setLoading(false);
+      }
     }
-  }, [orderId, tenant]);
+  }, [orderId]);
 
   useEffect(() => {
-    fetchOrder();
-    // Poll for updates every 30 seconds
-    const interval = setInterval(fetchOrder, 30000);
-    return () => clearInterval(interval);
+    fetchOrder(0);
   }, [fetchOrder]);
+
+  // Poll for updates every 30 seconds (only after order is loaded)
+  useEffect(() => {
+    if (!order) return;
+    
+    const interval = setInterval(() => {
+      fetchOrder(0);
+    }, 30000);
+    return () => clearInterval(interval);
+  }, [order, fetchOrder]);
 
   if (loading) {
     return (
