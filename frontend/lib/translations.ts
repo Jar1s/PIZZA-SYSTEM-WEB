@@ -306,6 +306,18 @@ export const translations = {
     processing: 'Spracovávam...',
     confirmOrder: 'Potvrdiť objednávku',
     pay: 'Zaplatiť',
+    
+    // Order Not Found
+    orderNotFound: 'Objednávka nenájdená',
+    orderNotFoundMessage: 'Nemohli sme nájsť túto objednávku',
+    
+    // Order Details Page
+    orderProgress: 'Stav objednávky',
+    orderDetails: 'Detaily objednávky',
+    subtotal: 'Medzisúčet',
+    note: 'Poznámka',
+    needHelp: 'Potrebujete pomoc?',
+    questionsAboutOrder: 'Máte otázky k objednávke? Kontaktujte nás na:',
   },
   
   en: {
@@ -614,6 +626,14 @@ export const translations = {
     // Order Not Found
     orderNotFound: 'Order Not Found',
     orderNotFoundMessage: 'We couldn\'t find this order',
+    
+    // Order Details Page
+    orderProgress: 'Order Progress',
+    orderDetails: 'Order Details',
+    subtotal: 'Subtotal',
+    note: 'Note',
+    needHelp: 'Need Help?',
+    questionsAboutOrder: 'Questions about your order? Contact us at:',
   },
 };
 
