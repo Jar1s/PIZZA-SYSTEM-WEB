@@ -63,10 +63,24 @@ export default function AddressAutocomplete({ value, onChange, onSelectFromMap }
           if (types.includes('street_number')) {
             street = street ? `${street} ${component.long_name}` : component.long_name;
           }
-          if (types.includes('locality')) {
+          // Try multiple types for city (locality, administrative_area_level_2, etc.)
+          if (!city && types.includes('locality')) {
             city = component.long_name;
           }
-          if (types.includes('postal_code')) {
+          if (!city && types.includes('administrative_area_level_2')) {
+            city = component.long_name;
+          }
+          if (!city && types.includes('administrative_area_level_1')) {
+            // Only use if it's Bratislava region
+            if (component.long_name.toLowerCase().includes('bratislava')) {
+              city = 'Bratislava';
+            }
+          }
+          // Try multiple types for postal code
+          if (!postalCode && types.includes('postal_code')) {
+            postalCode = component.long_name;
+          }
+          if (!postalCode && types.includes('postal_code_prefix')) {
             postalCode = component.long_name;
           }
           if (types.includes('country')) {
@@ -74,11 +88,44 @@ export default function AddressAutocomplete({ value, onChange, onSelectFromMap }
           }
         });
 
+        // If city is missing, try to extract from formatted address or set default
+        if (!city) {
+          // Try to extract from formatted address
+          const addressParts = place.formatted_address.split(',');
+          for (const part of addressParts) {
+            if (part.toLowerCase().includes('bratislava')) {
+              city = 'Bratislava';
+              break;
+            }
+          }
+          // If still no city, set default for Bratislava addresses
+          if (!city) {
+            city = 'Bratislava';
+          }
+        }
+
+        // If postal code is missing, try to extract from formatted address
+        if (!postalCode) {
+          // Try Slovak postal code format (5 digits, sometimes with space: 851 01)
+          const postalCodeMatch = place.formatted_address.match(/\b(\d{3}\s?\d{2})\b/);
+          if (postalCodeMatch) {
+            postalCode = postalCodeMatch[1].replace(/\s/g, ''); // Remove spaces
+          } else {
+            // Try simple 5 digit format
+            const simpleMatch = place.formatted_address.match(/\b(\d{5})\b/);
+            if (simpleMatch) {
+              postalCode = simpleMatch[1];
+            }
+          }
+        }
+
         // Check if address is in Bratislava
         const isBratislava = city.toLowerCase().includes('bratislava') || 
+                            place.formatted_address.toLowerCase().includes('bratislava') ||
                             addressComponents.some((c: any) => 
                               (c.types.includes('administrative_area_level_2') || 
-                               c.types.includes('locality')) && 
+                               c.types.includes('locality') ||
+                               c.types.includes('administrative_area_level_1')) && 
                               c.long_name.toLowerCase().includes('bratislava')
                             );
 
@@ -91,8 +138,8 @@ export default function AddressAutocomplete({ value, onChange, onSelectFromMap }
 
         onChange(place.formatted_address, {
           street: street || place.formatted_address,
-          city,
-          postalCode,
+          city: city || 'Bratislava',
+          postalCode: postalCode || '',
           country,
           formattedAddress: place.formatted_address,
           geometry: place.geometry,
