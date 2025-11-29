@@ -285,28 +285,44 @@ export default function CheckoutPage() {
         
         return () => clearInterval(interval);
       } else {
-        // Not from OAuth - redirect if cart is really empty
-        const finalCheck = setTimeout(() => {
+        // Not from OAuth - wait longer for cart to hydrate before redirecting
+        let checkCount = 0;
+        const maxChecks = 10; // 5 seconds max (10 * 500ms)
+        
+        const interval = setInterval(() => {
+          checkCount++;
           const finalItems = items.length;
           const finalCartStorage = localStorage.getItem('cart-storage');
           const stillFromOAuth = sessionStorage.getItem('oauth_redirect') === 'true';
           
-          if (stillFromOAuth || finalItems > 0) return;
+          if (stillFromOAuth || finalItems > 0) {
+            clearInterval(interval);
+            return;
+          }
           
           if (finalCartStorage) {
             try {
               const cartData = JSON.parse(finalCartStorage);
-              if (cartData.state?.items?.length > 0) return;
+              if (cartData.state?.items?.length > 0) {
+                clearInterval(interval);
+                return; // Cart is hydrating, wait for zustand
+              }
             } catch (e) {
               // Invalid cart data
             }
           }
           
-          // Cart is really empty, redirect to home
-          router.push('/');
-        }, 3000);
+          // After max checks, if cart is still empty, redirect to home
+          if (checkCount >= maxChecks) {
+            clearInterval(interval);
+            // Cart is really empty, redirect to home with tenant param
+            const params = new URLSearchParams(window.location.search);
+            const tenant = params.get('tenant') || 'pornopizza';
+            router.push(`/?tenant=${tenant}`);
+          }
+        }, 500);
         
-        return () => clearTimeout(finalCheck);
+        return () => clearInterval(interval);
       }
     }, 2000);
     
@@ -1004,9 +1020,18 @@ export default function CheckoutPage() {
     return url && validateReturnUrl(url) && url.includes('/checkout');
   })() : false;
   
-  // If cart is empty and user didn't come from OAuth, don't render (will redirect in useEffect)
+  // If cart is empty and user didn't come from OAuth, show loading state (will redirect in useEffect)
+  // This prevents black screen while waiting for redirect
   if (items.length === 0 && !fromOAuth) {
-    return null;
+    return (
+      <div className={`min-h-screen ${backgroundClass} ${isDark ? 'text-white' : ''} flex items-center justify-center`}>
+        <div className={`text-center ${isDark ? 'text-white' : 'text-gray-900'}`}>
+          <div className={`inline-block animate-spin rounded-full h-16 w-16 border-t-4 border-b-4`}
+          style={{ borderColor: isDark ? '#ff5e00' : 'var(--color-primary)' }}></div>
+          <p className="mt-4 text-lg">{t.loading}</p>
+        </div>
+      </div>
+    );
   }
   
   // If cart is empty but user came from OAuth, show loading state (cart is hydrating)
@@ -1023,10 +1048,18 @@ export default function CheckoutPage() {
     );
   }
   
-  // If cart is empty and oauth_returnUrl exists but is NOT for checkout, don't show loading
+  // If cart is empty and oauth_returnUrl exists but is NOT for checkout, show loading
   // (User should be redirected to account, which is handled above)
   if (items.length === 0 && hasOAuthReturnUrl && !oauthReturnUrlForCheckout) {
-    return null; // useEffect will handle redirect
+    return (
+      <div className={`min-h-screen ${backgroundClass} ${isDark ? 'text-white' : ''} flex items-center justify-center`}>
+        <div className={`text-center ${isDark ? 'text-white' : 'text-gray-900'}`}>
+          <div className={`inline-block animate-spin rounded-full h-16 w-16 border-t-4 border-b-4`}
+          style={{ borderColor: isDark ? '#ff5e00' : 'var(--color-primary)' }}></div>
+          <p className="mt-4 text-lg">{t.loading}</p>
+        </div>
+      </div>
+    );
   }
 
   // Show message if no addresses
