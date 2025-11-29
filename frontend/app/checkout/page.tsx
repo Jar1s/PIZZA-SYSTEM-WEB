@@ -193,20 +193,20 @@ export default function CheckoutPage() {
   useEffect(() => {
     if (typeof window === 'undefined') return;
     
-    // Handle OAuth returnUrl redirect
+    // Handle OAuth returnUrl redirect (only once on mount, not on every render)
     const oauthReturnUrl = sessionStorage.getItem('oauth_returnUrl');
     if (oauthReturnUrl) {
       const validatedReturnUrl = validateReturnUrl(oauthReturnUrl);
+      // Always remove oauth_returnUrl after checking to prevent redirect loops
+      sessionStorage.removeItem('oauth_redirect');
+      sessionStorage.removeItem('oauth_returnUrl');
+      
       if (validatedReturnUrl && !validatedReturnUrl.includes('/checkout')) {
-        sessionStorage.removeItem('oauth_redirect');
-        sessionStorage.removeItem('oauth_returnUrl');
+        // User should be redirected to account or other page (not checkout)
         window.location.replace(validatedReturnUrl);
         return;
-      } else if (!validatedReturnUrl) {
-        sessionStorage.removeItem('oauth_returnUrl');
-      } else {
-        sessionStorage.removeItem('oauth_returnUrl');
       }
+      // If validatedReturnUrl is for checkout or invalid, just remove it and continue
     }
     
     // Initialize tenant slug from URL
@@ -936,24 +936,8 @@ export default function CheckoutPage() {
     }
   }, [maintenanceMode, router, tenantSlug]);
   
-  // CRITICAL: Check if user should be redirected to a different page (e.g., account)
-  // This MUST be the FIRST check, before ANY rendering, including loading states
-  // This prevents "Načítavam košík..." from showing when user should be on account page
-  if (typeof window !== 'undefined') {
-    const oauthReturnUrl = sessionStorage.getItem('oauth_returnUrl');
-    console.log('Checkout render - oauth_returnUrl:', oauthReturnUrl);
-    if (oauthReturnUrl) {
-      const validatedReturnUrl = validateReturnUrl(oauthReturnUrl);
-      console.log('Checkout render - validatedReturnUrl:', validatedReturnUrl);
-      if (validatedReturnUrl && !validatedReturnUrl.includes('/checkout')) {
-        // User should be on account page, don't render anything - useEffect will redirect
-        // But also trigger redirect immediately in case useEffect hasn't run yet
-        console.log('Checkout render - redirecting IMMEDIATELY to account:', validatedReturnUrl);
-        window.location.replace(validatedReturnUrl);
-        return null;
-      }
-    }
-  }
+  // Note: OAuth redirect handling is done in useEffect (lines 193-215) to avoid
+  // redirecting during normal checkout flow. The redirect only happens once on mount.
   
   // If maintenance mode is active, don't render checkout
   if (maintenanceMode) {
