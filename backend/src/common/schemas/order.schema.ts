@@ -5,7 +5,13 @@ export const OrderItemSchema = z.object({
   productId: z.string(),
   quantity: z.number().int().positive(),
   priceCents: z.number().int().nonnegative(),
-  modifiers: z.array(z.unknown()).optional(),
+  // Modifiers can be either:
+  // 1. Object (Record<string, string[]>) - current format: { modifierId: [optionId1, optionId2] }
+  // 2. Array - legacy format (for backward compatibility)
+  modifiers: z.union([
+    z.record(z.string(), z.array(z.string())), // Object format: { "size": ["large"], "toppings": ["cheese"] }
+    z.array(z.unknown()), // Legacy array format
+  ]).optional(),
 });
 
 export const OrderResponseSchema = z.object({
