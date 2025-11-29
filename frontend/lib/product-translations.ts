@@ -474,8 +474,26 @@ export const productTranslations: Record<string, ProductTranslation> = {
   'Tomato Soup': {
     name: { sk: 'Paradajková polievka', en: 'Tomato Soup' },
     description: {
-      sk: 'Klasická paradajková polievka s bazalkou',
-      en: 'Classic tomato soup with basil'
+      sk: '🥫 Zachráni aj po najdivokejšej noci.',
+      en: '🥫 Saves even after the wildest night.'
+    },
+    weight: '300ml',
+    allergens: ['1', '7']
+  },
+  'Paradajková polievka': {
+    name: { sk: 'Paradajková polievka', en: 'Tomato Soup' },
+    description: {
+      sk: '🥫 Zachráni aj po najdivokejšej noci.',
+      en: '🥫 Saves even after the wildest night.'
+    },
+    weight: '300ml',
+    allergens: ['1', '7']
+  },
+  'Paradajkova polievka': {
+    name: { sk: 'Paradajková polievka', en: 'Tomato Soup' },
+    description: {
+      sk: '🥫 Zachráni aj po najdivokejšej noci.',
+      en: '🥫 Saves even after the wildest night.'
     },
     weight: '300ml',
     allergens: ['1', '7']
@@ -604,10 +622,35 @@ export function getAllergenDescription(allergenCode: string, language: 'sk' | 'e
 }
 
 /**
+ * Normalize product name for matching (remove diacritics, lowercase, trim)
+ */
+function normalizeProductName(name: string): string {
+  return name
+    .toLowerCase()
+    .trim()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, ''); // Remove diacritics
+}
+
+/**
  * Get translated product name and description
  */
 export function getProductTranslation(productName: string, language: 'sk' | 'en') {
-  const translation = productTranslations[productName];
+  // First try exact match
+  let translation = productTranslations[productName];
+  let found = !!translation;
+  
+  // If not found, try case-insensitive match
+  if (!translation) {
+    const normalizedInput = normalizeProductName(productName);
+    for (const [key, value] of Object.entries(productTranslations)) {
+      if (normalizeProductName(key) === normalizedInput) {
+        translation = value;
+        found = true;
+        break;
+      }
+    }
+  }
   
   if (translation) {
     return {
@@ -615,6 +658,7 @@ export function getProductTranslation(productName: string, language: 'sk' | 'en'
       description: translation.description[language],
       weight: translation.weight,
       allergens: translation.allergens,
+      found: true, // Indicate that translation was found
     };
   }
   
@@ -624,5 +668,6 @@ export function getProductTranslation(productName: string, language: 'sk' | 'en'
     description: '',
     weight: undefined,
     allergens: undefined,
+    found: false, // Indicate that no translation was found
   };
 }

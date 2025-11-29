@@ -94,8 +94,23 @@ export const ProductCard = memo(function ProductCard({ product, index = 0, isBes
   
   // Get translated product name, description, weight and allergens
   const translation = useMemo(() => getProductTranslation(product.name, language), [product.name, language]);
-  const displayName = useMemo(() => translation.name || product.name, [translation.name, product.name]);
-  const displayDescription = useMemo(() => translation.description || product.description, [translation.description, product.description]);
+  
+  // Use translation if it was found, otherwise use original product data
+  const displayName = useMemo(() => {
+    if (translation.found && translation.name) {
+      return translation.name;
+    }
+    return product.name;
+  }, [translation.found, translation.name, product.name]);
+  
+  const displayDescription = useMemo(() => {
+    if (translation.found) {
+      // Use translation description (even if empty, it means translation was found)
+      return translation.description || '';
+    }
+    // Only use product.description if no translation was found
+    return product.description || '';
+  }, [translation.found, translation.description, product.description]);
   const fallbackImage = useMemo(() => {
     // Check if product is a drink and has a fallback image
     if (product.category === 'DRINKS') {

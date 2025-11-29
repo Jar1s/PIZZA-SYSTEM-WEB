@@ -193,10 +193,10 @@ export default function OrderTrackingPage() {
           >
             <div className="text-6xl mb-4 text-center">😕</div>
             <h1 className="text-2xl font-bold mb-2 text-center text-white">
-              {t.orderNotFound || 'Order Not Found'}
+              {t.orderNotFound}
             </h1>
             <p className="mb-6 text-center text-gray-300">
-              {error || (t.orderNotFoundMessage || 'We couldn\'t find this order')}
+              {error || t.orderNotFoundMessage}
             </p>
             <div className="text-center">
               <button
@@ -207,7 +207,7 @@ export default function OrderTrackingPage() {
                   color: 'white'
                 }}
               >
-                {t.backToHome || 'Back to Home'}
+                {t.backToHome}
               </button>
             </div>
           </motion.div>
@@ -258,18 +258,18 @@ export default function OrderTrackingPage() {
           {/* Title Section */}
           <div className="text-center">
             <div className="flex items-center justify-center gap-3 mb-2">
-              <h1 className="text-4xl font-bold">{t.trackYourOrder || 'Track Your Order'}</h1>
+              <h1 className="text-4xl font-bold">{t.trackYourOrder}</h1>
               {isRefreshing && (
                 <div className="animate-spin text-2xl">🔄</div>
               )}
             </div>
             <p className={isDark ? 'text-gray-300' : 'text-gray-600'}>
-              {t.orderNumber || 'Order'} #{orderNumber}
+              {t.orderNumber} #{orderNumber}
             </p>
             <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{orderDate}</p>
             {isRefreshing && (
               <p className={`text-xs mt-2 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
-                {t.updating || 'Updating...'}
+                {t.updating}
               </p>
             )}
           </div>
@@ -283,7 +283,7 @@ export default function OrderTrackingPage() {
           className={`${sectionShellClass} mb-8`}
         >
           <h3 className={`text-xl font-bold mb-6 ${isDark ? 'text-white' : 'text-gray-800'}`}>
-            {t.orderProgress || 'Order Progress'}
+            {t.orderProgress}
           </h3>
           <StatusTimeline status={orderStatus} />
         </motion.div>
@@ -296,7 +296,7 @@ export default function OrderTrackingPage() {
           className={`${sectionShellClass} mb-8`}
         >
           <h3 className={`text-xl font-bold mb-6 ${isDark ? 'text-white' : 'text-gray-800'}`}>
-            {t.orderDetails || 'Order Details'}
+            {t.orderDetails}
           </h3>
           
           {/* Items */}
@@ -328,17 +328,17 @@ export default function OrderTrackingPage() {
           {/* Totals */}
           <div className={`space-y-2 mb-6 pb-6 ${isDark ? 'border-b border-white/10' : 'border-b border-gray-200'}`}>
             <div className={`flex justify-between ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
-              <span>{t.subtotal || 'Subtotal'}</span>
+              <span>{t.subtotal}</span>
               <span>€{(order.subtotalCents / 100).toFixed(2)}</span>
             </div>
             {order.deliveryFeeCents > 0 && (
               <div className={`flex justify-between ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
-                <span>{t.deliveryFee || 'Delivery Fee'}</span>
+                <span>{t.deliveryFee}</span>
                 <span>€{(order.deliveryFeeCents / 100).toFixed(2)}</span>
               </div>
             )}
             <div className={`flex justify-between text-xl font-bold pt-2 ${isDark ? 'text-white' : 'text-gray-800'}`}>
-              <span>{t.total || 'Total'}</span>
+              <span>{t.total}</span>
               <span style={{ color: primaryColor }}>
                 €{(order.totalCents / 100).toFixed(2)}
               </span>
@@ -348,17 +348,17 @@ export default function OrderTrackingPage() {
           {/* Delivery Address */}
           <div>
             <h4 className={`font-semibold mb-2 ${isDark ? 'text-white' : 'text-gray-800'}`}>
-              {t.deliveryAddress || 'Delivery Address'}
+              {t.deliveryAddress}
             </h4>
             <p className={isDark ? 'text-gray-300' : 'text-gray-600'}>
               {order.customer.name}<br />
               {order.address.street}<br />
               {order.address.city}, {order.address.postalCode}<br />
-              {order.address.country || 'Slovakia'}
+              {order.address.country || (language === 'sk' ? 'Slovensko' : 'Slovakia')}
             </p>
             {order.address.instructions && (
               <p className={`text-sm mt-2 italic ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-                {t.note || 'Note'}: {order.address.instructions}
+                {t.note}: {order.address.instructions}
               </p>
             )}
           </div>
@@ -372,10 +372,10 @@ export default function OrderTrackingPage() {
           className={`${sectionShellClass} text-center`}
         >
           <h3 className={`text-lg font-bold mb-2 ${isDark ? 'text-white' : 'text-gray-800'}`}>
-            {t.needHelp || 'Need Help?'}
+            {t.needHelp}
           </h3>
           <p className={`mb-4 ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
-            {t.questionsAboutOrder || 'Questions about your order? Contact us at:'}
+            {t.questionsAboutOrder}
           </p>
           <p className={`font-semibold ${isDark ? 'text-white' : 'text-gray-800'}`}>
             {tenant && (
