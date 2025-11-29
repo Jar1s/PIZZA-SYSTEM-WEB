@@ -5,7 +5,7 @@ import { Order } from '@prisma/client';
 @Injectable()
 export class EmailService {
   private readonly logger = new Logger(EmailService.name);
-  private transporter: nodemailer.Transporter;
+  private transporter: nodemailer.Transporter | null;
 
   constructor() {
     // Configure email transporter
@@ -24,12 +24,9 @@ export class EmailService {
         },
       });
     } else {
-      // Development: Log emails to console instead of sending
-      this.transporter = nodemailer.createTransport({
-        streamTransport: true,
-        newline: 'unix',
-        buffer: true,
-      });
+      // Development: Create a dummy transporter that won't actually send
+      // We'll handle dev mode in the send methods directly
+      this.transporter = null as any;
       this.logger.warn('⚠️  Email service in DEV mode - emails will be logged, not sent');
     }
   }
@@ -56,17 +53,17 @@ export class EmailService {
     );
 
     try {
-      const info = await this.transporter.sendMail({
-        from: process.env.EMAIL_FROM || `"${tenantName}" <orders@${tenantDomain}>`,
-        to: customer.email,
-        subject: `🍕 Objednávka prijatá #${order.id.slice(0, 8).toUpperCase()} - ${tenantName}`,
-        html: emailHtml,
-      });
-
-      if (process.env.SMTP_HOST) {
+      if (process.env.SMTP_HOST && this.transporter) {
+        // Production: Actually send the email
+        const info = await this.transporter.sendMail({
+          from: process.env.EMAIL_FROM || `"${tenantName}" <orders@${tenantDomain}>`,
+          to: customer.email,
+          subject: `🍕 Objednávka prijatá #${order.id.slice(0, 8).toUpperCase()} - ${tenantName}`,
+          html: emailHtml,
+        });
         this.logger.log(`✅ Email sent to ${customer.email}: ${info.messageId}`);
       } else {
-        // In dev mode, log the email content
+        // Dev mode: Just log the email content
         this.logger.log(`📧 [DEV MODE] Email would be sent to: ${customer.email}`);
         this.logger.log(`📧 Tracking URL: ${trackingUrl}`);
         console.log('\n📧 EMAIL PREVIEW:\n');
@@ -99,17 +96,17 @@ export class EmailService {
     );
 
     try {
-      const info = await this.transporter.sendMail({
-        from: process.env.EMAIL_FROM || `"${tenantName}" <orders@${tenantDomain}>`,
-        to: user.email,
-        subject: `🔐 Nastavte si heslo pre váš účet - ${tenantName}`,
-        html: emailHtml,
-      });
-
-      if (process.env.SMTP_HOST) {
+      if (process.env.SMTP_HOST && this.transporter) {
+        // Production: Actually send the email
+        const info = await this.transporter.sendMail({
+          from: process.env.EMAIL_FROM || `"${tenantName}" <orders@${tenantDomain}>`,
+          to: user.email,
+          subject: `🔐 Nastavte si heslo pre váš účet - ${tenantName}`,
+          html: emailHtml,
+        });
         this.logger.log(`✅ Password setup email sent to ${user.email}: ${info.messageId}`);
       } else {
-        // In dev mode, log the email content
+        // Dev mode: Just log the email content
         this.logger.log(`📧 [DEV MODE] Password setup email would be sent to: ${user.email}`);
         this.logger.log(`📧 Reset URL: ${resetUrl}`);
         console.log('\n📧 PASSWORD SETUP EMAIL PREVIEW:\n');
@@ -357,16 +354,17 @@ export class EmailService {
     const emailHtml = this.buildWelcomeEmail(user, tenantName, tenantDomain);
 
     try {
-      const info = await this.transporter.sendMail({
-        from: process.env.EMAIL_FROM || `"${tenantName}" <orders@${tenantDomain}>`,
-        to: user.email,
-        subject: `🎉 Vitajte v ${tenantName}!`,
-        html: emailHtml,
-      });
-
-      if (process.env.SMTP_HOST) {
+      if (process.env.SMTP_HOST && this.transporter) {
+        // Production: Actually send the email
+        const info = await this.transporter.sendMail({
+          from: process.env.EMAIL_FROM || `"${tenantName}" <orders@${tenantDomain}>`,
+          to: user.email,
+          subject: `🎉 Vitajte v ${tenantName}!`,
+          html: emailHtml,
+        });
         this.logger.log(`✅ Welcome email sent to ${user.email}: ${info.messageId}`);
       } else {
+        // Dev mode: Just log the email content
         this.logger.log(`📧 [DEV MODE] Welcome email would be sent to: ${user.email}`);
         console.log('\n📧 WELCOME EMAIL PREVIEW:\n');
         console.log(`To: ${user.email}`);

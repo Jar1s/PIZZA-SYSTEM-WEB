@@ -156,9 +156,10 @@ export class CustomerAuthController {
     @Query('state') state?: string,
   ) {
     const clientId = process.env.GOOGLE_CLIENT_ID;
-    const backendUrl = process.env.BACKEND_URL || process.env.API_URL;
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3001';
+    // Use frontend URL as redirect URI (Google will redirect to frontend, not backend)
     const redirectUri = process.env.GOOGLE_REDIRECT_URI || 
-      (backendUrl ? `${backendUrl}/api/auth/customer/google/callback` : undefined);
+      `${frontendUrl}/auth/google/callback`;
 
     if (!clientId) {
       return res.status(400).json({
@@ -177,14 +178,22 @@ export class CustomerAuthController {
       });
     }
 
+    // Log redirect URI for debugging (important for fixing redirect_uri_mismatch errors)
+    console.log('🔐 Google OAuth redirect URI:', redirectUri);
+    console.log('🔐 Google OAuth config:', {
+      redirectUri,
+      frontendUrl,
+      GOOGLE_REDIRECT_URI: process.env.GOOGLE_REDIRECT_URI,
+      FRONTEND_URL: process.env.FRONTEND_URL,
+      NODE_ENV: process.env.NODE_ENV,
+    });
+
     // Warn if using localhost in production
     if (process.env.NODE_ENV === 'production' && redirectUri.includes('localhost')) {
       console.error('⚠️ WARNING: Google OAuth redirect URI contains localhost in production!', {
         redirectUri,
-        backendUrl,
         GOOGLE_REDIRECT_URI: process.env.GOOGLE_REDIRECT_URI,
-        BACKEND_URL: process.env.BACKEND_URL,
-        API_URL: process.env.API_URL,
+        FRONTEND_URL: process.env.FRONTEND_URL,
       });
     }
 
@@ -204,11 +213,87 @@ export class CustomerAuthController {
       `access_type=offline&` +
       `prompt=consent`;
 
+    console.log('🔐 Redirecting to Google OAuth with redirect_uri:', redirectUri);
     res.redirect(googleAuthUrl);
   }
 
   /**
-   * Google OAuth callback
+   * Google OAuth exchange endpoint (for frontend callback)
+   * Frontend receives code from Google and sends it here to exchange for tokens
+   */
+  @Public()
+  @Post('google/exchange')
+  async googleExchange(
+    @Body() body: { code: string; state?: string },
+    @Res() res: Response,
+  ) {
+    const { code, state } = body;
+
+    if (!code) {
+      return res.status(400).json({
+        message: 'Code is required',
+        error: 'Bad Request',
+        statusCode: 400,
+      });
+    }
+
+    try {
+      const { OAuth2Client } = require('google-auth-library');
+      const clientId = process.env.GOOGLE_CLIENT_ID;
+      const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3001';
+      
+      // Use the SAME redirect URI as in googleRedirect method
+      // This must match exactly what was sent to Google in the initial redirect
+      const redirectUri = process.env.GOOGLE_REDIRECT_URI || 
+        `${frontendUrl}/auth/google/callback`;
+
+      console.log('🔐 Google OAuth exchange - using redirect URI:', redirectUri);
+
+      if (!clientId || !clientSecret) {
+        return res.status(500).json({
+          message: 'Google OAuth is not configured',
+          error: 'Not Configured',
+          statusCode: 500,
+        });
+      }
+
+      const client = new OAuth2Client(clientId, clientSecret, redirectUri);
+
+      // Exchange code for tokens
+      const { tokens: googleTokens } = await client.getToken(code);
+      const idToken = googleTokens.id_token;
+
+      if (!idToken) {
+        return res.status(400).json({
+          message: 'No ID token received from Google',
+          error: 'Bad Request',
+          statusCode: 400,
+        });
+      }
+
+      // Login with Google (reuse existing service method)
+      const result = await this.customerAuthService.loginWithGoogle(idToken);
+
+      // Return tokens to frontend
+      return res.json({
+        access_token: result.access_token,
+        refresh_token: result.refresh_token,
+        user: result.user,
+        needsSmsVerification: result.needsSmsVerification,
+      });
+    } catch (error: any) {
+      console.error('Google OAuth exchange error:', error);
+      return res.status(500).json({
+        message: error.message || 'Failed to exchange code for tokens',
+        error: 'Internal Server Error',
+        statusCode: 500,
+      });
+    }
+  }
+
+  /**
+   * Google OAuth callback (legacy - kept for backward compatibility)
    */
   @Public()
   @Get('google/callback')
