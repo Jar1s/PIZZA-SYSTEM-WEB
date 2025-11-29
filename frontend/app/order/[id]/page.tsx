@@ -5,6 +5,11 @@ import { useParams, useSearchParams, useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { formatModifiers } from '@/lib/format-modifiers';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { Header } from '@/components/layout/Header';
+import { StatusTimeline } from '@/components/tracking/StatusTimeline';
+import { getTenant } from '@/lib/api';
+import { Tenant, OrderStatus } from '@pizza-ecosystem/shared';
+import { withTenantThemeDefaults, getBackgroundClass, isDarkTheme, getSectionShellClass } from '@/lib/tenant-utils';
 
 interface OrderItem {
   id: string;
@@ -38,64 +43,31 @@ interface Order {
   updatedAt: string;
 }
 
-const orderStatuses = {
-  PENDING: {
-    label: 'Order Received',
-    icon: '📋',
-    color: '#6b7280',
-    description: 'We received your order',
-  },
-  PAID: {
-    label: 'Payment Confirmed',
-    icon: '💳',
-    color: '#3b82f6',
-    description: 'Payment successful',
-  },
-  PREPARING: {
-    label: 'Preparing',
-    icon: '👨‍🍳',
-    color: '#f59e0b',
-    description: 'Your pizza is being made',
-  },
-  READY: {
-    label: 'Ready',
-    icon: '✅',
-    color: '#10b981',
-    description: 'Order is ready',
-  },
-  OUT_FOR_DELIVERY: {
-    label: 'Out for Delivery',
-    icon: '🚗',
-    color: '#8b5cf6',
-    description: 'Driver is on the way',
-  },
-  DELIVERED: {
-    label: 'Delivered',
-    icon: '🎉',
-    color: '#22c55e',
-    description: 'Enjoy your meal!',
-  },
-  CANCELED: {
-    label: 'Canceled',
-    icon: '❌',
-    color: '#ef4444',
-    description: 'Order was canceled',
-  },
-};
-
-const statusOrder = ['PENDING', 'PAID', 'PREPARING', 'READY', 'OUT_FOR_DELIVERY', 'DELIVERED'];
-
 export default function OrderTrackingPage() {
   const params = useParams();
   const searchParams = useSearchParams();
   const router = useRouter();
   const { t, language } = useLanguage();
   const orderId = params.id as string;
-  const tenant = searchParams.get('tenant') || 'pornopizza'; // Default tenant
+  const tenantSlug = searchParams.get('tenant') || 'pornopizza';
   
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [tenant, setTenant] = useState<Tenant | null>(null);
+
+  // Load tenant
+  useEffect(() => {
+    const loadTenant = async () => {
+      try {
+        const tenantData = await getTenant(tenantSlug);
+        setTenant(tenantData);
+      } catch (error) {
+        console.error('Failed to load tenant:', error);
+      }
+    };
+    loadTenant();
+  }, [tenantSlug]);
 
   const fetchOrder = useCallback(async (retryCount = 0) => {
     try {
@@ -156,12 +128,19 @@ export default function OrderTrackingPage() {
     return () => clearInterval(interval);
   }, [order, fetchOrder]);
 
-  if (loading) {
+  // Get tenant theme
+  const normalizedTenant = withTenantThemeDefaults(tenant);
+  const isDark = isDarkTheme(normalizedTenant);
+  const backgroundClass = tenant ? getBackgroundClass(normalizedTenant) : 'bg-gray-50';
+  const sectionShellClass = tenant ? getSectionShellClass(normalizedTenant) : 'bg-white rounded-3xl px-6 py-10 lg:px-16 shadow-xl';
+  const primaryColor = normalizedTenant?.theme?.primaryColor || '#E91E63';
+
+  if (loading || !tenant) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-orange-50 to-red-50 flex items-center justify-center">
+      <div className={`min-h-screen ${backgroundClass} flex items-center justify-center`}>
         <div className="text-center">
           <div className="animate-spin text-6xl mb-4">🍕</div>
-          <p className="text-gray-600 text-lg">Loading your order...</p>
+          <p className={isDark ? 'text-white' : 'text-gray-600'}>{t.loading}</p>
         </div>
       </div>
     );
@@ -169,30 +148,41 @@ export default function OrderTrackingPage() {
 
   if (error || !order) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-orange-50 to-red-50 flex items-center justify-center p-4">
-        <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full text-center"
-        >
-          <div className="text-6xl mb-4">😕</div>
-          <h1 className="text-2xl font-bold text-gray-800 mb-2">Order Not Found</h1>
-          <p className="text-gray-600 mb-6">{error || 'We couldn\'t find this order'}</p>
-          <a
-            href="/"
-            className="inline-block bg-orange-500 hover:bg-orange-600 text-white font-semibold px-6 py-3 rounded-lg transition-colors"
+      <div className={`min-h-screen ${backgroundClass}`}>
+        <Header tenant={tenant} />
+        <div className="flex items-center justify-center min-h-[calc(100vh-80px)] p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className={sectionShellClass}
           >
-            Back to Home
-          </a>
-        </motion.div>
+            <div className="text-6xl mb-4 text-center">😕</div>
+            <h1 className={`text-2xl font-bold mb-2 text-center ${isDark ? 'text-white' : 'text-gray-800'}`}>
+              {t.orderNotFound || 'Order Not Found'}
+            </h1>
+            <p className={`mb-6 text-center ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
+              {error || (t.orderNotFoundMessage || 'We couldn\'t find this order')}
+            </p>
+            <div className="text-center">
+              <button
+                onClick={() => router.push(`/?tenant=${tenantSlug}`)}
+                className="px-6 py-3 rounded-lg font-semibold transition-colors"
+                style={{ 
+                  backgroundColor: primaryColor,
+                  color: 'white'
+                }}
+              >
+                {t.backToHome || 'Back to Home'}
+              </button>
+            </div>
+          </motion.div>
+        </div>
       </div>
     );
   }
 
-  const currentStatusInfo = orderStatuses[order.status as keyof typeof orderStatuses];
-  const currentStatusIndex = statusOrder.indexOf(order.status);
   const orderNumber = order.id.slice(0, 8).toUpperCase();
-  const orderDate = new Date(order.createdAt).toLocaleString('en-US', {
+  const orderDate = new Date(order.createdAt).toLocaleString('sk-SK', {
     month: 'short',
     day: 'numeric',
     year: 'numeric',
@@ -200,123 +190,62 @@ export default function OrderTrackingPage() {
     minute: '2-digit',
   });
 
+  const orderStatus = order.status as OrderStatus;
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-50 to-red-50 py-12 px-4">
-      <div className="max-w-4xl mx-auto">
-        
-        {/* Back Button */}
-        <motion.div
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
-          className="mb-6"
-        >
-          <button
-            onClick={() => router.push(`/?tenant=${tenant}`)}
-            className="flex items-center gap-2 text-gray-600 hover:text-gray-800 transition-colors"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
-            <span className="font-medium">{t.back}</span>
-          </button>
-        </motion.div>
+    <div className={`min-h-screen ${backgroundClass}`}>
+      <Header tenant={tenant} />
+      <div className="max-w-4xl mx-auto px-4 py-12">
         
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="text-center mb-8"
+          className={`text-center mb-8 ${isDark ? 'text-white' : 'text-gray-800'}`}
         >
-          <h1 className="text-4xl font-bold text-gray-800 mb-2">Track Your Order</h1>
-          <p className="text-gray-600">Order #{orderNumber}</p>
-          <p className="text-gray-500 text-sm">{orderDate}</p>
-        </motion.div>
-
-        {/* Current Status Card */}
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="bg-white rounded-2xl shadow-xl p-8 mb-8 text-center"
-          style={{ borderTop: `4px solid ${currentStatusInfo.color}` }}
-        >
-          <div className="text-7xl mb-4">{currentStatusInfo.icon}</div>
-          <h2 className="text-3xl font-bold text-gray-800 mb-2">{currentStatusInfo.label}</h2>
-          <p className="text-gray-600 text-lg">{currentStatusInfo.description}</p>
+          <h1 className="text-4xl font-bold mb-2">{t.trackYourOrder || 'Track Your Order'}</h1>
+          <p className={isDark ? 'text-gray-300' : 'text-gray-600'}>
+            {t.orderNumber || 'Order'} #{orderNumber}
+          </p>
+          <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{orderDate}</p>
         </motion.div>
 
         {/* Status Timeline */}
-        {order.status !== 'CANCELED' && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="bg-white rounded-2xl shadow-xl p-8 mb-8"
-          >
-            <h3 className="text-xl font-bold text-gray-800 mb-6">Order Progress</h3>
-            <div className="space-y-4">
-              {statusOrder.map((status, index) => {
-                const statusInfo = orderStatuses[status as keyof typeof orderStatuses];
-                const isComplete = index <= currentStatusIndex;
-                const isCurrent = index === currentStatusIndex;
-                
-                return (
-                  <div key={status} className="flex items-center gap-4">
-                    <div
-                      className={`w-12 h-12 rounded-full flex items-center justify-center text-2xl transition-all ${
-                        isComplete
-                          ? 'bg-green-100 scale-110'
-                          : 'bg-gray-100 opacity-50'
-                      } ${isCurrent ? 'ring-4 ring-green-200' : ''}`}
-                    >
-                      {statusInfo.icon}
-                    </div>
-                    <div className="flex-1">
-                      <p
-                        className={`font-semibold ${
-                          isComplete ? 'text-gray-800' : 'text-gray-400'
-                        }`}
-                      >
-                        {statusInfo.label}
-                      </p>
-                      <p
-                        className={`text-sm ${
-                          isComplete ? 'text-gray-600' : 'text-gray-400'
-                        }`}
-                      >
-                        {statusInfo.description}
-                      </p>
-                    </div>
-                    {isComplete && (
-                      <div className="text-green-500 text-xl">✓</div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </motion.div>
-        )}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className={`${sectionShellClass} mb-8`}
+        >
+          <h3 className={`text-xl font-bold mb-6 ${isDark ? 'text-white' : 'text-gray-800'}`}>
+            {t.orderProgress || 'Order Progress'}
+          </h3>
+          <StatusTimeline status={orderStatus} />
+        </motion.div>
 
         {/* Order Details */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
-          className="bg-white rounded-2xl shadow-xl p-8 mb-8"
+          className={`${sectionShellClass} mb-8`}
         >
-          <h3 className="text-xl font-bold text-gray-800 mb-6">Order Details</h3>
+          <h3 className={`text-xl font-bold mb-6 ${isDark ? 'text-white' : 'text-gray-800'}`}>
+            {t.orderDetails || 'Order Details'}
+          </h3>
           
           {/* Items */}
-          <div className="space-y-3 mb-6 pb-6 border-b">
+          <div className={`space-y-3 mb-6 pb-6 ${isDark ? 'border-b border-white/10' : 'border-b border-gray-200'}`}>
             {order.items.map((item) => (
               <div key={item.id} className="flex justify-between items-center">
                 <div>
-                  <p className="font-medium text-gray-800">
+                  <p className={`font-medium ${isDark ? 'text-white' : 'text-gray-800'}`}>
                     {item.quantity}x {item.productName}
                   </p>
                   {(() => {
-                    const modifiers = formatModifiers(item.modifiers, true, language); // Use defaults
+                    const modifiers = formatModifiers(item.modifiers, true, language);
                     return modifiers.length > 0 && (
-                      <div className="text-sm text-gray-500 mt-1 space-y-0.5">
+                      <div className={`text-sm mt-1 space-y-0.5 ${isDark ? 'text-gray-300' : 'text-gray-500'}`}>
                         {modifiers.map((mod, idx) => (
                           <div key={idx}>• {mod}</div>
                         ))}
@@ -324,7 +253,7 @@ export default function OrderTrackingPage() {
                     );
                   })()}
                 </div>
-                <p className="font-semibold text-gray-700">
+                <p className={`font-semibold ${isDark ? 'text-white' : 'text-gray-700'}`}>
                   €{((item.priceCents * item.quantity) / 100).toFixed(2)}
                 </p>
               </div>
@@ -332,37 +261,39 @@ export default function OrderTrackingPage() {
           </div>
 
           {/* Totals */}
-          <div className="space-y-2 mb-6 pb-6 border-b">
-            <div className="flex justify-between text-gray-600">
-              <span>Subtotal</span>
+          <div className={`space-y-2 mb-6 pb-6 ${isDark ? 'border-b border-white/10' : 'border-b border-gray-200'}`}>
+            <div className={`flex justify-between ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
+              <span>{t.subtotal || 'Subtotal'}</span>
               <span>€{(order.subtotalCents / 100).toFixed(2)}</span>
             </div>
-            <div className="flex justify-between text-gray-600">
-              <span>Tax (20%)</span>
-              <span>€{(order.taxCents / 100).toFixed(2)}</span>
-            </div>
-            <div className="flex justify-between text-gray-600">
-              <span>Delivery Fee</span>
-              <span>€{(order.deliveryFeeCents / 100).toFixed(2)}</span>
-            </div>
-            <div className="flex justify-between text-xl font-bold text-gray-800 pt-2">
-              <span>Total</span>
-              <span className="text-orange-500">€{(order.totalCents / 100).toFixed(2)}</span>
+            {order.deliveryFeeCents > 0 && (
+              <div className={`flex justify-between ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
+                <span>{t.deliveryFee || 'Delivery Fee'}</span>
+                <span>€{(order.deliveryFeeCents / 100).toFixed(2)}</span>
+              </div>
+            )}
+            <div className={`flex justify-between text-xl font-bold pt-2 ${isDark ? 'text-white' : 'text-gray-800'}`}>
+              <span>{t.total || 'Total'}</span>
+              <span style={{ color: primaryColor }}>
+                €{(order.totalCents / 100).toFixed(2)}
+              </span>
             </div>
           </div>
 
           {/* Delivery Address */}
           <div>
-            <h4 className="font-semibold text-gray-800 mb-2">Delivery Address</h4>
-            <p className="text-gray-600">
+            <h4 className={`font-semibold mb-2 ${isDark ? 'text-white' : 'text-gray-800'}`}>
+              {t.deliveryAddress || 'Delivery Address'}
+            </h4>
+            <p className={isDark ? 'text-gray-300' : 'text-gray-600'}>
               {order.customer.name}<br />
               {order.address.street}<br />
               {order.address.city}, {order.address.postalCode}<br />
               {order.address.country || 'Slovakia'}
             </p>
             {order.address.instructions && (
-              <p className="text-gray-500 text-sm mt-2 italic">
-                Note: {order.address.instructions}
+              <p className={`text-sm mt-2 italic ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                {t.note || 'Note'}: {order.address.instructions}
               </p>
             )}
           </div>
@@ -373,13 +304,15 @@ export default function OrderTrackingPage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
-          className="bg-white rounded-2xl shadow-xl p-8 text-center"
+          className={`${sectionShellClass} text-center`}
         >
-          <h3 className="text-lg font-bold text-gray-800 mb-2">Need Help?</h3>
-          <p className="text-gray-600 mb-4">
-            Questions about your order? Contact us at:
+          <h3 className={`text-lg font-bold mb-2 ${isDark ? 'text-white' : 'text-gray-800'}`}>
+            {t.needHelp || 'Need Help?'}
+          </h3>
+          <p className={`mb-4 ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
+            {t.questionsAboutOrder || 'Questions about your order? Contact us at:'}
           </p>
-          <p className="text-gray-800 font-semibold">
+          <p className={`font-semibold ${isDark ? 'text-white' : 'text-gray-800'}`}>
             📧 {order.customer.email}<br />
             📱 {order.customer.phone}
           </p>
@@ -389,4 +322,3 @@ export default function OrderTrackingPage() {
     </div>
   );
 }
-

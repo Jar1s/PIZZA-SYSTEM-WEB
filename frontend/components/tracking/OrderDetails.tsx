@@ -53,10 +53,6 @@ export function OrderDetails({ order }: OrderDetailsProps) {
           <span>Subtotal</span>
           <span>€{(order.subtotalCents / 100).toFixed(2)}</span>
         </div>
-        <div className="flex justify-between text-gray-600">
-          <span>Tax (20%)</span>
-          <span>€{(order.taxCents / 100).toFixed(2)}</span>
-        </div>
         {order.deliveryFeeCents > 0 && (
           <div className="flex justify-between text-gray-600">
             <span>Delivery Fee</span>

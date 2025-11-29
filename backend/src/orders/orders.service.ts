@@ -335,16 +335,9 @@ export class OrdersService {
       };
     });
 
-    // Get tax rate from tenant theme or use default (not hardcoded)
-    const tenantForTax = await this.prisma.tenant.findUnique({
-      where: { id: tenantId },
-      select: { theme: true },
-    });
-    const tenantTheme = (tenantForTax?.theme || {}) as TenantTheme;
-    const taxRate = tenantTheme.taxRate ?? appConfig.defaultTaxRate;
-    const taxRateDecimal = taxRate / 100; // Convert percentage to decimal (20.0 -> 0.20)
-    
-    const taxCents = Math.round(subtotalCents * taxRateDecimal);
+    // Prices already include VAT, so taxCents = 0
+    // (Ceny na webe sú už vrátane DPH, takže nepridávame DPH navyše)
+    const taxCents = 0;
     
     // SECURITY FIX: Calculate delivery fee server-side based on address
     // Ignore client-provided deliveryFeeCents to prevent manipulation
@@ -412,7 +405,8 @@ export class OrdersService {
       }
     }
     
-    const totalCents = subtotalCents + taxCents + deliveryFeeCents;
+    // Total = subtotal + delivery fee (prices already include VAT)
+    const totalCents = subtotalCents + deliveryFeeCents;
 
     // Create order (userId can be null for guest orders)
     const order = await this.prisma.order.create({

@@ -291,14 +291,12 @@ export class EmailService {
                   <td style="color: #666; font-size: 16px;">Medzisúčet</td>
                   <td align="right" style="color: #333; font-size: 16px; font-weight: bold;">${this.formatCurrency(order.subtotalCents, currency)}</td>
                 </tr>
-                <tr>
-                  <td style="color: #666; font-size: 16px;">DPH</td>
-                  <td align="right" style="color: #333; font-size: 16px;">${this.formatCurrency(order.taxCents, currency)}</td>
-                </tr>
+                ${order.deliveryFeeCents > 0 ? `
                 <tr>
                   <td style="color: #666; font-size: 16px;">Doprava</td>
                   <td align="right" style="color: #333; font-size: 16px;">${this.formatCurrency(order.deliveryFeeCents, currency)}</td>
                 </tr>
+                ` : ''}
                 <tr style="border-top: 2px solid #f0f0f0;">
                   <td style="color: #333; font-size: 18px; font-weight: bold; padding-top: 15px;">Celkom</td>
                   <td align="right" style="color: #ff6b35; font-size: 20px; font-weight: bold; padding-top: 15px;">${orderTotal}</td>
