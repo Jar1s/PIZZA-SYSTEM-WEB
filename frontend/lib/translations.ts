@@ -610,6 +610,10 @@ export const translations = {
     processing: 'Processing...',
     confirmOrder: 'Confirm Order',
     pay: 'Pay',
+    
+    // Order Not Found
+    orderNotFound: 'Order Not Found',
+    orderNotFoundMessage: 'We couldn\'t find this order',
   },
 };
 

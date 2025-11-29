@@ -128,19 +128,19 @@ export default function OrderTrackingPage() {
     return () => clearInterval(interval);
   }, [order, fetchOrder]);
 
-  // Get tenant theme
+  // Get tenant theme - Force dark theme for tracking page
   const normalizedTenant = withTenantThemeDefaults(tenant);
-  const isDark = isDarkTheme(normalizedTenant);
-  const backgroundClass = tenant ? getBackgroundClass(normalizedTenant) : 'bg-gray-50';
-  const sectionShellClass = tenant ? getSectionShellClass(normalizedTenant) : 'bg-white rounded-3xl px-6 py-10 lg:px-16 shadow-xl';
+  const isDark = true; // Always dark theme for tracking page
+  const backgroundClass = 'bg-black'; // Always black background
+  const sectionShellClass = 'bg-gray-900 rounded-3xl px-6 py-10 lg:px-16 shadow-xl border border-gray-800'; // Dark cards
   const primaryColor = normalizedTenant?.theme?.primaryColor || '#E91E63';
 
   if (loading || !tenant) {
     return (
-      <div className={`min-h-screen ${backgroundClass} flex items-center justify-center`}>
+      <div className="min-h-screen bg-black flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin text-6xl mb-4">🍕</div>
-          <p className={isDark ? 'text-white' : 'text-gray-600'}>{t.loading}</p>
+          <p className="text-white">{t.loading}</p>
         </div>
       </div>
     );
@@ -148,19 +148,19 @@ export default function OrderTrackingPage() {
 
   if (error || !order) {
     return (
-      <div className={`min-h-screen ${backgroundClass}`}>
+      <div className="min-h-screen bg-black">
         <Header tenant={tenant} />
         <div className="flex items-center justify-center min-h-[calc(100vh-80px)] p-4">
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
-            className={sectionShellClass}
+            className="bg-gray-900 rounded-3xl px-6 py-10 lg:px-16 shadow-xl border border-gray-800"
           >
             <div className="text-6xl mb-4 text-center">😕</div>
-            <h1 className={`text-2xl font-bold mb-2 text-center ${isDark ? 'text-white' : 'text-gray-800'}`}>
+            <h1 className="text-2xl font-bold mb-2 text-center text-white">
               {t.orderNotFound || 'Order Not Found'}
             </h1>
-            <p className={`mb-6 text-center ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
+            <p className="mb-6 text-center text-gray-300">
               {error || (t.orderNotFoundMessage || 'We couldn\'t find this order')}
             </p>
             <div className="text-center">
