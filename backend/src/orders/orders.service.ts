@@ -448,6 +448,8 @@ export class OrdersService {
     const tenantDomain = tenant.domain || `${tenant.subdomain}.localhost:3001`;
     // Get currency from tenant (field exists in DB, TypeScript types may need refresh)
     const currency = tenant.currency || 'EUR';
+    // Get tenant theme for Storyous sync
+    const tenantTheme = (tenant.theme || {}) as TenantTheme;
     // Email service expects Prisma Order type
     await this.emailService.sendOrderConfirmation(
       order as unknown as PrismaOrder & { items?: any[] },
