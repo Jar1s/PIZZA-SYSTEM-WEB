@@ -73,10 +73,42 @@ export class AdminOrdersController {
     }
     
     const tenant = await this.tenantsService.getTenantBySlug(tenantSlug);
+    
+    // Parse dates properly - startDate should be beginning of day, endDate should be end of day
+    // Handle YYYY-MM-DD format dates correctly to avoid timezone issues
+    let parsedStartDate: Date | undefined;
+    let parsedEndDate: Date | undefined;
+    
+    if (startDate) {
+      // If date is in YYYY-MM-DD format, parse it as UTC to avoid timezone shifts
+      if (/^\d{4}-\d{2}-\d{2}$/.test(startDate)) {
+        // Create date at beginning of day in UTC
+        parsedStartDate = new Date(`${startDate}T00:00:00.000Z`);
+      } else {
+        // Fallback for other date formats
+        const date = new Date(startDate);
+        date.setUTCHours(0, 0, 0, 0);
+        parsedStartDate = date;
+      }
+    }
+    
+    if (endDate) {
+      // If date is in YYYY-MM-DD format, parse it as UTC to avoid timezone shifts
+      if (/^\d{4}-\d{2}-\d{2}$/.test(endDate)) {
+        // Create date at end of day in UTC (23:59:59.999)
+        parsedEndDate = new Date(`${endDate}T23:59:59.999Z`);
+      } else {
+        // Fallback for other date formats
+        const date = new Date(endDate);
+        date.setUTCHours(23, 59, 59, 999);
+        parsedEndDate = date;
+      }
+    }
+    
     return this.ordersService.getOrders(tenant.id, {
       status,
-      startDate: startDate ? new Date(startDate) : undefined,
-      endDate: endDate ? new Date(endDate) : undefined,
+      startDate: parsedStartDate,
+      endDate: parsedEndDate,
     });
   }
 
