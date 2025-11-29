@@ -313,8 +313,23 @@ export default function OrderTrackingPage() {
             {t.questionsAboutOrder || 'Questions about your order? Contact us at:'}
           </p>
           <p className={`font-semibold ${isDark ? 'text-white' : 'text-gray-800'}`}>
-            📧 {order.customer.email}<br />
-            📱 {order.customer.phone}
+            {tenant && (
+              <>
+                <a 
+                  href={`tel:+421914363363`}
+                  className="inline-flex items-center gap-2 hover:opacity-80 transition-colors"
+                >
+                  📱 0914 363 363
+                </a>
+                <br />
+                <a 
+                  href={`mailto:info@${tenant.subdomain || tenantSlug}.sk`}
+                  className="inline-flex items-center gap-2 hover:opacity-80 transition-colors"
+                >
+                  📧 info@{tenant.subdomain || tenantSlug}.sk
+                </a>
+              </>
+            )}
           </p>
         </motion.div>
 
