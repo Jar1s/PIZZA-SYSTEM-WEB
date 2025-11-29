@@ -147,6 +147,7 @@ export class TrackingController {
   constructor(private ordersService: OrdersService) {}
 
   @Public()
+  @Throttle({ default: { limit: 30, ttl: 60000 } }) // 30 requests per minute for tracking
   @Get(':orderId')
   async trackOrder(@Param('orderId') orderId: string) {
     this.logger.log('trackOrder called', { orderId });

@@ -86,6 +86,18 @@ export default function OrderTrackingPage() {
       console.log(`[Order Tracking] Response status: ${response.status}`, { orderId, retryCount });
       
       if (!response.ok) {
+        if (response.status === 429) {
+          // Rate limit exceeded - wait longer before retry
+          const waitTime = Math.min(60000, 1000 * Math.pow(2, retryCount)); // Max 60s, exponential backoff
+          console.warn(`[Order Tracking] Rate limit exceeded (429), waiting ${waitTime}ms before retry...`);
+          if (retryCount < 3) {
+            setTimeout(() => {
+              fetchOrder(retryCount + 1, isBackgroundRefresh);
+            }, waitTime);
+            return;
+          }
+          throw new Error('Too many requests. Please wait a moment and refresh the page.');
+        }
         if (response.status === 404) {
           // If order not found and we haven't retried yet, wait a bit and retry
           // (order might still be saving to database)
@@ -133,7 +145,8 @@ export default function OrderTrackingPage() {
     fetchOrder(0);
   }, [fetchOrder]);
 
-  // Poll for updates every 10 seconds (only after order is loaded and if order is not delivered/canceled)
+  // Poll for updates every 30 seconds (only after order is loaded and if order is not delivered/canceled)
+  // Increased from 10s to 30s to avoid rate limiting
   useEffect(() => {
     if (!order) return;
     
@@ -145,7 +158,7 @@ export default function OrderTrackingPage() {
     
     const interval = setInterval(() => {
       fetchOrder(0, true); // true = background refresh
-    }, 10000); // Poll every 10 seconds
+    }, 30000); // Poll every 30 seconds (reduced frequency to avoid rate limiting)
     
     return () => clearInterval(interval);
   }, [order, fetchOrder]);
