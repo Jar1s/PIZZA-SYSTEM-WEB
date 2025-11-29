@@ -57,10 +57,10 @@ export default function OrderSuccessPage() {
 
   if (loading || !tenant) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen bg-black flex items-center justify-center">
         <div className="text-center">
           <div className="text-4xl mb-4">⏳</div>
-          <p className="text-gray-600">{t.loading}</p>
+          <p className="text-white">{t.loading}</p>
         </div>
       </div>
     );
@@ -75,28 +75,23 @@ export default function OrderSuccessPage() {
     ? `${window.location.origin}/order/${orderId}?tenant=${tenantSlug}`
     : '';
 
-  // Get tenant theme
+  // Get tenant theme - Force dark theme for success page
   const theme = typeof tenant.theme === 'object' && tenant.theme !== null 
     ? tenant.theme as any
     : {};
   const primaryColor = theme.primaryColor || '#E91E63';
-  const layout = theme.layout || {};
-  const isDark = layout.headerStyle === 'dark';
-  const useCustomBackground = layout.useCustomBackground || false;
-  const customBackgroundClass = layout.customBackgroundClass || '';
-  const backgroundClass = isDark && useCustomBackground && customBackgroundClass === 'porno-bg' 
-    ? 'bg-skin-tone' 
-    : 'bg-gray-50';
+  const isDark = true; // Always dark theme
+  const backgroundClass = 'bg-black'; // Always black background
 
   return (
-    <div className={`min-h-screen ${backgroundClass}`} style={isDark && useCustomBackground ? { minHeight: '100vh', position: 'relative' } : {}}>
+    <div className={`min-h-screen ${backgroundClass}`}>
       <Header tenant={tenant} />
       <div className="flex items-center justify-center p-4 pt-24">
         <motion.div
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.5 }}
-        className="bg-white rounded-2xl shadow-2xl p-8 md:p-12 max-w-2xl w-full text-center"
+        className="bg-gray-900 rounded-2xl shadow-2xl p-8 md:p-12 max-w-2xl w-full text-center border border-gray-800"
       >
         {/* Success Animation */}
         <motion.div
@@ -114,13 +109,13 @@ export default function OrderSuccessPage() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.4 }}
         >
-          <h1 className="text-4xl font-bold text-gray-800 mb-4">
+          <h1 className="text-4xl font-bold text-white mb-4">
             {t.orderConfirmed} 🎉
           </h1>
-          <p className="text-xl text-gray-600 mb-2">
+          <p className="text-xl text-gray-300 mb-2">
             {t.thankYouForOrder}
           </p>
-          <p className="text-lg text-gray-500 mb-8">
+          <p className="text-lg text-gray-400 mb-8">
             {t.orderNumberLabel} #{orderNumber}
           </p>
         </motion.div>
@@ -154,11 +149,11 @@ export default function OrderSuccessPage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.8 }}
-          className="bg-gray-50 rounded-lg p-6 mb-8"
+          className="bg-gray-800 rounded-lg p-6 mb-8 border border-gray-700"
         >
-          <h3 className="font-semibold text-gray-800 mb-3">{t.trackYourOrder}</h3>
-          <div className="bg-white border border-gray-200 rounded-lg p-3 mb-4">
-            <code className="text-sm text-gray-600 break-all">{trackingUrl}</code>
+          <h3 className="font-semibold text-white mb-3">{t.trackYourOrder}</h3>
+          <div className="bg-gray-900 border border-gray-700 rounded-lg p-3 mb-4">
+            <code className="text-sm text-gray-300 break-all">{trackingUrl}</code>
           </div>
           <button
             onClick={() => {
@@ -183,10 +178,10 @@ export default function OrderSuccessPage() {
           transition={{ delay: 1 }}
           className="mb-6"
         >
-          <p className="text-gray-500 text-sm mb-4">
+          <p className="text-gray-400 text-sm mb-4">
             {t.redirectingToTracking} {countdown} {t.seconds}...
           </p>
-          <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+          <div className="w-full bg-gray-700 rounded-full h-2 overflow-hidden">
             <motion.div
               initial={{ width: '100%' }}
               animate={{ width: '0%' }}
@@ -215,7 +210,7 @@ export default function OrderSuccessPage() {
           </button>
           <button
             onClick={() => router.push(`/?tenant=${tenantSlug}`)}
-            className="bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold px-8 py-3 rounded-lg transition-colors"
+            className="bg-gray-800 hover:bg-gray-700 text-white font-semibold px-8 py-3 rounded-lg transition-colors border border-gray-700"
           >
             {t.backToMenu}
           </button>
@@ -226,9 +221,9 @@ export default function OrderSuccessPage() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 1.4 }}
-          className="mt-8 pt-8 border-t border-gray-200"
+          className="mt-8 pt-8 border-t border-gray-700"
         >
-          <p className="text-gray-500 text-sm">
+          <p className="text-gray-400 text-sm">
             {t.questionsContact}
           </p>
         </motion.div>
