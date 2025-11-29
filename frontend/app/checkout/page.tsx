@@ -778,8 +778,9 @@ export default function CheckoutPage() {
       }
       
       if (addresses.length === 0) {
-        alert('Musíte mať vyplnenú adresu pred vytvorením objednávky. Presmerovávam na stránku pre pridanie adresy.');
-        router.push(`/account?tenant=${tenantSlug}&section=address`);
+        alert('Musíte mať vyplnenú adresu pred vytvorením objednávky. Prosím, pridajte adresu pomocou tlačidla nižšie.');
+        // Scroll to top to show the address message
+        window.scrollTo({ top: 0, behavior: 'smooth' });
         return;
       }
 
