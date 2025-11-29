@@ -258,10 +258,9 @@ export const ProductCard = memo(function ProductCard({ product, index = 0, isBes
               alt={product.name}
               fill
               sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-              priority={index < 4 || isBestSeller}
-              quality={85}
-              loading={index < 4 ? "eager" : "lazy"}
-              unoptimized={displayImage?.includes(' ') || displayImage?.includes('%20')}
+              priority={index < 6 || isBestSeller}
+              quality={75}
+              loading={index < 6 ? "eager" : "lazy"}
               className={`object-cover group-hover:scale-110 transition-all duration-500 ${
                 imageLoading ? 'opacity-0' : 'opacity-100'
               }`}
