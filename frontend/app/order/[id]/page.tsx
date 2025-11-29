@@ -55,6 +55,7 @@ export default function OrderTrackingPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [tenant, setTenant] = useState<Tenant | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Load tenant
   useEffect(() => {
@@ -69,11 +70,15 @@ export default function OrderTrackingPage() {
     loadTenant();
   }, [tenantSlug]);
 
-  const fetchOrder = useCallback(async (retryCount = 0) => {
+  const fetchOrder = useCallback(async (retryCount = 0, isBackgroundRefresh = false) => {
     try {
+      if (isBackgroundRefresh) {
+        setIsRefreshing(true);
+      }
+      
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
       const url = `${apiUrl}/api/track/${orderId}`;
-      console.log(`[Order Tracking] Fetching order: ${url} (retry ${retryCount})`);
+      console.log(`[Order Tracking] Fetching order: ${url} (retry ${retryCount}, background: ${isBackgroundRefresh})`);
       
       // Use public tracking endpoint
       const response = await fetch(url);
@@ -87,7 +92,7 @@ export default function OrderTrackingPage() {
           if (retryCount < 3) {
             console.log(`[Order Tracking] Order not found, retrying in ${retryCount + 1}s... (${retryCount + 1}/3)`);
             setTimeout(() => {
-              fetchOrder(retryCount + 1);
+              fetchOrder(retryCount + 1, isBackgroundRefresh);
             }, 1000 * (retryCount + 1)); // Exponential backoff: 1s, 2s, 3s
             return;
           }
@@ -101,30 +106,47 @@ export default function OrderTrackingPage() {
       
       const data = await response.json();
       console.log(`[Order Tracking] Order loaded successfully:`, { orderId: data.id, status: data.status });
-      setOrder(data);
+      
+      // Only update if status changed or it's initial load
+      if (!order || order.status !== data.status) {
+        setOrder(data);
+      } else {
+        // Update order data even if status didn't change (in case other fields changed)
+        setOrder(data);
+      }
+      
       setError(null);
       setLoading(false);
+      setIsRefreshing(false);
     } catch (err: any) {
       console.error('[Order Tracking] Error fetching order:', err);
+      setIsRefreshing(false);
       // Only set error if we've exhausted retries
       if (retryCount >= 3) {
         setError(err.message || 'Failed to load order');
         setLoading(false);
       }
     }
-  }, [orderId]);
+  }, [orderId, order]);
 
   useEffect(() => {
     fetchOrder(0);
   }, [fetchOrder]);
 
-  // Poll for updates every 30 seconds (only after order is loaded)
+  // Poll for updates every 10 seconds (only after order is loaded and if order is not delivered/canceled)
   useEffect(() => {
     if (!order) return;
     
+    // Stop polling if order is in final state
+    const finalStates = ['DELIVERED', 'CANCELED'];
+    if (finalStates.includes(order.status)) {
+      return;
+    }
+    
     const interval = setInterval(() => {
-      fetchOrder(0);
-    }, 30000);
+      fetchOrder(0, true); // true = background refresh
+    }, 10000); // Poll every 10 seconds
+    
     return () => clearInterval(interval);
   }, [order, fetchOrder]);
 
@@ -203,11 +225,21 @@ export default function OrderTrackingPage() {
           animate={{ opacity: 1, y: 0 }}
           className={`text-center mb-8 ${isDark ? 'text-white' : 'text-gray-800'}`}
         >
-          <h1 className="text-4xl font-bold mb-2">{t.trackYourOrder || 'Track Your Order'}</h1>
+          <div className="flex items-center justify-center gap-3 mb-2">
+            <h1 className="text-4xl font-bold">{t.trackYourOrder || 'Track Your Order'}</h1>
+            {isRefreshing && (
+              <div className="animate-spin text-2xl">🔄</div>
+            )}
+          </div>
           <p className={isDark ? 'text-gray-300' : 'text-gray-600'}>
             {t.orderNumber || 'Order'} #{orderNumber}
           </p>
           <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{orderDate}</p>
+          {isRefreshing && (
+            <p className={`text-xs mt-2 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+              {t.updating || 'Updating...'}
+            </p>
+          )}
         </motion.div>
 
         {/* Status Timeline */}

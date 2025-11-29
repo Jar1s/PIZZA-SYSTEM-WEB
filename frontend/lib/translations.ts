@@ -318,6 +318,7 @@ export const translations = {
     note: 'Poznámka',
     needHelp: 'Potrebujete pomoc?',
     questionsAboutOrder: 'Máte otázky k objednávke? Kontaktujte nás na:',
+    updating: 'Aktualizujem...',
   },
   
   en: {
@@ -634,6 +635,7 @@ export const translations = {
     note: 'Note',
     needHelp: 'Need Help?',
     questionsAboutOrder: 'Questions about your order? Contact us at:',
+    updating: 'Updating...',
   },
 };
 
