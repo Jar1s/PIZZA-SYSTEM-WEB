@@ -400,7 +400,7 @@ export default function CheckoutPage() {
   }, [fetchPaymentConfig]);
 
   // Helper function to refresh token
-  const tryRefreshToken = async (): Promise<boolean> => {
+  const tryRefreshToken = useCallback(async (): Promise<boolean> => {
     try {
       const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
       const isProduction = process.env.NODE_ENV === 'production';
@@ -436,7 +436,7 @@ export default function CheckoutPage() {
       console.error('[Checkout] Token refresh failed:', error);
       return false;
     }
-  };
+  }, [setUser]);
 
   const fetchUserProfile = useCallback(async () => {
     try {
@@ -518,7 +518,7 @@ export default function CheckoutPage() {
     } catch (error) {
       console.error('Failed to fetch user profile:', error);
     }
-  }, [user, setUser]);
+  }, [user, setUser, tryRefreshToken]);
 
   const fetchAddresses = useCallback(async () => {
     try {
@@ -633,7 +633,7 @@ export default function CheckoutPage() {
     } finally {
       setLoadingAddresses(false);
     }
-  }, []);
+  }, [tryRefreshToken]);
 
   // Fetch addresses and update user profile when user is loaded
   useEffect(() => {
