@@ -1,5 +1,5 @@
 import { IsString, IsEmail, IsNumber, IsArray, ValidateNested, IsOptional, IsObject, IsNotEmpty } from 'class-validator';
-import { Type } from 'class-transformer';
+import { Type, Transform } from 'class-transformer';
 
 class CustomerInfoDto {
   @IsString()
@@ -76,6 +76,11 @@ class OrderItemDto {
 
   @IsOptional()
   @IsObject()
+  @Transform(({ value }) => {
+    // Preserve modifiers as-is without transformation
+    // This ensures modifiers are not lost during class-transformer processing
+    return value;
+  })
   modifiers?: OrderItemModifierDto;
 }
 
