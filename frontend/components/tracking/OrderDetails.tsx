@@ -26,15 +26,14 @@ export function OrderDetails({ order }: OrderDetailsProps) {
             const productTranslation = getProductTranslation(item.productName, language);
             const displayName = productTranslation.name;
             
-            // Debug: log modifiers to see what we're getting
-            if (process.env.NODE_ENV === 'development') {
-              console.log('[OrderDetails] Item modifiers:', {
-                itemId: item.id,
-                productName: item.productName,
-                modifiers: item.modifiers,
-                modifiersType: typeof item.modifiers,
-              });
-            }
+            // Debug: log modifiers to see what we're getting (always log for debugging)
+            console.log('[OrderDetails] Item modifiers:', {
+              itemId: item.id,
+              productName: item.productName,
+              modifiers: item.modifiers,
+              modifiersType: typeof item.modifiers,
+              modifiersStringified: JSON.stringify(item.modifiers),
+            });
             
             const modifiers = formatModifiers(item.modifiers, false, language);
             

@@ -62,9 +62,7 @@ export function formatModifiers(
 ): string[] {
   // Handle null, undefined, or empty modifiers
   if (!modifiers || typeof modifiers !== 'object') {
-    if (process.env.NODE_ENV === 'development') {
-      console.log('[formatModifiers] Modifiers are null/undefined/not object:', modifiers);
-    }
+    console.log('[formatModifiers] Modifiers are null/undefined/not object:', modifiers, 'Type:', typeof modifiers);
     return [];
   }
 
@@ -73,20 +71,18 @@ export function formatModifiers(
   if (typeof modifiers === 'string') {
     try {
       parsedModifiers = JSON.parse(modifiers);
+      console.log('[formatModifiers] Parsed JSON string modifiers:', parsedModifiers);
     } catch (error) {
-      if (process.env.NODE_ENV === 'development') {
-        console.error('[formatModifiers] Failed to parse JSON string:', error, modifiers);
-      }
+      console.error('[formatModifiers] Failed to parse JSON string:', error, modifiers);
       return [];
     }
   } else {
     parsedModifiers = modifiers;
+    console.log('[formatModifiers] Using modifiers as object:', parsedModifiers);
   }
 
   if (Object.keys(parsedModifiers).length === 0) {
-    if (process.env.NODE_ENV === 'development') {
-      console.log('[formatModifiers] Parsed modifiers are empty');
-    }
+    console.log('[formatModifiers] Parsed modifiers are empty');
     return [];
   }
 
@@ -97,9 +93,7 @@ export function formatModifiers(
     Object.entries(parsedModifiers).forEach(([categoryId, optionIds]) => {
       const category = allCustomizations.find(c => c.id === categoryId);
       if (!category) {
-        if (process.env.NODE_ENV === 'development') {
-          console.warn('[formatModifiers] Category not found:', categoryId, 'Available categories:', allCustomizations.map(c => c.id));
-        }
+        console.warn('[formatModifiers] Category not found:', categoryId, 'Available categories:', allCustomizations.map(c => c.id));
         return;
       }
 
@@ -113,16 +107,12 @@ export function formatModifiers(
       const optionNames = optionIdsArray
         .map((optionId: any) => {
           if (typeof optionId !== 'string') {
-            if (process.env.NODE_ENV === 'development') {
-              console.warn('[formatModifiers] Option ID is not a string:', optionId, 'Type:', typeof optionId);
-            }
+            console.warn('[formatModifiers] Option ID is not a string:', optionId, 'Type:', typeof optionId);
             return null;
           }
           const option = category.options.find(o => o.id === optionId);
           if (!option) {
-            if (process.env.NODE_ENV === 'development') {
-              console.warn('[formatModifiers] Option not found:', optionId, 'in category:', categoryId, 'Available options:', category.options.map(o => o.id));
-            }
+            console.warn('[formatModifiers] Option not found:', optionId, 'in category:', categoryId, 'Available options:', category.options.map(o => o.id));
             return null;
           }
           
