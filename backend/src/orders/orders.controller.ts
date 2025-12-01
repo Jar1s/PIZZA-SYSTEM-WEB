@@ -33,6 +33,8 @@ export class OrdersController {
     private tenantsService: TenantsService,
   ) {}
 
+  private readonly logger = new Logger(OrdersController.name);
+
   @Public()
   @Throttle({ default: { limit: 10, ttl: 60000 } }) // 10 orders per minute
   @Post()
@@ -40,6 +42,20 @@ export class OrdersController {
     @Param('tenantSlug') tenantSlug: string,
     @Body() data: CreateOrderDto,
   ) {
+    // Log raw data before DTO validation/transformation
+    this.logger.debug('createOrder received data', {
+      tenantSlug,
+      itemsCount: data.items?.length,
+      items: data.items?.map(item => ({
+        productId: item.productId,
+        quantity: item.quantity,
+        modifiers: item.modifiers,
+        modifiersType: typeof item.modifiers,
+        modifiersKeys: item.modifiers ? Object.keys(item.modifiers) : [],
+        modifiersStringified: JSON.stringify(item.modifiers),
+      })),
+    });
+    
     const tenant = await this.tenantsService.getTenantBySlug(tenantSlug);
     return this.ordersService.createOrder(tenant.id, data);
   }
