@@ -465,7 +465,7 @@ export class OrdersService {
     const totalCents = subtotalCents + deliveryFeeCents;
 
     // Log orderItems before saving to see what we're sending to Prisma
-    this.logger.debug('Order items before Prisma create', {
+    this.logger.log('Order items before Prisma create', {
       itemsCount: orderItems.length,
       items: orderItems.map(item => ({
         productName: item.productName,
@@ -474,10 +474,19 @@ export class OrdersService {
         modifiersType: typeof item.modifiers,
         modifiersStringified: JSON.stringify(item.modifiers),
         modifiersKeys: item.modifiers ? Object.keys(item.modifiers as any) : [],
+        modifiersIsNull: item.modifiers === null,
+        modifiersIsUndefined: item.modifiers === undefined,
+        modifiersIsEmpty: item.modifiers ? Object.keys(item.modifiers as any).length === 0 : true,
       })),
     });
 
     // Create order (userId can be null for guest orders)
+    this.logger.log('Creating order in Prisma with items', {
+      itemsCount: orderItems.length,
+      firstItemModifiers: orderItems[0]?.modifiers,
+      firstItemModifiersStringified: JSON.stringify(orderItems[0]?.modifiers),
+    });
+    
     const order = await this.prisma.order.create({
       data: {
         tenantId,
@@ -510,6 +519,20 @@ export class OrdersService {
           } as any, // Type assertion needed until Prisma types are fully regenerated
         },
       },
+    });
+
+    // Log what was actually saved to database
+    this.logger.log('Order created in Prisma, checking saved items', {
+      orderId: order.id,
+      itemsCount: order.items.length,
+      items: order.items.map(item => ({
+        id: item.id,
+        productName: item.productName,
+        modifiers: item.modifiers,
+        modifiersType: typeof item.modifiers,
+        modifiersStringified: JSON.stringify(item.modifiers),
+        modifiersKeys: item.modifiers ? Object.keys(item.modifiers as any) : [],
+      })),
     });
 
     // Send order confirmation email
