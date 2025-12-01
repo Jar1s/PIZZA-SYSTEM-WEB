@@ -64,6 +64,19 @@ export class OrdersService {
   ) {}
 
   async createOrder(tenantId: string, data: CreateOrderDto): Promise<Order | { order: Order; authToken?: string; refreshToken?: string; user?: any }> {
+    // Log incoming data to see what we receive
+    this.logger.debug('createOrder called', {
+      tenantId,
+      itemsCount: data.items?.length,
+      items: data.items?.map(item => ({
+        productId: item.productId,
+        quantity: item.quantity,
+        modifiers: item.modifiers,
+        modifiersType: typeof item.modifiers,
+        modifiersKeys: item.modifiers ? Object.keys(item.modifiers) : [],
+        modifiersStringified: JSON.stringify(item.modifiers),
+      })),
+    });
     let userId = data.userId;
     let shouldReturnAuthToken = false;
     let createdUser: UserWithPasswordReset | null = null;
