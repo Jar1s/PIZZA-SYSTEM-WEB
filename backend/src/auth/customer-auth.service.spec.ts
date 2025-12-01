@@ -64,7 +64,7 @@ describe('CustomerAuthService', () => {
     it('should register a new customer successfully', async () => {
       const registerDto = {
         email: 'test@example.com',
-        password: 'password123',
+        password: process.env.TEST_PASSWORD || 'test-password-123',
         name: 'Test User',
       };
 
@@ -96,7 +96,7 @@ describe('CustomerAuthService', () => {
     it('should throw BadRequestException if email already exists', async () => {
       const registerDto = {
         email: 'existing@example.com',
-        password: 'password123',
+        password: process.env.TEST_PASSWORD || 'test-password-123',
         name: 'Test User',
       };
 
@@ -116,7 +116,7 @@ describe('CustomerAuthService', () => {
     it('should login customer successfully', async () => {
       const loginDto = {
         email: 'test@example.com',
-        password: 'password123',
+        password: process.env.TEST_PASSWORD || 'test-password-123',
       };
 
       const hashedPassword = await bcrypt.hash(loginDto.password, 10);
@@ -147,7 +147,7 @@ describe('CustomerAuthService', () => {
     it('should throw UnauthorizedException if user not found', async () => {
       const loginDto = {
         email: 'nonexistent@example.com',
-        password: 'password123',
+        password: process.env.TEST_PASSWORD || 'test-password-123',
       };
 
       mockPrismaService.user.findUnique.mockResolvedValue(null);
@@ -160,7 +160,7 @@ describe('CustomerAuthService', () => {
     it('should throw UnauthorizedException if password is incorrect', async () => {
       const loginDto = {
         email: 'test@example.com',
-        password: 'wrongpassword',
+        password: process.env.TEST_WRONG_PASSWORD || 'test-wrong-password',
       };
 
       const hashedPassword = await bcrypt.hash('correctpassword', 10);

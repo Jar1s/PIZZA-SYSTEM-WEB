@@ -77,6 +77,16 @@ export const appConfig = {
   defaultTaxRate: parseFloat(process.env.DEFAULT_TAX_RATE || '20.0'),
   
   // Security
-  skipWebhookVerification: process.env.SKIP_WEBHOOK_VERIFICATION === 'true',
+  // WARNING: Only disable webhook verification in development/testing
+  // In production, webhook verification should always be enabled for security
+  // This flag allows skipping verification for local development and testing
+  skipWebhookVerification: (() => {
+    const skip = process.env.SKIP_WEBHOOK_VERIFICATION === 'true';
+    if (skip && process.env.NODE_ENV === 'production') {
+      console.warn('⚠️  CRITICAL SECURITY WARNING: Webhook verification is DISABLED in PRODUCTION!');
+      console.warn('⚠️  This should only be used for testing. Enable webhook verification immediately.');
+    }
+    return skip;
+  })(),
 };
 

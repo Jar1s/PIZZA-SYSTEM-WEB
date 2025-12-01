@@ -107,12 +107,14 @@ export class EmailService {
         this.logger.log(`✅ Password setup email sent to ${user.email}: ${info.messageId}`);
       } else {
         // Dev mode: Just log the email content
+        // Mask token in logs for security
+        const maskedUrl = resetUrl.replace(/token=([^&]+)/, 'token=***MASKED***');
         this.logger.log(`📧 [DEV MODE] Password setup email would be sent to: ${user.email}`);
-        this.logger.log(`📧 Reset URL: ${resetUrl}`);
+        this.logger.log(`📧 Reset URL: ${maskedUrl}`);
         console.log('\n📧 PASSWORD SETUP EMAIL PREVIEW:\n');
         console.log(`To: ${user.email}`);
         console.log(`Subject: Nastavte si heslo pre váš účet`);
-        console.log(`Reset URL: ${resetUrl}\n`);
+        console.log(`Reset URL: ${maskedUrl}\n`);
       }
     } catch (error) {
       this.logger.error(`❌ Failed to send password setup email to ${user.email}:`, error);

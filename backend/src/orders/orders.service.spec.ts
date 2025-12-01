@@ -379,7 +379,7 @@ describe('OrdersService', () => {
       mockPrismaService.refreshToken.create.mockResolvedValue({
         id: 'refresh-1',
         userId: 'user-1',
-        token: 'refresh-token',
+        token: process.env.TEST_REFRESH_TOKEN || 'test-refresh-token',
         expiresAt: new Date(),
       });
       mockJwtService.sign.mockReturnValue('jwt-token');
@@ -441,7 +441,7 @@ describe('OrdersService', () => {
       mockPrismaService.refreshToken.create.mockResolvedValue({
         id: 'refresh-1',
         userId: 'existing-user',
-        token: 'refresh-token',
+        token: process.env.TEST_REFRESH_TOKEN || 'test-refresh-token',
         expiresAt: new Date(),
       });
       mockJwtService.sign.mockReturnValue('jwt-token');

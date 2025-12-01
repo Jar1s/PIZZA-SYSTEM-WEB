@@ -60,13 +60,13 @@ describe('CustomerAuthController', () => {
     it('should register a new customer', async () => {
       const registerDto = {
         email: 'test@example.com',
-        password: 'password123',
+        password: process.env.TEST_PASSWORD || 'test-password-123',
         name: 'Test User',
       };
 
       const mockResult = {
-        access_token: 'token',
-        refresh_token: 'refresh',
+        access_token: process.env.TEST_ACCESS_TOKEN || 'test-access-token',
+        refresh_token: process.env.TEST_REFRESH_TOKEN || 'test-refresh-token',
         user: {
           id: 'user123',
           email: registerDto.email,
@@ -95,12 +95,12 @@ describe('CustomerAuthController', () => {
     it('should login a customer', async () => {
       const loginDto = {
         email: 'test@example.com',
-        password: 'password123',
+        password: process.env.TEST_PASSWORD || 'test-password-123',
       };
 
       const mockResult = {
-        access_token: 'token',
-        refresh_token: 'refresh',
+        access_token: process.env.TEST_ACCESS_TOKEN || 'test-access-token',
+        refresh_token: process.env.TEST_REFRESH_TOKEN || 'test-refresh-token',
         user: {
           id: 'user123',
           email: loginDto.email,
@@ -151,8 +151,8 @@ describe('CustomerAuthController', () => {
   describe('verifySms', () => {
     it('should verify SMS code and complete registration', async () => {
       const mockResult = {
-        access_token: 'token',
-        refresh_token: 'refresh',
+        access_token: process.env.TEST_ACCESS_TOKEN || 'test-access-token',
+        refresh_token: process.env.TEST_REFRESH_TOKEN || 'test-refresh-token',
         user: {
           id: 'user123',
           email: 'test@example.com',
