@@ -25,6 +25,17 @@ export function OrderDetails({ order }: OrderDetailsProps) {
           {order.items.map((item: any, i: number) => {
             const productTranslation = getProductTranslation(item.productName, language);
             const displayName = productTranslation.name;
+            
+            // Debug: log modifiers to see what we're getting
+            if (process.env.NODE_ENV === 'development') {
+              console.log('[OrderDetails] Item modifiers:', {
+                itemId: item.id,
+                productName: item.productName,
+                modifiers: item.modifiers,
+                modifiersType: typeof item.modifiers,
+              });
+            }
+            
             const modifiers = formatModifiers(item.modifiers, false, language);
             
             return (

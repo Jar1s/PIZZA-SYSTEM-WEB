@@ -345,7 +345,24 @@ export default function OrderTrackingPage() {
             {order.items.map((item) => {
               const productTranslation = getProductTranslation(item.productName, language);
               const displayName = productTranslation.name;
+              
+              // Debug: log modifiers to see what we're getting
+              if (process.env.NODE_ENV === 'development') {
+                console.log('[Order Tracking] Item modifiers:', {
+                  itemId: item.id,
+                  productName: item.productName,
+                  modifiers: item.modifiers,
+                  modifiersType: typeof item.modifiers,
+                  modifiersIsNull: item.modifiers === null,
+                  modifiersIsUndefined: item.modifiers === undefined,
+                });
+              }
+              
               const modifiers = formatModifiers(item.modifiers, false, language);
+              
+              if (process.env.NODE_ENV === 'development') {
+                console.log('[Order Tracking] Formatted modifiers:', modifiers);
+              }
               
               return (
                 <div key={item.id} className="flex justify-between items-center">
