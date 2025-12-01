@@ -147,7 +147,7 @@ export default function OrderTrackingPage() {
       
       const data = await response.json();
       console.log(`[Order Tracking] Order loaded successfully:`, { orderId: data.id, status: data.status });
-      console.log(`[Order Tracking] Order items (full):`, JSON.stringify(data.items, null, 2));
+      console.log(`[Order Tracking] Order items (full JSON):`, JSON.stringify(data.items, null, 2));
       console.log(`[Order Tracking] Order items (summary):`, data.items?.map((item: any) => ({
         id: item.id,
         productName: item.productName,
@@ -155,7 +155,17 @@ export default function OrderTrackingPage() {
         modifiersType: typeof item.modifiers,
         modifiersKeys: item.modifiers ? Object.keys(item.modifiers) : [],
         modifiersStringified: JSON.stringify(item.modifiers),
+        modifiersIsEmpty: item.modifiers ? Object.keys(item.modifiers).length === 0 : true,
       })));
+      
+      // Log each item separately to see full structure
+      data.items?.forEach((item: any, index: number) => {
+        console.log(`[Order Tracking] Item ${index} full:`, item);
+        console.log(`[Order Tracking] Item ${index} modifiers raw:`, item.modifiers);
+        console.log(`[Order Tracking] Item ${index} modifiers JSON:`, JSON.stringify(item.modifiers));
+        console.log(`[Order Tracking] Item ${index} modifiers keys:`, item.modifiers ? Object.keys(item.modifiers) : 'null/undefined');
+        console.log(`[Order Tracking] Item ${index} modifiers entries:`, item.modifiers ? Object.entries(item.modifiers) : 'null/undefined');
+      });
       
       // Update order data
       setOrder(data);
