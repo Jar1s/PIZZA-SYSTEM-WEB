@@ -336,9 +336,19 @@ export class OrdersService {
       });
       
       // Ensure modifiers are properly serialized for Prisma JSON field
-      const modifiersValue = item.modifiers 
-        ? (item.modifiers as unknown as Prisma.InputJsonValue)
-        : null;
+      // Prisma JSON fields need to be serialized - convert to plain object/array
+      let modifiersValue: Prisma.InputJsonValue | null = null;
+      if (item.modifiers) {
+        // Deep clone and ensure it's a plain object (not a class instance)
+        // This ensures Prisma can properly serialize it to JSONB
+        modifiersValue = JSON.parse(JSON.stringify(item.modifiers)) as Prisma.InputJsonValue;
+        
+        this.logger.debug('Serialized modifiers for Prisma', {
+          original: item.modifiers,
+          serialized: modifiersValue,
+          type: typeof modifiersValue,
+        });
+      }
       
       return {
         productId: product.id,
