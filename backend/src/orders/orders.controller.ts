@@ -43,7 +43,7 @@ export class OrdersController {
     @Body() data: CreateOrderDto,
   ) {
     // Log raw data before DTO validation/transformation
-    this.logger.debug('createOrder received data', {
+    this.logger.log('createOrder received data', {
       tenantSlug,
       itemsCount: data.items?.length,
       items: data.items?.map(item => ({

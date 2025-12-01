@@ -65,7 +65,7 @@ export class OrdersService {
 
   async createOrder(tenantId: string, data: CreateOrderDto): Promise<Order | { order: Order; authToken?: string; refreshToken?: string; user?: any }> {
     // Log incoming data to see what we receive
-    this.logger.debug('createOrder called', {
+    this.logger.log('createOrder called', {
       tenantId,
       itemsCount: data.items?.length,
       items: data.items?.map(item => ({
@@ -75,6 +75,9 @@ export class OrdersService {
         modifiersType: typeof item.modifiers,
         modifiersKeys: item.modifiers ? Object.keys(item.modifiers) : [],
         modifiersStringified: JSON.stringify(item.modifiers),
+        modifiersIsNull: item.modifiers === null,
+        modifiersIsUndefined: item.modifiers === undefined,
+        modifiersIsEmpty: item.modifiers ? Object.keys(item.modifiers).length === 0 : true,
       })),
     });
     let userId = data.userId;
