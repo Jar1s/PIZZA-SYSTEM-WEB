@@ -888,11 +888,25 @@ export default function CheckoutPage() {
           country: guestData.country,
           instructions: guestData.instructions,
         },
-        items: items.map(item => ({
-          productId: item.product.id,
-          quantity: item.quantity,
-          modifiers: item.modifiers,
-        })),
+        items: items.map(item => {
+          // Log what we're sending
+          console.log('[Checkout] Preparing order item:', {
+            productId: item.product.id,
+            productName: item.product.name,
+            quantity: item.quantity,
+            modifiers: item.modifiers,
+            modifiersType: typeof item.modifiers,
+            modifiersStringified: JSON.stringify(item.modifiers),
+            modifiersKeys: item.modifiers ? Object.keys(item.modifiers) : [],
+            modifiersEntries: item.modifiers ? Object.entries(item.modifiers) : [],
+          });
+          
+          return {
+            productId: item.product.id,
+            quantity: item.quantity,
+            modifiers: item.modifiers,
+          };
+        }),
         userId: user?.id,
         deliveryFeeCents: deliveryFeeCents, // Add delivery fee from zone calculation
       };
