@@ -338,15 +338,34 @@ export class OrdersService {
       // Ensure modifiers are properly serialized for Prisma JSON field
       // Prisma JSON fields need to be serialized - convert to plain object/array
       let modifiersValue: Prisma.InputJsonValue | null = null;
-      if (item.modifiers) {
+      if (item.modifiers && Object.keys(item.modifiers).length > 0) {
         // Deep clone and ensure it's a plain object (not a class instance)
         // This ensures Prisma can properly serialize it to JSONB
-        modifiersValue = JSON.parse(JSON.stringify(item.modifiers)) as Prisma.InputJsonValue;
-        
-        this.logger.debug('Serialized modifiers for Prisma', {
-          original: item.modifiers,
-          serialized: modifiersValue,
-          type: typeof modifiersValue,
+        try {
+          const serialized = JSON.parse(JSON.stringify(item.modifiers));
+          modifiersValue = serialized as Prisma.InputJsonValue;
+          
+          this.logger.debug('Serialized modifiers for Prisma', {
+            productName: product.name,
+            original: item.modifiers,
+            serialized: modifiersValue,
+            type: typeof modifiersValue,
+            keys: Object.keys(serialized),
+            stringified: JSON.stringify(serialized),
+          });
+        } catch (error) {
+          this.logger.error('Error serializing modifiers', {
+            error,
+            modifiers: item.modifiers,
+          });
+          modifiersValue = null;
+        }
+      } else {
+        this.logger.debug('No modifiers or empty modifiers', {
+          productName: product.name,
+          modifiers: item.modifiers,
+          hasModifiers: !!item.modifiers,
+          keys: item.modifiers ? Object.keys(item.modifiers) : [],
         });
       }
       
