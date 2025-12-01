@@ -398,7 +398,7 @@ export const ProductCard = memo(function ProductCard({ product, index = 0, isBes
         })()}
 
         {/* Price & Add Button - Always at bottom */}
-        <div className="flex items-center justify-between gap-2 sm:gap-3 pt-4 overflow-hidden">
+        <div className="flex items-center justify-between gap-2 sm:gap-3 pt-4 pr-1">
           <div className="flex-shrink-0 min-w-0 flex-1">
             <div 
               className="text-xl sm:text-2xl md:text-3xl font-bold truncate" 
@@ -423,18 +423,55 @@ export const ProductCard = memo(function ProductCard({ product, index = 0, isBes
               console.log('🔵 Button clicked, calling handleAddToCart', { product: product.name, needsCustomization });
               handleAddToCart();
             }}
-            onMouseDown={(e) => {
-              e.stopPropagation();
-            }}
             disabled={isAdding}
-            className={`relative z-10 flex-shrink-0 px-3 sm:px-4 md:px-5 lg:px-6 py-2 sm:py-2.5 md:py-3 rounded-full font-bold text-[0.7rem] sm:text-xs md:text-sm lg:text-base text-white transition-all hover:scale-105 active:scale-95 touch-manipulation min-h-[36px] sm:min-h-[40px] md:min-h-[44px] whitespace-nowrap ${
+            className={`relative z-10 flex-shrink-0 px-3 sm:px-4 md:px-5 lg:px-6 py-2 sm:py-2.5 md:py-3 rounded-full font-bold text-[0.7rem] sm:text-xs md:text-sm lg:text-base text-white touch-manipulation min-h-[36px] sm:min-h-[40px] md:min-h-[44px] whitespace-nowrap ${
               isAdding 
                 ? 'bg-green-500' 
                 : isDark
                   ? 'bg-gradient-to-r from-[#E91E63] via-[#ff0066] to-[#ff2d55] shadow-lg'
-                  : 'shadow-md hover:shadow-lg'
+                  : 'shadow-md'
             }`}
-            style={!isAdding && !isDark ? { backgroundColor: 'var(--color-primary)' } : {}}
+            style={!isAdding && !isDark ? { 
+              backgroundColor: 'var(--color-primary)',
+              transition: 'box-shadow 0.2s ease, filter 0.2s ease, opacity 0.2s ease, outline 0.2s ease',
+              outline: 'none',
+            } : {
+              transition: 'box-shadow 0.2s ease, filter 0.2s ease, opacity 0.2s ease, outline 0.2s ease',
+              outline: 'none',
+            }}
+            onMouseEnter={(e) => {
+              if (!isAdding) {
+                e.currentTarget.style.boxShadow = '0 12px 30px rgba(0, 0, 0, 0.3)';
+                e.currentTarget.style.filter = 'brightness(1.1)';
+              }
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.boxShadow = '';
+              e.currentTarget.style.filter = '';
+              e.currentTarget.style.outline = 'none';
+            }}
+            onMouseDown={(e) => {
+              e.stopPropagation();
+              if (!isAdding) {
+                e.currentTarget.style.boxShadow = '0 6px 15px rgba(0, 0, 0, 0.25)';
+                e.currentTarget.style.filter = 'brightness(0.95)';
+              }
+            }}
+            onMouseUp={(e) => {
+              if (!isAdding) {
+                e.currentTarget.style.boxShadow = '0 12px 30px rgba(0, 0, 0, 0.3)';
+                e.currentTarget.style.filter = 'brightness(1.1)';
+              }
+            }}
+            onFocus={(e) => {
+              if (!isAdding) {
+                e.currentTarget.style.outline = '2px solid var(--color-primary)';
+                e.currentTarget.style.outlineOffset = '2px';
+              }
+            }}
+            onBlur={(e) => {
+              e.currentTarget.style.outline = 'none';
+            }}
           >
             {isAdding ? (
               <span className="flex items-center gap-1 sm:gap-2">
