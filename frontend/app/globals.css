@@ -473,3 +473,34 @@ section[id] {
   opacity: 0.2;
   pointer-events: none;
 }
+
+/* Loading Screen Gradient Background */
+.bg-loading-gradient {
+  background: linear-gradient(90deg, 
+    #FFE5D9 0%, 
+    #FFD6CC 25%, 
+    #FFE5F0 50%, 
+    #F0E6FF 75%, 
+    #E8E0FF 100%
+  );
+  min-height: 100vh;
+}
+
+/* Loading Spinner - Blue Crescent */
+@keyframes spin-crescent {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.loading-spinner-crescent {
+  width: 48px;
+  height: 48px;
+  border: 4px solid rgba(59, 130, 246, 0.2);
+  border-top-color: #3B82F6;
+  border-radius: 50%;
+  animation: spin-crescent 1s linear infinite;
+}

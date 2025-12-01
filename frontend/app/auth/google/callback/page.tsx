@@ -119,22 +119,22 @@ export default function GoogleCallbackPage() {
 
   if (status === 'error') {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-50">
+      <div className="flex items-center justify-center min-h-screen bg-loading-gradient">
         <div className="text-center p-8">
           <div className="text-red-600 text-xl mb-4">❌ Error</div>
           <p className="text-gray-700 mb-4">{errorMessage || 'An error occurred'}</p>
-          <p className="text-sm text-gray-500">Redirecting to login...</p>
+          <p className="text-sm text-gray-600">Redirecting to login...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-50">
+    <div className="flex items-center justify-center min-h-screen bg-loading-gradient">
       <div className="text-center p-8">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-        <p className="text-gray-700 text-lg">Processing Google login...</p>
-        <p className="text-sm text-gray-500 mt-2">Please wait</p>
+        <div className="loading-spinner-crescent mx-auto mb-6"></div>
+        <p className="text-gray-800 text-lg font-medium">Processing Google login...</p>
+        <p className="text-sm text-gray-600 mt-2">Please wait</p>
       </div>
     </div>
   );
