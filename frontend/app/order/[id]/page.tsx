@@ -146,26 +146,6 @@ export default function OrderTrackingPage() {
       }
       
       const data = await response.json();
-      console.log(`[Order Tracking] Order loaded successfully:`, { orderId: data.id, status: data.status });
-      console.log(`[Order Tracking] Order items (full JSON):`, JSON.stringify(data.items, null, 2));
-      console.log(`[Order Tracking] Order items (summary):`, data.items?.map((item: any) => ({
-        id: item.id,
-        productName: item.productName,
-        modifiers: item.modifiers,
-        modifiersType: typeof item.modifiers,
-        modifiersKeys: item.modifiers ? Object.keys(item.modifiers) : [],
-        modifiersStringified: JSON.stringify(item.modifiers),
-        modifiersIsEmpty: item.modifiers ? Object.keys(item.modifiers).length === 0 : true,
-      })));
-      
-      // Log each item separately to see full structure
-      data.items?.forEach((item: any, index: number) => {
-        console.log(`[Order Tracking] Item ${index} full:`, item);
-        console.log(`[Order Tracking] Item ${index} modifiers raw:`, item.modifiers);
-        console.log(`[Order Tracking] Item ${index} modifiers JSON:`, JSON.stringify(item.modifiers));
-        console.log(`[Order Tracking] Item ${index} modifiers keys:`, item.modifiers ? Object.keys(item.modifiers) : 'null/undefined');
-        console.log(`[Order Tracking] Item ${index} modifiers entries:`, item.modifiers ? Object.entries(item.modifiers) : 'null/undefined');
-      });
       
       // Update order data
       setOrder(data);
@@ -365,32 +345,7 @@ export default function OrderTrackingPage() {
               const productTranslation = getProductTranslation(item.productName, language);
               const displayName = productTranslation.name;
               
-              // Debug: log modifiers to see what we're getting (always log for debugging)
-              const modifiersKeys = item.modifiers ? Object.keys(item.modifiers) : [];
-              const modifiersEntries = item.modifiers ? Object.entries(item.modifiers) : [];
-              console.log('[Order Tracking] Item modifiers FULL:', {
-                itemId: item.id,
-                productName: item.productName,
-                modifiers: item.modifiers,
-                modifiersType: typeof item.modifiers,
-                modifiersIsNull: item.modifiers === null,
-                modifiersIsUndefined: item.modifiers === undefined,
-                modifiersStringified: JSON.stringify(item.modifiers),
-                modifiersKeys: modifiersKeys,
-                modifiersKeysLength: modifiersKeys.length,
-                modifiersValues: item.modifiers ? Object.values(item.modifiers) : [],
-                modifiersEntries: modifiersEntries,
-                modifiersEntriesLength: modifiersEntries.length,
-                // Try to see what's inside
-                modifiersRaw: item.modifiers,
-              });
-              
-              // Also log the full item to see everything
-              console.log('[Order Tracking] Full item object:', JSON.parse(JSON.stringify(item)));
-              
               const modifiers = formatModifiers(item.modifiers, false, language);
-              
-              console.log('[Order Tracking] Formatted modifiers:', modifiers, 'Length:', modifiers.length);
               
               return (
                 <div key={item.id} className="flex justify-between items-center">

@@ -62,7 +62,6 @@ export function formatModifiers(
 ): string[] {
   // Handle null, undefined, or empty modifiers
   if (!modifiers || typeof modifiers !== 'object') {
-    console.log('[formatModifiers] Modifiers are null/undefined/not object:', modifiers, 'Type:', typeof modifiers);
     return [];
   }
 
@@ -71,18 +70,15 @@ export function formatModifiers(
   if (typeof modifiers === 'string') {
     try {
       parsedModifiers = JSON.parse(modifiers);
-      console.log('[formatModifiers] Parsed JSON string modifiers:', parsedModifiers);
     } catch (error) {
       console.error('[formatModifiers] Failed to parse JSON string:', error, modifiers);
       return [];
     }
   } else {
     parsedModifiers = modifiers;
-    console.log('[formatModifiers] Using modifiers as object:', parsedModifiers);
   }
 
   if (Object.keys(parsedModifiers).length === 0) {
-    console.log('[formatModifiers] Parsed modifiers are empty');
     return [];
   }
 
