@@ -195,19 +195,30 @@ export default function CheckoutPage() {
     if (typeof window === 'undefined') return;
     
     // Handle OAuth returnUrl redirect (only once on mount, not on every render)
+    // IMPORTANT: Only redirect if user came from OAuth (oauth_redirect flag is set)
+    // This prevents redirecting when user manually navigates to checkout after login
+    const fromOAuth = sessionStorage.getItem('oauth_redirect') === 'true';
     const oauthReturnUrl = sessionStorage.getItem('oauth_returnUrl');
-    if (oauthReturnUrl) {
+    
+    if (fromOAuth && oauthReturnUrl) {
       const validatedReturnUrl = validateReturnUrl(oauthReturnUrl);
-      // Always remove oauth_returnUrl after checking to prevent redirect loops
+      // Always remove oauth flags after checking to prevent redirect loops
       sessionStorage.removeItem('oauth_redirect');
       sessionStorage.removeItem('oauth_returnUrl');
       
       if (validatedReturnUrl && !validatedReturnUrl.includes('/checkout')) {
         // User should be redirected to account or other page (not checkout)
+        console.log('[Checkout] Redirecting from OAuth to:', validatedReturnUrl);
         window.location.replace(validatedReturnUrl);
         return;
       }
       // If validatedReturnUrl is for checkout or invalid, just remove it and continue
+    } else if (oauthReturnUrl && !fromOAuth) {
+      // User has oauth_returnUrl but didn't come from OAuth redirect
+      // This is likely a stale value from previous session - clear it
+      console.log('[Checkout] Clearing stale oauth_returnUrl (user not from OAuth redirect)');
+      sessionStorage.removeItem('oauth_returnUrl');
+      sessionStorage.removeItem('oauth_redirect');
     }
     
     // Initialize tenant slug from URL
