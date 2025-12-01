@@ -1,5 +1,6 @@
 import { Controller, Post, Body, Param, Get, Logger } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
+import { Public } from '../auth/decorators/public.decorator';
 import { DeliveryZoneService, AddressForZone } from './delivery-zone.service';
 import { TenantsService } from '../tenants/tenants.service';
 
@@ -16,6 +17,7 @@ export class DeliveryZoneController {
    * Get delivery fee for address
    * POST /delivery-zones/:tenantSlug/calculate-fee
    */
+  @Public() // Public endpoint - used in checkout before user is logged in
   @Throttle({ default: { limit: 20, ttl: 60000 } }) // 20 fee calculations per minute
   @Post(':tenantSlug/calculate-fee')
   async calculateDeliveryFee(
@@ -79,6 +81,7 @@ export class DeliveryZoneController {
    * Validate minimum order for address
    * POST /delivery-zones/:tenantSlug/validate-min-order
    */
+  @Public() // Public endpoint - used in checkout before user is logged in
   @Throttle({ default: { limit: 20, ttl: 60000 } }) // 20 validations per minute
   @Post(':tenantSlug/validate-min-order')
   async validateMinOrder(
