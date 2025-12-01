@@ -356,7 +356,9 @@ export default function OrderTrackingPage() {
               const displayName = productTranslation.name;
               
               // Debug: log modifiers to see what we're getting (always log for debugging)
-              console.log('[Order Tracking] Item modifiers:', {
+              const modifiersKeys = item.modifiers ? Object.keys(item.modifiers) : [];
+              const modifiersEntries = item.modifiers ? Object.entries(item.modifiers) : [];
+              console.log('[Order Tracking] Item modifiers FULL:', {
                 itemId: item.id,
                 productName: item.productName,
                 modifiers: item.modifiers,
@@ -364,10 +366,17 @@ export default function OrderTrackingPage() {
                 modifiersIsNull: item.modifiers === null,
                 modifiersIsUndefined: item.modifiers === undefined,
                 modifiersStringified: JSON.stringify(item.modifiers),
-                modifiersKeys: item.modifiers ? Object.keys(item.modifiers) : [],
+                modifiersKeys: modifiersKeys,
+                modifiersKeysLength: modifiersKeys.length,
                 modifiersValues: item.modifiers ? Object.values(item.modifiers) : [],
-                modifiersEntries: item.modifiers ? Object.entries(item.modifiers) : [],
+                modifiersEntries: modifiersEntries,
+                modifiersEntriesLength: modifiersEntries.length,
+                // Try to see what's inside
+                modifiersRaw: item.modifiers,
               });
+              
+              // Also log the full item to see everything
+              console.log('[Order Tracking] Full item object:', JSON.parse(JSON.stringify(item)));
               
               const modifiers = formatModifiers(item.modifiers, false, language);
               
