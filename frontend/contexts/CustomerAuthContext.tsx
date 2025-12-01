@@ -32,6 +32,7 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const router = useRouter();
   const { clearCart } = useCart();
+  const refreshTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     // Function to load user from localStorage
@@ -124,6 +125,138 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
+  // Helper function to decode JWT token and get expiration time
+  const getTokenExpiration = (token: string): number | null => {
+    try {
+      const parts = token.split('.');
+      if (parts.length !== 3) return null;
+      const payload = JSON.parse(atob(parts[1]));
+      return payload.exp ? payload.exp * 1000 : null; // Convert to milliseconds
+    } catch (e) {
+      console.error('Error decoding token:', e);
+      return null;
+    }
+  };
+
+  // Refresh access token using refresh token
+  const refreshAccessToken = async (): Promise<void> => {
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+    const isProduction = process.env.NODE_ENV === 'production';
+    
+    // In production, refresh token might be in HttpOnly cookie
+    // In development, get it from localStorage
+    const refreshTokenValue = isProduction 
+      ? 'cookie' // Placeholder - actual token is in HttpOnly cookie (if implemented)
+      : localStorage.getItem('customer_auth_refresh_token');
+    
+    if (!refreshTokenValue && !isProduction) {
+      throw new Error('No refresh token available');
+    }
+
+    const response = await fetch(`${API_URL}/api/auth/customer/refresh`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include', // Include cookies for HttpOnly tokens
+      body: JSON.stringify({ 
+        refresh_token: isProduction 
+          ? undefined // Don't send in body if it's in cookie
+          : refreshTokenValue 
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error('Token refresh failed');
+    }
+
+    const data = await response.json();
+    
+    // Update access token
+    localStorage.setItem('customer_auth_token', data.access_token);
+    if (data.user) {
+      localStorage.setItem('customer_auth_user', JSON.stringify(data.user));
+      setUser(data.user);
+    }
+    
+    // Setup next refresh
+    if (data.access_token) {
+      setupTokenRefresh(data.access_token);
+    }
+  };
+
+  // Setup automatic token refresh 5 minutes before expiration
+  const setupTokenRefresh = (accessToken: string) => {
+    // Clear existing timeout
+    if (refreshTimeoutRef.current) {
+      clearTimeout(refreshTimeoutRef.current);
+      refreshTimeoutRef.current = null;
+    }
+
+    const expiration = getTokenExpiration(accessToken);
+    if (!expiration) {
+      console.warn('Could not determine token expiration, using fallback interval');
+      // Fallback: refresh every 50 minutes
+      refreshTimeoutRef.current = setTimeout(async () => {
+        try {
+          await refreshAccessToken();
+        } catch (error) {
+          console.error('Token refresh failed:', error);
+          // Clear auth on refresh failure
+          localStorage.removeItem('customer_auth_token');
+          localStorage.removeItem('customer_auth_refresh_token');
+          localStorage.removeItem('customer_auth_user');
+          setUser(null);
+        }
+      }, 50 * 60 * 1000); // 50 minutes
+      return;
+    }
+
+    const now = Date.now();
+    const timeUntilExpiration = expiration - now;
+    const refreshTime = timeUntilExpiration - (5 * 60 * 1000); // 5 minutes before expiration
+
+    if (refreshTime <= 0) {
+      // Token expires soon, refresh immediately
+      refreshAccessToken().catch((error) => {
+        console.error('Token refresh failed:', error);
+        localStorage.removeItem('customer_auth_token');
+        localStorage.removeItem('customer_auth_refresh_token');
+        localStorage.removeItem('customer_auth_user');
+        setUser(null);
+      });
+      return;
+    }
+
+    refreshTimeoutRef.current = setTimeout(async () => {
+      try {
+        await refreshAccessToken();
+      } catch (error) {
+        console.error('Token refresh failed:', error);
+        // Clear auth on refresh failure
+        localStorage.removeItem('customer_auth_token');
+        localStorage.removeItem('customer_auth_refresh_token');
+        localStorage.removeItem('customer_auth_user');
+        setUser(null);
+      }
+    }, refreshTime);
+  };
+
+  // Setup token refresh when user is loaded
+  useEffect(() => {
+    if (user) {
+      const token = localStorage.getItem('customer_auth_token');
+      if (token) {
+        setupTokenRefresh(token);
+      }
+    }
+    
+    return () => {
+      if (refreshTimeoutRef.current) {
+        clearTimeout(refreshTimeoutRef.current);
+        refreshTimeoutRef.current = null;
+      }
+    };
+  }, [user]);
+
   const register = async (email: string, password: string, name: string) => {
     const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
 
@@ -163,6 +296,11 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
     }
     localStorage.setItem('customer_auth_user', JSON.stringify(data.user));
     setUser(data.user);
+
+    // Setup token refresh
+    if (data.access_token) {
+      setupTokenRefresh(data.access_token);
+    }
 
     return {
       needsSmsVerification: data.needsSmsVerification,
@@ -209,6 +347,11 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
     }
     localStorage.setItem('customer_auth_user', JSON.stringify(data.user));
     setUser(data.user);
+
+    // Setup token refresh
+    if (data.access_token) {
+      setupTokenRefresh(data.access_token);
+    }
 
     return {
       needsSmsVerification: data.needsSmsVerification,
@@ -334,11 +477,22 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
     localStorage.setItem('customer_auth_user', JSON.stringify(data.user));
     setUser(data.user);
     
+    // Setup token refresh
+    if (data.access_token) {
+      setupTokenRefresh(data.access_token);
+    }
+    
     // Force a small delay to ensure state is updated
     await new Promise(resolve => setTimeout(resolve, 100));
   };
 
   const logout = async () => {
+    // Clear refresh timeout
+    if (refreshTimeoutRef.current) {
+      clearTimeout(refreshTimeoutRef.current);
+      refreshTimeoutRef.current = null;
+    }
+    
     // Clear cart when logging out
     clearCart();
     

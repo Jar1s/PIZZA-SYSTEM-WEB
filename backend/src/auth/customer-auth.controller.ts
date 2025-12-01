@@ -146,6 +146,29 @@ export class CustomerAuthController {
   }
 
   /**
+   * Refresh access token using refresh token
+   */
+  @Public()
+  @Throttle({ default: { limit: 10, ttl: 60000 } }) // 10 refresh attempts per minute
+  @Post('refresh')
+  async refresh(@Body() body: { refresh_token: string }, @Res({ passthrough: true }) res: Response) {
+    const result = await this.customerAuthService.refreshToken(body.refresh_token);
+    
+    // Update HttpOnly cookie in production
+    if (process.env.NODE_ENV === 'production') {
+      res.cookie('access_token', result.access_token, {
+        httpOnly: true,
+        secure: true,
+        sameSite: 'strict',
+        maxAge: 60 * 60 * 1000, // 1 hour
+        path: '/',
+      });
+    }
+    
+    return result;
+  }
+
+  /**
    * Google OAuth redirect
    */
   @Public()

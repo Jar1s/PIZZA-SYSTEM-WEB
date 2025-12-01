@@ -399,6 +399,45 @@ export default function CheckoutPage() {
     fetchPaymentConfig();
   }, [fetchPaymentConfig]);
 
+  // Helper function to refresh token
+  const tryRefreshToken = async (): Promise<boolean> => {
+    try {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+      const isProduction = process.env.NODE_ENV === 'production';
+      const refreshToken = localStorage.getItem('customer_auth_refresh_token');
+      
+      if (!refreshToken && !isProduction) {
+        return false;
+      }
+
+      const response = await fetch(`${API_URL}/api/auth/customer/refresh`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ 
+          refresh_token: isProduction ? undefined : refreshToken 
+        }),
+      });
+
+      if (!response.ok) {
+        return false;
+      }
+
+      const data = await response.json();
+      localStorage.setItem('customer_auth_token', data.access_token);
+      if (data.user) {
+        localStorage.setItem('customer_auth_user', JSON.stringify(data.user));
+        if (setUser) {
+          setUser(data.user);
+        }
+      }
+      return true;
+    } catch (error) {
+      console.error('[Checkout] Token refresh failed:', error);
+      return false;
+    }
+  };
+
   const fetchUserProfile = useCallback(async () => {
     try {
       const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
@@ -416,8 +455,41 @@ export default function CheckoutPage() {
       });
 
       if (res.status === 401) {
-        // Token expired or invalid - clear auth
-        console.log('[Checkout] 401 Unauthorized when fetching profile - token expired');
+        // Token expired - try to refresh
+        console.log('[Checkout] 401 Unauthorized when fetching profile - attempting token refresh');
+        const refreshed = await tryRefreshToken();
+        
+        if (refreshed) {
+          // Retry with new token
+          const newToken = localStorage.getItem('customer_auth_token');
+          if (newToken) {
+            const retryRes = await fetch(`${API_URL}/api/customer/account/profile`, {
+              headers: {
+                'Authorization': `Bearer ${newToken}`,
+                'Content-Type': 'application/json',
+              },
+            });
+            
+            if (retryRes.ok) {
+              const data = await retryRes.json();
+              if (setUser) {
+                const updatedUser = {
+                  ...user,
+                  name: data.name || user.name,
+                  email: data.email || user.email,
+                  phone: data.phone || user.phone,
+                  phoneVerified: data.phoneVerified !== undefined ? data.phoneVerified : user.phoneVerified,
+                };
+                setUser(updatedUser);
+                localStorage.setItem('customer_auth_user', JSON.stringify(updatedUser));
+              }
+              return;
+            }
+          }
+        }
+        
+        // Refresh failed - clear auth
+        console.log('[Checkout] Token refresh failed, clearing auth');
         localStorage.removeItem('customer_auth_token');
         localStorage.removeItem('customer_auth_refresh_token');
         localStorage.removeItem('customer_auth_user');
@@ -468,8 +540,50 @@ export default function CheckoutPage() {
       });
 
       if (res.status === 401) {
-        // Token expired or invalid - clear auth and allow guest checkout
-        console.log('[Checkout] 401 Unauthorized - token expired, clearing auth');
+        // Token expired - try to refresh
+        console.log('[Checkout] 401 Unauthorized - attempting token refresh');
+        const refreshed = await tryRefreshToken();
+        
+        if (refreshed) {
+          // Retry with new token
+          const newToken = localStorage.getItem('customer_auth_token');
+          if (newToken) {
+            const retryRes = await fetch(`${API_URL}/api/customer/account/addresses`, {
+              headers: {
+                'Authorization': `Bearer ${newToken}`,
+                'Content-Type': 'application/json',
+              },
+            });
+            
+            if (retryRes.ok) {
+              const data = await retryRes.json();
+              const fetchedAddresses = data.addresses || [];
+              console.log('[Checkout] Addresses fetched after refresh:', {
+                count: fetchedAddresses.length,
+                addresses: fetchedAddresses.map((a: Address) => ({ id: a.id, street: a.street, isPrimary: a.isPrimary })),
+              });
+              setAddresses(fetchedAddresses);
+              
+              setSelectedAddressId((currentId) => {
+                if (currentId && fetchedAddresses.find((addr: Address) => addr.id === currentId)) {
+                  return currentId;
+                }
+                const primaryAddress = fetchedAddresses.find((addr: Address) => addr.isPrimary);
+                if (primaryAddress) {
+                  return primaryAddress.id;
+                } else if (fetchedAddresses.length > 0) {
+                  return fetchedAddresses[0].id;
+                }
+                return null;
+              });
+              setLoadingAddresses(false);
+              return;
+            }
+          }
+        }
+        
+        // Refresh failed - clear auth and allow guest checkout
+        console.log('[Checkout] Token refresh failed, clearing auth');
         localStorage.removeItem('customer_auth_token');
         localStorage.removeItem('customer_auth_refresh_token');
         localStorage.removeItem('customer_auth_user');

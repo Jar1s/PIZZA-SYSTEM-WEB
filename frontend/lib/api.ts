@@ -197,9 +197,16 @@ export async function createProduct(tenantSlug: string, data: Partial<Product>):
 }
 
 export async function createOrder(tenantSlug: string, orderData: any): Promise<Order | { order: Order; authToken?: string; refreshToken?: string; user?: any }> {
+  const token = typeof window !== 'undefined' ? localStorage.getItem('customer_auth_token') : null;
+  
+  const headers: HeadersInit = { 'Content-Type': 'application/json' };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  
   const res = await fetch(`${API_URL}/api/${tenantSlug}/orders`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers,
     body: JSON.stringify(orderData),
   });
   

@@ -576,6 +576,46 @@ export class CustomerAuthService {
   }
 
   /**
+   * Refresh access token using refresh token
+   */
+  async refreshToken(refreshToken: string): Promise<{ access_token: string; user: CustomerAuthResult['user'] }> {
+    // Find refresh token in database
+    const tokenRecord = await this.prisma.refreshToken.findUnique({
+      where: { token: refreshToken },
+      include: { user: true },
+    });
+
+    if (!tokenRecord || tokenRecord.isRevoked || tokenRecord.expiresAt < new Date()) {
+      throw new UnauthorizedException('Invalid or expired refresh token');
+    }
+
+    if (!tokenRecord.user.isActive || tokenRecord.user.role !== 'CUSTOMER') {
+      throw new UnauthorizedException('User is not active or not a customer');
+    }
+
+    // Generate new access token
+    const payload = {
+      userId: tokenRecord.user.id,
+      email: tokenRecord.user.email,
+      role: tokenRecord.user.role,
+    };
+
+    const access_token = this.jwtService.sign(payload);
+
+    return {
+      access_token,
+      user: {
+        id: tokenRecord.user.id,
+        email: tokenRecord.user.email || '',
+        name: tokenRecord.user.name,
+        phone: (tokenRecord.user as any).phone || undefined,
+        phoneVerified: (tokenRecord.user as any).phoneVerified || false,
+        role: tokenRecord.user.role,
+      },
+    };
+  }
+
+  /**
    * Verify SMS code and complete customer registration/login
    */
   async verifySmsAndComplete(phone: string, code: string, userId: string): Promise<CustomerAuthResult> {
