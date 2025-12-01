@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useSearchParams, useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { formatModifiers } from '@/lib/format-modifiers';
@@ -56,6 +56,11 @@ export default function OrderTrackingPage() {
   const [error, setError] = useState<string | null>(null);
   const [tenant, setTenant] = useState<Tenant | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  
+  // Refs to prevent concurrent requests and track polling
+  const isFetchingRef = useRef(false);
+  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const lastFetchTimeRef = useRef<number>(0);
 
   // Load tenant
   useEffect(() => {
@@ -71,6 +76,23 @@ export default function OrderTrackingPage() {
   }, [tenantSlug]);
 
   const fetchOrder = useCallback(async (retryCount = 0, isBackgroundRefresh = false) => {
+    // Prevent concurrent requests
+    if (isFetchingRef.current && retryCount === 0) {
+      console.log('[Order Tracking] Fetch already in progress, skipping...');
+      return;
+    }
+    
+    // Throttle: don't fetch if last fetch was less than 2 seconds ago (respects 30 req/min limit)
+    const now = Date.now();
+    const timeSinceLastFetch = now - lastFetchTimeRef.current;
+    if (timeSinceLastFetch < 2000 && retryCount === 0) {
+      console.log(`[Order Tracking] Throttling: last fetch was ${timeSinceLastFetch}ms ago`);
+      return;
+    }
+    
+    isFetchingRef.current = true;
+    lastFetchTimeRef.current = now;
+    
     try {
       if (isBackgroundRefresh) {
         setIsRefreshing(true);
@@ -88,14 +110,17 @@ export default function OrderTrackingPage() {
       if (!response.ok) {
         if (response.status === 429) {
           // Rate limit exceeded - wait longer before retry
-          const waitTime = Math.min(60000, 1000 * Math.pow(2, retryCount)); // Max 60s, exponential backoff
+          const waitTime = Math.min(60000, 2000 * Math.pow(2, retryCount)); // Min 2s, max 60s, exponential backoff
           console.warn(`[Order Tracking] Rate limit exceeded (429), waiting ${waitTime}ms before retry...`);
-          if (retryCount < 3) {
+          if (retryCount < 2) {
             setTimeout(() => {
+              isFetchingRef.current = false; // Allow retry
               fetchOrder(retryCount + 1, isBackgroundRefresh);
             }, waitTime);
             return;
           }
+          // After max retries, wait longer before allowing next fetch
+          isFetchingRef.current = false;
           throw new Error('Too many requests. Please wait a moment and refresh the page.');
         }
         if (response.status === 404) {
@@ -104,50 +129,56 @@ export default function OrderTrackingPage() {
           if (retryCount < 3) {
             console.log(`[Order Tracking] Order not found, retrying in ${retryCount + 1}s... (${retryCount + 1}/3)`);
             setTimeout(() => {
+              isFetchingRef.current = false; // Allow retry
               fetchOrder(retryCount + 1, isBackgroundRefresh);
             }, 1000 * (retryCount + 1)); // Exponential backoff: 1s, 2s, 3s
             return;
           }
           console.error(`[Order Tracking] Order not found after ${retryCount + 1} retries`);
+          isFetchingRef.current = false;
           throw new Error('Order not found');
         }
         const errorText = await response.text().catch(() => response.statusText);
         console.error(`[Order Tracking] Failed to load order: ${response.status} - ${errorText}`);
+        isFetchingRef.current = false;
         throw new Error(`Failed to load order: ${response.statusText}`);
       }
       
       const data = await response.json();
       console.log(`[Order Tracking] Order loaded successfully:`, { orderId: data.id, status: data.status });
       
-      // Only update if status changed or it's initial load
-      if (!order || order.status !== data.status) {
-        setOrder(data);
-      } else {
-        // Update order data even if status didn't change (in case other fields changed)
-        setOrder(data);
-      }
-      
+      // Update order data
+      setOrder(data);
       setError(null);
       setLoading(false);
       setIsRefreshing(false);
+      isFetchingRef.current = false;
     } catch (err: any) {
       console.error('[Order Tracking] Error fetching order:', err);
       setIsRefreshing(false);
+      isFetchingRef.current = false;
       // Only set error if we've exhausted retries
       if (retryCount >= 3) {
         setError(err.message || 'Failed to load order');
         setLoading(false);
       }
     }
-  }, [orderId, order]);
+  }, [orderId]); // Removed 'order' from dependencies to prevent infinite loops
 
+  // Initial fetch on mount
   useEffect(() => {
     fetchOrder(0);
-  }, [fetchOrder]);
+  }, [orderId]); // Only depend on orderId, not fetchOrder
 
-  // Poll for updates every 30 seconds (only after order is loaded and if order is not delivered/canceled)
-  // Increased from 10s to 30s to avoid rate limiting
+  // Poll for updates every 45 seconds (only after order is loaded and if order is not delivered/canceled)
+  // Increased to 45s to be well under the 30 req/min limit (allows ~1.3 req/min)
   useEffect(() => {
+    // Clear any existing interval
+    if (pollingIntervalRef.current) {
+      clearInterval(pollingIntervalRef.current);
+      pollingIntervalRef.current = null;
+    }
+    
     if (!order) return;
     
     // Stop polling if order is in final state
@@ -156,12 +187,21 @@ export default function OrderTrackingPage() {
       return;
     }
     
-    const interval = setInterval(() => {
-      fetchOrder(0, true); // true = background refresh
-    }, 30000); // Poll every 30 seconds (reduced frequency to avoid rate limiting)
+    // Start polling with longer interval
+    pollingIntervalRef.current = setInterval(() => {
+      // Only poll if not currently fetching
+      if (!isFetchingRef.current) {
+        fetchOrder(0, true); // true = background refresh
+      }
+    }, 45000); // Poll every 45 seconds to avoid rate limiting
     
-    return () => clearInterval(interval);
-  }, [order, fetchOrder]);
+    return () => {
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+        pollingIntervalRef.current = null;
+      }
+    };
+  }, [order?.id, order?.status]); // Only depend on order ID and status, not the whole order object
 
   // Get tenant theme - Force dark theme for tracking page
   const normalizedTenant = withTenantThemeDefaults(tenant);

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { Order, OrderStatus } from '@pizza-ecosystem/shared';
 import { getOrder } from '@/lib/api';
 import { StatusTimeline } from './StatusTimeline';
@@ -14,21 +14,42 @@ interface OrderTrackerProps {
 export function OrderTracker({ order: initialOrder }: OrderTrackerProps) {
   const [order, setOrder] = useState(initialOrder);
   const [loading, setLoading] = useState(false);
+  const isFetchingRef = useRef(false);
+  const lastFetchTimeRef = useRef<number>(0);
 
   useEffect(() => {
-    // Poll for updates every 15 seconds if order is active
+    // Poll for updates every 45 seconds if order is active (reduced frequency to avoid rate limiting)
     const isActive = ![OrderStatus.DELIVERED, OrderStatus.CANCELED].includes(order.status);
     
     if (!isActive) return;
     
     const interval = setInterval(async () => {
+      // Prevent concurrent requests
+      if (isFetchingRef.current) {
+        console.log('[OrderTracker] Fetch already in progress, skipping...');
+        return;
+      }
+      
+      // Throttle: don't fetch if last fetch was less than 2 seconds ago
+      const now = Date.now();
+      const timeSinceLastFetch = now - lastFetchTimeRef.current;
+      if (timeSinceLastFetch < 2000) {
+        console.log(`[OrderTracker] Throttling: last fetch was ${timeSinceLastFetch}ms ago`);
+        return;
+      }
+      
+      isFetchingRef.current = true;
+      lastFetchTimeRef.current = now;
+      
       try {
         const updated = await getOrder(order.id);
         setOrder(updated);
       } catch (error) {
         console.error('Failed to refresh order:', error);
+      } finally {
+        isFetchingRef.current = false;
       }
-    }, 15000);
+    }, 45000); // Poll every 45 seconds to avoid rate limiting
     
     return () => clearInterval(interval);
   }, [order.id, order.status]);
