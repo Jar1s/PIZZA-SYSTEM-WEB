@@ -335,12 +335,17 @@ export class OrdersService {
         modifiersKeys: item.modifiers ? Object.keys(item.modifiers) : [],
       });
       
+      // Ensure modifiers are properly serialized for Prisma JSON field
+      const modifiersValue = item.modifiers 
+        ? (item.modifiers as unknown as Prisma.InputJsonValue)
+        : null;
+      
       return {
         productId: product.id,
         productName: product.name, // Vždy INTERNÝ názov (napr. "Hawaii")
         quantity: item.quantity,
         priceCents: basePrice + modifierPrice,
-        modifiers: item.modifiers,
+        modifiers: modifiersValue,
       };
     });
 
