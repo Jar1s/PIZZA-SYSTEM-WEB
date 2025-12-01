@@ -75,8 +75,7 @@ class OrderItemDto {
   quantity: number;
 
   @IsOptional()
-  @ValidateNested()
-  @Type(() => OrderItemModifierDto)
+  @IsObject()
   modifiers?: OrderItemModifierDto;
 }
 
