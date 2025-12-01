@@ -2,6 +2,7 @@
 
 import { Order } from '@pizza-ecosystem/shared';
 import { formatModifiers } from '@/lib/format-modifiers';
+import { getProductTranslation } from '@/lib/product-translations';
 import { useLanguage } from '@/contexts/LanguageContext';
 
 interface OrderDetailsProps {
@@ -22,13 +23,15 @@ export function OrderDetails({ order }: OrderDetailsProps) {
         <h3 className="font-semibold mb-2">Items</h3>
         <div className="space-y-3">
           {order.items.map((item: any, i: number) => {
-            const modifiers = formatModifiers(item.modifiers, true, language); // Use defaults for admin
+            const productTranslation = getProductTranslation(item.productName, language);
+            const displayName = productTranslation.name;
+            const modifiers = formatModifiers(item.modifiers, false, language);
             
             return (
               <div key={i} className="flex justify-between items-start">
                 <div className="flex-1">
                   <div className="font-medium text-gray-800">
-                    {item.quantity}x {item.productName}
+                    {item.quantity}x {displayName}
                   </div>
                   {modifiers.length > 0 && (
                     <div className="text-sm text-gray-500 mt-1 space-y-0.5">

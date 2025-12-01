@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useSearchParams, useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { formatModifiers } from '@/lib/format-modifiers';
+import { getProductTranslation } from '@/lib/product-translations';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Header } from '@/components/layout/Header';
 import { StatusTimeline } from '@/components/tracking/StatusTimeline';
@@ -341,28 +342,31 @@ export default function OrderTrackingPage() {
           
           {/* Items */}
           <div className={`space-y-3 mb-6 pb-6 ${isDark ? 'border-b border-white/10' : 'border-b border-gray-200'}`}>
-            {order.items.map((item) => (
-              <div key={item.id} className="flex justify-between items-center">
-                <div>
-                  <p className={`font-medium ${isDark ? 'text-white' : 'text-gray-800'}`}>
-                    {item.quantity}x {item.productName}
-                  </p>
-                  {(() => {
-                    const modifiers = formatModifiers(item.modifiers, true, language);
-                    return modifiers.length > 0 && (
+            {order.items.map((item) => {
+              const productTranslation = getProductTranslation(item.productName, language);
+              const displayName = productTranslation.name;
+              const modifiers = formatModifiers(item.modifiers, false, language);
+              
+              return (
+                <div key={item.id} className="flex justify-between items-center">
+                  <div>
+                    <p className={`font-medium ${isDark ? 'text-white' : 'text-gray-800'}`}>
+                      {item.quantity}x {displayName}
+                    </p>
+                    {modifiers.length > 0 && (
                       <div className={`text-sm mt-1 space-y-0.5 ${isDark ? 'text-gray-300' : 'text-gray-500'}`}>
                         {modifiers.map((mod, idx) => (
                           <div key={idx}>• {mod}</div>
                         ))}
                       </div>
-                    );
-                  })()}
+                    )}
+                  </div>
+                  <p className={`font-semibold ${isDark ? 'text-white' : 'text-gray-700'}`}>
+                    €{((item.priceCents * item.quantity) / 100).toFixed(2)}
+                  </p>
                 </div>
-                <p className={`font-semibold ${isDark ? 'text-white' : 'text-gray-700'}`}>
-                  €{((item.priceCents * item.quantity) / 100).toFixed(2)}
-                </p>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
           {/* Totals */}
