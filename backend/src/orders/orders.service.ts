@@ -432,6 +432,19 @@ export class OrdersService {
     // Total = subtotal + delivery fee (prices already include VAT)
     const totalCents = subtotalCents + deliveryFeeCents;
 
+    // Log orderItems before saving to see what we're sending to Prisma
+    this.logger.debug('Order items before Prisma create', {
+      itemsCount: orderItems.length,
+      items: orderItems.map(item => ({
+        productName: item.productName,
+        quantity: item.quantity,
+        modifiers: item.modifiers,
+        modifiersType: typeof item.modifiers,
+        modifiersStringified: JSON.stringify(item.modifiers),
+        modifiersKeys: item.modifiers ? Object.keys(item.modifiers as any) : [],
+      })),
+    });
+
     // Create order (userId can be null for guest orders)
     const order = await this.prisma.order.create({
       data: {
