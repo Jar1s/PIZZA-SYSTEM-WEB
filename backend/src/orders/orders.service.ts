@@ -565,12 +565,25 @@ export class OrdersService {
       throw new NotFoundException(`Order ${id} not found`);
     }
 
+    // Explicitly map items to ensure productName is included
+    const orderWithItems = {
+      ...order,
+      items: order.items.map(item => ({
+        id: item.id,
+        productId: item.productId,
+        productName: item.productName, // Ensure productName is included
+        quantity: item.quantity,
+        priceCents: item.priceCents,
+        modifiers: item.modifiers,
+      })),
+    };
+
     // Validate order response with Zod
     try {
-      return OrderResponseSchema.parse(order) as unknown as Order;
+      return OrderResponseSchema.parse(orderWithItems) as unknown as Order;
     } catch (error) {
       this.logger.error(`Order response validation failed`, { error, orderId: order.id });
-      return order as unknown as Order; // Fallback
+      return orderWithItems as unknown as Order; // Fallback
     }
   }
 
@@ -604,17 +617,24 @@ export class OrdersService {
     });
     // Validate each order response with Zod
     return orders.map(order => {
+      // Explicitly map items to ensure productName is included
+      const orderWithItems = {
+        ...order,
+        items: order.items.map(item => ({
+          id: item.id,
+          productId: item.productId,
+          productName: item.productName, // Ensure productName is included
+          quantity: item.quantity,
+          priceCents: item.priceCents,
+          modifiers: item.modifiers,
+        })),
+      };
+      
       try {
-        return OrderResponseSchema.parse(order) as unknown as Order;
+        return OrderResponseSchema.parse(orderWithItems) as unknown as Order;
       } catch (error) {
         this.logger.error(`Order response validation failed`, { error, orderId: order.id });
-        // Validate order response with Zod
-    try {
-      return OrderResponseSchema.parse(order) as unknown as Order;
-    } catch (error) {
-      this.logger.error(`Order response validation failed`, { error, orderId: order.id });
-      return order as unknown as Order; // Fallback
-    } // Fallback
+        return orderWithItems as unknown as Order; // Fallback
       }
     });
   }

@@ -3,6 +3,7 @@ import { z } from 'zod';
 export const OrderItemSchema = z.object({
   id: z.string(),
   productId: z.string(),
+  productName: z.string(), // Product name snapshot
   quantity: z.number().int().positive(),
   priceCents: z.number().int().nonnegative(),
   // Modifiers can be either:
