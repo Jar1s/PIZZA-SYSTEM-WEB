@@ -326,6 +326,15 @@ export class OrdersService {
       const itemPrice = (basePrice + modifierPrice) * item.quantity;
       subtotalCents += itemPrice;
       
+      // Log modifiers before saving
+      this.logger.debug('Creating order item with modifiers', {
+        productName: product.name,
+        modifiers: item.modifiers,
+        modifiersType: typeof item.modifiers,
+        modifiersStringified: JSON.stringify(item.modifiers),
+        modifiersKeys: item.modifiers ? Object.keys(item.modifiers) : [],
+      });
+      
       return {
         productId: product.id,
         productName: product.name, // Vždy INTERNÝ názov (napr. "Hawaii")
@@ -568,14 +577,26 @@ export class OrdersService {
     // Explicitly map items to ensure productName is included
     const orderWithItems = {
       ...order,
-      items: order.items.map(item => ({
-        id: item.id,
-        productId: item.productId,
-        productName: item.productName, // Ensure productName is included
-        quantity: item.quantity,
-        priceCents: item.priceCents,
-        modifiers: item.modifiers,
-      })),
+      items: order.items.map(item => {
+        // Log modifiers when retrieving from database
+        this.logger.debug('Retrieving order item with modifiers', {
+          itemId: item.id,
+          productName: item.productName,
+          modifiers: item.modifiers,
+          modifiersType: typeof item.modifiers,
+          modifiersStringified: JSON.stringify(item.modifiers),
+          modifiersKeys: item.modifiers ? Object.keys(item.modifiers) : [],
+        });
+        
+        return {
+          id: item.id,
+          productId: item.productId,
+          productName: item.productName, // Ensure productName is included
+          quantity: item.quantity,
+          priceCents: item.priceCents,
+          modifiers: item.modifiers,
+        };
+      }),
     };
 
     // Validate order response with Zod
