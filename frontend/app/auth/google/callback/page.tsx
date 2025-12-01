@@ -3,12 +3,57 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { validateReturnUrl } from '@/lib/validate-return-url';
+import { getTenant } from '@/lib/api';
+import { Tenant } from '@pizza-ecosystem/shared';
+import { withTenantThemeDefaults, getBackgroundClass, isDarkTheme } from '@/lib/tenant-utils';
 
 export default function GoogleCallbackPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const [status, setStatus] = useState<'processing' | 'error'>('processing');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [tenant, setTenant] = useState<Tenant | null>(null);
+
+  // Load tenant data
+  useEffect(() => {
+    const loadTenant = async () => {
+      try {
+        const hostname = window.location.hostname;
+        const params = new URLSearchParams(window.location.search);
+        let tenantSlug = 'pornopizza';
+        
+        if (hostname.includes('pornopizza')) {
+          tenantSlug = 'pornopizza';
+        } else if (hostname.includes('pizzavnudzi')) {
+          tenantSlug = 'pizzavnudzi';
+        } else if (hostname.includes('localhost')) {
+          tenantSlug = params.get('tenant') || 'pornopizza';
+        } else {
+          tenantSlug = params.get('tenant') || 'pornopizza';
+        }
+        
+        const tenantData = await getTenant(tenantSlug);
+        const normalizedTenant = withTenantThemeDefaults(tenantData);
+        setTenant(normalizedTenant);
+      } catch (error) {
+        console.error('Failed to load tenant:', error);
+      }
+    };
+
+    loadTenant();
+  }, []);
+
+  // Apply body background class
+  useEffect(() => {
+    if (!tenant) return;
+    const layout = tenant.theme?.layout || {};
+    if (layout.useCustomBackground && layout.customBackgroundClass === 'porno-bg') {
+      document.body.classList.add('bg-porno-vibe');
+      return () => {
+        document.body.classList.remove('bg-porno-vibe');
+      };
+    }
+  }, [tenant]);
 
   useEffect(() => {
     const code = searchParams.get('code');
@@ -117,24 +162,48 @@ export default function GoogleCallbackPage() {
     exchangeCode();
   }, [searchParams, router]);
 
+  // Get theme configuration
+  const layout = tenant?.theme?.layout || {};
+  const isDark = isDarkTheme(tenant);
+  const backgroundClass = getBackgroundClass(tenant);
+  const primaryColor = tenant?.theme?.primaryColor || '#E91E63';
+
+  // Show loading state while tenant is loading
+  if (!tenant) {
+    return (
+      <div className="min-h-screen bg-porno-vibe flex items-center justify-center">
+        <div className="text-center">
+          <div 
+            className="inline-block animate-spin rounded-full h-16 w-16 border-t-4 border-b-4"
+            style={{ borderColor: 'var(--color-primary)' }}
+          ></div>
+          <p className="mt-4 text-lg text-white">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
   if (status === 'error') {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-loading-gradient">
+      <div className={`flex items-center justify-center min-h-screen ${backgroundClass} ${isDark ? 'text-white' : 'text-gray-900'}`}>
         <div className="text-center p-8">
-          <div className="text-red-600 text-xl mb-4">❌ Error</div>
-          <p className="text-gray-700 mb-4">{errorMessage || 'An error occurred'}</p>
-          <p className="text-sm text-gray-600">Redirecting to login...</p>
+          <div className={`text-xl mb-4`} style={{ color: isDark ? '#ff4444' : '#dc2626' }}>❌ Error</div>
+          <p className={`mb-4 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>{errorMessage || 'An error occurred'}</p>
+          <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>Redirecting to login...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-loading-gradient">
+    <div className={`flex items-center justify-center min-h-screen ${backgroundClass} ${isDark ? 'text-white' : 'text-gray-900'}`}>
       <div className="text-center p-8">
-        <div className="loading-spinner-crescent mx-auto mb-6"></div>
-        <p className="text-gray-800 text-lg font-medium">Processing Google login...</p>
-        <p className="text-sm text-gray-600 mt-2">Please wait</p>
+        <div 
+          className="inline-block animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 mx-auto mb-6"
+          style={{ borderColor: primaryColor }}
+        ></div>
+        <p className={`text-lg font-medium ${isDark ? 'text-white' : 'text-gray-800'}`}>Processing Google login...</p>
+        <p className={`text-sm mt-2 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>Please wait</p>
       </div>
     </div>
   );
