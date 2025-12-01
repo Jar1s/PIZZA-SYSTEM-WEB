@@ -62,7 +62,7 @@ export const pizzaCustomizations: CustomizationCategory[] = [
     id: 'edge',
     name: '🧈 OKRAJ – DOTYK NAVYŠE',
     nameEn: '🧈 EDGE – EXTRA TOUCH',
-    required: false,
+    required: true,
     maxSelection: 1,
     options: [
       { id: 'olive-oil', name: 'Olivovým olejom', nameEn: 'Olive oil', price: 0 },
@@ -118,7 +118,7 @@ export const stangleCustomizations: CustomizationCategory[] = [
     id: 'edge',
     name: '👉 Potrieť',
     nameEn: '👉 Brush',
-    required: false,
+    required: true,
     maxSelection: 1,
     options: [
       { id: 'garlic', name: 'Cesnakom', nameEn: 'Garlic', price: 0 },
