@@ -73,11 +73,14 @@ export function OrderCard({ order, onStatusUpdate, isExpanded = false, onToggleE
   };
   
   const getNextStatusLabel = (status: OrderStatus): string => {
-    const statusMap: Record<OrderStatus, string> = {
-      [OrderStatus.PREPARING]: t.orderStatusOutForDelivery,
-      [OrderStatus.OUT_FOR_DELIVERY]: t.orderStatusDelivered,
-    };
-    return statusMap[status] || status;
+    // Only PREPARING and OUT_FOR_DELIVERY have next status buttons
+    if (status === OrderStatus.PREPARING) {
+      return t.orderStatusOutForDelivery;
+    }
+    if (status === OrderStatus.OUT_FOR_DELIVERY) {
+      return t.orderStatusDelivered;
+    }
+    return status; // Fallback (shouldn't happen as nextStatus is checked before calling)
   };
   
   const handleSyncStoryous = async () => {
