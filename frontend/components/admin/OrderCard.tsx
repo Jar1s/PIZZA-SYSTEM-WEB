@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { formatModifiers } from '@/lib/format-modifiers';
 import { syncOrderToStoryous, createWoltDelivery } from '@/lib/api';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { getTranslations } from '@/lib/translations';
 
 interface OrderCardProps {
   order: Order;
@@ -23,18 +24,21 @@ const STATUS_COLORS: Record<OrderStatus, string> = {
   CANCELED: 'bg-red-200 text-red-800',
 };
 
+// Updated flow: PENDING → PAID (automatic) → PREPARING → OUT_FOR_DELIVERY → DELIVERED (automatic)
+// PAID is automatic via webhook, DELIVERED is automatic via Wolt webhook or time-based
 const NEXT_STATUS: Record<OrderStatus, OrderStatus | null> = {
-  PENDING: OrderStatus.PAID,
+  PENDING: null, // PAID is automatic via payment webhook
   PAID: OrderStatus.PREPARING,
-  PREPARING: OrderStatus.READY,
-  READY: OrderStatus.OUT_FOR_DELIVERY,
-  OUT_FOR_DELIVERY: OrderStatus.DELIVERED,
+  PREPARING: OrderStatus.OUT_FOR_DELIVERY, // Skip READY
+  READY: OrderStatus.OUT_FOR_DELIVERY, // Backward compatibility
+  OUT_FOR_DELIVERY: null, // DELIVERED is automatic
   DELIVERED: null,
   CANCELED: null,
 };
 
 export function OrderCard({ order, onStatusUpdate, isExpanded = false, onToggleExpand }: OrderCardProps) {
   const { language } = useLanguage();
+  const t = getTranslations(language);
   // Use prop if provided, otherwise fall back to local state for backward compatibility
   const [localExpanded, setLocalExpanded] = useState(false);
   const expanded = onToggleExpand ? isExpanded : localExpanded;
@@ -53,6 +57,28 @@ export function OrderCard({ order, onStatusUpdate, isExpanded = false, onToggleE
   const isStoryousSynced = !!order.storyousOrderId;
   const hasWoltDelivery = !!order.deliveryId || !!order.delivery;
   const woltDelivery = order.delivery;
+  
+  // Get translated status label
+  const getStatusLabel = (status: OrderStatus): string => {
+    const statusMap: Record<OrderStatus, string> = {
+      [OrderStatus.PENDING]: t.orderStatusPending,
+      [OrderStatus.PAID]: t.orderStatusPaid,
+      [OrderStatus.PREPARING]: t.orderStatusPreparing,
+      [OrderStatus.READY]: t.orderStatusReady,
+      [OrderStatus.OUT_FOR_DELIVERY]: t.orderStatusOutForDelivery,
+      [OrderStatus.DELIVERED]: t.orderStatusDelivered,
+      [OrderStatus.CANCELED]: t.orderStatusCanceled,
+    };
+    return statusMap[status] || status;
+  };
+  
+  const getNextStatusLabel = (status: OrderStatus): string => {
+    const statusMap: Record<OrderStatus, string> = {
+      [OrderStatus.PREPARING]: t.orderStatusOutForDelivery,
+      [OrderStatus.OUT_FOR_DELIVERY]: t.orderStatusDelivered,
+    };
+    return statusMap[status] || status;
+  };
   
   const handleSyncStoryous = async () => {
     setSyncingStoryous(true);
@@ -101,7 +127,7 @@ export function OrderCard({ order, onStatusUpdate, isExpanded = false, onToggleE
               {order.id.slice(0, 8)}
             </span>
             <span className={`px-2 py-1 rounded text-xs font-semibold ${STATUS_COLORS[order.status]}`}>
-              {order.status}
+              {getStatusLabel(order.status)}
             </span>
             {isStoryousSynced && (
               <span className="px-2 py-1 rounded text-xs font-semibold bg-green-100 text-green-800">
@@ -149,7 +175,7 @@ export function OrderCard({ order, onStatusUpdate, isExpanded = false, onToggleE
               onClick={() => onStatusUpdate(order.id, nextStatus)}
               className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
             >
-              → {nextStatus}
+              → {getNextStatusLabel(order.status)}
             </button>
           )}
           

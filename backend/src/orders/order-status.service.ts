@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException, Logger } from '@nestjs/common';
+import { Injectable, BadRequestException, Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { OrderStatus } from '@pizza-ecosystem/shared';
 import { EmailService } from '../email/email.service';
@@ -6,15 +6,20 @@ import { TenantsService } from '../tenants/tenants.service';
 import { StoryousService } from '../storyous/storyous.service';
 
 @Injectable()
-export class OrderStatusService {
+export class OrderStatusService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(OrderStatusService.name);
+  private autoDeliveredInterval: NodeJS.Timeout | null = null;
+  private readonly AUTO_DELIVERED_DELAY_MINUTES = 30; // Auto-deliver after 30 minutes
+  private readonly CHECK_INTERVAL_MS = 60000; // Check every minute
   
   // Valid status transitions
+  // Note: READY status is kept for backward compatibility but not used in new flow
+  // New flow: PENDING → PAID → PREPARING → OUT_FOR_DELIVERY → DELIVERED
   private transitions: Record<OrderStatus, OrderStatus[]> = {
     [OrderStatus.PENDING]: [OrderStatus.PAID, OrderStatus.CANCELED],
     [OrderStatus.PAID]: [OrderStatus.PREPARING, OrderStatus.CANCELED],
-    [OrderStatus.PREPARING]: [OrderStatus.READY, OrderStatus.CANCELED],
-    [OrderStatus.READY]: [OrderStatus.OUT_FOR_DELIVERY, OrderStatus.CANCELED],
+    [OrderStatus.PREPARING]: [OrderStatus.OUT_FOR_DELIVERY, OrderStatus.CANCELED], // Skip READY
+    [OrderStatus.READY]: [OrderStatus.OUT_FOR_DELIVERY, OrderStatus.CANCELED], // Backward compatibility only
     [OrderStatus.OUT_FOR_DELIVERY]: [OrderStatus.DELIVERED, OrderStatus.CANCELED],
     [OrderStatus.DELIVERED]: [],
     [OrderStatus.CANCELED]: [],
@@ -189,6 +194,69 @@ export class OrderStatusService {
 
   canTransition(currentStatus: OrderStatus, newStatus: OrderStatus): boolean {
     return this.transitions[currentStatus]?.includes(newStatus) || false;
+  }
+
+  async onModuleInit() {
+    // Start automatic DELIVERED status check
+    this.logger.log('🚀 Starting automatic DELIVERED status checker...');
+    this.autoDeliveredInterval = setInterval(
+      () => this.checkAndAutoDeliver(),
+      this.CHECK_INTERVAL_MS,
+    );
+  }
+
+  async onModuleDestroy() {
+    // Clean up interval on shutdown
+    if (this.autoDeliveredInterval) {
+      clearInterval(this.autoDeliveredInterval);
+      this.autoDeliveredInterval = null;
+      this.logger.log('🛑 Stopped automatic DELIVERED status checker');
+    }
+  }
+
+  /**
+   * Automatically set orders to DELIVERED if they've been OUT_FOR_DELIVERY for more than 30 minutes
+   * This is a fallback in case Wolt webhook doesn't fire or for non-Wolt deliveries
+   */
+  private async checkAndAutoDeliver(): Promise<void> {
+    try {
+      const cutoffTime = new Date();
+      cutoffTime.setMinutes(cutoffTime.getMinutes() - this.AUTO_DELIVERED_DELAY_MINUTES);
+
+      // Find orders that have been OUT_FOR_DELIVERY for more than 30 minutes
+      const ordersToDeliver = await this.prisma.order.findMany({
+        where: {
+          status: OrderStatus.OUT_FOR_DELIVERY,
+          updatedAt: {
+            lte: cutoffTime,
+          },
+        },
+        include: {
+          tenant: true,
+        },
+      });
+
+      if (ordersToDeliver.length > 0) {
+        this.logger.log(`📦 Found ${ordersToDeliver.length} order(s) to auto-deliver`);
+
+        for (const order of ordersToDeliver) {
+          try {
+            // Use updateStatus to ensure proper transitions and notifications
+            await this.updateStatus(order.id, OrderStatus.DELIVERED);
+            this.logger.log(`✅ Auto-delivered order ${order.id.slice(0, 8)}`);
+          } catch (error: any) {
+            // Log but don't throw - continue with other orders
+            this.logger.error(
+              `⚠️ Failed to auto-deliver order ${order.id}:`,
+              error.message,
+            );
+          }
+        }
+      }
+    } catch (error: any) {
+      // Log but don't throw - this is a background task
+      this.logger.error('⚠️ Error in auto-deliver check:', error.message);
+    }
   }
 }
 

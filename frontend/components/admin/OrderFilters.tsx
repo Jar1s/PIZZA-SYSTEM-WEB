@@ -1,6 +1,8 @@
 'use client';
 
 import { OrderStatus } from '@pizza-ecosystem/shared';
+import { useLanguage } from '@/contexts/LanguageContext';
+import { getTranslations } from '@/lib/translations';
 
 interface OrderFiltersProps {
   filters: {
@@ -13,6 +15,21 @@ interface OrderFiltersProps {
 }
 
 export function OrderFilters({ filters, onChange }: OrderFiltersProps) {
+  const { language } = useLanguage();
+  const t = getTranslations(language);
+  
+  const getStatusLabel = (status: OrderStatus): string => {
+    const statusMap: Record<OrderStatus, string> = {
+      [OrderStatus.PENDING]: t.orderStatusPending,
+      [OrderStatus.PAID]: t.orderStatusPaid,
+      [OrderStatus.PREPARING]: t.orderStatusPreparing,
+      [OrderStatus.READY]: t.orderStatusReady,
+      [OrderStatus.OUT_FOR_DELIVERY]: t.orderStatusOutForDelivery,
+      [OrderStatus.DELIVERED]: t.orderStatusDelivered,
+      [OrderStatus.CANCELED]: t.orderStatusCanceled,
+    };
+    return statusMap[status] || status;
+  };
   return (
     <div className="flex gap-4 mt-4">
       <select
@@ -30,13 +47,13 @@ export function OrderFilters({ filters, onChange }: OrderFiltersProps) {
         onChange={e => onChange({ ...filters, status: e.target.value })}
         className="border rounded px-3 py-2"
       >
-        <option value="all">All Statuses</option>
-        <option value={OrderStatus.PENDING}>Pending</option>
-        <option value={OrderStatus.PAID}>Paid</option>
-        <option value={OrderStatus.PREPARING}>Preparing</option>
-        <option value={OrderStatus.READY}>Ready</option>
-        <option value={OrderStatus.OUT_FOR_DELIVERY}>Out for Delivery</option>
-        <option value={OrderStatus.DELIVERED}>Delivered</option>
+        <option value="all">{language === 'sk' ? 'Všetky stavy' : 'All Statuses'}</option>
+        <option value={OrderStatus.PENDING}>{getStatusLabel(OrderStatus.PENDING)}</option>
+        <option value={OrderStatus.PAID}>{getStatusLabel(OrderStatus.PAID)}</option>
+        <option value={OrderStatus.PREPARING}>{getStatusLabel(OrderStatus.PREPARING)}</option>
+        <option value={OrderStatus.READY}>{getStatusLabel(OrderStatus.READY)}</option>
+        <option value={OrderStatus.OUT_FOR_DELIVERY}>{getStatusLabel(OrderStatus.OUT_FOR_DELIVERY)}</option>
+        <option value={OrderStatus.DELIVERED}>{getStatusLabel(OrderStatus.DELIVERED)}</option>
       </select>
       
       <input
