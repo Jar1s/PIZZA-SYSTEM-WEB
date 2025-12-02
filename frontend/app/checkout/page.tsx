@@ -1881,9 +1881,12 @@ export default function CheckoutPage() {
             }
             className="w-full py-3 rounded-2xl font-semibold text-lg disabled:opacity-50 disabled:cursor-not-allowed text-white shadow-lg hover:brightness-110 active:brightness-90 transition-all"
             style={{
+              backgroundColor: isDark 
+                ? undefined
+                : 'var(--color-primary)',
               background: isDark 
                 ? 'linear-gradient(to right, #E91E63, #ff0066, #ff2d55)'
-                : (primaryColor || '#E91E63'),
+                : undefined,
             }}
           >
             {loading ? t.processing : paymentType === 'cash_on_delivery' ? t.confirmOrder : t.pay}
