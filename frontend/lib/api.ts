@@ -40,6 +40,13 @@ export async function getTenant(slug: string): Promise<Tenant> {
     if (error.name === 'AbortError') {
       throw new Error('Request timeout: Backend is not responding');
     }
+    // Check for SSL certificate errors
+    if (error.message?.includes('ERR_CERT_AUTHORITY_INVALID') || 
+        error.message?.includes('certificate') || 
+        error.message?.includes('SSL') ||
+        error.message?.includes('CERT')) {
+      throw new Error('SSL certificate error: The backend SSL certificate is not valid. Please check Render.com SSL configuration.');
+    }
     if (error.message?.includes('ECONNREFUSED') || error.message?.includes('fetch failed')) {
       throw new Error('Backend is not available. Please ensure the backend is running on http://localhost:3000');
     }

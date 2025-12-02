@@ -32,6 +32,11 @@ export function getUserFriendlyError(error: any): string {
   if (error?.message) {
     const message = error.message.toLowerCase();
     
+    // SSL certificate errors
+    if (message.includes('cert') || message.includes('ssl') || message.includes('certificate') || message.includes('err_cert')) {
+      return 'Chyba SSL certifikátu: Backend SSL certifikát nie je platný. Skontrolujte konfiguráciu SSL na Render.com.';
+    }
+    
     // Network errors
     if (message.includes('failed to fetch') || message.includes('network')) {
       return 'Problém s pripojením. Skontrolujte internetové pripojenie a skúste to znova.';

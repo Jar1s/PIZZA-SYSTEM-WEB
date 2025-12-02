@@ -9,6 +9,7 @@ import { formatModifiers } from '@/lib/format-modifiers';
 import { useCustomerAuth } from '@/contexts/CustomerAuthContext';
 import { useTenant } from '@/contexts/TenantContext';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { calculateModifierPrice } from '@/lib/calculate-modifier-price';
 import { validateReturnUrl } from '@/lib/validate-return-url';
 import { getTenant } from '@/lib/api';
 import { geocodeAddress, validateBratislavaAddressSimple } from '@/lib/geocoding';
@@ -1243,6 +1244,9 @@ export default function CheckoutPage() {
             <h2 className="text-xl font-semibold mb-4">{t.orderSummary}</h2>
             {items.map(item => {
               const modifiers = formatModifiers(item.modifiers, false, language);
+              const modifierPrice = calculateModifierPrice(item.modifiers, item.product.category);
+              const itemPrice = item.product.priceCents + modifierPrice;
+              const itemTotal = itemPrice * item.quantity;
               return (
                 <div key={item.id} className="mb-4 pb-4 border-b last:border-b-0">
                   <div className="flex justify-between items-start mb-1">
@@ -1256,7 +1260,7 @@ export default function CheckoutPage() {
                         </div>
                       )}
                     </div>
-                    <span className="font-semibold ml-4">€{((item.product.priceCents * item.quantity) / 100).toFixed(2)}</span>
+                    <span className="font-semibold ml-4">€{(itemTotal / 100).toFixed(2)}</span>
                   </div>
                 </div>
               );

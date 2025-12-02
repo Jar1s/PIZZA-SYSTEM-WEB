@@ -7,6 +7,7 @@ import Image from 'next/image';
 import { motion } from 'framer-motion';
 import { formatModifiers } from '@/lib/format-modifiers';
 import { useMemo } from 'react';
+import { calculateModifierPrice } from '@/lib/calculate-modifier-price';
 
 interface CartItemProps {
   item: {
@@ -15,6 +16,7 @@ interface CartItemProps {
       id: string;
       name: string;
       priceCents: number;
+      category?: string;
       image?: string | null;
     };
     quantity: number;
@@ -26,8 +28,13 @@ interface CartItemProps {
 export function CartItem({ item, variant = 'light' }: CartItemProps) {
   const { updateQuantity, removeItem } = useCart();
   const { t, language } = useLanguage();
-  const price = (item.product.priceCents / 100).toFixed(2);
-  const total = ((item.product.priceCents * item.quantity) / 100).toFixed(2);
+  const modifierPrice = useMemo(() => 
+    calculateModifierPrice(item.modifiers, item.product.category), 
+    [item.modifiers, item.product.category]
+  );
+  const itemPrice = item.product.priceCents + modifierPrice;
+  const price = (itemPrice / 100).toFixed(2);
+  const total = ((itemPrice * item.quantity) / 100).toFixed(2);
   const isDark = variant === 'dark';
   
   // Get translated product name

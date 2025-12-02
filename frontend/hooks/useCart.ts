@@ -3,6 +3,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { Product } from '@pizza-ecosystem/shared';
+import { calculateModifierPrice } from '@/lib/calculate-modifier-price';
 
 interface CartItem {
   id: string;
@@ -98,7 +99,11 @@ export const useCart = create<CartStore>()(
 export const useCartTotal = () => {
   const items = useCart((state) => state.items);
   return items.reduce(
-    (sum, item) => sum + item.product.priceCents * item.quantity,
+    (sum, item) => {
+      const modifierPrice = calculateModifierPrice(item.modifiers, item.product.category);
+      const itemPrice = (item.product.priceCents + modifierPrice) * item.quantity;
+      return sum + itemPrice;
+    },
     0
   );
 };
