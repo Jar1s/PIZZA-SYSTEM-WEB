@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import * as nodemailer from 'nodemailer';
 import { Order } from '@prisma/client';
+import { OrderStatus } from '@pizza-ecosystem/shared';
 
 @Injectable()
 export class EmailService {
@@ -346,6 +347,85 @@ export class EmailService {
     `;
   }
 
+  async sendOrderStatusUpdate(
+    order: Order & { customer?: any; tenant?: any },
+    newStatus: OrderStatus,
+    tenantName: string,
+    tenantDomain: string,
+  ): Promise<void> {
+    const customer = order.customer as any;
+    if (!customer?.email) {
+      return; // No email to send to
+    }
+
+    const trackingUrl = `http://${tenantDomain}/order/${order.id}`;
+    const orderNumber = order.id.slice(0, 8).toUpperCase();
+
+    // Email notification - len pre statusy kde chceme posielať email
+    // PAID a PENDING sa neposielajú (PENDING má confirmation email pri vytvorení objednávky)
+    const statusMessages: Partial<Record<OrderStatus, { subject: string; message: string }>> = {
+      [OrderStatus.PREPARING]: {
+        subject: `👨‍🍳 Objednávka #${orderNumber} je v príprave`,
+        message: `Skvelá správa! Vaša objednávka sa teraz pripravuje v našej kuchyni.`,
+      },
+      [OrderStatus.READY]: {
+        subject: `🍕 Objednávka #${orderNumber} je pripravená!`,
+        message: `Vaša objednávka je pripravená! Čoskoro bude doručená.`,
+      },
+      [OrderStatus.OUT_FOR_DELIVERY]: {
+        subject: `🚗 Objednávka #${orderNumber} odovzdaná kuriérovi`,
+        message: `Vaša objednávka je na ceste! Sledujte doručenie: ${trackingUrl}`,
+      },
+      [OrderStatus.DELIVERED]: {
+        subject: `✅ Objednávka #${orderNumber} doručená`,
+        message: `Vaša objednávka bola doručená! Dobrú chuť! 🍕`,
+      },
+      [OrderStatus.CANCELED]: {
+        subject: `❌ Objednávka #${orderNumber} zrušená`,
+        message: `Vaša objednávka bola zrušená. Ak máte otázky, kontaktujte nás prosím.`,
+      },
+      // PAID a PENDING sa neposielajú
+    };
+
+    const notification = statusMessages[newStatus];
+    if (!notification) {
+      return; // No email for this status
+    }
+
+    const emailHtml = this.buildStatusUpdateEmail(
+      order,
+      customer,
+      tenantName,
+      trackingUrl,
+      notification.message,
+    );
+
+    try {
+      if (process.env.SMTP_HOST && this.transporter) {
+        // Production: Actually send the email
+        const info = await this.transporter.sendMail({
+          from: process.env.EMAIL_FROM || `"${tenantName}" <orders@${tenantDomain}>`,
+          to: customer.email,
+          subject: notification.subject,
+          html: emailHtml,
+        });
+        this.logger.log(`✅ Status update email sent to ${customer.email} for order ${orderNumber}: ${info.messageId}`);
+      } else {
+        // Dev mode: Just log the email content
+        this.logger.log(`📧 [DEV MODE] Status update email would be sent to: ${customer.email}`);
+        this.logger.log(`📧 Subject: ${notification.subject}`);
+        this.logger.log(`📧 Tracking URL: ${trackingUrl}`);
+        console.log('\n📧 STATUS UPDATE EMAIL PREVIEW:\n');
+        console.log(`To: ${customer.email}`);
+        console.log(`Subject: ${notification.subject}`);
+        console.log(`Tracking: ${trackingUrl}\n`);
+      }
+    } catch (error) {
+      this.logger.error(`❌ Failed to send status update email to ${customer.email}:`, error);
+      // Don't throw - email failure shouldn't break status update
+    }
+  }
+
   async sendWelcomeEmail(
     user: { email: string; name: string },
     tenantName: string,
@@ -374,6 +454,61 @@ export class EmailService {
       this.logger.error(`❌ Failed to send welcome email to ${user.email}:`, error);
       // Don't throw - email failure shouldn't break registration
     }
+  }
+
+  private buildStatusUpdateEmail(
+    order: Order,
+    customer: any,
+    tenantName: string,
+    trackingUrl: string,
+    message: string,
+  ): string {
+    const orderNumber = order.id.slice(0, 8).toUpperCase();
+
+    return `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Aktualizácia stavu objednávky</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #f4f4f4;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f4f4f4; padding: 20px;">
+    <tr>
+      <td align="center">
+        <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+          <tr>
+            <td style="padding: 40px; text-align: center; background-color: #ff6b35;">
+              <h1 style="margin: 0; color: #ffffff; font-size: 28px;">${tenantName}</h1>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 40px;">
+              <h2 style="margin: 0 0 20px 0; color: #333333; font-size: 24px;">Aktualizácia stavu objednávky</h2>
+              <p style="margin: 0 0 20px 0; color: #666666; font-size: 16px; line-height: 1.6;">
+                Ahoj ${customer.name},
+              </p>
+              <p style="margin: 0 0 20px 0; color: #666666; font-size: 16px; line-height: 1.6;">
+                ${message}
+              </p>
+              <p style="margin: 30px 0; text-align: center;">
+                <a href="${trackingUrl}" style="display: inline-block; padding: 12px 30px; background-color: #ff6b35; color: #ffffff; text-decoration: none; border-radius: 5px; font-weight: bold;">
+                  Sledovať objednávku
+                </a>
+              </p>
+              <p style="margin: 20px 0 0 0; color: #999999; font-size: 14px; line-height: 1.6;">
+                Objednávka #${orderNumber}
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+    `;
   }
 
   private buildWelcomeEmail(

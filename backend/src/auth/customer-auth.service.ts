@@ -218,12 +218,6 @@ export class CustomerAuthService {
       },
     });
 
-    // Send welcome email after login (async, don't wait for it)
-    this.sendWelcomeEmailAsync(user).catch((error) => {
-      this.logger.error(`Failed to send welcome email to ${user.email}:`, error);
-      // Don't throw - email failure shouldn't break login
-    });
-
     return {
       access_token,
       refresh_token: refreshToken,
