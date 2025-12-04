@@ -230,12 +230,9 @@ export const ProductCard = memo(function ProductCard({ product, index = 0, isBes
 
   const handleCustomizedAdd = useCallback((customizations: Record<string, string[]>, totalPrice: number) => {
     setIsAdding(true);
-    // Add item with customizations and custom price
+    // Add item with customizations - keep original product price, modifiers will be calculated when displaying
     addItem(
-      {
-        ...product,
-        priceCents: totalPrice,
-      },
+      product, // Keep original product with original priceCents
       customizations // Pass modifiers as second parameter
     );
     toast.success(`${displayName} pridané do košíka!`);

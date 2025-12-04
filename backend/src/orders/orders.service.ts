@@ -330,10 +330,15 @@ export class OrdersService {
           const selectedOptionIds = selectedModifiers[modifier.id] || [];
           
           // For each selected option, find its price (already validated above)
+          // Support both priceCents and price (for backward compatibility)
           for (const optionId of selectedOptionIds) {
             const option = modifier.options?.find((opt) => opt.id === optionId);
-            if (option && typeof option.priceCents === 'number') {
-              modifierPrice += option.priceCents;
+            if (option) {
+              // Try priceCents first (preferred), fallback to price
+              const optionPrice = typeof option.priceCents === 'number' 
+                ? option.priceCents 
+                : (typeof (option as any).price === 'number' ? (option as any).price : 0);
+              modifierPrice += optionPrice;
             }
           }
         }
