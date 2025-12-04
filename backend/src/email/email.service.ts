@@ -2,13 +2,14 @@ import { Injectable, Logger } from '@nestjs/common';
 import * as nodemailer from 'nodemailer';
 import { Order } from '@prisma/client';
 import { OrderStatus } from '@pizza-ecosystem/shared';
+import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
 export class EmailService {
   private readonly logger = new Logger(EmailService.name);
   private transporter: nodemailer.Transporter | null;
 
-  constructor() {
+  constructor(private prisma: PrismaService) {
     // Configure email transporter
     // For development: use Ethereal (fake SMTP) or console logging
     // For production: use real SMTP service (SendGrid, AWS SES, etc.)
@@ -192,12 +193,35 @@ export class EmailService {
     tenantName: string,
     tenantDomain: string,
     currency: string = 'EUR',
+    tenantTheme?: any,
   ): Promise<void> {
     const customer = order.customer as any;
     const address = order.address as any;
     
     // Generate tracking URL
     const trackingUrl = `http://${tenantDomain}/order/${order.id}`;
+    
+    // Get product images for order items
+    const itemsWithImages = await Promise.all(
+      (order.items || []).map(async (item: any) => {
+        if (item.productId) {
+          try {
+            const product = await this.prisma.product.findUnique({
+              where: { id: item.productId },
+              select: { image: true },
+            });
+            return {
+              ...item,
+              productImage: product?.image || null,
+            };
+          } catch (error) {
+            this.logger.warn(`Failed to fetch product image for ${item.productId}: ${error}`);
+            return { ...item, productImage: null };
+          }
+        }
+        return { ...item, productImage: null };
+      })
+    );
     
     const emailHtml = this.buildOrderConfirmationEmail(
       order,
@@ -206,6 +230,9 @@ export class EmailService {
       tenantName,
       trackingUrl,
       currency,
+      itemsWithImages,
+      tenantTheme,
+      tenantDomain,
     );
 
     try {
@@ -397,9 +424,18 @@ export class EmailService {
     tenantName: string,
     trackingUrl: string,
     currency: string = 'EUR',
+    itemsWithImages: any[] = [],
+    tenantTheme?: any,
+    tenantDomain?: string,
   ): string {
     const orderTotal = this.formatCurrency(order.totalCents, currency);
     const orderNumber = order.id.slice(0, 8).toUpperCase();
+    
+    // Get theme colors - fallback to brand colors
+    const primaryColor = tenantTheme?.primaryColor || '#E91E63';
+    const logoUrl = tenantTheme?.logo 
+      ? (tenantTheme.logo.startsWith('http') ? tenantTheme.logo : `http://${tenantDomain}${tenantTheme.logo}`)
+      : `http://${tenantDomain}/PORNO PIZZA PINK GRANDIENT.png`;
 
     return `
 <!DOCTYPE html>
@@ -417,8 +453,8 @@ export class EmailService {
           
           <!-- Header -->
           <tr>
-            <td style="background-color: #ff6b35; padding: 30px 20px; text-align: center;">
-              <h1 style="color: #ffffff; margin: 0; font-size: 28px;">🍕 ${tenantName}</h1>
+            <td style="background-color: ${primaryColor}; padding: 30px 20px; text-align: center;">
+              <img src="${logoUrl}" alt="${tenantName}" style="max-width: 200px; height: auto; margin-bottom: 10px;" />
               <p style="color: #ffffff; margin: 10px 0 0 0; font-size: 16px;">Objednávka prijatá!</p>
             </td>
           </tr>
@@ -433,14 +469,35 @@ export class EmailService {
               </p>
 
               <!-- Order Number -->
-              <div style="background-color: #f8f9fa; border-left: 4px solid #ff6b35; padding: 15px; margin: 20px 0;">
+              <div style="background-color: #f8f9fa; border-left: 4px solid ${primaryColor}; padding: 15px; margin: 20px 0;">
                 <p style="margin: 0; color: #666; font-size: 14px;">Číslo objednávky</p>
                 <p style="margin: 5px 0 0 0; color: #333; font-size: 24px; font-weight: bold;">#${orderNumber}</p>
               </div>
 
+              <!-- Order Items with Images -->
+              ${itemsWithImages.length > 0 ? `
+              <h3 style="color: #333; margin: 30px 0 15px 0; font-size: 18px; border-bottom: 2px solid #f0f0f0; padding-bottom: 10px;">Vaša objednávka</h3>
+              ${itemsWithImages.map((item: any) => `
+                <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom: 20px; border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden;">
+                  <tr>
+                    ${item.productImage ? `
+                    <td width="120" style="padding: 10px; vertical-align: top;">
+                      <img src="${item.productImage.startsWith('http') ? item.productImage : `http://${tenantDomain}${item.productImage}`}" alt="${item.productName}" style="width: 100px; height: 100px; object-fit: cover; border-radius: 4px;" />
+                    </td>
+                    ` : ''}
+                    <td style="padding: 15px; vertical-align: top;">
+                      <p style="margin: 0 0 5px 0; color: #333; font-size: 16px; font-weight: bold;">${item.productName}</p>
+                      <p style="margin: 0 0 5px 0; color: #666; font-size: 14px;">Množstvo: ${item.quantity}x</p>
+                      <p style="margin: 0; color: ${primaryColor}; font-size: 16px; font-weight: bold;">${this.formatCurrency(item.priceCents * item.quantity, currency)}</p>
+                    </td>
+                  </tr>
+                </table>
+              `).join('')}
+              ` : ''}
+
               <!-- Track Order Button -->
               <div style="text-align: center; margin: 30px 0;">
-                <a href="${trackingUrl}" style="display: inline-block; background-color: #ff6b35; color: #ffffff; padding: 15px 40px; text-decoration: none; border-radius: 5px; font-size: 16px; font-weight: bold;">
+                <a href="${trackingUrl}" style="display: inline-block; background-color: ${primaryColor}; color: #ffffff; padding: 15px 40px; text-decoration: none; border-radius: 5px; font-size: 16px; font-weight: bold;">
                   📦 Sledovať objednávku
                 </a>
               </div>
@@ -461,7 +518,7 @@ export class EmailService {
                 ` : ''}
                 <tr style="border-top: 2px solid #f0f0f0;">
                   <td style="color: #333; font-size: 18px; font-weight: bold; padding-top: 15px;">Celkom</td>
-                  <td align="right" style="color: #ff6b35; font-size: 20px; font-weight: bold; padding-top: 15px;">${orderTotal}</td>
+                  <td align="right" style="color: ${primaryColor}; font-size: 20px; font-weight: bold; padding-top: 15px;">${orderTotal}</td>
                 </tr>
               </table>
 
@@ -489,7 +546,7 @@ export class EmailService {
             <td style="background-color: #f8f9fa; padding: 20px 30px; text-align: center;">
               <p style="color: #999; font-size: 14px; margin: 0;">
                 Sledujte svoju objednávku kedykoľvek na:<br>
-                <a href="${trackingUrl}" style="color: #ff6b35; text-decoration: none; font-weight: bold;">${trackingUrl}</a>
+                <a href="${trackingUrl}" style="color: ${primaryColor}; text-decoration: none; font-weight: bold;">${trackingUrl}</a>
               </p>
               <p style="color: #999; font-size: 12px; margin: 15px 0 0 0;">
                 © ${new Date().getFullYear()} ${tenantName}. Všetky práva vyhradené.

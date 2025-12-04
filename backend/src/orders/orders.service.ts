@@ -538,6 +538,7 @@ export class OrdersService {
             domain: true,
             subdomain: true,
             currency: true, // Currency field added to schema
+            theme: true, // Include theme for email colors and logo
           } as any, // Type assertion needed until Prisma types are fully regenerated
         },
       },
@@ -593,6 +594,7 @@ export class OrdersService {
       tenantName, // Use cleaned tenantName
       tenantDomain,
       currency,
+      tenantTheme, // Pass tenant theme for colors and logo
     );
 
     // Send password setup email if new account was created without password
