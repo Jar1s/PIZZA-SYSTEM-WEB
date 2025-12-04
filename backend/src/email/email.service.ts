@@ -198,8 +198,24 @@ export class EmailService {
     const customer = order.customer as any;
     const address = order.address as any;
     
-    // Generate tracking URL
-    const trackingUrl = `http://${tenantDomain}/order/${order.id}`;
+    // Generate tracking URL - use FRONTEND_URL if available, otherwise fix tenantDomain
+    let trackingDomain = process.env.FRONTEND_URL || tenantDomain;
+    
+    // Remove protocol if present
+    trackingDomain = trackingDomain.replace(/^https?:\/\//, '');
+    
+    // Add www. prefix if missing and not localhost
+    if (!trackingDomain.includes('localhost') && !trackingDomain.includes('127.0.0.1')) {
+      if (!trackingDomain.startsWith('www.')) {
+        trackingDomain = `www.${trackingDomain}`;
+      }
+    }
+    
+    // Use https for production, http for localhost
+    const protocol = trackingDomain.includes('localhost') || trackingDomain.includes('127.0.0.1') ? 'http' : 'https';
+    const trackingUrl = `${protocol}://${trackingDomain}/order/${order.id}`;
+    
+    this.logger.log(`📧 Generated tracking URL: ${trackingUrl} (from FRONTEND_URL: ${process.env.FRONTEND_URL || 'not set'}, tenantDomain: ${tenantDomain})`);
     
     // Get product images and categories for order items
     const itemsWithImages = await Promise.all(
@@ -840,7 +856,24 @@ export class EmailService {
       return; // No email to send to
     }
 
-    const trackingUrl = `http://${tenantDomain}/order/${order.id}`;
+    // Generate tracking URL - use FRONTEND_URL if available, otherwise fix tenantDomain
+    let trackingDomain = process.env.FRONTEND_URL || tenantDomain;
+    
+    // Remove protocol if present
+    trackingDomain = trackingDomain.replace(/^https?:\/\//, '');
+    
+    // Add www. prefix if missing and not localhost
+    if (!trackingDomain.includes('localhost') && !trackingDomain.includes('127.0.0.1')) {
+      if (!trackingDomain.startsWith('www.')) {
+        trackingDomain = `www.${trackingDomain}`;
+      }
+    }
+    
+    // Use https for production, http for localhost
+    const protocol = trackingDomain.includes('localhost') || trackingDomain.includes('127.0.0.1') ? 'http' : 'https';
+    const trackingUrl = `${protocol}://${trackingDomain}/order/${order.id}`;
+    
+    this.logger.log(`📧 Generated tracking URL for status update: ${trackingUrl} (from FRONTEND_URL: ${process.env.FRONTEND_URL || 'not set'}, tenantDomain: ${tenantDomain})`);
     const orderNumber = order.id.slice(0, 8).toUpperCase();
 
     // Email notification - len pre statusy kde chceme posielať email
