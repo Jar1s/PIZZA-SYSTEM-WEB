@@ -15,15 +15,26 @@ export class EmailService {
     
     if (process.env.SMTP_HOST) {
       // Production SMTP
-      const smtpConfig = {
+      const port = parseInt(process.env.SMTP_PORT || '587');
+      const secure = process.env.SMTP_SECURE === 'true';
+      
+      const smtpConfig: any = {
         host: process.env.SMTP_HOST,
-        port: parseInt(process.env.SMTP_PORT || '587'),
-        secure: process.env.SMTP_SECURE === 'true',
+        port: port,
+        secure: secure,
         auth: {
           user: process.env.SMTP_USER,
           pass: process.env.SMTP_PASSWORD,
         },
       };
+
+      // For port 587 with STARTTLS, explicitly require TLS
+      if (port === 587 && !secure) {
+        smtpConfig.requireTLS = true;
+        smtpConfig.tls = {
+          rejectUnauthorized: false, // Allow self-signed certificates if needed
+        };
+      }
 
       // Log SMTP configuration (without password)
       this.logger.log(`📧 SMTP configured: ${smtpConfig.host}:${smtpConfig.port} (secure: ${smtpConfig.secure})`);
