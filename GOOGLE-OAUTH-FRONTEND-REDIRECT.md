@@ -69,3 +69,5 @@ Google OAuth teraz používa **frontend redirect URI** namiesto backend redirect
 
 
 
+
+

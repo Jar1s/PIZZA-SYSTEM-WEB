@@ -153,3 +153,5 @@ Ak stará databáza nefunguje:
 
 
 
+
+

@@ -70,3 +70,5 @@ Po tejto oprave by deployment mal fungovať! 🚀
 
 
 
+
+

@@ -46,3 +46,5 @@ Skript používa `ON CONFLICT DO UPDATE`, takže je bezpečné ho spustiť viack
 
 
 
+
+

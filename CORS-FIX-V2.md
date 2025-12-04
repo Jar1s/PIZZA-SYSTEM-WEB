@@ -74,3 +74,5 @@ Počkaj ~2-3 minúty na redeploy, potom obnov stránku.
 
 
 
+
+

@@ -10,16 +10,8 @@ import { calculateOrderItemPrice } from '@/lib/calculate-order-item-price';
 import { Header } from '@/components/layout/Header';
 import { StatusTimeline } from '@/components/tracking/StatusTimeline';
 import { getTenant } from '@/lib/api';
-import { Tenant, OrderStatus } from '@pizza-ecosystem/shared';
+import { Tenant, OrderStatus, OrderItem } from '@pizza-ecosystem/shared';
 import { withTenantThemeDefaults, getBackgroundClass, isDarkTheme, getSectionShellClass } from '@/lib/tenant-utils';
-
-interface OrderItem {
-  id: string;
-  productName: string;
-  quantity: number;
-  priceCents: number;
-  modifiers?: any;
-}
 
 interface Order {
   id: string;

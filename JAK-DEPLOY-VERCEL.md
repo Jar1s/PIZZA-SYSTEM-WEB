@@ -80,3 +80,5 @@ Ak máš problémy:
 
 
 
+
+
