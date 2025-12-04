@@ -86,6 +86,25 @@ export class EmailService {
   }
 
   /**
+   * Get properly formatted email FROM address
+   */
+  private getEmailFrom(tenantName: string, tenantDomain: string): string {
+    // If EMAIL_FROM is explicitly set, use it
+    if (process.env.EMAIL_FROM) {
+      return process.env.EMAIL_FROM;
+    }
+
+    // Otherwise, use SMTP_USER if available, or fallback to info@domain
+    const fromEmail = process.env.SMTP_USER || `info@${tenantDomain}`;
+    
+    // Format: "Display Name" <email@domain.com>
+    // Remove any extra spaces in tenantName
+    const cleanTenantName = tenantName.trim().replace(/\s+/g, ' ');
+    
+    return `"${cleanTenantName}" <${fromEmail}>`;
+  }
+
+  /**
    * Format SMTP error messages for better debugging
    */
   private formatSMTPError(error: any): string {
@@ -151,7 +170,7 @@ export class EmailService {
       if (process.env.SMTP_HOST && this.transporter) {
         // Production: Actually send the email
         const info = await this.transporter.sendMail({
-          from: process.env.EMAIL_FROM || `"${tenantName}" <orders@${tenantDomain}>`,
+          from: this.getEmailFrom(tenantName, tenantDomain),
           to: customer.email,
           subject: `🍕 Objednávka prijatá #${order.id.slice(0, 8).toUpperCase()} - ${tenantName}`,
           html: emailHtml,
@@ -196,7 +215,7 @@ export class EmailService {
       if (process.env.SMTP_HOST && this.transporter) {
         // Production: Actually send the email
         const info = await this.transporter.sendMail({
-          from: process.env.EMAIL_FROM || `"${tenantName}" <orders@${tenantDomain}>`,
+          from: this.getEmailFrom(tenantName, tenantDomain),
           to: user.email,
           subject: `🔐 Nastavte si heslo pre váš účet - ${tenantName}`,
           html: emailHtml,
@@ -502,7 +521,7 @@ export class EmailService {
       if (process.env.SMTP_HOST && this.transporter) {
         // Production: Actually send the email
         const info = await this.transporter.sendMail({
-          from: process.env.EMAIL_FROM || `"${tenantName}" <orders@${tenantDomain}>`,
+          from: this.getEmailFrom(tenantName, tenantDomain),
           to: customer.email,
           subject: notification.subject,
           html: emailHtml,
@@ -537,7 +556,7 @@ export class EmailService {
       if (process.env.SMTP_HOST && this.transporter) {
         // Production: Actually send the email
         const info = await this.transporter.sendMail({
-          from: process.env.EMAIL_FROM || `"${tenantName}" <orders@${tenantDomain}>`,
+          from: this.getEmailFrom(tenantName, tenantDomain),
           to: user.email,
           subject: `🎉 Vitajte v ${tenantName}!`,
           html: emailHtml,
