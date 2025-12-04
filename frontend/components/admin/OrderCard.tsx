@@ -246,12 +246,15 @@ export function OrderCard({ order, onStatusUpdate, isExpanded = false, onToggleE
             <div className="font-semibold mb-2">Items</div>
             {order.items.map((item, i) => {
               const modifiers = formatModifiers(item.modifiers, true, language); // Use defaults for admin
+              // item.priceCents should already include base price + modifier price (per unit)
+              // So we multiply by quantity to get total
+              const itemTotal = item.priceCents * item.quantity;
               
               return (
                 <div key={i} className="mb-3 pb-3 border-b last:border-b-0">
                   <div className="flex justify-between">
                     <span className="font-medium">{item.quantity}x {item.productName}</span>
-                    <span>€{(item.priceCents * item.quantity / 100).toFixed(2)}</span>
+                    <span>€{(itemTotal / 100).toFixed(2)}</span>
                   </div>
                   {modifiers.length > 0 && (
                     <div className="text-xs text-gray-500 mt-1 ml-4 space-y-0.5">

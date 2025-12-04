@@ -321,6 +321,8 @@ export class OrdersService {
       
       // Calculate modifier prices from validated options
       let modifierPrice = 0;
+      const modifierPriceDetails: Array<{ modifierId: string; optionId: string; price: number }> = [];
+      
       if (item.modifiers && product.modifiers) {
         const productModifiers = product.modifiers as ProductModifier[];
         const selectedModifiers = item.modifiers as ModifiersRecord;
@@ -339,13 +341,38 @@ export class OrdersService {
                 ? option.priceCents 
                 : (typeof (option as any).price === 'number' ? (option as any).price : 0);
               modifierPrice += optionPrice;
+              modifierPriceDetails.push({
+                modifierId: modifier.id,
+                optionId,
+                price: optionPrice,
+              });
             }
           }
         }
       }
       
+      // Log modifier price calculation details
+      if (modifierPriceDetails.length > 0) {
+        this.logger.log('Modifier price calculation details', {
+          productName: product.name,
+          modifierPriceDetails,
+          totalModifierPrice: modifierPrice,
+        });
+      }
+      
       const itemPrice = (basePrice + modifierPrice) * item.quantity;
       subtotalCents += itemPrice;
+      
+      // Log price calculation for debugging
+      this.logger.log('Calculating order item price', {
+        productName: product.name,
+        basePrice,
+        modifierPrice,
+        itemPricePerUnit: basePrice + modifierPrice,
+        quantity: item.quantity,
+        totalItemPrice: itemPrice,
+        modifiers: item.modifiers,
+      });
       
       // Log modifiers before saving
       this.logger.debug('Creating order item with modifiers', {
@@ -390,11 +417,23 @@ export class OrdersService {
         });
       }
       
+      const finalPriceCents = basePrice + modifierPrice;
+      
+      // Log final price being saved
+      this.logger.log('Saving order item with final price', {
+        productName: product.name,
+        basePrice,
+        modifierPrice,
+        finalPriceCents,
+        quantity: item.quantity,
+        totalPrice: finalPriceCents * item.quantity,
+      });
+      
       return {
         productId: product.id,
         productName: product.name, // Vždy INTERNÝ názov (napr. "Hawaii")
         quantity: item.quantity,
-        priceCents: basePrice + modifierPrice,
+        priceCents: finalPriceCents,
         modifiers: modifiersValue,
       };
     });
