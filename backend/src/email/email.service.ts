@@ -89,6 +89,10 @@ export class EmailService {
    * Get properly formatted email FROM address
    */
   private getEmailFrom(tenantName: string, tenantDomain: string): string {
+    // Log raw inputs for debugging
+    this.logger.log(`📧 getEmailFrom called with tenantName: "${tenantName}" (length: ${tenantName.length}), tenantDomain: ${tenantDomain}`);
+    this.logger.log(`📧 tenantName char codes: ${Array.from(tenantName).map(c => c.charCodeAt(0)).join(',')}`);
+    
     // If EMAIL_FROM is explicitly set, use it (but log it for debugging)
     if (process.env.EMAIL_FROM) {
       this.logger.log(`📧 Using EMAIL_FROM from env: ${process.env.EMAIL_FROM}`);
@@ -108,13 +112,26 @@ export class EmailService {
     
     // Format: "Display Name" <email@domain.com>
     // Remove any extra spaces in tenantName and ensure it's clean
-    const cleanTenantName = tenantName.trim().replace(/\s+/g, ' ');
+    // First, remove any non-printable characters and normalize whitespace
+    let cleanTenantName = tenantName.trim();
+    // Remove any non-printable characters (keep only printable ASCII + Slovak characters)
+    cleanTenantName = cleanTenantName.replace(/[\x00-\x1F\x7F-\x9F]/g, '');
+    // Normalize multiple spaces to single space
+    cleanTenantName = cleanTenantName.replace(/\s+/g, ' ');
     
     // Ensure tenantName doesn't contain quotes or special characters that could break the format
     const safeTenantName = cleanTenantName.replace(/["<>]/g, '');
     
-    const formattedFrom = `"${safeTenantName}" <${fromEmail}>`;
-    this.logger.log(`📧 Generated EMAIL_FROM: ${formattedFrom} (tenantName: "${tenantName}" -> "${safeTenantName}", fromEmail: ${fromEmail})`);
+    // Final validation: if tenantName is empty or only spaces, use a default
+    const finalTenantName = safeTenantName.trim() || 'Pizza System';
+    
+    const formattedFrom = `"${finalTenantName}" <${fromEmail}>`;
+    this.logger.log(`📧 Generated EMAIL_FROM: ${formattedFrom}`);
+    this.logger.log(`📧   - Original tenantName: "${tenantName}" (${tenantName.length} chars)`);
+    this.logger.log(`📧   - Cleaned tenantName: "${cleanTenantName}" (${cleanTenantName.length} chars)`);
+    this.logger.log(`📧   - Safe tenantName: "${safeTenantName}" (${safeTenantName.length} chars)`);
+    this.logger.log(`📧   - Final tenantName: "${finalTenantName}"`);
+    this.logger.log(`📧   - fromEmail: ${fromEmail}`);
     
     return formattedFrom;
   }
