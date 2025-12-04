@@ -566,11 +566,12 @@ export class OrdersService {
     const tenantTheme = (tenant.theme || {}) as TenantTheme;
     
     // DEBUG: Log tenant.name before sending email
+    const tenantNameStr = String(tenant.name || '');
     this.logger.log(`📧 About to send order confirmation email`, {
       tenantId: tenant.id,
-      tenantName: tenant.name,
-      tenantNameLength: tenant.name?.length,
-      tenantNameCharCodes: tenant.name ? Array.from(tenant.name).map(c => c.charCodeAt(0)).join(',') : 'N/A',
+      tenantName: tenantNameStr,
+      tenantNameLength: tenantNameStr.length,
+      tenantNameCharCodes: tenantNameStr ? Array.from(tenantNameStr).map(c => c.charCodeAt(0)).join(',') : 'N/A',
       tenantDomain,
     });
     
