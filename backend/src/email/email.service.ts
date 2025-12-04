@@ -29,6 +29,19 @@ export class EmailService {
       this.logger.log(`📧 SMTP configured: ${smtpConfig.host}:${smtpConfig.port} (secure: ${smtpConfig.secure})`);
       this.logger.log(`📧 SMTP user: ${smtpConfig.auth.user || 'NOT SET'}`);
       this.logger.log(`📧 SMTP password: ${smtpConfig.auth.pass ? '***SET***' : 'NOT SET'}`);
+      
+      // Additional debugging info
+      if (smtpConfig.auth.user) {
+        const userHasAt = smtpConfig.auth.user.includes('@');
+        const userLength = smtpConfig.auth.user.length;
+        this.logger.log(`📧 SMTP user format: ${userHasAt ? '✅ Contains @ (full email)' : '❌ Missing @ (should be full email)'}, length: ${userLength}`);
+      }
+      if (smtpConfig.auth.pass) {
+        const passLength = smtpConfig.auth.pass.length;
+        const hasLeadingSpace = smtpConfig.auth.pass.startsWith(' ');
+        const hasTrailingSpace = smtpConfig.auth.pass.endsWith(' ');
+        this.logger.log(`📧 SMTP password: length: ${passLength}, leading space: ${hasLeadingSpace ? '❌ YES (remove it!)' : '✅ NO'}, trailing space: ${hasTrailingSpace ? '❌ YES (remove it!)' : '✅ NO'}`);
+      }
 
       this.transporter = nodemailer.createTransport(smtpConfig);
 
