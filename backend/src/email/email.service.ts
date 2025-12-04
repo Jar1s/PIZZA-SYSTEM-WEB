@@ -591,39 +591,137 @@ export class EmailService {
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Objednávka prijatá</title>
+  <style>
+    @media only screen and (max-width: 600px) {
+      .email-container {
+        width: 100% !important;
+        max-width: 100% !important;
+      }
+      .email-content {
+        padding: 20px 15px !important;
+      }
+      .email-header {
+        padding: 20px 15px !important;
+      }
+      .logo-img {
+        max-width: 150px !important;
+      }
+      .order-number-box {
+        padding: 12px !important;
+        margin: 15px 0 !important;
+      }
+      .order-number-label {
+        font-size: 12px !important;
+      }
+      .order-number-value {
+        font-size: 20px !important;
+      }
+      .section-title {
+        font-size: 16px !important;
+        margin: 20px 0 10px 0 !important;
+      }
+      .product-table {
+        margin-bottom: 15px !important;
+      }
+      .product-image-cell {
+        width: 100% !important;
+        display: block !important;
+        padding: 10px !important;
+        text-align: center !important;
+      }
+      .product-image {
+        width: 100% !important;
+        max-width: 200px !important;
+        height: auto !important;
+        margin: 0 auto !important;
+      }
+      .product-content-cell {
+        display: block !important;
+        width: 100% !important;
+        padding: 15px !important;
+      }
+      .product-name {
+        font-size: 18px !important;
+      }
+      .product-quantity {
+        font-size: 13px !important;
+      }
+      .modifiers-box {
+        padding: 8px !important;
+        margin: 8px 0 !important;
+      }
+      .modifiers-title {
+        font-size: 13px !important;
+        margin-bottom: 6px !important;
+      }
+      .modifier-item {
+        font-size: 12px !important;
+        line-height: 1.4 !important;
+        margin-bottom: 3px !important;
+      }
+      .product-price {
+        font-size: 18px !important;
+        margin-top: 10px !important;
+      }
+      .track-button {
+        padding: 12px 30px !important;
+        font-size: 14px !important;
+        display: block !important;
+        width: calc(100% - 60px) !important;
+        margin: 20px auto !important;
+      }
+      .summary-table {
+        font-size: 14px !important;
+      }
+      .summary-total {
+        font-size: 18px !important;
+        padding-top: 10px !important;
+      }
+      .address-section {
+        font-size: 14px !important;
+        line-height: 1.5 !important;
+      }
+      .greeting {
+        font-size: 20px !important;
+      }
+      .greeting-text {
+        font-size: 14px !important;
+      }
+    }
+  </style>
 </head>
 <body style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #f4f4f4;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f4f4f4; padding: 20px;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f4f4f4; padding: 10px;">
     <tr>
       <td align="center">
-        <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+        <table class="email-container" width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1); max-width: 100%;">
           
           <!-- Header -->
           <tr>
-            <td style="background-color: ${primaryColor}; padding: 30px 20px; text-align: center;">
-              <img src="${logoUrl}" alt="${tenantName}" style="max-width: 200px; height: auto; margin-bottom: 10px;" />
+            <td class="email-header" style="background-color: ${primaryColor}; padding: 30px 20px; text-align: center;">
+              <img src="${logoUrl}" alt="${tenantName}" class="logo-img" style="max-width: 200px; height: auto; margin-bottom: 10px;" />
               <p style="color: #ffffff; margin: 10px 0 0 0; font-size: 16px;">Objednávka prijatá!</p>
             </td>
           </tr>
 
           <!-- Content -->
           <tr>
-            <td style="padding: 40px 30px;">
+            <td class="email-content" style="padding: 40px 30px;">
               
-              <h2 style="color: #333; margin: 0 0 10px 0; font-size: 22px;">Ahoj ${customer.name}! 👋</h2>
-              <p style="color: #666; font-size: 16px; line-height: 1.6; margin: 0 0 20px 0;">
+              <h2 class="greeting" style="color: #333; margin: 0 0 10px 0; font-size: 22px;">Ahoj ${customer.name}! 👋</h2>
+              <p class="greeting-text" style="color: #666; font-size: 16px; line-height: 1.6; margin: 0 0 20px 0;">
                 Ďakujeme za vašu objednávku! Prijali sme ju a už začali pripravovať vašu lahodnú pizzu.
               </p>
 
               <!-- Order Number -->
-              <div style="background-color: #f8f9fa; border-left: 4px solid ${primaryColor}; padding: 15px; margin: 20px 0;">
-                <p style="margin: 0; color: #666; font-size: 14px;">Číslo objednávky</p>
-                <p style="margin: 5px 0 0 0; color: #333; font-size: 24px; font-weight: bold;">#${orderNumber}</p>
+              <div class="order-number-box" style="background-color: #f8f9fa; border-left: 4px solid ${primaryColor}; padding: 15px; margin: 20px 0;">
+                <p class="order-number-label" style="margin: 0; color: #666; font-size: 14px;">Číslo objednávky</p>
+                <p class="order-number-value" style="margin: 5px 0 0 0; color: #333; font-size: 24px; font-weight: bold;">#${orderNumber}</p>
               </div>
 
               <!-- Order Items with Images -->
               ${itemsWithImageUrls.length > 0 ? `
-              <h3 style="color: #333; margin: 30px 0 15px 0; font-size: 18px; border-bottom: 2px solid #f0f0f0; padding-bottom: 10px;">Vaša objednávka</h3>
+              <h3 class="section-title" style="color: #333; margin: 30px 0 15px 0; font-size: 18px; border-bottom: 2px solid #f0f0f0; padding-bottom: 10px;">Vaša objednávka</h3>
               ${itemsWithImageUrls.map((item: any) => {
                 const modifiers = this.formatModifiersForEmail(item.modifiers, item.productCategory || 'PIZZA', 'sk');
                 // Debug logging
@@ -635,25 +733,27 @@ export class EmailService {
                   formattedCount: modifiers.length,
                 });
                 return `
-                <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom: 20px; border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden;">
+                <table class="product-table" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom: 20px; border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden;">
+                  ${item.imageUrl ? `
                   <tr>
-                    ${item.imageUrl ? `
-                    <td width="120" style="padding: 10px; vertical-align: top;">
-                      <img src="${item.imageUrl}" alt="${item.productName}" style="width: 100px; height: 100px; object-fit: cover; border-radius: 4px;" />
+                    <td class="product-image-cell" width="120" style="padding: 10px; vertical-align: top;">
+                      <img src="${item.imageUrl}" alt="${item.productName}" class="product-image" style="width: 100px; height: 100px; object-fit: cover; border-radius: 4px; max-width: 100%;" />
                     </td>
-                    ` : ''}
-                    <td style="padding: 15px; vertical-align: top;">
-                      <p style="margin: 0 0 5px 0; color: #333; font-size: 16px; font-weight: bold;">${item.productName}</p>
-                      <p style="margin: 0 0 10px 0; color: #666; font-size: 14px;">Množstvo: ${item.quantity}x</p>
+                  </tr>
+                  ` : ''}
+                  <tr>
+                    <td class="product-content-cell" style="padding: 15px; vertical-align: top;">
+                      <p class="product-name" style="margin: 0 0 5px 0; color: #333; font-size: 16px; font-weight: bold;">${item.productName}</p>
+                      <p class="product-quantity" style="margin: 0 0 10px 0; color: #666; font-size: 14px;">Množstvo: ${item.quantity}x</p>
                       ${modifiers.length > 0 ? `
-                      <div style="margin: 10px 0; padding: 10px; background-color: #f8f9fa; border-radius: 4px;">
-                        <p style="margin: 0 0 8px 0; color: #333; font-size: 14px; font-weight: bold;">Detaily objednávky:</p>
+                      <div class="modifiers-box" style="margin: 10px 0; padding: 10px; background-color: #f8f9fa; border-radius: 4px;">
+                        <p class="modifiers-title" style="margin: 0 0 8px 0; color: #333; font-size: 14px; font-weight: bold;">Detaily objednávky:</p>
                         ${modifiers.map((mod: string) => `
-                          <p style="margin: 0 0 4px 0; color: #666; font-size: 13px; line-height: 1.5;">• ${mod}</p>
+                          <p class="modifier-item" style="margin: 0 0 4px 0; color: #666; font-size: 13px; line-height: 1.5;">• ${mod}</p>
                         `).join('')}
                       </div>
                       ` : ''}
-                      <p style="margin: 10px 0 0 0; color: ${primaryColor}; font-size: 16px; font-weight: bold;">${this.formatCurrency(item.priceCents * item.quantity, currency)}</p>
+                      <p class="product-price" style="margin: 10px 0 0 0; color: ${primaryColor}; font-size: 16px; font-weight: bold;">${this.formatCurrency(item.priceCents * item.quantity, currency)}</p>
                     </td>
                   </tr>
                 </table>
@@ -663,15 +763,15 @@ export class EmailService {
 
               <!-- Track Order Button -->
               <div style="text-align: center; margin: 30px 0;">
-                <a href="${trackingUrl}" style="display: inline-block; background-color: ${primaryColor}; color: #ffffff; padding: 15px 40px; text-decoration: none; border-radius: 5px; font-size: 16px; font-weight: bold;">
+                <a href="${trackingUrl}" class="track-button" style="display: inline-block; background-color: ${primaryColor}; color: #ffffff; padding: 15px 40px; text-decoration: none; border-radius: 5px; font-size: 16px; font-weight: bold;">
                   📦 Sledovať objednávku
                 </a>
               </div>
 
               <!-- Order Details -->
-              <h3 style="color: #333; margin: 30px 0 15px 0; font-size: 18px; border-bottom: 2px solid #f0f0f0; padding-bottom: 10px;">Súhrn objednávky</h3>
+              <h3 class="section-title" style="color: #333; margin: 30px 0 15px 0; font-size: 18px; border-bottom: 2px solid #f0f0f0; padding-bottom: 10px;">Súhrn objednávky</h3>
               
-              <table width="100%" cellpadding="10" cellspacing="0" style="margin-bottom: 20px;">
+              <table class="summary-table" width="100%" cellpadding="10" cellspacing="0" style="margin-bottom: 20px;">
                 <tr>
                   <td style="color: #666; font-size: 16px;">Medzisúčet</td>
                   <td align="right" style="color: #333; font-size: 16px; font-weight: bold;">${this.formatCurrency(order.subtotalCents, currency)}</td>
@@ -683,14 +783,14 @@ export class EmailService {
                 </tr>
                 ` : ''}
                 <tr style="border-top: 2px solid #f0f0f0;">
-                  <td style="color: #333; font-size: 18px; font-weight: bold; padding-top: 15px;">Celkom</td>
-                  <td align="right" style="color: ${primaryColor}; font-size: 20px; font-weight: bold; padding-top: 15px;">${orderTotal}</td>
+                  <td class="summary-total" style="color: #333; font-size: 18px; font-weight: bold; padding-top: 15px;">Celkom</td>
+                  <td align="right" class="summary-total" style="color: ${primaryColor}; font-size: 20px; font-weight: bold; padding-top: 15px;">${orderTotal}</td>
                 </tr>
               </table>
 
               <!-- Delivery Address -->
-              <h3 style="color: #333; margin: 30px 0 15px 0; font-size: 18px; border-bottom: 2px solid #f0f0f0; padding-bottom: 10px;">Doručovacia adresa</h3>
-              <p style="color: #666; font-size: 16px; line-height: 1.6; margin: 0;">
+              <h3 class="section-title" style="color: #333; margin: 30px 0 15px 0; font-size: 18px; border-bottom: 2px solid #f0f0f0; padding-bottom: 10px;">Doručovacia adresa</h3>
+              <p class="address-section" style="color: #666; font-size: 16px; line-height: 1.6; margin: 0;">
                 ${address.street}<br>
                 ${address.city}, ${address.postalCode}<br>
                 ${address.country || 'Slovensko'}
