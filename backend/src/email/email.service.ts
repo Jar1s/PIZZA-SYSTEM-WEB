@@ -444,9 +444,50 @@ export class EmailService {
     
     // Get theme colors - fallback to brand colors
     const primaryColor = tenantTheme?.primaryColor || '#E91E63';
-    const logoUrl = tenantTheme?.logo 
-      ? (tenantTheme.logo.startsWith('http') ? tenantTheme.logo : `http://${tenantDomain}${tenantTheme.logo}`)
-      : `http://${tenantDomain}/PORNO PIZZA PINK GRANDIENT.png`;
+    
+    // Build logo URL
+    let logoUrl: string;
+    if (tenantTheme?.logo) {
+      if (tenantTheme.logo.startsWith('http')) {
+        logoUrl = tenantTheme.logo;
+      } else {
+        const protocol = tenantDomain?.includes('localhost') ? 'http' : 'https';
+        const cleanDomain = (tenantDomain || '').replace(/^https?:\/\//, '');
+        logoUrl = `${protocol}://${cleanDomain}${tenantTheme.logo.startsWith('/') ? tenantTheme.logo : '/' + tenantTheme.logo}`;
+      }
+    } else {
+      const protocol = tenantDomain?.includes('localhost') ? 'http' : 'https';
+      const cleanDomain = (tenantDomain || '').replace(/^https?:\/\//, '');
+      logoUrl = `${protocol}://${cleanDomain}/PORNO PIZZA PINK GRANDIENT.png`;
+    }
+    
+    // Build image URLs for items and log them
+    const itemsWithImageUrls = itemsWithImages.map((item: any) => {
+      let imageUrl = null;
+      if (item.productImage && item.productImage.trim() !== '') {
+        const imagePath = item.productImage.trim();
+        
+        // If already absolute URL, use as-is
+        if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
+          imageUrl = imagePath;
+        } else {
+          // Build absolute URL - use frontend domain for images
+          const protocol = tenantDomain?.includes('localhost') ? 'http' : 'https';
+          const cleanDomain = (tenantDomain || '').replace(/^https?:\/\//, '');
+          imageUrl = `${protocol}://${cleanDomain}${imagePath.startsWith('/') ? imagePath : '/' + imagePath}`;
+        }
+      }
+      return { ...item, imageUrl };
+    });
+    
+    // Log generated image URLs
+    itemsWithImageUrls.forEach((item: any) => {
+      if (item.imageUrl) {
+        this.logger.log(`📧 Generated image URL for ${item.productName}: ${item.imageUrl}`);
+      } else {
+        this.logger.log(`📧 No image URL for ${item.productName} (productImage: ${item.productImage || 'null'})`);
+      }
+    });
 
     return `
 <!DOCTYPE html>
@@ -486,31 +527,14 @@ export class EmailService {
               </div>
 
               <!-- Order Items with Images -->
-              ${itemsWithImages.length > 0 ? `
+              ${itemsWithImageUrls.length > 0 ? `
               <h3 style="color: #333; margin: 30px 0 15px 0; font-size: 18px; border-bottom: 2px solid #f0f0f0; padding-bottom: 10px;">Vaša objednávka</h3>
-              ${itemsWithImages.map((item: any) => {
-                // Build image URL
-                let imageUrl = null;
-                if (item.productImage && item.productImage.trim() !== '') {
-                  const imagePath = item.productImage.trim();
-                  
-                  // If already absolute URL, use as-is
-                  if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
-                    imageUrl = imagePath;
-                  } else {
-                    // Build absolute URL
-                    const protocol = tenantDomain?.includes('localhost') ? 'http' : 'https';
-                    const cleanDomain = (tenantDomain || '').replace(/^https?:\/\//, '');
-                    imageUrl = `${protocol}://${cleanDomain}${imagePath.startsWith('/') ? imagePath : '/' + imagePath}`;
-                  }
-                }
-                
-                return `
+              ${itemsWithImageUrls.map((item: any) => `
                 <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom: 20px; border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden;">
                   <tr>
-                    ${imageUrl ? `
+                    ${item.imageUrl ? `
                     <td width="120" style="padding: 10px; vertical-align: top;">
-                      <img src="${imageUrl}" alt="${item.productName}" style="width: 100px; height: 100px; object-fit: cover; border-radius: 4px;" />
+                      <img src="${item.imageUrl}" alt="${item.productName}" style="width: 100px; height: 100px; object-fit: cover; border-radius: 4px;" />
                     </td>
                     ` : ''}
                     <td style="padding: 15px; vertical-align: top;">
@@ -520,8 +544,7 @@ export class EmailService {
                     </td>
                   </tr>
                 </table>
-              `;
-              }).join('')}
+              `).join('')}
               ` : ''}
 
               <!-- Track Order Button -->
