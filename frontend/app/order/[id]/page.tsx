@@ -6,6 +6,7 @@ import { motion } from 'framer-motion';
 import { formatModifiers } from '@/lib/format-modifiers';
 import { getProductTranslation } from '@/lib/product-translations';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { calculateOrderItemPrice } from '@/lib/calculate-order-item-price';
 import { Header } from '@/components/layout/Header';
 import { StatusTimeline } from '@/components/tracking/StatusTimeline';
 import { getTenant } from '@/lib/api';
@@ -362,7 +363,7 @@ export default function OrderTrackingPage() {
                     )}
                   </div>
                   <p className={`font-semibold ${isDark ? 'text-white' : 'text-gray-700'}`}>
-                    €{((item.priceCents * item.quantity) / 100).toFixed(2)}
+                    €{(calculateOrderItemPrice(item, 'PIZZA') / 100).toFixed(2)}
                   </p>
                 </div>
               );

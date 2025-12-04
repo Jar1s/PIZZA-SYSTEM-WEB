@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Product } from '@pizza-ecosystem/shared';
-import { pizzaCustomizations, stangleCustomizations, CustomizationOption, CustomizationCategory } from '@/lib/customization-options';
+import { pizzaCustomizations, stangleCustomizations, CustomizationOption, CustomizationCategory, getCustomizationOptions } from '@pizza-ecosystem/shared';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { getProductTranslation, getAllergenDescription } from '@/lib/product-translations';
 import Image from 'next/image';
@@ -62,10 +62,7 @@ export default function CustomizationModal({
 
   // Get customization options based on product category
   const customizations: CustomizationCategory[] = useMemo(() => {
-    if (product.category === 'STANGLE') {
-      return stangleCustomizations;
-    }
-    return pizzaCustomizations;
+    return getCustomizationOptions(product.category || '');
   }, [product.category]);
 
   const calculateTotal = useCallback((currentSelections: Record<string, string[]>) => {

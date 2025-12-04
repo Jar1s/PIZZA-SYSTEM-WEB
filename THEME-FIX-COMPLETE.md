@@ -85,3 +85,6 @@ Nahradené všetky hardcoded orange farby za dynamické:
 
 
 
+
+
+

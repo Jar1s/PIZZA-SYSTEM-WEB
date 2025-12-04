@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { formatModifiers } from '@/lib/format-modifiers';
 import { syncOrderToStoryous, createWoltDelivery } from '@/lib/api';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { calculateOrderItemPrice } from '@/lib/calculate-order-item-price';
 import { getTranslations } from '@/lib/translations';
 
 interface OrderCardProps {
@@ -246,9 +247,8 @@ export function OrderCard({ order, onStatusUpdate, isExpanded = false, onToggleE
             <div className="font-semibold mb-2">Items</div>
             {order.items.map((item, i) => {
               const modifiers = formatModifiers(item.modifiers, true, language); // Use defaults for admin
-              // item.priceCents should already include base price + modifier price (per unit)
-              // So we multiply by quantity to get total
-              const itemTotal = item.priceCents * item.quantity;
+              // Calculate correct price (handles both old and new orders)
+              const itemTotal = calculateOrderItemPrice(item, 'PIZZA');
               
               return (
                 <div key={i} className="mb-3 pb-3 border-b last:border-b-0">

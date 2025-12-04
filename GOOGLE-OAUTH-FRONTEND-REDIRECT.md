@@ -66,3 +66,6 @@ Google OAuth teraz používa **frontend redirect URI** namiesto backend redirect
 - Nový flow používa `/api/auth/customer/google/exchange` (POST endpoint)
 - Frontend callback je na `/auth/google/callback`
 
+
+
+

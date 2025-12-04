@@ -2,7 +2,7 @@ import { Injectable, NotFoundException, BadRequestException, Logger } from '@nes
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../prisma/prisma.service';
 import { Prisma, User, UserRole, Order as PrismaOrder } from '@prisma/client';
-import { Order, OrderStatus, CustomerInfo, Address } from '@pizza-ecosystem/shared';
+import { Order, OrderStatus, CustomerInfo, Address, getCustomizationOptions, calculateModifierPrice as calculateModifierPriceShared } from '@pizza-ecosystem/shared';
 import { CreateOrderDto } from './dto';
 import { EmailService } from '../email/email.service';
 import { StoryousService } from '../storyous/storyous.service';
@@ -319,44 +319,19 @@ export class OrdersService {
     const orderItems = products.map(({ product, item }) => {
       const basePrice = product.priceCents;
       
-      // Calculate modifier prices from validated options
+      // Calculate modifier prices using shared customization options
+      // Products don't store modifiers in DB - they use frontend customization options
       let modifierPrice = 0;
-      const modifierPriceDetails: Array<{ modifierId: string; optionId: string; price: number }> = [];
       
-      if (item.modifiers && product.modifiers) {
-        const productModifiers = product.modifiers as ProductModifier[];
-        const selectedModifiers = item.modifiers as ModifiersRecord;
+      if (item.modifiers) {
+        // Use shared customization options based on product category
+        modifierPrice = calculateModifierPriceShared(item.modifiers, product.category);
         
-        // Iterate through each modifier category
-        for (const modifier of productModifiers) {
-          const selectedOptionIds = selectedModifiers[modifier.id] || [];
-          
-          // For each selected option, find its price (already validated above)
-          // Support both priceCents and price (for backward compatibility)
-          for (const optionId of selectedOptionIds) {
-            const option = modifier.options?.find((opt) => opt.id === optionId);
-            if (option) {
-              // Try priceCents first (preferred), fallback to price
-              const optionPrice = typeof option.priceCents === 'number' 
-                ? option.priceCents 
-                : (typeof (option as any).price === 'number' ? (option as any).price : 0);
-              modifierPrice += optionPrice;
-              modifierPriceDetails.push({
-                modifierId: modifier.id,
-                optionId,
-                price: optionPrice,
-              });
-            }
-          }
-        }
-      }
-      
-      // Log modifier price calculation details
-      if (modifierPriceDetails.length > 0) {
-        this.logger.log('Modifier price calculation details', {
+        this.logger.log('Calculated modifier price from shared options', {
           productName: product.name,
-          modifierPriceDetails,
-          totalModifierPrice: modifierPrice,
+          productCategory: product.category,
+          selectedModifiers: item.modifiers,
+          modifierPrice,
         });
       }
       

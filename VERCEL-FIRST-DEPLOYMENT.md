@@ -82,3 +82,6 @@ Po vytvorení deploymentu:
 
 
 
+
+
+

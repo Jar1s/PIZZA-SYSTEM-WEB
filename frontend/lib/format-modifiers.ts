@@ -1,4 +1,4 @@
-import { pizzaCustomizations, stangleCustomizations } from './customization-options';
+import { getCustomizationOptions } from '@pizza-ecosystem/shared';
 
 /**
  * Removes emoji and special formatting from text
@@ -83,6 +83,9 @@ export function formatModifiers(
   }
 
   const formatted: string[] = [];
+  // Get all customization options for both PIZZA and STANGLE categories
+  const pizzaCustomizations = getCustomizationOptions('PIZZA');
+  const stangleCustomizations = getCustomizationOptions('STANGLE');
   const allCustomizations = [...pizzaCustomizations, ...stangleCustomizations];
 
   try {

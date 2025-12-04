@@ -4,6 +4,7 @@ import { Order } from '@pizza-ecosystem/shared';
 import { formatModifiers } from '@/lib/format-modifiers';
 import { getProductTranslation } from '@/lib/product-translations';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { calculateOrderItemPrice } from '@/lib/calculate-order-item-price';
 
 interface OrderDetailsProps {
   order: Order;
@@ -43,7 +44,7 @@ export function OrderDetails({ order }: OrderDetailsProps) {
                   )}
                 </div>
                 <span className="font-semibold text-gray-700 ml-4">
-                  €{(item.priceCents * item.quantity / 100).toFixed(2)}
+                  €{(calculateOrderItemPrice(item, 'PIZZA') / 100).toFixed(2)}
                 </span>
               </div>
             );

@@ -150,3 +150,6 @@ Ak stará databáza nefunguje:
 
 
 
+
+
+

@@ -104,3 +104,6 @@ Ak nechceš používať MCP server, môžeš pokračovať s manuálnym nastaven�
 
 
 
+
+
+

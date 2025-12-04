@@ -77,3 +77,6 @@ Ak máš problémy:
 
 
 
+
+
+

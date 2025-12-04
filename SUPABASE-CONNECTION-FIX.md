@@ -105,3 +105,6 @@ Prisma automaticky použije SSL parametr z `DATABASE_URL`, takže není potřeba
 
 
 
+
+
+

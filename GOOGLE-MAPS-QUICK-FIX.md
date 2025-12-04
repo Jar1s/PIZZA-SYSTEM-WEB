@@ -107,3 +107,6 @@ Malo by:
 
 **Hotovo!** 🎉 Google Maps by teraz mal fungovať.
 
+
+
+

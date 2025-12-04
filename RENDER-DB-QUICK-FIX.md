@@ -104,3 +104,6 @@ Po týchto krokoch by malo pripojenie fungovať! 🚀
 
 
 
+
+
+

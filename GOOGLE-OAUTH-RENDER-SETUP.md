@@ -132,3 +132,6 @@ Po úspešnom nastavení:
 
 
 
+
+
+

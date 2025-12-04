@@ -132,3 +132,6 @@ Po pridaní všetkých environment variables:
 
 
 
+
+
+
