@@ -89,8 +89,9 @@ export class EmailService {
    * Get properly formatted email FROM address
    */
   private getEmailFrom(tenantName: string, tenantDomain: string): string {
-    // If EMAIL_FROM is explicitly set, use it
+    // If EMAIL_FROM is explicitly set, use it (but log it for debugging)
     if (process.env.EMAIL_FROM) {
+      this.logger.log(`📧 Using EMAIL_FROM from env: ${process.env.EMAIL_FROM}`);
       return process.env.EMAIL_FROM;
     }
 
@@ -101,7 +102,10 @@ export class EmailService {
     // Remove any extra spaces in tenantName
     const cleanTenantName = tenantName.trim().replace(/\s+/g, ' ');
     
-    return `"${cleanTenantName}" <${fromEmail}>`;
+    const formattedFrom = `"${cleanTenantName}" <${fromEmail}>`;
+    this.logger.log(`📧 Generated EMAIL_FROM: ${formattedFrom} (tenantName: "${tenantName}", fromEmail: ${fromEmail})`);
+    
+    return formattedFrom;
   }
 
   /**
