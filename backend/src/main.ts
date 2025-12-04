@@ -174,9 +174,12 @@ async function bootstrap() {
   }));
   
   const port = process.env.PORT || 3000;
-  await app.listen(port);
   
-  logger.log(`🚀 Backend server running on http://localhost:${port}`);
+  // Ensure we listen on 0.0.0.0 for Render.com (not just localhost)
+  await app.listen(port, '0.0.0.0');
+  
+  logger.log(`🚀 Backend server running on http://0.0.0.0:${port}`);
+  logger.log(`🚀 Server is ready to accept connections on port ${port}`);
 }
 
 bootstrap();

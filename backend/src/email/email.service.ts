@@ -56,9 +56,12 @@ export class EmailService {
 
       this.transporter = nodemailer.createTransport(smtpConfig);
 
-      // Verify SMTP connection on startup
+      // Verify SMTP connection on startup (non-blocking)
+      // Don't block server startup if SMTP verification fails
       this.verifySMTPConnection().catch((error) => {
         this.logger.error('⚠️  SMTP verification failed on startup:', this.formatSMTPError(error));
+        this.logger.warn('⚠️  Server will continue, but emails may fail. Check SMTP configuration.');
+        // Don't throw - allow server to start even if SMTP is misconfigured
       });
     } else {
       // Development: Create a dummy transporter that won't actually send
@@ -103,6 +106,13 @@ export class EmailService {
     // IMPORTANT: Clean SMTP_USER - remove any spaces, quotes, or invalid characters
     let fromEmail = process.env.SMTP_USER || `info@${tenantDomain}`;
     fromEmail = fromEmail.trim();
+    // Strip quotes/angle brackets and collapse whitespace (common misconfigs on Render/Websupport)
+    fromEmail = fromEmail.replace(/[\"'<>]/g, '');
+    if (fromEmail.includes('@')) {
+      const [local, domain] = fromEmail.split('@');
+      const cleanLocal = local.replace(/\s+/g, '');
+      fromEmail = `${cleanLocal}@${domain.trim()}`;
+    }
     
     // Validate that fromEmail is a valid email address
     if (!fromEmail.includes('@')) {
@@ -746,4 +756,3 @@ export class EmailService {
     `;
   }
 }
-
