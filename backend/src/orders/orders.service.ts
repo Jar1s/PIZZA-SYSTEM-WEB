@@ -564,6 +564,16 @@ export class OrdersService {
     const currency = tenant.currency || 'EUR';
     // Get tenant theme for Storyous sync
     const tenantTheme = (tenant.theme || {}) as TenantTheme;
+    
+    // DEBUG: Log tenant.name before sending email
+    this.logger.log(`📧 About to send order confirmation email`, {
+      tenantId: tenant.id,
+      tenantName: tenant.name,
+      tenantNameLength: tenant.name?.length,
+      tenantNameCharCodes: tenant.name ? Array.from(tenant.name).map(c => c.charCodeAt(0)).join(',') : 'N/A',
+      tenantDomain,
+    });
+    
     // Email service expects Prisma Order type
     await this.emailService.sendOrderConfirmation(
       order as unknown as PrismaOrder & { items?: any[] },
