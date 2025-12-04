@@ -15,7 +15,7 @@ export class EmailService {
     
     if (process.env.SMTP_HOST) {
       // Production SMTP
-      this.transporter = nodemailer.createTransport({
+      const smtpConfig = {
         host: process.env.SMTP_HOST,
         port: parseInt(process.env.SMTP_PORT || '587'),
         secure: process.env.SMTP_SECURE === 'true',
@@ -23,6 +23,18 @@ export class EmailService {
           user: process.env.SMTP_USER,
           pass: process.env.SMTP_PASSWORD,
         },
+      };
+
+      // Log SMTP configuration (without password)
+      this.logger.log(`📧 SMTP configured: ${smtpConfig.host}:${smtpConfig.port} (secure: ${smtpConfig.secure})`);
+      this.logger.log(`📧 SMTP user: ${smtpConfig.auth.user || 'NOT SET'}`);
+      this.logger.log(`📧 SMTP password: ${smtpConfig.auth.pass ? '***SET***' : 'NOT SET'}`);
+
+      this.transporter = nodemailer.createTransport(smtpConfig);
+
+      // Verify SMTP connection on startup
+      this.verifySMTPConnection().catch((error) => {
+        this.logger.error('⚠️  SMTP verification failed on startup:', this.formatSMTPError(error));
       });
     } else {
       // Development: Create a dummy transporter that won't actually send
@@ -30,6 +42,64 @@ export class EmailService {
       this.transporter = null as any;
       this.logger.warn('⚠️  Email service in DEV mode - emails will be logged, not sent');
     }
+  }
+
+  /**
+   * Verify SMTP connection
+   */
+  private async verifySMTPConnection(): Promise<void> {
+    if (!this.transporter) {
+      return;
+    }
+
+    try {
+      await this.transporter.verify();
+      this.logger.log('✅ SMTP connection verified successfully');
+    } catch (error) {
+      this.logger.error('❌ SMTP verification failed:', this.formatSMTPError(error));
+      throw error;
+    }
+  }
+
+  /**
+   * Format SMTP error messages for better debugging
+   */
+  private formatSMTPError(error: any): string {
+    if (!error) {
+      return 'Unknown error';
+    }
+
+    const errorMessage = error.message || String(error);
+    const errorCode = error.code || '';
+
+    // Authentication errors
+    if (errorMessage.includes('authentication failed') || errorMessage.includes('Invalid login') || errorCode === 'EAUTH') {
+      return `SMTP Authentication Failed:
+  - Check SMTP_USER and SMTP_PASSWORD in environment variables
+  - For Websupport: SMTP_USER must be full email (e.g., orders@domain.sk)
+  - Verify password is correct (no leading/trailing spaces)
+  - Original error: ${errorMessage}`;
+    }
+
+    // Connection errors
+    if (errorMessage.includes('ECONNREFUSED') || errorMessage.includes('ETIMEDOUT') || errorCode === 'ECONNECTION') {
+      return `SMTP Connection Failed:
+  - Check SMTP_HOST and SMTP_PORT are correct
+  - Verify SMTP server is accessible from this network
+  - Check firewall settings
+  - Original error: ${errorMessage}`;
+    }
+
+    // TLS/SSL errors
+    if (errorMessage.includes('certificate') || errorMessage.includes('TLS') || errorMessage.includes('SSL')) {
+      return `SMTP TLS/SSL Error:
+  - Try SMTP_SECURE=false for port 587 (STARTTLS)
+  - Try SMTP_SECURE=true for port 465 (SSL)
+  - Original error: ${errorMessage}`;
+    }
+
+    // Return formatted error
+    return `${errorMessage}${errorCode ? ` (code: ${errorCode})` : ''}`;
   }
 
   async sendOrderConfirmation(
@@ -73,7 +143,9 @@ export class EmailService {
         console.log(`Tracking: ${trackingUrl}\n`);
       }
     } catch (error) {
-      this.logger.error(`❌ Failed to send email to ${customer.email}:`, error);
+      const errorMessage = this.formatSMTPError(error);
+      this.logger.error(`❌ Failed to send order confirmation email to ${customer.email}`);
+      this.logger.error(`   ${errorMessage}`);
       // Don't throw - email failure shouldn't break order creation
     }
   }
@@ -118,7 +190,9 @@ export class EmailService {
         console.log(`Reset URL: ${maskedUrl}\n`);
       }
     } catch (error) {
-      this.logger.error(`❌ Failed to send password setup email to ${user.email}:`, error);
+      const errorMessage = this.formatSMTPError(error);
+      this.logger.error(`❌ Failed to send password setup email to ${user.email}`);
+      this.logger.error(`   ${errorMessage}`);
       // Don't throw - email failure shouldn't break order creation
     }
   }
@@ -421,7 +495,9 @@ export class EmailService {
         console.log(`Tracking: ${trackingUrl}\n`);
       }
     } catch (error) {
-      this.logger.error(`❌ Failed to send status update email to ${customer.email}:`, error);
+      const errorMessage = this.formatSMTPError(error);
+      this.logger.error(`❌ Failed to send status update email to ${customer.email}`);
+      this.logger.error(`   ${errorMessage}`);
       // Don't throw - email failure shouldn't break status update
     }
   }
@@ -451,7 +527,9 @@ export class EmailService {
         console.log(`Subject: 🎉 Vitajte v ${tenantName}!\n`);
       }
     } catch (error) {
-      this.logger.error(`❌ Failed to send welcome email to ${user.email}:`, error);
+      const errorMessage = this.formatSMTPError(error);
+      this.logger.error(`❌ Failed to send welcome email to ${user.email}`);
+      this.logger.error(`   ${errorMessage}`);
       // Don't throw - email failure shouldn't break registration
     }
   }
