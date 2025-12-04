@@ -96,14 +96,25 @@ export class EmailService {
     }
 
     // Otherwise, use SMTP_USER if available, or fallback to info@domain
-    const fromEmail = process.env.SMTP_USER || `info@${tenantDomain}`;
+    // IMPORTANT: Clean SMTP_USER - remove any spaces, quotes, or invalid characters
+    let fromEmail = process.env.SMTP_USER || `info@${tenantDomain}`;
+    fromEmail = fromEmail.trim();
+    
+    // Validate that fromEmail is a valid email address
+    if (!fromEmail.includes('@')) {
+      this.logger.warn(`⚠️ Invalid SMTP_USER format (missing @): ${fromEmail}, using fallback`);
+      fromEmail = `info@${tenantDomain}`;
+    }
     
     // Format: "Display Name" <email@domain.com>
-    // Remove any extra spaces in tenantName
+    // Remove any extra spaces in tenantName and ensure it's clean
     const cleanTenantName = tenantName.trim().replace(/\s+/g, ' ');
     
-    const formattedFrom = `"${cleanTenantName}" <${fromEmail}>`;
-    this.logger.log(`📧 Generated EMAIL_FROM: ${formattedFrom} (tenantName: "${tenantName}", fromEmail: ${fromEmail})`);
+    // Ensure tenantName doesn't contain quotes or special characters that could break the format
+    const safeTenantName = cleanTenantName.replace(/["<>]/g, '');
+    
+    const formattedFrom = `"${safeTenantName}" <${fromEmail}>`;
+    this.logger.log(`📧 Generated EMAIL_FROM: ${formattedFrom} (tenantName: "${tenantName}" -> "${safeTenantName}", fromEmail: ${fromEmail})`);
     
     return formattedFrom;
   }
