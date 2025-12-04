@@ -520,9 +520,10 @@ export class EmailService {
     const orderNumber = order.id.slice(0, 8).toUpperCase();
 
     // Prefer explicit base for assets (fixes broken images in emails when tenantDomain differs from live frontend)
+    // Use FRONTEND_URL first, then EMAIL_ASSET_BASE_URL, then tenantDomain
     const rawAssetBase =
-      process.env.EMAIL_ASSET_BASE_URL ||
       process.env.FRONTEND_URL ||
+      process.env.EMAIL_ASSET_BASE_URL ||
       tenantDomain ||
       '';
     const trimmedBase = rawAssetBase.replace(/\/$/, '');
@@ -530,6 +531,9 @@ export class EmailService {
     const isLocal = trimmedBase.includes('localhost') || trimmedBase.includes('127.0.0.1');
     const protocol = isLocal ? 'http' : 'https';
     const assetBase = hasProtocol ? trimmedBase : trimmedBase ? `${protocol}://${trimmedBase}` : '';
+    
+    // Log asset base URL for debugging
+    this.logger.log(`📧 Asset base URL: ${assetBase} (from FRONTEND_URL: ${process.env.FRONTEND_URL || 'not set'}, EMAIL_ASSET_BASE_URL: ${process.env.EMAIL_ASSET_BASE_URL || 'not set'}, tenantDomain: ${tenantDomain})`);
     const buildAssetUrl = (path: string | null | undefined) => {
       if (!path || path.trim() === '') return null;
       const cleanPath = path.trim();
@@ -558,9 +562,9 @@ export class EmailService {
     // Log generated image URLs
     itemsWithImageUrls.forEach((item: any) => {
       if (item.imageUrl) {
-        this.logger.log(`📧 Generated image URL for ${item.productName}: ${item.imageUrl}`);
+        this.logger.log(`📧 Generated image URL for ${item.productName}: ${item.imageUrl} (from productImage: ${item.productImage || 'null'}, assetBase: ${assetBase})`);
       } else {
-        this.logger.log(`📧 No image URL for ${item.productName} (productImage: ${item.productImage || 'null'})`);
+        this.logger.log(`📧 No image URL for ${item.productName} (productImage: ${item.productImage || 'null'}, assetBase: ${assetBase || 'not set'})`);
       }
     });
 
