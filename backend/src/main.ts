@@ -173,7 +173,24 @@ async function bootstrap() {
     crossOriginEmbedderPolicy: false,
   }));
   
-  const port = process.env.PORT || 3000;
+  // Get port from environment variable (Render.com sets this)
+  // Parse as integer and validate it's a valid port number
+  const portEnv = process.env.PORT;
+  let port: number;
+  
+  if (portEnv) {
+    port = parseInt(portEnv, 10);
+    if (isNaN(port) || port < 1 || port > 65535) {
+      logger.error(`❌ Invalid PORT environment variable: "${portEnv}". Must be a number between 1-65535.`);
+      logger.warn(`⚠️  Falling back to port 3000`);
+      port = 3000;
+    }
+  } else {
+    port = 3000;
+    logger.warn(`⚠️  PORT environment variable not set, using default: ${port}`);
+  }
+  
+  logger.log(`📡 Starting server on port ${port} (from PORT env: ${portEnv || 'not set'})`);
   
   // Ensure we listen on 0.0.0.0 for Render.com (not just localhost)
   await app.listen(port, '0.0.0.0');
