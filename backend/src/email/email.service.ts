@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import * as nodemailer from 'nodemailer';
 import { Order } from '@prisma/client';
-import { OrderStatus } from '@pizza-ecosystem/shared';
+import { OrderStatus, getCustomizationOptions } from '@pizza-ecosystem/shared';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
@@ -201,25 +201,26 @@ export class EmailService {
     // Generate tracking URL
     const trackingUrl = `http://${tenantDomain}/order/${order.id}`;
     
-    // Get product images for order items
+    // Get product images and categories for order items
     const itemsWithImages = await Promise.all(
       (order.items || []).map(async (item: any) => {
         if (item.productId) {
           try {
             const product = await this.prisma.product.findUnique({
               where: { id: item.productId },
-              select: { image: true },
+              select: { image: true, category: true },
             });
             return {
               ...item,
               productImage: product?.image || null,
+              productCategory: product?.category || 'PIZZA',
             };
           } catch (error) {
-            this.logger.warn(`Failed to fetch product image for ${item.productId}: ${error}`);
-            return { ...item, productImage: null };
+            this.logger.warn(`Failed to fetch product data for ${item.productId}: ${error}`);
+            return { ...item, productImage: null, productCategory: 'PIZZA' };
           }
         }
-        return { ...item, productImage: null };
+        return { ...item, productImage: null, productCategory: 'PIZZA' };
       })
     );
     
@@ -428,6 +429,82 @@ export class EmailService {
     return symbolBefore ? `${symbol}${amount}` : `${amount} ${symbol}`;
   }
 
+  /**
+   * Format modifiers for email display
+   * Returns array of formatted modifier strings with emojis
+   */
+  private formatModifiersForEmail(
+    modifiers: Record<string, any> | null | undefined,
+    productCategory: string = 'PIZZA',
+    language: 'sk' | 'en' = 'sk'
+  ): string[] {
+    if (!modifiers || typeof modifiers !== 'object') {
+      return [];
+    }
+
+    // Handle string (JSON) - parse it
+    let parsedModifiers: Record<string, any>;
+    if (typeof modifiers === 'string') {
+      try {
+        parsedModifiers = JSON.parse(modifiers);
+      } catch (error) {
+        this.logger.warn('[formatModifiersForEmail] Failed to parse JSON string:', modifiers);
+        return [];
+      }
+    } else {
+      parsedModifiers = modifiers;
+    }
+
+    if (Object.keys(parsedModifiers).length === 0) {
+      return [];
+    }
+
+    const formatted: string[] = [];
+    const allCustomizations = getCustomizationOptions(productCategory);
+
+    try {
+      Object.entries(parsedModifiers).forEach(([categoryId, optionIds]) => {
+        const category = allCustomizations.find(c => c.id === categoryId);
+        if (!category) {
+          return;
+        }
+
+        // Handle both array and single value
+        const optionIdsArray = Array.isArray(optionIds) 
+          ? optionIds 
+          : optionIds ? [optionIds] : [];
+
+        if (optionIdsArray.length === 0) return;
+
+        const optionNames = optionIdsArray
+          .map((optionId: any) => {
+            if (typeof optionId !== 'string') {
+              return null;
+            }
+            const option = category.options.find(o => o.id === optionId);
+            if (!option) {
+              return null;
+            }
+            
+            // Use full name with emoji for email
+            const name = language === 'en' ? option.nameEn : option.name;
+            return name;
+          })
+          .filter(Boolean) as string[];
+
+        if (optionNames.length > 0) {
+          const categoryName = language === 'en' ? category.nameEn : category.name;
+          formatted.push(`${categoryName}: ${optionNames.join(', ')}`);
+        }
+      });
+    } catch (error) {
+      this.logger.error('[formatModifiersForEmail] Error formatting modifiers:', error);
+      return [];
+    }
+
+    return formatted;
+  }
+
   private buildOrderConfirmationEmail(
     order: Order,
     customer: any,
@@ -441,42 +518,40 @@ export class EmailService {
   ): string {
     const orderTotal = this.formatCurrency(order.totalCents, currency);
     const orderNumber = order.id.slice(0, 8).toUpperCase();
+
+    // Prefer explicit base for assets (fixes broken images in emails when tenantDomain differs from live frontend)
+    const rawAssetBase =
+      process.env.EMAIL_ASSET_BASE_URL ||
+      process.env.FRONTEND_URL ||
+      tenantDomain ||
+      '';
+    const trimmedBase = rawAssetBase.replace(/\/$/, '');
+    const hasProtocol = trimmedBase.startsWith('http://') || trimmedBase.startsWith('https://');
+    const isLocal = trimmedBase.includes('localhost') || trimmedBase.includes('127.0.0.1');
+    const protocol = isLocal ? 'http' : 'https';
+    const assetBase = hasProtocol ? trimmedBase : trimmedBase ? `${protocol}://${trimmedBase}` : '';
+    const buildAssetUrl = (path: string | null | undefined) => {
+      if (!path || path.trim() === '') return null;
+      const cleanPath = path.trim();
+      if (cleanPath.startsWith('http://') || cleanPath.startsWith('https://')) {
+        return cleanPath;
+      }
+      if (!assetBase) return null;
+      return `${assetBase}${cleanPath.startsWith('/') ? cleanPath : '/' + cleanPath}`;
+    };
     
     // Get theme colors - fallback to brand colors
     const primaryColor = tenantTheme?.primaryColor || '#E91E63';
     
     // Build logo URL
-    let logoUrl: string;
-    if (tenantTheme?.logo) {
-      if (tenantTheme.logo.startsWith('http')) {
-        logoUrl = tenantTheme.logo;
-      } else {
-        const protocol = tenantDomain?.includes('localhost') ? 'http' : 'https';
-        const cleanDomain = (tenantDomain || '').replace(/^https?:\/\//, '');
-        logoUrl = `${protocol}://${cleanDomain}${tenantTheme.logo.startsWith('/') ? tenantTheme.logo : '/' + tenantTheme.logo}`;
-      }
-    } else {
-      const protocol = tenantDomain?.includes('localhost') ? 'http' : 'https';
-      const cleanDomain = (tenantDomain || '').replace(/^https?:\/\//, '');
-      logoUrl = `${protocol}://${cleanDomain}/PORNO PIZZA PINK GRANDIENT.png`;
-    }
+    let logoUrl =
+      buildAssetUrl(tenantTheme?.logo) ||
+      buildAssetUrl('/PORNO PIZZA PINK GRANDIENT.png') ||
+      '';
     
     // Build image URLs for items and log them
     const itemsWithImageUrls = itemsWithImages.map((item: any) => {
-      let imageUrl = null;
-      if (item.productImage && item.productImage.trim() !== '') {
-        const imagePath = item.productImage.trim();
-        
-        // If already absolute URL, use as-is
-        if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
-          imageUrl = imagePath;
-        } else {
-          // Build absolute URL - use frontend domain for images
-          const protocol = tenantDomain?.includes('localhost') ? 'http' : 'https';
-          const cleanDomain = (tenantDomain || '').replace(/^https?:\/\//, '');
-          imageUrl = `${protocol}://${cleanDomain}${imagePath.startsWith('/') ? imagePath : '/' + imagePath}`;
-        }
-      }
+      const imageUrl = buildAssetUrl(item.productImage);
       return { ...item, imageUrl };
     });
     
@@ -529,7 +604,17 @@ export class EmailService {
               <!-- Order Items with Images -->
               ${itemsWithImageUrls.length > 0 ? `
               <h3 style="color: #333; margin: 30px 0 15px 0; font-size: 18px; border-bottom: 2px solid #f0f0f0; padding-bottom: 10px;">Vaša objednávka</h3>
-              ${itemsWithImageUrls.map((item: any) => `
+              ${itemsWithImageUrls.map((item: any) => {
+                const modifiers = this.formatModifiersForEmail(item.modifiers, item.productCategory || 'PIZZA', 'sk');
+                // Debug logging
+                this.logger.log(`📧 Formatting modifiers for ${item.productName}:`, {
+                  modifiers: item.modifiers,
+                  modifiersType: typeof item.modifiers,
+                  productCategory: item.productCategory || 'PIZZA',
+                  formattedModifiers: modifiers,
+                  formattedCount: modifiers.length,
+                });
+                return `
                 <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom: 20px; border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden;">
                   <tr>
                     ${item.imageUrl ? `
@@ -539,12 +624,21 @@ export class EmailService {
                     ` : ''}
                     <td style="padding: 15px; vertical-align: top;">
                       <p style="margin: 0 0 5px 0; color: #333; font-size: 16px; font-weight: bold;">${item.productName}</p>
-                      <p style="margin: 0 0 5px 0; color: #666; font-size: 14px;">Množstvo: ${item.quantity}x</p>
-                      <p style="margin: 0; color: ${primaryColor}; font-size: 16px; font-weight: bold;">${this.formatCurrency(item.priceCents * item.quantity, currency)}</p>
+                      <p style="margin: 0 0 10px 0; color: #666; font-size: 14px;">Množstvo: ${item.quantity}x</p>
+                      ${modifiers.length > 0 ? `
+                      <div style="margin: 10px 0; padding: 10px; background-color: #f8f9fa; border-radius: 4px;">
+                        <p style="margin: 0 0 8px 0; color: #333; font-size: 14px; font-weight: bold;">Detaily objednávky:</p>
+                        ${modifiers.map((mod: string) => `
+                          <p style="margin: 0 0 4px 0; color: #666; font-size: 13px; line-height: 1.5;">• ${mod}</p>
+                        `).join('')}
+                      </div>
+                      ` : ''}
+                      <p style="margin: 10px 0 0 0; color: ${primaryColor}; font-size: 16px; font-weight: bold;">${this.formatCurrency(item.priceCents * item.quantity, currency)}</p>
                     </td>
                   </tr>
                 </table>
-              `).join('')}
+              `;
+              }).join('')}
               ` : ''}
 
               <!-- Track Order Button -->
