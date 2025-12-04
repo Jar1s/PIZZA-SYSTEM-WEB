@@ -565,20 +565,32 @@ export class OrdersService {
     // Get tenant theme for Storyous sync
     const tenantTheme = (tenant.theme || {}) as TenantTheme;
     
-    // DEBUG: Log tenant.name before sending email
-    const tenantNameStr = String(tenant.name || '');
+    // Clean tenant.name before sending email - remove extra spaces and invalid characters
+    let tenantName = String(tenant.name || '');
+    // Remove non-printable characters
+    tenantName = tenantName.replace(/[\x00-\x1F\x7F-\x9F]/g, '');
+    // Normalize multiple spaces to single space
+    tenantName = tenantName.replace(/\s+/g, ' ').trim();
+    // Remove quotes and angle brackets that could break email format
+    tenantName = tenantName.replace(/["<>]/g, '');
+    // Fallback if empty
+    if (!tenantName) {
+      tenantName = 'Pizza System';
+    }
+    
+    // DEBUG: Log tenant.name before and after cleaning
     this.logger.log(`📧 About to send order confirmation email`, {
       tenantId: tenant.id,
-      tenantName: tenantNameStr,
-      tenantNameLength: tenantNameStr.length,
-      tenantNameCharCodes: tenantNameStr ? Array.from(tenantNameStr).map(c => c.charCodeAt(0)).join(',') : 'N/A',
+      originalTenantName: tenant.name,
+      cleanedTenantName: tenantName,
+      tenantNameLength: tenantName.length,
       tenantDomain,
     });
     
     // Email service expects Prisma Order type
     await this.emailService.sendOrderConfirmation(
       order as unknown as PrismaOrder & { items?: any[] },
-      tenant.name,
+      tenantName, // Use cleaned tenantName
       tenantDomain,
       currency,
     );
@@ -592,7 +604,7 @@ export class OrdersService {
             name: createdUser.name,
           },
           createdUser.passwordResetToken,
-          tenant.name,
+          tenantName, // Use cleaned tenantName
           tenantDomain,
           tenant.slug,
         );
