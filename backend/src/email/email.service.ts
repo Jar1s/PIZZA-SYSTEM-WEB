@@ -521,11 +521,27 @@ export class EmailService {
 
     // Prefer explicit base for assets (fixes broken images in emails when tenantDomain differs from live frontend)
     // Use FRONTEND_URL first, then EMAIL_ASSET_BASE_URL, then tenantDomain
-    const rawAssetBase =
+    let rawAssetBase =
       process.env.FRONTEND_URL ||
       process.env.EMAIL_ASSET_BASE_URL ||
       tenantDomain ||
       '';
+    
+    // Fix common domain issues: add www. prefix if missing and not localhost
+    if (rawAssetBase && !rawAssetBase.includes('localhost') && !rawAssetBase.includes('127.0.0.1')) {
+      // If domain doesn't start with http/https, add protocol first
+      if (!rawAssetBase.startsWith('http://') && !rawAssetBase.startsWith('https://')) {
+        rawAssetBase = `https://${rawAssetBase}`;
+      }
+      
+      // Add www. prefix if missing (for production domains)
+      const urlObj = new URL(rawAssetBase);
+      if (!urlObj.hostname.startsWith('www.') && !urlObj.hostname.includes('localhost') && !urlObj.hostname.includes('127.0.0.1')) {
+        urlObj.hostname = `www.${urlObj.hostname}`;
+        rawAssetBase = urlObj.toString();
+      }
+    }
+    
     const trimmedBase = rawAssetBase.replace(/\/$/, '');
     const hasProtocol = trimmedBase.startsWith('http://') || trimmedBase.startsWith('https://');
     const isLocal = trimmedBase.includes('localhost') || trimmedBase.includes('127.0.0.1');
