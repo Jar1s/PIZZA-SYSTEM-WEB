@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { getTenant } from '@/lib/api';
-import { Tenant } from '@pizza-ecosystem/shared';
+import { Tenant, Order } from '@pizza-ecosystem/shared';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useToastContext } from '@/contexts/ToastContext';
 import { Header } from '@/components/layout/Header';
@@ -16,24 +16,36 @@ export default function OrderSuccessPage() {
   const tenantSlug = searchParams.get('tenant') || 'pornopizza';
   const [countdown, setCountdown] = useState(5);
   const [tenant, setTenant] = useState<Tenant | null>(null);
+  const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
   const { t } = useLanguage();
   const toast = useToastContext();
 
   useEffect(() => {
-    const loadTenant = async () => {
+    const loadData = async () => {
       try {
-        const tenantData = await getTenant(tenantSlug);
+        const [tenantData, orderData] = await Promise.all([
+          getTenant(tenantSlug),
+          orderId ? (async () => {
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+            const response = await fetch(`${apiUrl}/api/track/${orderId}`);
+            if (response.ok) {
+              return await response.json();
+            }
+            return null;
+          })() : Promise.resolve(null),
+        ]);
         setTenant(tenantData);
+        setOrder(orderData);
       } catch (error) {
-        console.error('Failed to load tenant:', error);
+        console.error('Failed to load data:', error);
       } finally {
         setLoading(false);
       }
     };
 
-    loadTenant();
-  }, [tenantSlug]);
+    loadData();
+  }, [tenantSlug, orderId]);
 
   useEffect(() => {
     if (!orderId) {
@@ -70,7 +82,9 @@ export default function OrderSuccessPage() {
     return null;
   }
 
-  const orderNumber = orderId.slice(0, 8).toUpperCase();
+  const orderNumber = order?.orderNumber 
+    ? order.orderNumber.toString().padStart(4, '0')
+    : orderId.slice(0, 8).toUpperCase(); // Fallback for old orders without orderNumber
   const trackingUrl = typeof window !== 'undefined' 
     ? `${window.location.origin}/order/${orderId}?tenant=${tenantSlug}`
     : '';

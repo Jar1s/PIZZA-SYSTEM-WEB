@@ -3,6 +3,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { OrdersService } from './orders.service';
 import { OrdersController, AdminOrdersController } from './orders.controller';
 import { OrderStatusService } from './order-status.service';
+import { OrderNumberService } from './order-number.service';
 import { PrismaModule } from '../prisma/prisma.module';
 import { TenantsModule } from '../tenants/tenants.module';
 import { EmailModule } from '../email/email.module';
@@ -26,8 +27,8 @@ import { DeliveryModule } from '../delivery/delivery.module';
     }),
   ],
   controllers: [OrdersController, AdminOrdersController],
-  providers: [OrdersService, OrderStatusService],
-  exports: [OrdersService, OrderStatusService],
+  providers: [OrdersService, OrderStatusService, OrderNumberService],
+  exports: [OrdersService, OrderStatusService, OrderNumberService],
 })
 export class OrdersModule {}
 

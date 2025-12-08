@@ -128,7 +128,9 @@ export function OrderCard({ order, onStatusUpdate, isExpanded = false, onToggleE
         <div className="flex-1">
           <div className="flex items-center gap-3">
             <span className="font-mono text-sm text-gray-500">
-              {order.id.slice(0, 8)}
+              {order.orderNumber 
+                ? order.orderNumber.toString().padStart(4, '0')
+                : order.id.slice(0, 8)} {/* Fallback for old orders without orderNumber */}
             </span>
             <span className={`px-2 py-1 rounded text-xs font-semibold ${STATUS_COLORS[order.status]}`}>
               {getStatusLabel(order.status)}

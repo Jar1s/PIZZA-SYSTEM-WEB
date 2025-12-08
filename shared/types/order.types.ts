@@ -11,6 +11,7 @@ export enum OrderStatus {
 export interface Order {
   id: string;
   tenantId: string;
+  orderNumber?: number | null;
   status: OrderStatus;
   
   // Customer

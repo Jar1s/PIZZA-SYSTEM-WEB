@@ -15,6 +15,7 @@ import { withTenantThemeDefaults, getBackgroundClass, isDarkTheme, getSectionShe
 
 interface Order {
   id: string;
+  orderNumber?: number | null;
   status: string;
   customer: {
     name: string;
@@ -249,7 +250,9 @@ export default function OrderTrackingPage() {
     );
   }
 
-  const orderNumber = order.id.slice(0, 8).toUpperCase();
+  const orderNumber = order.orderNumber 
+    ? order.orderNumber.toString().padStart(4, '0')
+    : order.id.slice(0, 8).toUpperCase(); // Fallback for old orders without orderNumber
   const orderDate = new Date(order.createdAt).toLocaleString('sk-SK', {
     month: 'short',
     day: 'numeric',

@@ -117,7 +117,9 @@ export default function OrderHistory({ tenant, isDark = false }: OrderHistoryPro
             <div className="flex justify-between items-start mb-4">
               <div>
                 <div className="font-semibold mb-1">
-                  {t.orderNumber}: {order.id.slice(0, 8)}
+                  {t.orderNumber}: {order.orderNumber 
+                    ? order.orderNumber.toString().padStart(4, '0')
+                    : order.id.slice(0, 8)} {/* Fallback for old orders without orderNumber */}
                 </div>
                 <div className={`text-sm ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
                   {t.orderDate}: {new Date(order.createdAt).toLocaleDateString('sk-SK')}

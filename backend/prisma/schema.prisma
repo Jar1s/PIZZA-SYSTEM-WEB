@@ -59,6 +59,7 @@ model Product {
 model Order {
   id               String      @id @default(cuid())
   tenantId         String
+  orderNumber      Int?
   status           OrderStatus @default(PENDING)
   customer         Json
   address          Json
@@ -78,8 +79,10 @@ model Order {
   tenant           Tenant      @relation(fields: [tenantId], references: [id])
   user             User?       @relation(fields: [userId], references: [id])
 
+  @@unique([tenantId, orderNumber])
   @@index([tenantId, status])
   @@index([tenantId, createdAt])
+  @@index([tenantId, orderNumber])
   @@index([paymentRef])
   @@index([userId])
   @@map("orders")

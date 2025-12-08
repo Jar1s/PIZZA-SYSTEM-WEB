@@ -8,6 +8,7 @@ import { EmailService } from '../email/email.service';
 import { StoryousService } from '../storyous/storyous.service';
 import { ProductMappingService } from '../products/product-mapping.service';
 import { DeliveryZoneService } from '../delivery/delivery-zone.service';
+import { OrderNumberService } from './order-number.service';
 import { TenantTheme } from '../types/tenant.types';
 import { appConfig } from '../config/app.config';
 import { OrderResponseSchema } from '../common/schemas/order.schema';
@@ -60,6 +61,7 @@ export class OrdersService {
     private storyousService: StoryousService,
     private productMappingService: ProductMappingService,
     private deliveryZoneService: DeliveryZoneService,
+    private orderNumberService: OrderNumberService,
     private jwtService: JwtService,
   ) {}
 
@@ -502,9 +504,13 @@ export class OrdersService {
       })),
     });
 
+    // Generate order number for this tenant
+    const orderNumber = await this.orderNumberService.generateOrderNumber(tenantId);
+
     // Create order (userId can be null for guest orders)
     this.logger.log('Creating order in Prisma with items', {
       itemsCount: orderItems.length,
+      orderNumber,
       firstItemModifiers: orderItems[0]?.modifiers,
       firstItemModifiersStringified: JSON.stringify(orderItems[0]?.modifiers),
     });
@@ -512,6 +518,7 @@ export class OrdersService {
     const order = await this.prisma.order.create({
       data: {
         tenantId,
+        orderNumber,
         userId: userId || null, // Can be null for guest orders
         status: OrderStatus.PENDING,
         paymentStatus: data.paymentMethod ? 'pending' : null, // For cash on delivery
@@ -527,7 +534,7 @@ export class OrdersService {
         items: {
           create: orderItems,
         },
-      },
+      } as any, // Type assertion needed until Prisma types are fully regenerated
       include: {
         items: true,
         tenant: {

@@ -264,13 +264,17 @@ export class EmailService {
       tenantDomain,
     );
 
+    const orderNumber = order.orderNumber 
+      ? order.orderNumber.toString().padStart(4, '0')
+      : order.id.slice(0, 8).toUpperCase(); // Fallback for old orders without orderNumber
+
     try {
       if (process.env.SMTP_HOST && this.transporter) {
         // Production: Actually send the email
         const info = await this.transporter.sendMail({
           from: this.getEmailFrom(tenantName, tenantDomain),
           to: customer.email,
-          subject: `🍕 Objednávka prijatá #${order.id.slice(0, 8).toUpperCase()} - ${tenantName}`,
+          subject: `🍕 Objednávka prijatá #${orderNumber} - ${tenantName}`,
           html: emailHtml,
         });
         this.logger.log(`✅ Email sent to ${customer.email}: ${info.messageId}`);
@@ -280,7 +284,7 @@ export class EmailService {
         this.logger.log(`📧 Tracking URL: ${trackingUrl}`);
         console.log('\n📧 EMAIL PREVIEW:\n');
         console.log(`To: ${customer.email}`);
-        console.log(`Subject: Objednávka prijatá #${order.id.slice(0, 8).toUpperCase()}`);
+        console.log(`Subject: Objednávka prijatá #${orderNumber}`);
         console.log(`Tracking: ${trackingUrl}\n`);
       }
     } catch (error) {
@@ -534,7 +538,9 @@ export class EmailService {
     tenantDomain?: string,
   ): string {
     const orderTotal = this.formatCurrency(order.totalCents, currency);
-    const orderNumber = order.id.slice(0, 8).toUpperCase();
+    const orderNumber = order.orderNumber 
+      ? order.orderNumber.toString().padStart(4, '0')
+      : order.id.slice(0, 8).toUpperCase(); // Fallback for old orders without orderNumber
 
     // Prefer explicit base for assets (fixes broken images in emails when tenantDomain differs from live frontend)
     // Use FRONTEND_URL first, then EMAIL_ASSET_BASE_URL, then tenantDomain
@@ -877,7 +883,9 @@ export class EmailService {
     const trackingUrl = `${protocol}://${trackingDomain}/order/${order.id}`;
     
     this.logger.log(`📧 Generated tracking URL for status update: ${trackingUrl} (from FRONTEND_URL: ${process.env.FRONTEND_URL || 'not set'}, tenantDomain: ${tenantDomain})`);
-    const orderNumber = order.id.slice(0, 8).toUpperCase();
+    const orderNumber = order.orderNumber 
+      ? order.orderNumber.toString().padStart(4, '0')
+      : order.id.slice(0, 8).toUpperCase(); // Fallback for old orders without orderNumber
 
     // Email notification - len pre statusy kde chceme posielať email
     // PAID a PENDING sa neposielajú (PENDING má confirmation email pri vytvorení objednávky)
@@ -985,7 +993,9 @@ export class EmailService {
     trackingUrl: string,
     message: string,
   ): string {
-    const orderNumber = order.id.slice(0, 8).toUpperCase();
+    const orderNumber = order.orderNumber 
+      ? order.orderNumber.toString().padStart(4, '0')
+      : order.id.slice(0, 8).toUpperCase(); // Fallback for old orders without orderNumber
 
     return `
 <!DOCTYPE html>
