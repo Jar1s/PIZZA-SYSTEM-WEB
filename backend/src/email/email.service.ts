@@ -3,6 +3,7 @@ import * as nodemailer from 'nodemailer';
 import { Order } from '@prisma/client';
 import { OrderStatus, getCustomizationOptions } from '@pizza-ecosystem/shared';
 import { PrismaService } from '../prisma/prisma.service';
+import { getProductDisplayName } from '../utils/product-name-mapper';
 
 @Injectable()
 export class EmailService {
@@ -740,8 +741,10 @@ export class EmailService {
               <h3 class="section-title" style="color: #333; margin: 30px 0 15px 0; font-size: 18px; border-bottom: 2px solid #f0f0f0; padding-bottom: 10px;">Vaša objednávka</h3>
               ${itemsWithImageUrls.map((item: any) => {
                 const modifiers = this.formatModifiersForEmail(item.modifiers, item.productCategory || 'PIZZA', 'sk');
+                // Map product name to display name (as shown on website)
+                const displayName = getProductDisplayName(item.productName, 'sk');
                 // Debug logging
-                this.logger.log(`📧 Formatting modifiers for ${item.productName}:`, {
+                this.logger.log(`📧 Formatting modifiers for ${item.productName} (display: ${displayName}):`, {
                   modifiers: item.modifiers,
                   modifiersType: typeof item.modifiers,
                   productCategory: item.productCategory || 'PIZZA',
@@ -753,13 +756,13 @@ export class EmailService {
                   ${item.imageUrl ? `
                   <tr>
                     <td class="product-image-cell" width="120" style="padding: 10px; vertical-align: top;">
-                      <img src="${item.imageUrl}" alt="${item.productName}" class="product-image" style="width: 100px; height: 100px; object-fit: cover; border-radius: 4px; max-width: 100%;" />
+                      <img src="${item.imageUrl}" alt="${displayName}" class="product-image" style="width: 100px; height: 100px; object-fit: cover; border-radius: 4px; max-width: 100%;" />
                     </td>
                   </tr>
                   ` : ''}
                   <tr>
                     <td class="product-content-cell" style="padding: 15px; vertical-align: top;">
-                      <p class="product-name" style="margin: 0 0 5px 0; color: #333; font-size: 16px; font-weight: bold;">${item.productName}</p>
+                      <p class="product-name" style="margin: 0 0 5px 0; color: #333; font-size: 16px; font-weight: bold;">${displayName}</p>
                       <p class="product-quantity" style="margin: 0 0 10px 0; color: #666; font-size: 14px;">Množstvo: ${item.quantity}x</p>
                       ${modifiers.length > 0 ? `
                       <div class="modifiers-box" style="margin: 10px 0; padding: 10px; background-color: #f8f9fa; border-radius: 4px;">
@@ -799,7 +802,7 @@ export class EmailService {
                 </tr>
                 ` : ''}
                 <tr style="border-top: 2px solid #f0f0f0;">
-                  <td class="summary-total" style="color: #333; font-size: 18px; font-weight: bold; padding-top: 15px;">Celkom</td>
+                  <td class="summary-total" style="color: #333; font-size: 18px; font-weight: bold; padding-top: 15px;">Celkom s DPH</td>
                   <td align="right" class="summary-total" style="color: ${primaryColor}; font-size: 20px; font-weight: bold; padding-top: 15px;">${orderTotal}</td>
                 </tr>
               </table>
