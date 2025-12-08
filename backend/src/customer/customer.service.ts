@@ -49,6 +49,7 @@ export class CustomerService {
     return orders.map((order) => ({
       id: order.id,
       tenantId: order.tenantId,
+      orderNumber: order.orderNumber,
       status: order.status,
       customer: order.customer as any,
       address: order.address as any,
