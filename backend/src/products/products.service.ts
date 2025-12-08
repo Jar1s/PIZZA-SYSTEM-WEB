@@ -27,6 +27,7 @@ export class ProductsService {
         { name: 'asc' },
       ],
       // Explicitly select all fields to avoid any caching
+      // Note: displayName is temporarily commented out until migration is run
       select: {
         id: true,
         tenantId: true,
@@ -41,7 +42,7 @@ export class ProductsService {
         isBestSeller: true,
         weightGrams: true,    // Gramáž z databázy
         allergens: true,      // Alergény z databázy
-        displayName: true,    // Webový názov
+        // displayName: true,    // Webový názov - uncomment after migration
         createdAt: true,
         updatedAt: true,
       },
@@ -49,9 +50,10 @@ export class ProductsService {
     
     // Apply fallback logic for display name: DB value → mapping → name
     // Note: displayName is language-agnostic, but we still apply fallback for consistency
+    // Temporarily using only static mapping until migration is complete
     const productsWithFallback = products.map(product => ({
       ...product,
-      displayName: product.displayName ?? getProductDisplayName(product.name, 'sk') ?? product.name,
+      displayName: (product as any).displayName ?? getProductDisplayName(product.name, 'sk') ?? product.name,
     }));
     
     // Log prices for debugging (always log for these specific products to track price issues)
@@ -79,9 +81,10 @@ export class ProductsService {
     }
 
     // Apply fallback logic for display name: DB value → mapping → name
+    // Temporarily using only static mapping until migration is complete
     const productWithFallback = {
       ...product,
-      displayName: product.displayName ?? getProductDisplayName(product.name, 'sk') ?? product.name,
+      displayName: (product as any).displayName ?? getProductDisplayName(product.name, 'sk') ?? product.name,
     };
 
     return productWithFallback as any as Product;
@@ -138,9 +141,10 @@ export class ProductsService {
     });
     
     // Apply fallback logic for display name: DB value → mapping → name
+    // Temporarily using only static mapping until migration is complete
     const productsWithFallback = products.map(product => ({
       ...product,
-      displayName: product.displayName ?? getProductDisplayName(product.name, 'sk') ?? product.name,
+      displayName: (product as any).displayName ?? getProductDisplayName(product.name, 'sk') ?? product.name,
     }));
     
     return productsWithFallback as any as Product[];
