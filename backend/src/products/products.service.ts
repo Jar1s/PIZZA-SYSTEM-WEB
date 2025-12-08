@@ -41,10 +41,10 @@ export class ProductsService {
         isBestSeller: true,
         weightGrams: true,    // Gramáž z databázy
         allergens: true,      // Alergény z databázy
-        displayName: true as any,    // Webový názov (type assertion needed until Prisma client regenerated)
+        displayName: true,    // Webový názov
         createdAt: true,
         updatedAt: true,
-      },
+      } as any,  // Type assertion needed until Prisma client regenerated on Render
     });
     
     // Apply fallback logic for display name: DB value → mapping → name
