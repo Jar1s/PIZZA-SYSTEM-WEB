@@ -41,7 +41,7 @@ export class ProductsService {
         isBestSeller: true,
         weightGrams: true,    // Gramáž z databázy
         allergens: true,      // Alergény z databázy
-        displayName: true,    // Webový názov
+        displayName: true as any,    // Webový názov (type assertion needed until Prisma client regenerated)
         createdAt: true,
         updatedAt: true,
       },
@@ -51,7 +51,7 @@ export class ProductsService {
     // Note: displayName is language-agnostic, but we still apply fallback for consistency
     const productsWithFallback = products.map(product => ({
       ...product,
-      displayName: product.displayName ?? getProductDisplayName(product.name, 'sk') ?? product.name,
+      displayName: (product as any).displayName ?? getProductDisplayName(product.name, 'sk') ?? product.name,
     }));
     
     // Log prices for debugging (always log for these specific products to track price issues)
@@ -81,7 +81,7 @@ export class ProductsService {
     // Apply fallback logic for display name: DB value → mapping → name
     const productWithFallback = {
       ...product,
-      displayName: product.displayName ?? getProductDisplayName(product.name, 'sk') ?? product.name,
+      displayName: (product as any).displayName ?? getProductDisplayName(product.name, 'sk') ?? product.name,
     };
 
     return productWithFallback as any as Product;
@@ -140,7 +140,7 @@ export class ProductsService {
     // Apply fallback logic for display name: DB value → mapping → name
     const productsWithFallback = products.map(product => ({
       ...product,
-      displayName: product.displayName ?? getProductDisplayName(product.name, 'sk') ?? product.name,
+      displayName: (product as any).displayName ?? getProductDisplayName(product.name, 'sk') ?? product.name,
     }));
     
     return productsWithFallback as any as Product[];
