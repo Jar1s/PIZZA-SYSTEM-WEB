@@ -679,12 +679,12 @@ export function getProductTranslation(productName: string, language: 'sk' | 'en'
  * Priority: DB displayName → translation mapping → original name
  * Use this everywhere: web, emails, orders, etc.
  * 
- * @param product - Product object or string (productName)
+ * @param product - Product object (full or partial), or string (productName)
  * @param language - Language for fallback translation ('sk' | 'en'), defaults to 'sk'
  * @returns The display name to show on website
  */
 export function getProductDisplayName(
-  product: Product | string,
+  product: Product | { name: string; displayName?: string | null } | string,
   language: 'sk' | 'en' = 'sk'
 ): string {
   // If product is a string, use static mapping
