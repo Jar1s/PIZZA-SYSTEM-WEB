@@ -510,12 +510,6 @@ export class CustomerAuthService {
       } as any,
     });
 
-    // Send welcome email after password setup (async, don't wait for it)
-    this.sendWelcomeEmailAsync(updatedUser).catch((error) => {
-      this.logger.error(`Failed to send welcome email to ${updatedUser.email}:`, error);
-      // Don't throw - email failure shouldn't break password setup
-    });
-
     // Generate auth result (auto-login after password setup)
     return this.generateAuthResult(updatedUser);
   }

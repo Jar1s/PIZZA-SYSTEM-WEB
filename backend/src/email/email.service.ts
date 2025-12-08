@@ -365,7 +365,7 @@ export class EmailService {
           <tr>
             <td style="background-color: #ff6b35; padding: 30px 20px; text-align: center;">
               <h1 style="color: #ffffff; margin: 0; font-size: 28px;">🍕 ${tenantName}</h1>
-              <p style="color: #ffffff; margin: 10px 0 0 0; font-size: 16px;">Nastavte si heslo</p>
+              <p style="color: #ffffff; margin: 10px 0 0 0; font-size: 16px;">Vitajte v našej rodine!</p>
             </td>
           </tr>
 
@@ -375,7 +375,10 @@ export class EmailService {
               
               <h2 style="color: #333; margin: 0 0 10px 0; font-size: 22px;">Ahoj ${user.name}! 👋</h2>
               <p style="color: #666; font-size: 16px; line-height: 1.6; margin: 0 0 20px 0;">
-                Váš účet bol úspešne vytvorený! Teraz si prosím nastavte heslo, aby ste sa mohli prihlásiť a sledovať svoje objednávky.
+                Ďakujeme, že ste sa prihlásili! Váš účet bol úspešne vytvorený a teraz môžete objednávať naše lahodné pizze.
+              </p>
+              <p style="color: #666; font-size: 16px; line-height: 1.6; margin: 0 0 20px 0;">
+                Teraz si prosím nastavte heslo, aby ste sa mohli prihlásiť a sledovať svoje objednávky.
               </p>
 
               <!-- Setup Password Button -->
@@ -397,13 +400,20 @@ export class EmailService {
               </div>
 
               <!-- Benefits -->
-              <h3 style="color: #333; margin: 30px 0 15px 0; font-size: 18px; border-bottom: 2px solid #f0f0f0; padding-bottom: 10px;">Výhody vášho účtu</h3>
+              <h3 style="color: #333; margin: 30px 0 15px 0; font-size: 18px; border-bottom: 2px solid #f0f0f0; padding-bottom: 10px;">Čo získate s účtom</h3>
               <ul style="color: #666; font-size: 16px; line-height: 1.8; margin: 0; padding-left: 20px;">
-                <li>Sledovanie stavu objednávok v reálnom čase</li>
-                <li>História všetkých objednávok</li>
-                <li>Rýchlejšie budúce objednávky</li>
-                <li>Uložené adresy pre doručenie</li>
+                <li>📦 Sledovanie stavu objednávok v reálnom čase</li>
+                <li>📋 História všetkých objednávok</li>
+                <li>⚡ Rýchlejšie budúce objednávky</li>
+                <li>📍 Uložené adresy pre doručenie</li>
+                <li>🎁 Exkluzívne ponuky a zľavy</li>
               </ul>
+
+              <div style="background-color: #e7f3ff; border-left: 4px solid #2196F3; padding: 15px; margin: 30px 0;">
+                <p style="margin: 0; color: #0c5460; font-size: 14px; line-height: 1.6;">
+                  <strong>💡 Tip:</strong> Uložte si svoje obľúbené adresy a budúce objednávky budú ešte rýchlejšie!
+                </p>
+              </div>
 
             </td>
           </tr>
