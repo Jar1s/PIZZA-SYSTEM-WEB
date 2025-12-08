@@ -2,6 +2,8 @@
 // Maps product names to their translations
 // Based on Mayday Pizza Bratislava menu: https://maydaypizzaba.sk/section:menu/pizza
 
+import { Product } from '@pizza-ecosystem/shared';
+
 export interface ProductTranslation {
   name: {
     sk: string;
@@ -670,4 +672,33 @@ export function getProductTranslation(productName: string, language: 'sk' | 'en'
     allergens: undefined,
     found: false, // Indicate that no translation was found
   };
+}
+
+/**
+ * Centralized function to get product display name
+ * Priority: DB displayName → translation mapping → original name
+ * Use this everywhere: web, emails, orders, etc.
+ * 
+ * @param product - Product object or string (productName)
+ * @param language - Language for fallback translation ('sk' | 'en'), defaults to 'sk'
+ * @returns The display name to show on website
+ */
+export function getProductDisplayName(
+  product: Product | string,
+  language: 'sk' | 'en' = 'sk'
+): string {
+  // If product is a string, use static mapping
+  if (typeof product === 'string') {
+    const translation = getProductTranslation(product, language);
+    return translation.name;
+  }
+
+  // If product is an object, check for DB displayName first
+  if (product.displayName) {
+    return product.displayName;
+  }
+
+  // Fallback to static translation mapping
+  const translation = getProductTranslation(product.name, language);
+  return translation.name;
 }

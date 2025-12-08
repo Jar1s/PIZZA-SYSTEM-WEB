@@ -4,7 +4,7 @@ import { Product } from '@pizza-ecosystem/shared';
 import { useCart } from '@/hooks/useCart';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useToastContext } from '@/contexts/ToastContext';
-import { getProductTranslation } from '@/lib/product-translations';
+import { getProductTranslation, getProductDisplayName } from '@/lib/product-translations';
 import Image from 'next/image';
 import { motion } from 'framer-motion';
 import { useState, useMemo, useCallback, memo, useEffect } from 'react';
@@ -95,13 +95,10 @@ export const ProductCard = memo(function ProductCard({ product, index = 0, isBes
   // Get translated product name, description, weight and allergens
   const translation = useMemo(() => getProductTranslation(product.name, language), [product.name, language]);
   
-  // Use translation if it was found, otherwise use original product data
+  // Use centralized function: DB displayName → translation mapping → original name
   const displayName = useMemo(() => {
-    if (translation.found && translation.name) {
-      return translation.name;
-    }
-    return product.name;
-  }, [translation.found, translation.name, product.name]);
+    return getProductDisplayName(product, language);
+  }, [product, language]);
   
   const displayDescription = useMemo(() => {
     if (translation.found) {

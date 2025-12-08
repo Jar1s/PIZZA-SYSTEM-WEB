@@ -280,9 +280,9 @@ export default function ProductsPage() {
                         <div className="text-sm font-medium text-gray-900">
                           {product.name}
                         </div>
-                        {product.displayNameSk && (
-                          <div className={`text-xs mt-1 ${product.displayNameSk !== product.name ? 'text-blue-600' : 'text-gray-500'}`}>
-                            Web: {product.displayNameSk}
+                        {product.displayName && (
+                          <div className={`text-xs mt-1 ${product.displayName !== product.name ? 'text-blue-600' : 'text-gray-500'}`}>
+                            Web: {product.displayName}
                           </div>
                         )}
                         {product.description && (

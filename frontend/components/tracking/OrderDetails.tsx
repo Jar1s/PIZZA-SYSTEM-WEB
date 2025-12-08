@@ -2,7 +2,7 @@
 
 import { Order } from '@pizza-ecosystem/shared';
 import { formatModifiers } from '@/lib/format-modifiers';
-import { getProductTranslation } from '@/lib/product-translations';
+import { getProductTranslation, getProductDisplayName } from '@/lib/product-translations';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { calculateOrderItemPrice } from '@/lib/calculate-order-item-price';
 
@@ -24,8 +24,8 @@ export function OrderDetails({ order }: OrderDetailsProps) {
         <h3 className="font-semibold mb-2">Items</h3>
         <div className="space-y-3">
           {order.items.map((item: any, i: number) => {
-            const productTranslation = getProductTranslation(item.productName, language);
-            const displayName = productTranslation.name;
+            // Use centralized function: for orders (string), uses static mapping
+            const displayName = getProductDisplayName(item.productName, language);
             
             const modifiers = formatModifiers(item.modifiers, false, language);
             

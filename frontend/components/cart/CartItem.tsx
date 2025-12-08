@@ -2,7 +2,7 @@
 
 import { useCart } from '@/hooks/useCart';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { getProductTranslation } from '@/lib/product-translations';
+import { getProductTranslation, getProductDisplayName } from '@/lib/product-translations';
 import Image from 'next/image';
 import { motion } from 'framer-motion';
 import { formatModifiers } from '@/lib/format-modifiers';
@@ -39,7 +39,10 @@ export function CartItem({ item, variant = 'light' }: CartItemProps) {
   
   // Get translated product name
   const translation = useMemo(() => getProductTranslation(item.product.name, language), [item.product.name, language]);
-  const displayName = useMemo(() => translation.name || item.product.name, [translation.name, item.product.name]);
+  // Use centralized function: DB displayName → translation mapping → original name
+  const displayName = useMemo(() => {
+    return getProductDisplayName(item.product, language);
+  }, [item.product, language]);
   
   return (
     <motion.div

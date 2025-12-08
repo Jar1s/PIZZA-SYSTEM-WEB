@@ -12,8 +12,7 @@ export interface Product {
   isBestSeller: boolean;
   weightGrams?: number | null;  // Gramáž v gramoch (napr. 450, 500, 520)
   allergens?: string[] | null; // Pole alergénov (napr. ["1", "7"])
-  displayNameSk?: string | null; // Voliteľný webový názov v slovenčine (prepíše mapovanie)
-  displayNameEn?: string | null; // Voliteľný webový názov v angličtine (prepíše mapovanie)
+  displayName?: string | null; // Voliteľný webový názov (prepíše mapovanie, používa sa pre všetky jazyky)
   createdAt: Date;
   updatedAt: Date;
 }

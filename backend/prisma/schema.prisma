@@ -48,8 +48,7 @@ model Product {
   isBestSeller Boolean     @default(false)
   weightGrams  Int?        // Gramáž v gramoch (napr. 450, 500, 520)
   allergens    String[]    // Pole alergénov (napr. ["1", "7"])
-  displayNameSk String?    // Voliteľný webový názov v slovenčine (prepíše mapovanie)
-  displayNameEn String?    // Voliteľný webový názov v angličtine (prepíše mapovanie)
+  displayName  String?     // Voliteľný webový názov (prepíše mapovanie, používa sa pre všetky jazyky)
   orderItems   OrderItem[]
   tenant       Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 

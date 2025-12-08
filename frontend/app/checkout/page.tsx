@@ -15,6 +15,7 @@ import { getTenant } from '@/lib/api';
 import { geocodeAddress, validateBratislavaAddressSimple } from '@/lib/geocoding';
 import { isDarkTheme, getBackgroundClass, getButtonGradientClass, getButtonStyle, withTenantThemeDefaults } from '@/lib/tenant-utils';
 import { isCurrentlyOpen } from '@/lib/opening-hours';
+import { getProductDisplayName } from '@/lib/product-translations';
 
 interface Address {
   id: string;
@@ -1251,7 +1252,7 @@ export default function CheckoutPage() {
                 <div key={item.id} className="mb-4 pb-4 border-b last:border-b-0">
                   <div className="flex justify-between items-start mb-1">
                     <div className="flex-1">
-                      <div className="font-semibold">{item.product.name} x {item.quantity}</div>
+                      <div className="font-semibold">{getProductDisplayName(item.product, language)} x {item.quantity}</div>
                       {modifiers.length > 0 && (
                         <div className="text-sm text-gray-600 mt-1 space-y-0.5">
                           {modifiers.map((mod, idx) => (

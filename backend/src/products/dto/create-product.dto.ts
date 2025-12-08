@@ -69,11 +69,7 @@ export class CreateProductDto {
 
   @IsOptional()
   @IsString()
-  displayNameSk?: string;
-
-  @IsOptional()
-  @IsString()
-  displayNameEn?: string;
+  displayName?: string;
 }
 
 

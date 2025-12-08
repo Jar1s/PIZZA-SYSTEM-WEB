@@ -47,11 +47,7 @@ export class UpdateProductDto extends OmitType(
 
   @IsOptional()
   @IsString()
-  displayNameSk?: string;
-
-  @IsOptional()
-  @IsString()
-  displayNameEn?: string;
+  displayName?: string;
 }
 
 

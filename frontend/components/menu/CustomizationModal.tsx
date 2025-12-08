@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Product } from '@pizza-ecosystem/shared';
 import { pizzaCustomizations, stangleCustomizations, CustomizationOption, CustomizationCategory, getCustomizationOptions } from '@pizza-ecosystem/shared';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { getProductTranslation, getAllergenDescription } from '@/lib/product-translations';
+import { getProductTranslation, getAllergenDescription, getProductDisplayName } from '@/lib/product-translations';
 import Image from 'next/image';
 
 interface CustomizationModalProps {
@@ -57,7 +57,8 @@ export default function CustomizationModal({
   
   // Get translated product name and description
   const translation = getProductTranslation(product.name, language);
-  const displayName = translation.name || product.name;
+  // Use centralized function: DB displayName → translation mapping → original name
+  const displayName = getProductDisplayName(product, language);
   const displayDescription = translation.description || product.description;
 
   // Get customization options based on product category

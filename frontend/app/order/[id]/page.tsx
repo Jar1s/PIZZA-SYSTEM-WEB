@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useSearchParams, useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { formatModifiers } from '@/lib/format-modifiers';
-import { getProductTranslation } from '@/lib/product-translations';
+import { getProductTranslation, getProductDisplayName } from '@/lib/product-translations';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { calculateOrderItemPrice } from '@/lib/calculate-order-item-price';
 import { Header } from '@/components/layout/Header';
@@ -338,8 +338,8 @@ export default function OrderTrackingPage() {
           {/* Items */}
           <div className={`space-y-3 mb-6 pb-6 ${isDark ? 'border-b border-white/10' : 'border-b border-gray-200'}`}>
             {order.items.map((item) => {
-              const productTranslation = getProductTranslation(item.productName, language);
-              const displayName = productTranslation.name;
+              // Use centralized function: for orders (string), uses static mapping
+              const displayName = getProductDisplayName(item.productName, language);
               
               const modifiers = formatModifiers(item.modifiers, false, language);
               

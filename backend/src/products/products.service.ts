@@ -41,18 +41,17 @@ export class ProductsService {
         isBestSeller: true,
         weightGrams: true,    // Gramáž z databázy
         allergens: true,      // Alergény z databázy
-        displayNameSk: true,  // Webový názov SK
-        displayNameEn: true,  // Webový názov EN
+        displayName: true,    // Webový názov
         createdAt: true,
         updatedAt: true,
       },
     });
     
-    // Apply fallback logic for display names: DB value → mapping → name
+    // Apply fallback logic for display name: DB value → mapping → name
+    // Note: displayName is language-agnostic, but we still apply fallback for consistency
     const productsWithFallback = products.map(product => ({
       ...product,
-      displayNameSk: product.displayNameSk ?? getProductDisplayName(product.name, 'sk') ?? product.name,
-      displayNameEn: product.displayNameEn ?? getProductDisplayName(product.name, 'en') ?? product.name,
+      displayName: product.displayName ?? getProductDisplayName(product.name, 'sk') ?? product.name,
     }));
     
     // Log prices for debugging (always log for these specific products to track price issues)
@@ -79,11 +78,10 @@ export class ProductsService {
       throw new NotFoundException(`Product ${id} not found`);
     }
 
-    // Apply fallback logic for display names: DB value → mapping → name
+    // Apply fallback logic for display name: DB value → mapping → name
     const productWithFallback = {
       ...product,
-      displayNameSk: product.displayNameSk ?? getProductDisplayName(product.name, 'sk') ?? product.name,
-      displayNameEn: product.displayNameEn ?? getProductDisplayName(product.name, 'en') ?? product.name,
+      displayName: product.displayName ?? getProductDisplayName(product.name, 'sk') ?? product.name,
     };
 
     return productWithFallback as any as Product;
@@ -139,11 +137,10 @@ export class ProductsService {
       },
     });
     
-    // Apply fallback logic for display names: DB value → mapping → name
+    // Apply fallback logic for display name: DB value → mapping → name
     const productsWithFallback = products.map(product => ({
       ...product,
-      displayNameSk: product.displayNameSk ?? getProductDisplayName(product.name, 'sk') ?? product.name,
-      displayNameEn: product.displayNameEn ?? getProductDisplayName(product.name, 'en') ?? product.name,
+      displayName: product.displayName ?? getProductDisplayName(product.name, 'sk') ?? product.name,
     }));
     
     return productsWithFallback as any as Product[];
