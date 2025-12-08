@@ -66,6 +66,14 @@ export class CreateProductDto {
   @IsOptional()
   @IsBoolean()
   isBestSeller?: boolean;
+
+  @IsOptional()
+  @IsString()
+  displayNameSk?: string;
+
+  @IsOptional()
+  @IsString()
+  displayNameEn?: string;
 }
 
 

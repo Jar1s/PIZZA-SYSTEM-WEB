@@ -39,6 +39,8 @@ export function EditProductModal({
     image: '',
     isActive: true,
     isBestSeller: false,
+    displayNameSk: '',
+    displayNameEn: '',
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -64,6 +66,10 @@ export function EditProductModal({
 
   useEffect(() => {
     if (product) {
+      // Get current web names with fallback: DB value → translation → name
+      const translationSk = getProductTranslation(product.name, 'sk');
+      const translationEn = getProductTranslation(product.name, 'en');
+      
       setFormData({
         name: product.name || '',
         description: product.description || '',
@@ -72,6 +78,8 @@ export function EditProductModal({
         image: product.image || '',
         isActive: product.isActive !== undefined ? product.isActive : true,
         isBestSeller: product.isBestSeller !== undefined ? product.isBestSeller : false,
+        displayNameSk: product.displayNameSk ?? translationSk.name ?? product.name,
+        displayNameEn: product.displayNameEn ?? translationEn.name ?? product.name,
       });
       setImagePreview(product.image || null);
       setImageFile(null);
@@ -151,6 +159,8 @@ export function EditProductModal({
         image: imageUrl || null,
         isActive: formData.isActive,
         isBestSeller: formData.isBestSeller,
+        displayNameSk: formData.displayNameSk || null,
+        displayNameEn: formData.displayNameEn || null,
       });
       
       onUpdate();
@@ -403,6 +413,42 @@ export function EditProductModal({
                   <label htmlFor="isBestSeller" className="ml-2 block text-sm text-gray-900">
                     Best Seller
                   </label>
+                </div>
+
+                {/* Web Display Names */}
+                <div className="border-t pt-4 mt-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Webové názvy (ako sa produkt zobrazuje na webe)
+                  </label>
+                  <p className="text-xs text-gray-500 mb-3">
+                    Ak nie sú vyplnené, použije sa automatické mapovanie z prekladov
+                  </p>
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-xs text-gray-600 mb-1">
+                        Slovenský názov (SK):
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.displayNameSk}
+                        onChange={(e) => setFormData({ ...formData, displayNameSk: e.target.value })}
+                        placeholder="Napr. Fregata Missionary"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-600 mb-1">
+                        Anglický názov (EN):
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.displayNameEn}
+                        onChange={(e) => setFormData({ ...formData, displayNameEn: e.target.value })}
+                        placeholder="E.g. Fregata Missionary"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                      />
+                    </div>
+                  </div>
                 </div>
 
                 {/* Product Mappings */}

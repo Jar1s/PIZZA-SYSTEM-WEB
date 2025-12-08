@@ -2,6 +2,7 @@ import { Injectable, NotFoundException, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { Product } from '@pizza-ecosystem/shared';
 import { CreateProductDto, UpdateProductDto } from './dto';
+import { getProductDisplayName } from '../utils/product-name-mapper';
 
 @Injectable()
 export class ProductsService {
@@ -40,10 +41,19 @@ export class ProductsService {
         isBestSeller: true,
         weightGrams: true,    // Gramáž z databázy
         allergens: true,      // Alergény z databázy
+        displayNameSk: true,  // Webový názov SK
+        displayNameEn: true,  // Webový názov EN
         createdAt: true,
         updatedAt: true,
       },
     });
+    
+    // Apply fallback logic for display names: DB value → mapping → name
+    const productsWithFallback = products.map(product => ({
+      ...product,
+      displayNameSk: product.displayNameSk ?? getProductDisplayName(product.name, 'sk') ?? product.name,
+      displayNameEn: product.displayNameEn ?? getProductDisplayName(product.name, 'en') ?? product.name,
+    }));
     
     // Log prices for debugging (always log for these specific products to track price issues)
     const premiumSins = ['Basil Pesto Premium', 'Honey Chilli', 'Pollo Crema', 'Prosciutto Crudo Premium'];
@@ -51,13 +61,13 @@ export class ProductsService {
     const productsToLog = [...premiumSins, ...deluxeFetish];
     
     productsToLog.forEach(name => {
-      const p = products.find(pr => pr.name === name);
+      const p = productsWithFallback.find(pr => pr.name === name);
       if (p) {
         this.logger.log(`[getProducts] ${p.name}: ${p.priceCents} cents = €${(p.priceCents / 100).toFixed(2)}`);
       }
     });
     
-    return products as any as Product[];
+    return productsWithFallback as any as Product[];
   }
 
   async getProductById(id: string): Promise<Product> {
@@ -69,7 +79,14 @@ export class ProductsService {
       throw new NotFoundException(`Product ${id} not found`);
     }
 
-    return product as any as Product;
+    // Apply fallback logic for display names: DB value → mapping → name
+    const productWithFallback = {
+      ...product,
+      displayNameSk: product.displayNameSk ?? getProductDisplayName(product.name, 'sk') ?? product.name,
+      displayNameEn: product.displayNameEn ?? getProductDisplayName(product.name, 'en') ?? product.name,
+    };
+
+    return productWithFallback as any as Product;
   }
 
   async createProduct(tenantId: string, data: CreateProductDto): Promise<Product> {
@@ -121,7 +138,15 @@ export class ProductsService {
         id: { in: ids },
       },
     });
-    return products as any as Product[];
+    
+    // Apply fallback logic for display names: DB value → mapping → name
+    const productsWithFallback = products.map(product => ({
+      ...product,
+      displayNameSk: product.displayNameSk ?? getProductDisplayName(product.name, 'sk') ?? product.name,
+      displayNameEn: product.displayNameEn ?? getProductDisplayName(product.name, 'en') ?? product.name,
+    }));
+    
+    return productsWithFallback as any as Product[];
   }
 
   async updateProductPrices(tenantId: string): Promise<{ updated: number; errors: string[] }> {

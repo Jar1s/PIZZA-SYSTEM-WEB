@@ -44,6 +44,14 @@ export class UpdateProductDto extends OmitType(
   @IsArray()
   @IsString({ each: true })
   allergens?: string[];
+
+  @IsOptional()
+  @IsString()
+  displayNameSk?: string;
+
+  @IsOptional()
+  @IsString()
+  displayNameEn?: string;
 }
 
 
