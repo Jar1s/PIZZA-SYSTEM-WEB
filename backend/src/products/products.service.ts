@@ -49,9 +49,9 @@ export class ProductsService {
     
     // Apply fallback logic for display name: DB value → mapping → name
     // Note: displayName is language-agnostic, but we still apply fallback for consistency
-    const productsWithFallback = products.map(product => ({
+    const productsWithFallback = (products as any[]).map((product: any) => ({
       ...product,
-      displayName: (product as any).displayName ?? getProductDisplayName(product.name, 'sk') ?? product.name,
+      displayName: product.displayName ?? getProductDisplayName(product.name, 'sk') ?? product.name,
     }));
     
     // Log prices for debugging (always log for these specific products to track price issues)
