@@ -18,6 +18,7 @@ export const OrderItemSchema = z.object({
 export const OrderResponseSchema = z.object({
   id: z.string(),
   tenantId: z.string(),
+  orderNumber: z.number().int().positive().nullable().optional(),
   userId: z.string().nullable(),
   status: z.enum(['PENDING', 'PAID', 'PREPARING', 'READY', 'OUT_FOR_DELIVERY', 'DELIVERED', 'CANCELED']),
   subtotalCents: z.number().int().nonnegative(),
