@@ -4,6 +4,7 @@ export const OrderItemSchema = z.object({
   id: z.string(),
   productId: z.string(),
   productName: z.string(), // Product name snapshot
+  displayName: z.string().nullable().optional(), // Display name from DB (if available)
   quantity: z.number().int().positive(),
   priceCents: z.number().int().nonnegative(),
   // Modifiers can be either:
