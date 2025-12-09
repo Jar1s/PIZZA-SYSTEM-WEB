@@ -729,8 +729,9 @@ export class OrdersService {
       ...order,
       items: order.items.map(item => {
         const product = productMap.get(item.productId) as any;
+        const productNameForMapping = (product?.name || item.productName || '') as string;
         const displayName = product?.displayName 
-          || getProductDisplayName((product?.name || item.productName) as string, 'sk')
+          || getProductDisplayName(productNameForMapping, 'sk')
           || item.productName;
         
         // Log modifiers when retrieving from database
