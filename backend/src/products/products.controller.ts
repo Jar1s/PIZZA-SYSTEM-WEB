@@ -85,6 +85,7 @@ export class ProductsController {
     return this.productsService.getProductById(id);
   }
 
+  @UseGuards(RolesGuard)
   @Post()
   @Roles('ADMIN', 'OPERATOR')
   async createProduct(
@@ -95,6 +96,7 @@ export class ProductsController {
     return this.productsService.createProduct(tenant.id, data);
   }
 
+  @UseGuards(RolesGuard)
   @Patch(':id')
   @Roles('ADMIN', 'OPERATOR')
   async updateProduct(
@@ -104,6 +106,7 @@ export class ProductsController {
     return this.productsService.updateProduct(id, data);
   }
 
+  @UseGuards(RolesGuard)
   @Delete(':id')
   @Roles('ADMIN', 'OPERATOR')
   async deleteProduct(@Param('id') id: string) {
@@ -111,6 +114,7 @@ export class ProductsController {
     return { message: 'Product deleted' };
   }
 
+  @UseGuards(RolesGuard)
   @Post('bulk-import')
   @Roles('ADMIN', 'OPERATOR')
   async bulkImport(
