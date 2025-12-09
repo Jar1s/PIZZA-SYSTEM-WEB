@@ -712,14 +712,32 @@ export class OrdersService {
       throw new NotFoundException(`Order ${id} not found`);
     }
 
-    // Explicitly map items to ensure productName is included
+    // Load products to get displayName
+    const productIds = [...new Set(order.items.map(item => item.productId))];
+    const products = await Promise.all(
+      productIds.map(id =>
+        this.prisma.product.findUnique({
+          where: { id },
+          select: { id: true, name: true, displayName: true } as any,
+        })
+      )
+    );
+    const productMap = new Map(products.filter(p => p).map(p => [p!.id, p!]));
+
+    // Explicitly map items to ensure productName and displayName are included
     const orderWithItems = {
       ...order,
       items: order.items.map(item => {
+        const product = productMap.get(item.productId) as any;
+        const displayName = product?.displayName 
+          || getProductDisplayName((product?.name || item.productName) as string, 'sk')
+          || item.productName;
+        
         // Log modifiers when retrieving from database
         this.logger.debug('Retrieving order item with modifiers', {
           itemId: item.id,
           productName: item.productName,
+          displayName,
           modifiers: item.modifiers,
           modifiersType: typeof item.modifiers,
           modifiersStringified: JSON.stringify(item.modifiers),
@@ -730,6 +748,7 @@ export class OrdersService {
           id: item.id,
           productId: item.productId,
           productName: item.productName, // Ensure productName is included
+          displayName, // Add displayName from DB
           quantity: item.quantity,
           priceCents: item.priceCents,
           modifiers: item.modifiers,
