@@ -101,28 +101,84 @@ export async function getProductById(productId: string): Promise<Product> {
 }
 
 export async function updateProduct(tenantSlug: string, productId: string, data: Partial<Product>): Promise<Product> {
-  const token = localStorage.getItem('auth_token');
-  
-  const headers: HeadersInit = { 'Content-Type': 'application/json' };
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
-  }
-  
-  const res = await fetch(`${API_URL}/api/${tenantSlug}/products/${productId}`, {
-    method: 'PATCH',
-    headers,
-    body: JSON.stringify(data),
-  });
-  
-  if (!res.ok) {
-    if (res.status === 401) {
+  const makeRequest = async (retry = false): Promise<Product> => {
+    const token = localStorage.getItem('auth_token');
+    
+    if (!token && !retry) {
+      // Try to refresh token if available
+      const refreshToken = localStorage.getItem('refresh_token');
+      if (refreshToken) {
+        try {
+          const refreshRes = await fetch(`${API_URL}/api/auth/refresh`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ refresh_token: refreshToken }),
+          });
+          
+          if (refreshRes.ok) {
+            const refreshData = await refreshRes.json();
+            localStorage.setItem('auth_token', refreshData.access_token);
+            if (refreshData.user) {
+              localStorage.setItem('auth_user', JSON.stringify(refreshData.user));
+            }
+            // Retry with new token
+            return makeRequest(true);
+          }
+        } catch (error) {
+          console.error('Token refresh failed:', error);
+        }
+      }
       throw new Error('Unauthorized - Please log in again');
     }
-    const errorText = await res.text().catch(() => 'Failed to update product');
-    throw new Error(errorText || 'Failed to update product');
-  }
+    
+    const headers: HeadersInit = { 'Content-Type': 'application/json' };
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+    
+    const res = await fetch(`${API_URL}/api/${tenantSlug}/products/${productId}`, {
+      method: 'PATCH',
+      headers,
+      body: JSON.stringify(data),
+    });
+    
+    if (!res.ok) {
+      if (res.status === 401 && !retry) {
+        // Try to refresh token and retry once
+        const refreshToken = localStorage.getItem('refresh_token');
+        if (refreshToken) {
+          try {
+            const refreshRes = await fetch(`${API_URL}/api/auth/refresh`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              credentials: 'include',
+              body: JSON.stringify({ refresh_token: refreshToken }),
+            });
+            
+            if (refreshRes.ok) {
+              const refreshData = await refreshRes.json();
+              localStorage.setItem('auth_token', refreshData.access_token);
+              if (refreshData.user) {
+                localStorage.setItem('auth_user', JSON.stringify(refreshData.user));
+              }
+              // Retry with new token
+              return makeRequest(true);
+            }
+          } catch (error) {
+            console.error('Token refresh failed:', error);
+          }
+        }
+        throw new Error('Unauthorized - Please log in again');
+      }
+      const errorText = await res.text().catch(() => 'Failed to update product');
+      throw new Error(errorText || 'Failed to update product');
+    }
+    
+    return res.json();
+  };
   
-  return res.json();
+  return makeRequest();
 }
 
 export interface ProductMapping {
