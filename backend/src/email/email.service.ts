@@ -225,7 +225,7 @@ export class EmailService {
           try {
             const product = await this.prisma.product.findUnique({
               where: { id: item.productId },
-              select: { image: true, category: true },
+              select: { image: true, category: true, displayName: true, name: true },
             });
             return {
               ...item,
@@ -757,8 +757,9 @@ export class EmailService {
               <h3 class="section-title" style="color: #333; margin: 30px 0 15px 0; font-size: 18px; border-bottom: 2px solid #f0f0f0; padding-bottom: 10px;">Vaša objednávka</h3>
               ${itemsWithImageUrls.map((item: any) => {
                 const modifiers = this.formatModifiersForEmail(item.modifiers, item.productCategory || 'PIZZA', 'sk');
-                // Map product name to display name (as shown on website)
-                const displayName = getProductDisplayName(item.productName, 'sk');
+                // Use displayName from DB if available, otherwise use static mapping
+                const displayName = item.productDisplayName 
+                  || getProductDisplayName(item.productDbName || item.productName, 'sk');
                 // Debug logging
                 this.logger.log(`📧 Formatting modifiers for ${item.productName} (display: ${displayName}):`, {
                   modifiers: item.modifiers,
@@ -968,30 +969,69 @@ export class EmailService {
     user: { email: string; name: string },
     tenantName: string,
     tenantDomain: string,
+    tenantTheme?: any,
+    tenantSlug?: string,
   ): Promise<void> {
-    const emailHtml = this.buildWelcomeEmail(user, tenantName, tenantDomain);
+    const emailHtml = this.buildWelcomeEmail(user, tenantName, tenantDomain, tenantTheme, tenantSlug);
+    const emailFrom = this.getEmailFrom(tenantName, tenantDomain);
+    const emailSubject = `🎉 Vitajte v ${tenantName}!`;
 
     try {
       if (process.env.SMTP_HOST && this.transporter) {
+        // Verify SMTP connection before sending
+        try {
+          await this.transporter.verify();
+          this.logger.log(`✅ SMTP connection verified before sending welcome email`);
+        } catch (verifyError) {
+          this.logger.error(`❌ SMTP verification failed before sending welcome email:`, this.formatSMTPError(verifyError));
+          // Continue anyway - sometimes verify fails but sendMail works
+        }
+
+        // Log email details before sending
+        this.logger.log(`📧 Sending welcome email:`);
+        this.logger.log(`   From: ${emailFrom}`);
+        this.logger.log(`   To: ${user.email}`);
+        this.logger.log(`   Subject: ${emailSubject}`);
+
         // Production: Actually send the email
         const info = await this.transporter.sendMail({
-          from: this.getEmailFrom(tenantName, tenantDomain),
+          from: emailFrom,
           to: user.email,
-          subject: `🎉 Vitajte v ${tenantName}!`,
+          subject: emailSubject,
           html: emailHtml,
         });
-        this.logger.log(`✅ Welcome email sent to ${user.email}: ${info.messageId}`);
+
+        // Log detailed response
+        this.logger.log(`✅ Welcome email sent to ${user.email}`);
+        this.logger.log(`   MessageId: ${info.messageId || 'N/A'}`);
+        this.logger.log(`   Response: ${info.response || 'N/A'}`);
+        if (info.accepted && info.accepted.length > 0) {
+          this.logger.log(`   Accepted: ${info.accepted.join(', ')}`);
+        }
+        if (info.rejected && info.rejected.length > 0) {
+          this.logger.warn(`   ⚠️ Rejected: ${info.rejected.join(', ')}`);
+        }
+        if (info.pending && info.pending.length > 0) {
+          this.logger.log(`   Pending: ${info.pending.join(', ')}`);
+        }
       } else {
         // Dev mode: Just log the email content
         this.logger.log(`📧 [DEV MODE] Welcome email would be sent to: ${user.email}`);
         console.log('\n📧 WELCOME EMAIL PREVIEW:\n');
+        console.log(`From: ${emailFrom}`);
         console.log(`To: ${user.email}`);
-        console.log(`Subject: 🎉 Vitajte v ${tenantName}!\n`);
+        console.log(`Subject: ${emailSubject}\n`);
       }
     } catch (error) {
       const errorMessage = this.formatSMTPError(error);
       this.logger.error(`❌ Failed to send welcome email to ${user.email}`);
-      this.logger.error(`   ${errorMessage}`);
+      this.logger.error(`   From: ${emailFrom}`);
+      this.logger.error(`   Subject: ${emailSubject}`);
+      this.logger.error(`   Error: ${errorMessage}`);
+      // Log full error for debugging
+      if (error instanceof Error) {
+        this.logger.error(`   Stack: ${error.stack}`);
+      }
       // Don't throw - email failure shouldn't break registration
     }
   }
@@ -1057,8 +1097,77 @@ export class EmailService {
     user: { name: string },
     tenantName: string,
     tenantDomain: string,
+    tenantTheme?: any,
+    tenantSlug?: string,
   ): string {
-    const loginUrl = `http://${tenantDomain}/auth/login`;
+    // Build frontend URL - use FRONTEND_URL if available, otherwise construct from tenantDomain
+    let frontendUrl = process.env.FRONTEND_URL || '';
+    
+    if (!frontendUrl) {
+      // Remove protocol if present
+      let domain = tenantDomain.replace(/^https?:\/\//, '');
+      
+      // Add www. prefix if missing and not localhost
+      if (!domain.includes('localhost') && !domain.includes('127.0.0.1')) {
+        if (!domain.startsWith('www.')) {
+          domain = `www.${domain}`;
+        }
+      }
+      
+      // Use https for production, http for localhost
+      const protocol = domain.includes('localhost') || domain.includes('127.0.0.1') ? 'http' : 'https';
+      frontendUrl = `${protocol}://${domain}`;
+    }
+    
+    // Build order URL with tenant parameter
+    const orderUrl = tenantSlug 
+      ? `${frontendUrl}?tenant=${tenantSlug}`
+      : frontendUrl;
+    
+    // Get theme colors - fallback to brand colors
+    const primaryColor = tenantTheme?.primaryColor || '#FF6B00';
+    
+    // Build asset base URL for logo
+    let rawAssetBase =
+      process.env.FRONTEND_URL ||
+      process.env.EMAIL_ASSET_BASE_URL ||
+      tenantDomain ||
+      '';
+    
+    // Fix common domain issues: add www. prefix if missing and not localhost
+    if (rawAssetBase && !rawAssetBase.includes('localhost') && !rawAssetBase.includes('127.0.0.1')) {
+      if (!rawAssetBase.startsWith('http://') && !rawAssetBase.startsWith('https://')) {
+        rawAssetBase = `https://${rawAssetBase}`;
+      }
+      
+      const urlObj = new URL(rawAssetBase);
+      if (!urlObj.hostname.startsWith('www.') && !urlObj.hostname.includes('localhost') && !urlObj.hostname.includes('127.0.0.1')) {
+        urlObj.hostname = `www.${urlObj.hostname}`;
+        rawAssetBase = urlObj.toString();
+      }
+    }
+    
+    const trimmedBase = rawAssetBase.replace(/\/$/, '');
+    const hasProtocol = trimmedBase.startsWith('http://') || trimmedBase.startsWith('https://');
+    const isLocal = trimmedBase.includes('localhost') || trimmedBase.includes('127.0.0.1');
+    const protocol = isLocal ? 'http' : 'https';
+    const assetBase = hasProtocol ? trimmedBase : trimmedBase ? `${protocol}://${trimmedBase}` : '';
+    
+    const buildAssetUrl = (path: string | null | undefined) => {
+      if (!path || path.trim() === '') return null;
+      const cleanPath = path.trim();
+      if (cleanPath.startsWith('http://') || cleanPath.startsWith('https://')) {
+        return cleanPath;
+      }
+      if (!assetBase) return null;
+      return `${assetBase}${cleanPath.startsWith('/') ? cleanPath : '/' + cleanPath}`;
+    };
+    
+    // Build logo URL
+    let logoUrl =
+      buildAssetUrl(tenantTheme?.logo) ||
+      buildAssetUrl('/PORNO PIZZA PINK GRANDIENT.png') ||
+      '';
     
     return `
 <!DOCTYPE html>
@@ -1067,40 +1176,75 @@ export class EmailService {
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Vitajte</title>
+  <style>
+    @media only screen and (max-width: 600px) {
+      .email-container {
+        width: 100% !important;
+        max-width: 100% !important;
+      }
+      .email-content {
+        padding: 20px 15px !important;
+      }
+      .email-header {
+        padding: 20px 15px !important;
+      }
+      .logo-img {
+        max-width: 150px !important;
+      }
+      .welcome-button {
+        padding: 12px 30px !important;
+        font-size: 14px !important;
+        display: block !important;
+        width: calc(100% - 60px) !important;
+        margin: 20px auto !important;
+      }
+      .section-title {
+        font-size: 16px !important;
+        margin: 20px 0 10px 0 !important;
+      }
+      .benefits-list {
+        font-size: 14px !important;
+      }
+    }
+  </style>
 </head>
 <body style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #f4f4f4;">
   <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f4f4f4; padding: 20px;">
     <tr>
       <td align="center">
-        <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+        <table class="email-container" width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1); max-width: 100%;">
           
           <!-- Header -->
           <tr>
-            <td style="background-color: #ff6b35; padding: 30px 20px; text-align: center;">
+            <td class="email-header" style="background-color: ${primaryColor}; padding: 30px 20px; text-align: center;">
+              ${logoUrl ? `
+              <img src="${logoUrl}" alt="${tenantName}" class="logo-img" style="max-width: 200px; height: auto; margin-bottom: 10px;" />
+              ` : `
               <h1 style="color: #ffffff; margin: 0; font-size: 28px;">🍕 ${tenantName}</h1>
+              `}
               <p style="color: #ffffff; margin: 10px 0 0 0; font-size: 16px;">Vitajte v našej rodine!</p>
             </td>
           </tr>
 
           <!-- Content -->
           <tr>
-            <td style="padding: 40px 30px;">
+            <td class="email-content" style="padding: 40px 30px;">
               
               <h2 style="color: #333; margin: 0 0 10px 0; font-size: 22px;">Ahoj ${user.name}! 👋</h2>
               <p style="color: #666; font-size: 16px; line-height: 1.6; margin: 0 0 20px 0;">
                 Ďakujeme, že ste sa prihlásili! Váš účet bol úspešne vytvorený a teraz môžete objednávať naše lahodné pizze.
               </p>
 
-              <!-- Login Button -->
+              <!-- Order Button -->
               <div style="text-align: center; margin: 30px 0;">
-                <a href="${loginUrl}" style="display: inline-block; background-color: #ff6b35; color: #ffffff; padding: 15px 40px; text-decoration: none; border-radius: 5px; font-size: 16px; font-weight: bold;">
+                <a href="${orderUrl}" class="welcome-button" style="display: inline-block; background-color: ${primaryColor}; color: #ffffff; padding: 15px 40px; text-decoration: none; border-radius: 5px; font-size: 16px; font-weight: bold;">
                   🍕 Objednať teraz
                 </a>
               </div>
 
               <!-- Benefits -->
-              <h3 style="color: #333; margin: 30px 0 15px 0; font-size: 18px; border-bottom: 2px solid #f0f0f0; padding-bottom: 10px;">Čo získate s účtom</h3>
-              <ul style="color: #666; font-size: 16px; line-height: 1.8; margin: 0; padding-left: 20px;">
+              <h3 class="section-title" style="color: #333; margin: 30px 0 15px 0; font-size: 18px; border-bottom: 2px solid #f0f0f0; padding-bottom: 10px;">Čo získate s účtom</h3>
+              <ul class="benefits-list" style="color: #666; font-size: 16px; line-height: 1.8; margin: 0; padding-left: 20px;">
                 <li>📦 Sledovanie stavu objednávok v reálnom čase</li>
                 <li>📋 História všetkých objednávok</li>
                 <li>⚡ Rýchlejšie budúce objednávky</li>
@@ -1108,7 +1252,7 @@ export class EmailService {
                 <li>🎁 Exkluzívne ponuky a zľavy</li>
               </ul>
 
-              <div style="background-color: #e7f3ff; border-left: 4px solid #2196F3; padding: 15px; margin: 30px 0;">
+              <div style="background-color: #e7f3ff; border-left: 4px solid ${primaryColor}; padding: 15px; margin: 30px 0;">
                 <p style="margin: 0; color: #0c5460; font-size: 14px; line-height: 1.6;">
                   <strong>💡 Tip:</strong> Uložte si svoje obľúbené adresy a budúce objednávky budú ešte rýchlejšie!
                 </p>

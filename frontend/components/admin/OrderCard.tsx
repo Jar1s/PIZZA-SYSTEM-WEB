@@ -7,7 +7,7 @@ import { syncOrderToStoryous, createWoltDelivery } from '@/lib/api';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { calculateOrderItemPrice } from '@/lib/calculate-order-item-price';
 import { getTranslations } from '@/lib/translations';
-import { getProductTranslation } from '@/lib/product-translations';
+import { getProductDisplayName } from '@/lib/product-translations';
 
 interface OrderCardProps {
   order: Order;
@@ -252,9 +252,8 @@ export function OrderCard({ order, onStatusUpdate, isExpanded = false, onToggleE
               const modifiers = formatModifiers(item.modifiers, true, language); // Use defaults for admin
               // Calculate correct price (handles both old and new orders)
               const itemTotal = calculateOrderItemPrice(item, 'PIZZA');
-              // Get web display name with fallback
-              const productTranslation = getProductTranslation(item.productName, language);
-              const displayName = productTranslation.name !== item.productName ? productTranslation.name : item.productName;
+              // Use centralized function: for orders (string), uses static mapping
+              const displayName = getProductDisplayName(item.productName, language);
               
               return (
                 <div key={i} className="mb-3 pb-3 border-b last:border-b-0">
