@@ -793,9 +793,9 @@ export class OrdersService {
       const orderWithItems = {
         ...order,
         items: order.items.map(item => {
-          const product = productMap.get(item.productId);
+          const product = productMap.get(item.productId) as any;
           const displayName = product?.displayName 
-            || getProductDisplayName(product?.name || item.productName, 'sk')
+            || getProductDisplayName((product?.name || item.productName) as string, 'sk')
             || item.productName;
           
           return {
