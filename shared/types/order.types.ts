@@ -54,6 +54,7 @@ export interface OrderItem {
   orderId: string;
   productId: string;
   productName: string;       // Snapshot
+  displayName?: string | null; // Display name from DB (if available)
   quantity: number;
   priceCents: number;
   modifiers: Record<string, any> | null;

@@ -12,6 +12,7 @@ import { OrderNumberService } from './order-number.service';
 import { TenantTheme } from '../types/tenant.types';
 import { appConfig } from '../config/app.config';
 import { OrderResponseSchema } from '../common/schemas/order.schema';
+import { getProductDisplayName } from '../utils/product-name-mapper';
 import * as crypto from 'crypto';
 
 // Type definitions for Prisma JSON fields
@@ -773,19 +774,40 @@ export class OrdersService {
         createdAt: 'desc',
       },
     });
+
+    // Load all products for all orders to get displayName
+    const allProductIds = [...new Set(orders.flatMap(order => order.items.map(item => item.productId)))];
+    const products = await Promise.all(
+      allProductIds.map(id =>
+        this.prisma.product.findUnique({
+          where: { id },
+          select: { id: true, name: true, displayName: true } as any,
+        })
+      )
+    );
+    const productMap = new Map(products.filter(p => p).map(p => [p!.id, p!]));
+
     // Validate each order response with Zod
     return orders.map(order => {
-      // Explicitly map items to ensure productName is included
+      // Explicitly map items to ensure productName and displayName are included
       const orderWithItems = {
         ...order,
-        items: order.items.map(item => ({
-          id: item.id,
-          productId: item.productId,
-          productName: item.productName, // Ensure productName is included
-          quantity: item.quantity,
-          priceCents: item.priceCents,
-          modifiers: item.modifiers,
-        })),
+        items: order.items.map(item => {
+          const product = productMap.get(item.productId);
+          const displayName = product?.displayName 
+            || getProductDisplayName(product?.name || item.productName, 'sk')
+            || item.productName;
+          
+          return {
+            id: item.id,
+            productId: item.productId,
+            productName: item.productName, // Ensure productName is included
+            displayName, // Add displayName from DB
+            quantity: item.quantity,
+            priceCents: item.priceCents,
+            modifiers: item.modifiers,
+          };
+        }),
       };
       
       try {

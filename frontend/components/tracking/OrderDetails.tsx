@@ -24,8 +24,8 @@ export function OrderDetails({ order }: OrderDetailsProps) {
         <h3 className="font-semibold mb-2">Items</h3>
         <div className="space-y-3">
           {order.items.map((item: any, i: number) => {
-            // Use centralized function: for orders (string), uses static mapping
-            const displayName = getProductDisplayName(item.productName, language);
+            // Use displayName from DB if available, otherwise use centralized function
+            const displayName = item.displayName || getProductDisplayName(item.productName, language);
             
             const modifiers = formatModifiers(item.modifiers, false, language);
             

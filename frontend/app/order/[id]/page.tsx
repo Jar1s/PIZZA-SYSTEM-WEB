@@ -339,7 +339,8 @@ export default function OrderTrackingPage() {
           <div className={`space-y-3 mb-6 pb-6 ${isDark ? 'border-b border-white/10' : 'border-b border-gray-200'}`}>
             {order.items.map((item) => {
               // Use centralized function: for orders (string), uses static mapping
-              const displayName = getProductDisplayName(item.productName, language);
+              // Use displayName from DB if available, otherwise use centralized function
+              const displayName = item.displayName || getProductDisplayName(item.productName, language);
               
               const modifiers = formatModifiers(item.modifiers, false, language);
               
