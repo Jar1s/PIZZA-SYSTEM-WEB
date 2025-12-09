@@ -285,11 +285,26 @@ export default function ProductsPage() {
                             Web: {product.displayName}
                           </div>
                         )}
-                        {product.description && (
-                          <div className="text-xs text-gray-500 mt-1 line-clamp-1">
-                            {product.description}
-                          </div>
-                        )}
+                        {product.description && (() => {
+                          // Try to parse as JSON {sk: "...", en: "..."}
+                          try {
+                            const parsed = JSON.parse(product.description);
+                            if (parsed && typeof parsed === 'object' && (parsed.sk || parsed.en)) {
+                              return (
+                                <div className="text-xs text-gray-500 mt-1 line-clamp-1">
+                                  {parsed.sk || parsed.en || product.description}
+                                </div>
+                              );
+                            }
+                          } catch (e) {
+                            // Not JSON, show as is
+                          }
+                          return (
+                            <div className="text-xs text-gray-500 mt-1 line-clamp-1">
+                              {product.description}
+                            </div>
+                          );
+                        })()}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm text-gray-900">

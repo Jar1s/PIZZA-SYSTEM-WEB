@@ -4,7 +4,7 @@ import { Product } from '@pizza-ecosystem/shared';
 import { useCart } from '@/hooks/useCart';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useToastContext } from '@/contexts/ToastContext';
-import { getProductTranslation, getProductDisplayName } from '@/lib/product-translations';
+import { getProductTranslation, getProductDisplayName, getLocalizedDescription } from '@/lib/product-translations';
 import Image from 'next/image';
 import { motion } from 'framer-motion';
 import { useState, useMemo, useCallback, memo, useEffect } from 'react';
@@ -101,13 +101,8 @@ export const ProductCard = memo(function ProductCard({ product, index = 0, isBes
   }, [product, language]);
   
   const displayDescription = useMemo(() => {
-    if (translation.found) {
-      // Use translation description (even if empty, it means translation was found)
-      return translation.description || '';
-    }
-    // Only use product.description if no translation was found
-    return product.description || '';
-  }, [translation.found, translation.description, product.description]);
+    return getLocalizedDescription(product, language, translation);
+  }, [product, language, translation]);
   const fallbackImage = useMemo(() => {
     // Check if product is a drink and has a fallback image
     if (product.category === 'DRINKS') {

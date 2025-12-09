@@ -702,3 +702,44 @@ export function getProductDisplayName(
   const translation = getProductTranslation(product.name, language);
   return translation.name;
 }
+
+/**
+ * Centralized function to get localized product description
+ * Priority: DB description (parsed JSON by language) → translation description → empty string
+ * 
+ * @param product - Product object with description field
+ * @param language - Language ('sk' | 'en')
+ * @param translation - Optional ProductTranslation object (from getProductTranslation)
+ * @returns The localized description to show on website
+ */
+export function getLocalizedDescription(
+  product: Product | { description?: string | null },
+  language: 'sk' | 'en',
+  translation?: ReturnType<typeof getProductTranslation>
+): string {
+  // Try to parse description as JSON {sk: "...", en: "..."}
+  let parsed: { sk?: string; en?: string } = {};
+  
+  if (product.description) {
+    try {
+      const parsedValue = JSON.parse(product.description);
+      if (parsedValue && typeof parsedValue === 'object' && (parsedValue.sk || parsedValue.en)) {
+        parsed = parsedValue;
+      }
+    } catch (e) {
+      // Not valid JSON, treat as empty
+      parsed = {};
+    }
+  }
+  
+  // Priority: DB description (by language) → translation description → empty string
+  if (parsed[language]) {
+    return parsed[language];
+  }
+  
+  if (translation?.description) {
+    return translation.description;
+  }
+  
+  return '';
+}

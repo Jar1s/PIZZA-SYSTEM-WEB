@@ -33,7 +33,8 @@ export function EditProductModal({
 }: EditProductModalProps) {
   const [formData, setFormData] = useState({
     name: '',
-    description: '',
+    descriptionSk: '',
+    descriptionEn: '',
     price: 0, // Price in euros (for display)
     category: 'PIZZA',
     image: '',
@@ -67,10 +68,31 @@ export function EditProductModal({
     if (product) {
       // Get current web name with fallback: DB value → translation → name
       const translationSk = getProductTranslation(product.name, 'sk');
+      const translationEn = getProductTranslation(product.name, 'en');
+      
+      // Parse description as JSON {sk: "...", en: "..."}
+      let parsed: { sk?: string; en?: string } = {};
+      let rawText: string | null = null;
+      
+      if (product.description) {
+        try {
+          const parsedValue = JSON.parse(product.description);
+          if (parsedValue && typeof parsedValue === 'object' && (parsedValue.sk || parsedValue.en)) {
+            parsed = parsedValue;
+          } else {
+            // Not valid JSON structure, treat as raw text
+            rawText = product.description;
+          }
+        } catch (e) {
+          // Not valid JSON, treat as raw text
+          rawText = product.description;
+        }
+      }
       
       setFormData({
         name: product.name || '',
-        description: product.description || '',
+        descriptionSk: parsed.sk ?? rawText ?? translationSk.description ?? '',
+        descriptionEn: parsed.en ?? rawText ?? translationEn.description ?? '',
         price: (product.priceCents || 0) / 100, // Convert cents to euros
         category: product.category || 'PIZZA',
         image: product.image || '',
@@ -148,9 +170,15 @@ export function EditProductModal({
         imageUrl = await uploadImage(imageFile);
       }
 
+      // Create JSON string from descriptionSk and descriptionEn
+      const descriptionJson = JSON.stringify({
+        sk: formData.descriptionSk || '',
+        en: formData.descriptionEn || '',
+      });
+
       await updateProduct(tenantSlug, product.id, {
         name: formData.name,
-        description: formData.description || null,
+        description: (formData.descriptionSk || formData.descriptionEn) ? descriptionJson : null,
         priceCents: Math.round(formData.price * 100), // Convert euros to cents
         category: formData.category,
         image: imageUrl || null,
@@ -219,99 +247,33 @@ export function EditProductModal({
                 {/* Description */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Description (SK / EN)
+                    Webový popis (ako sa produkt zobrazuje na webe)
                   </label>
-                  <div className="space-y-2">
-                    {/* Try to parse description as JSON with sk/en, or display as single string */}
-                    {(() => {
-                      try {
-                        const desc = formData.description;
-                        if (!desc) return null;
-                        
-                        // Try to parse as JSON
-                        const parsed = JSON.parse(desc);
-                        if (parsed && typeof parsed === 'object' && (parsed.sk || parsed.en)) {
-                          return (
-                            <div className="space-y-2">
-                              <div>
-                                <label className="text-xs text-gray-600 mb-1 block">Slovensky (SK):</label>
-                                <textarea
-                                  value={parsed.sk || ''}
-                                  onChange={(e) => {
-                                    const newDesc = { ...parsed, sk: e.target.value };
-                                    setFormData({ ...formData, description: JSON.stringify(newDesc) });
-                                  }}
-                                  rows={2}
-                                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                                />
-                              </div>
-                              <div>
-                                <label className="text-xs text-gray-600 mb-1 block">English (EN):</label>
-                                <textarea
-                                  value={parsed.en || ''}
-                                  onChange={(e) => {
-                                    const newDesc = { ...parsed, en: e.target.value };
-                                    setFormData({ ...formData, description: JSON.stringify(newDesc) });
-                                  }}
-                                  rows={2}
-                                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                                />
-                              </div>
-                            </div>
-                          );
-                        }
-                      } catch (e) {
-                        // Not JSON, treat as single string
-                      }
-                      
-                      // Single string or not JSON - show both fields with translations
-                      const descStr = formData.description || '';
-                      const translationSK = product ? getProductTranslation(product.name, 'sk') : null;
-                      const translationEN = product ? getProductTranslation(product.name, 'en') : null;
-                      
-                      return (
-                        <div className="space-y-2">
-                          <div>
-                            <label className="text-xs text-gray-600 mb-1 block">Slovensky (SK):</label>
-                            <textarea
-                              value={descStr || translationSK?.description || ''}
-                              onChange={(e) => {
-                                const sk = e.target.value;
-                                const en = translationEN?.description || '';
-                                setFormData({ 
-                                  ...formData, 
-                                  description: en ? JSON.stringify({ sk, en }) : sk 
-                                });
-                              }}
-                              rows={2}
-                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                              placeholder="Zadajte popis v slovenčine..."
-                            />
-                          </div>
-                          <div>
-                            <label className="text-xs text-gray-600 mb-1 block">English (EN):</label>
-                            <textarea
-                              value={translationEN?.description || ''}
-                              onChange={(e) => {
-                                const en = e.target.value;
-                                const sk = descStr || translationSK?.description || '';
-                                setFormData({ 
-                                  ...formData, 
-                                  description: en ? JSON.stringify({ sk, en }) : sk 
-                                });
-                              }}
-                              rows={2}
-                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                              placeholder="Enter description in English..."
-                            />
-                          </div>
-                        </div>
-                      );
-                    })()}
-                  </div>
-                  <p className="text-xs text-gray-500 mt-1">
-                    Zobrazí sa oba jazyky (SK a EN) na webe
+                  <p className="text-xs text-gray-500 mb-3">
+                    Ak nie je vyplnený, použije sa automatické mapovanie z prekladov podľa jazyka
                   </p>
+                  <div className="space-y-3">
+                    <div>
+                      <label className="text-xs text-gray-600 mb-1 block">Slovensky (SK):</label>
+                      <textarea
+                        value={formData.descriptionSk}
+                        onChange={(e) => setFormData({ ...formData, descriptionSk: e.target.value })}
+                        placeholder="Zadajte popis v slovenčine..."
+                        rows={3}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-600 mb-1 block">English (EN):</label>
+                      <textarea
+                        value={formData.descriptionEn}
+                        onChange={(e) => setFormData({ ...formData, descriptionEn: e.target.value })}
+                        placeholder="Enter description in English..."
+                        rows={3}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                      />
+                    </div>
+                  </div>
                 </div>
 
                 {/* Price */}
