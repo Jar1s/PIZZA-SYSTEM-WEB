@@ -722,7 +722,7 @@ export class OrdersService {
         })
       )
     );
-    const productMap = new Map(products.filter(p => p).map(p => [p!.id, p!]));
+    const productMap = new Map<string, any>(products.filter(p => p).map(p => [p!.id, p!]));
 
     // Explicitly map items to ensure productName and displayName are included
     const orderWithItems = {
@@ -805,7 +805,7 @@ export class OrdersService {
         })
       )
     );
-    const productMap = new Map(products.filter(p => p).map(p => [p!.id, p!]));
+    const productMap = new Map<string, any>(products.filter(p => p).map(p => [p!.id, p!]));
 
     // Validate each order response with Zod
     return orders.map(order => {
