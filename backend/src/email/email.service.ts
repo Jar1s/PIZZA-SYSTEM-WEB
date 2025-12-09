@@ -225,12 +225,23 @@ export class EmailService {
           try {
             const product = await this.prisma.product.findUnique({
               where: { id: item.productId },
-              select: { image: true, category: true, displayName: true, name: true },
+              select: { image: true, category: true, displayName: true, name: true } as any, // Type assertion until Prisma client regenerated
             });
+            const productDisplayName = (product as any)?.displayName || null;
+            this.logger.log('📧 Email: Loaded product displayName', {
+              productId: item.productId,
+              productName: item.productName,
+              productDbName: product?.name,
+              productDisplayName,
+              willUse: productDisplayName || getProductDisplayName(product?.name || item.productName, 'sk'),
+            });
+            
             return {
               ...item,
               productImage: product?.image || null,
               productCategory: product?.category || 'PIZZA',
+              productDisplayName, // Use DB displayName if available
+              productDbName: product?.name || null, // Keep original name for fallback
             };
           } catch (error) {
             this.logger.warn(`Failed to fetch product data for ${item.productId}: ${error}`);
