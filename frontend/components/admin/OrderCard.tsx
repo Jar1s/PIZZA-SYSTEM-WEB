@@ -252,8 +252,8 @@ export function OrderCard({ order, onStatusUpdate, isExpanded = false, onToggleE
               const modifiers = formatModifiers(item.modifiers, true, language); // Use defaults for admin
               // Calculate correct price (handles both old and new orders)
               const itemTotal = calculateOrderItemPrice(item, 'PIZZA');
-              // Use displayName from DB if available, otherwise use centralized function
-              const displayName = item.displayName || getProductDisplayName(item.productName, language);
+              // In admin, show the database product name (internal name), not the web display name
+              const displayName = item.productName;
               
               return (
                 <div key={i} className="mb-3 pb-3 border-b last:border-b-0">
