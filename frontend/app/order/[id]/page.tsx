@@ -340,6 +340,12 @@ export default function OrderTrackingPage() {
             {order.items.map((item) => {
               // Use centralized function: for orders (string), uses static mapping
               // Use displayName from DB if available, otherwise use centralized function
+              console.log('[Order Detail] Item displayName check:', {
+                itemId: item.id,
+                productName: item.productName,
+                displayName: item.displayName,
+                hasDisplayName: !!item.displayName,
+              });
               const displayName = item.displayName || getProductDisplayName(item.productName, language);
               
               const modifiers = formatModifiers(item.modifiers, false, language);
