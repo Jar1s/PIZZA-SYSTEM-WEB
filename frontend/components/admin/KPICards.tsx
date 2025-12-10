@@ -33,6 +33,7 @@ export function KPICards({ selectedTenant }: KPICardsProps = {}) {
       let totalRevenue = 0;
       let totalOrders = 0;
       let activeOrders = 0;
+      let revenueOrdersCount = 0; // Count orders that contribute to revenue
       
       for (const tenant of tenants) {
         const res = await fetch(
@@ -48,6 +49,7 @@ export function KPICards({ selectedTenant }: KPICardsProps = {}) {
             o.status === 'DELIVERED' || o.status === 'PAID' || o.status === 'PREPARING' || 
             o.status === 'READY' || o.status === 'OUT_FOR_DELIVERY'
           );
+          revenueOrdersCount += revenueOrders.length; // Count orders with revenue
           totalRevenue += revenueOrders.reduce((sum: number, o: any) => sum + (o.totalCents || 0), 0);
           
           // Count active orders (not delivered or canceled)
@@ -57,7 +59,8 @@ export function KPICards({ selectedTenant }: KPICardsProps = {}) {
         }
       }
       
-      const averageTicket = totalOrders > 0 ? Math.round(totalRevenue / totalOrders) : 0;
+      // Calculate average ticket from orders that actually have revenue
+      const averageTicket = revenueOrdersCount > 0 ? Math.round(totalRevenue / revenueOrdersCount) : 0;
       
       setKpis({
         totalRevenue,

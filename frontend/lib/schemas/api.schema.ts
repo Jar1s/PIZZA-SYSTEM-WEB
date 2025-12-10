@@ -26,7 +26,7 @@ export const ProductSchema = z.object({
   priceCents: z.number().int().nonnegative(),
   category: z.string().optional(),
   imageUrl: z.string().optional(),
-  modifiers: z.array(z.unknown()).optional(),
+  modifiers: z.array(z.unknown()).nullable().optional(),
 }).passthrough();
 
 // Order schema with fallback
