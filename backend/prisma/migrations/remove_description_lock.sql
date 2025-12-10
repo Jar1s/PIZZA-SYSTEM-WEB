@@ -1,37 +1,34 @@
 -- Remove database trigger/function that locks product description field
 -- Run this in Supabase SQL Editor
 
--- First, let's see what triggers exist on products table
+-- First, let's see the current function definition
 SELECT 
-    trigger_name,
-    event_manipulation,
-    action_statement
-FROM information_schema.triggers 
-WHERE event_object_table = 'products';
+    p.proname as function_name,
+    pg_get_functiondef(p.oid) as function_definition
+FROM pg_proc p
+JOIN pg_namespace n ON p.pronamespace = n.oid
+WHERE p.proname = 'prevent_product_field_updates'
+  AND n.nspname = 'public';
 
--- Drop all triggers on products table that might be blocking description
-DROP TRIGGER IF EXISTS prevent_product_description_update ON products;
-DROP TRIGGER IF EXISTS check_product_update ON products;
-DROP TRIGGER IF EXISTS protect_product_fields ON products;
-DROP TRIGGER IF EXISTS products_update_trigger ON products;
-
--- Drop any functions that might be checking description
-DROP FUNCTION IF EXISTS prevent_product_description_update() CASCADE;
-DROP FUNCTION IF EXISTS check_product_update() CASCADE;
-DROP FUNCTION IF EXISTS protect_product_fields() CASCADE;
-DROP FUNCTION IF EXISTS products_update_check() CASCADE;
-
--- More aggressive: Find and drop ALL triggers on products table
-DO $$
-DECLARE
-    r RECORD;
+-- Option 1: Update the function to allow description updates
+-- (Keep protection for name and priceCents, but allow description)
+CREATE OR REPLACE FUNCTION prevent_product_field_updates()
+RETURNS TRIGGER AS $$
 BEGIN
-    FOR r IN 
-        SELECT trigger_name 
-        FROM information_schema.triggers 
-        WHERE event_object_table = 'products'
-    LOOP
-        EXECUTE format('DROP TRIGGER IF EXISTS %I ON products CASCADE', r.trigger_name);
-        RAISE NOTICE 'Dropped trigger: %', r.trigger_name;
-    END LOOP;
-END $$;
+    -- Only protect name and priceCents, allow description updates
+    IF OLD.name IS DISTINCT FROM NEW.name THEN
+        RAISE EXCEPTION 'Cannot update product name. Field is locked.';
+    END IF;
+    
+    IF OLD."priceCents" IS DISTINCT FROM NEW."priceCents" THEN
+        RAISE EXCEPTION 'Cannot update product priceCents. Field is locked.';
+    END IF;
+    
+    -- Description is now allowed to be updated
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Option 2: If you want to completely remove the trigger (uncomment below)
+-- DROP TRIGGER IF EXISTS lock_product_fields_trigger ON products;
+-- DROP FUNCTION IF EXISTS prevent_product_field_updates() CASCADE;
