@@ -10,10 +10,14 @@ JOIN pg_namespace n ON p.pronamespace = n.oid
 WHERE p.proname = 'prevent_product_field_updates'
   AND n.nspname = 'public';
 
--- Option 1: Update the function to allow description updates
+-- Update the function to allow description updates
 -- (Keep protection for name and priceCents, but allow description)
-CREATE OR REPLACE FUNCTION prevent_product_field_updates()
-RETURNS TRIGGER AS $$
+CREATE OR REPLACE FUNCTION public.prevent_product_field_updates()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO 'public', 'pg_temp'
+AS $function$
 BEGIN
     -- Only protect name and priceCents, allow description updates
     IF OLD.name IS DISTINCT FROM NEW.name THEN
@@ -24,10 +28,10 @@ BEGIN
         RAISE EXCEPTION 'Cannot update product priceCents. Field is locked.';
     END IF;
     
-    -- Description is now allowed to be updated
+    -- Description is now allowed to be updated (removed the check)
     RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+$function$;
 
 -- Option 2: If you want to completely remove the trigger (uncomment below)
 -- DROP TRIGGER IF EXISTS lock_product_fields_trigger ON products;
