@@ -41,6 +41,11 @@ export default function CustomersPage() {
     total: 0,
     totalPages: 0,
   });
+  const [deleteConfirm, setDeleteConfirm] = useState<{
+    show: boolean;
+    customer: Customer | null;
+  }>({ show: false, customer: null });
+  const [deleting, setDeleting] = useState(false);
 
   const fetchCustomers = useCallback(async () => {
     try {
@@ -124,6 +129,53 @@ export default function CustomersPage() {
     e.preventDefault();
     setPage(1);
     fetchCustomers();
+  };
+
+  const handleDeleteClick = (customer: Customer) => {
+    setDeleteConfirm({ show: true, customer });
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!deleteConfirm.customer) return;
+
+    setDeleting(true);
+    try {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+      const token = localStorage.getItem('auth_token');
+
+      if (!token) {
+        throw new Error('Not authenticated');
+      }
+
+      const res = await fetch(
+        `${API_URL}/api/admin/customers/${deleteConfirm.customer.id}`,
+        {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({ message: 'Failed to delete customer' }));
+        throw new Error(errorData.message || 'Failed to delete customer');
+      }
+
+      // Remove customer from list
+      setCustomers(customers.filter((c) => c.id !== deleteConfirm.customer!.id));
+      setPagination((prev) => ({ ...prev, total: prev.total - 1 }));
+      setDeleteConfirm({ show: false, customer: null });
+    } catch (err: any) {
+      setError(err.message || 'Failed to delete customer');
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const handleDeleteCancel = () => {
+    setDeleteConfirm({ show: false, customer: null });
   };
 
   // Show loading while checking user role
@@ -226,12 +278,15 @@ export default function CustomersPage() {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Registered
                   </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Actions
+                  </th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {customers.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="px-6 py-12 text-center text-gray-500">
+                    <td colSpan={7} className="px-6 py-12 text-center text-gray-500">
                       No customers found
                     </td>
                   </tr>
@@ -299,6 +354,15 @@ export default function CustomersPage() {
                           day: 'numeric',
                         })}
                       </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm">
+                        <button
+                          onClick={() => handleDeleteClick(customer)}
+                          className="px-3 py-1 bg-red-600 text-white rounded-lg hover:bg-red-700 font-semibold text-xs"
+                          title="Delete customer"
+                        >
+                          Delete
+                        </button>
+                      </td>
                     </tr>
                   ))
                 )}
@@ -336,6 +400,49 @@ export default function CustomersPage() {
             </div>
           )}
         </>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {deleteConfirm.show && deleteConfirm.customer && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <h2 className="text-xl font-bold text-gray-900 mb-4">Confirm Delete</h2>
+            <p className="text-gray-600 mb-4">
+              Are you sure you want to delete customer{' '}
+              <span className="font-semibold">{deleteConfirm.customer.name}</span>?
+            </p>
+            {deleteConfirm.customer.email && (
+              <p className="text-sm text-gray-500 mb-4">
+                Email: {deleteConfirm.customer.email}
+              </p>
+            )}
+            {deleteConfirm.customer.orderCount > 0 && (
+              <p className="text-sm text-orange-600 mb-4">
+                ⚠️ This customer has {deleteConfirm.customer.orderCount} order(s). 
+                The customer will be deleted, but orders will remain for historical records.
+              </p>
+            )}
+            <p className="text-sm text-red-600 mb-6 font-semibold">
+              This action cannot be undone.
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={handleDeleteCancel}
+                disabled={deleting}
+                className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-semibold disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteConfirm}
+                disabled={deleting}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-semibold disabled:opacity-50"
+              >
+                {deleting ? 'Deleting...' : 'Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

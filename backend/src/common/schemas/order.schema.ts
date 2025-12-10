@@ -10,9 +10,11 @@ export const OrderItemSchema = z.object({
   // Modifiers can be either:
   // 1. Object (Record<string, string[]>) - current format: { modifierId: [optionId1, optionId2] }
   // 2. Array - legacy format (for backward compatibility)
+  // 3. null - when no modifiers are present (from Prisma nullable JSON field)
   modifiers: z.union([
     z.record(z.string(), z.array(z.string())), // Object format: { "size": ["large"], "toppings": ["cheese"] }
     z.array(z.unknown()), // Legacy array format
+    z.null(), // null when no modifiers
   ]).optional(),
 });
 

@@ -1,10 +1,13 @@
 import {
   Controller,
   Get,
+  Delete,
+  Param,
   Query,
   UseGuards,
   Request,
   UnauthorizedException,
+  NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -114,6 +117,57 @@ export class AdminCustomersController {
         limit: limitNum,
         total,
         totalPages: Math.ceil(total / limitNum),
+      },
+    };
+  }
+
+  /**
+   * Delete a customer (admin only)
+   */
+  @Delete(':id')
+  async deleteCustomer(
+    @Request() req: any,
+    @Param('id') customerId: string,
+  ) {
+    const user = req.user;
+    
+    // Only ADMIN can delete customers
+    if (!user || user.role !== 'ADMIN') {
+      throw new UnauthorizedException('Only admins can delete customers');
+    }
+
+    // Check if customer exists
+    const customer = await this.prisma.user.findUnique({
+      where: { id: customerId },
+      select: {
+        id: true,
+        role: true,
+        email: true,
+        name: true,
+      },
+    });
+
+    if (!customer) {
+      throw new NotFoundException('Customer not found');
+    }
+
+    // Only allow deleting CUSTOMER role users
+    if (customer.role !== 'CUSTOMER') {
+      throw new UnauthorizedException('Can only delete customers');
+    }
+
+    // Delete user (cascade will delete related records: refreshTokens, smsVerificationCodes, addresses)
+    // Note: Orders are not deleted (they remain for historical records)
+    await this.prisma.user.delete({
+      where: { id: customerId },
+    });
+
+    return {
+      message: 'Customer deleted successfully',
+      deletedCustomer: {
+        id: customer.id,
+        email: customer.email,
+        name: customer.name,
       },
     };
   }
