@@ -368,12 +368,14 @@ export const ProductCard = memo(function ProductCard({ product, index = 0, isBes
         {(() => {
           const weight = (product as any).weightGrams ? `${(product as any).weightGrams}g` : translation.weight;
           const allergens = ((product as any).allergens && (product as any).allergens.length > 0) ? (product as any).allergens : translation.allergens;
+          // Pre drinky používame inú ikonu
+          const weightIcon = product.category === 'DRINKS' ? '🧃' : '⚖️';
           
           return (weight || allergens) ? (
         <div className={`flex items-center gap-4 mb-2 text-xs h-5 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
               {weight && (
             <div className="flex items-center gap-1">
-              <span>⚖️</span>
+              <span>{weightIcon}</span>
                   <span>{weight}</span>
             </div>
           )}
