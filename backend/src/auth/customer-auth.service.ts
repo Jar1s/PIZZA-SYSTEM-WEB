@@ -149,6 +149,8 @@ export class CustomerAuthService {
         },
         defaultTenant.name,
         tenantDomain,
+        defaultTenant.theme,
+        defaultTenant.slug,
       );
     } catch (error) {
       this.logger.error(`Error sending welcome email:`, error);
