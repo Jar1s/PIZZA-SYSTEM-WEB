@@ -98,16 +98,16 @@ export class ProductsService {
   }
 
   async updateProduct(id: string, data: UpdateProductDto): Promise<Product> {
-    // Chránené polia: name, priceCents - NEDAJÚ SA MENIŤ
-    // Description môže byť updatované (SK/EN JSON)
+    // Chránené polia: name - NEDAJÚ SA MENIŤ
+    // Description a priceCents môžu byť updatované
     // Odstránime chránené polia z dát pred update, aby sme zabezpečili, že sa nezmenia
-    const { name, priceCents, ...allowedFields } = data as any;
+    const { name, ...allowedFields } = data as any;
     
     // Log warning ak sa niekto pokúša zmeniť chránené polia
-    if (name !== undefined || priceCents !== undefined) {
+    if (name !== undefined) {
       this.logger.warn(
-        `Attempted to update protected fields (name, priceCents) for product ${id}. ` +
-        `These fields are locked and cannot be changed.`
+        `Attempted to update protected field (name) for product ${id}. ` +
+        `This field is locked and cannot be changed.`
       );
     }
     

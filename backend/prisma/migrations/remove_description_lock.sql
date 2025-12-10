@@ -10,8 +10,8 @@ JOIN pg_namespace n ON p.pronamespace = n.oid
 WHERE p.proname = 'prevent_product_field_updates'
   AND n.nspname = 'public';
 
--- Update the function to allow description updates
--- (Keep protection for name and priceCents, but allow description)
+-- Update the function to allow description and priceCents updates
+-- (Keep protection only for name)
 CREATE OR REPLACE FUNCTION public.prevent_product_field_updates()
 RETURNS TRIGGER
 LANGUAGE plpgsql
@@ -19,16 +19,12 @@ SECURITY DEFINER
 SET search_path TO 'public', 'pg_temp'
 AS $function$
 BEGIN
-    -- Only protect name and priceCents, allow description updates
+    -- Only protect name, allow description and priceCents updates
     IF OLD.name IS DISTINCT FROM NEW.name THEN
         RAISE EXCEPTION 'Cannot update product name. Field is locked.';
     END IF;
     
-    IF OLD."priceCents" IS DISTINCT FROM NEW."priceCents" THEN
-        RAISE EXCEPTION 'Cannot update product priceCents. Field is locked.';
-    END IF;
-    
-    -- Description is now allowed to be updated (removed the check)
+    -- Description and priceCents are now allowed to be updated (removed the checks)
     RETURN NEW;
 END;
 $function$;

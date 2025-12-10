@@ -3,16 +3,20 @@ import { CreateProductDto } from './create-product.dto';
 import { IsOptional, IsBoolean, IsString, IsNumber, IsArray, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
 
-// Chránené polia (name, priceCents) sa nedajú meniť cez UPDATE
+// Chránené polia (name) sa nedajú meniť cez UPDATE
 // Tieto polia môžu byť zmenené len pri vytváraní produktu
 export class UpdateProductDto extends OmitType(
   PartialType(CreateProductDto),
-  ['name', 'priceCents'] as const
+  ['name'] as const
 ) {
   // Povolené polia na update:
   @IsOptional()
   @IsString()
   description?: string;
+
+  @IsOptional()
+  @IsNumber()
+  priceCents?: number;
 
   @IsOptional()
   @IsNumber()
