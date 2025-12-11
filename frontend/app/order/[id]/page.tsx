@@ -17,6 +17,7 @@ interface Order {
   id: string;
   orderNumber?: number | null;
   status: string;
+  paymentStatus?: string | null;
   customer: {
     name: string;
     email: string;
@@ -321,7 +322,7 @@ export default function OrderTrackingPage() {
           <h3 className={`text-xl font-bold mb-6 ${isDark ? 'text-white' : 'text-gray-800'}`}>
             {t.orderProgress}
           </h3>
-          <StatusTimeline status={orderStatus} />
+          <StatusTimeline status={orderStatus} paymentStatus={order.paymentStatus} />
         </motion.div>
 
         {/* Order Details */}

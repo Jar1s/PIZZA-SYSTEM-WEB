@@ -6,15 +6,28 @@ import { getTranslations } from '@/lib/translations';
 
 interface StatusTimelineProps {
   status: OrderStatus;
+  paymentStatus?: string | null;
 }
 
-export function StatusTimeline({ status }: StatusTimelineProps) {
+export function StatusTimeline({ status, paymentStatus }: StatusTimelineProps) {
   const { language } = useLanguage();
   const t = getTranslations(language);
   
+  // Check if this is cash payment pending (waiting for operator confirmation)
+  const isCashPending = status === OrderStatus.PENDING && paymentStatus === 'pending';
+  
   // Updated flow: Removed READY status
   const STATUSES = [
-    { key: OrderStatus.PENDING, label: t.orderStatusPending, icon: '📝', description: t.orderStatusPendingDesc },
+    { 
+      key: OrderStatus.PENDING, 
+      label: isCashPending 
+        ? (language === 'sk' ? 'Čaká na potvrdenie' : 'Waiting for confirmation')
+        : t.orderStatusPending, 
+      icon: isCashPending ? '⏳' : '💳', 
+      description: isCashPending
+        ? (language === 'sk' ? 'Objednávka čaká na potvrdenie operátora' : 'Order is waiting for operator confirmation')
+        : t.orderStatusPendingDesc 
+    },
     { key: OrderStatus.PAID, label: t.orderStatusPaid, icon: '💳', description: t.orderStatusPaidDesc },
     { key: OrderStatus.PREPARING, label: t.orderStatusPreparing, icon: '👨‍🍳', description: t.orderStatusPreparingDesc },
     { key: OrderStatus.OUT_FOR_DELIVERY, label: t.orderStatusOutForDelivery, icon: '🚗', description: t.orderStatusOutForDeliveryDesc },

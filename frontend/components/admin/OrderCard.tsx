@@ -60,6 +60,11 @@ export function OrderCard({ order, onStatusUpdate, isExpanded = false, onToggleE
   const hasWoltDelivery = !!order.deliveryId || !!order.delivery;
   const woltDelivery = order.delivery;
   
+  // Check if order is cash payment (paymentStatus === 'pending')
+  const isCashPayment = order.paymentStatus === 'pending';
+  const isPendingCash = order.status === OrderStatus.PENDING && isCashPayment;
+  const isPaid = order.status === OrderStatus.PAID;
+  
   // Get translated status label
   const getStatusLabel = (status: OrderStatus): string => {
     const statusMap: Record<OrderStatus, string> = {
@@ -163,6 +168,33 @@ export function OrderCard({ order, onStatusUpdate, isExpanded = false, onToggleE
         {/* Action Buttons */}
         <div className="flex flex-col gap-2 pt-2">
           <div className="flex gap-2 flex-wrap">
+            {/* Cash payment - Accept/Cancel buttons */}
+            {isPendingCash && (
+              <>
+                <button
+                  onClick={() => onStatusUpdate(order.id, OrderStatus.PAID)}
+                  className="flex-1 min-w-[120px] px-3 py-2 bg-green-600 text-white rounded hover:bg-green-700 text-sm font-semibold"
+                >
+                  ✅ Prijať
+                </button>
+                <button
+                  onClick={() => onStatusUpdate(order.id, OrderStatus.CANCELED)}
+                  className="flex-1 min-w-[120px] px-3 py-2 bg-red-600 text-white rounded hover:bg-red-700 text-sm font-semibold"
+                >
+                  ❌ Zrušiť
+                </button>
+              </>
+            )}
+            {/* Paid orders - Cancel button */}
+            {isPaid && (
+              <button
+                onClick={() => onStatusUpdate(order.id, OrderStatus.CANCELED)}
+                className="flex-1 min-w-[120px] px-3 py-2 bg-red-600 text-white rounded hover:bg-red-700 text-sm font-semibold"
+                title="Zrušiť objednávku (refund bude spracovaný neskôr)"
+              >
+                ❌ Zrušiť
+              </button>
+            )}
             {!isStoryousSynced && (
               <button
                 onClick={handleSyncStoryous}
@@ -234,6 +266,33 @@ export function OrderCard({ order, onStatusUpdate, isExpanded = false, onToggleE
         </div>
         
         <div className="flex items-center gap-2 ml-4">
+          {/* Cash payment - Accept/Cancel buttons */}
+          {isPendingCash && (
+            <>
+              <button
+                onClick={() => onStatusUpdate(order.id, OrderStatus.PAID)}
+                className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 text-sm font-semibold"
+              >
+                ✅ Prijať
+              </button>
+              <button
+                onClick={() => onStatusUpdate(order.id, OrderStatus.CANCELED)}
+                className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 text-sm font-semibold"
+              >
+                ❌ Zrušiť
+              </button>
+            </>
+          )}
+          {/* Paid orders - Cancel button */}
+          {isPaid && (
+            <button
+              onClick={() => onStatusUpdate(order.id, OrderStatus.CANCELED)}
+              className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 text-sm font-semibold"
+              title="Zrušiť objednávku (refund bude spracovaný neskôr)"
+            >
+              ❌ Zrušiť
+            </button>
+          )}
           {!isStoryousSynced && (
             <button
               onClick={handleSyncStoryous}
