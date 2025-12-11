@@ -236,10 +236,10 @@ export const translations = {
     mainAction: 'HLAVNÉ ČÍSLO',
     deluxeFetish: 'DELUXE FETISH',
     premiumSins: 'PREMIUM SINS',
-    foreplayDesc: '(začni niečím jednoduchým, nech sa to rozbehne)',
-    mainActionDesc: '(tu sa začína poriadna jazda)',
-    deluxeFetishDesc: '(pre tých, čo vedia, čo chcú)',
-    premiumSinsDesc: '(hriechy, ktoré stoja za to)',
+    foreplayDesc: 'Začni niečím jednoduchým, nech sa to rozbehne',
+    mainActionDesc: 'Tu sa začína poriadna jazda',
+    deluxeFetishDesc: 'Pre tých, čo vedia, čo chcú',
+    premiumSinsDesc: 'Hriechy, ktoré stoja za to',
     
     // Order Success
     orderConfirmed: 'Objednávka potvrdená!',
