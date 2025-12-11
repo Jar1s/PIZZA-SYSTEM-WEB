@@ -3,6 +3,7 @@
 import { useCart } from '@/hooks/useCart';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { getProductTranslation, getProductDisplayName } from '@/lib/product-translations';
+import { getProductDisplayImage } from '@/lib/product-images';
 import Image from 'next/image';
 import { motion } from 'framer-motion';
 import { formatModifiers } from '@/lib/format-modifiers';
@@ -44,6 +45,11 @@ export function CartItem({ item, variant = 'light' }: CartItemProps) {
     return getProductDisplayName(item.product, language);
   }, [item.product, language]);
   
+  // Use centralized image logic
+  const displayImage = useMemo(() => {
+    return getProductDisplayImage(item.product, translation.name);
+  }, [item.product, translation.name]);
+  
   return (
     <motion.div
       layout
@@ -54,10 +60,10 @@ export function CartItem({ item, variant = 'light' }: CartItemProps) {
         isDark ? 'bg-white/5 border-white/10' : 'bg-white border-gray-200'
       }`}
     >
-      {item.product.image && (
+      {displayImage && (
         <div className="relative h-20 w-20 flex-shrink-0 overflow-hidden rounded-xl bg-gray-100">
           <Image
-            src={item.product.image}
+            src={displayImage}
             alt={item.product.name}
             fill
             sizes="80px"
@@ -65,7 +71,7 @@ export function CartItem({ item, variant = 'light' }: CartItemProps) {
             className="object-cover"
             loading="lazy"
             onError={(e) => {
-              console.error('Failed to load cart item image:', item.product.image);
+              console.error('Failed to load cart item image:', displayImage);
               e.currentTarget.style.display = 'none';
             }}
           />

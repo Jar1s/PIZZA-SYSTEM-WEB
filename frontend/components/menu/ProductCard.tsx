@@ -5,63 +5,11 @@ import { useCart } from '@/hooks/useCart';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useToastContext } from '@/contexts/ToastContext';
 import { getProductTranslation, getProductDisplayName, getLocalizedDescription } from '@/lib/product-translations';
+import { getProductFallbackImage, getProductDisplayImage } from '@/lib/product-images';
 import Image from 'next/image';
 import { motion } from 'framer-motion';
 import { useState, useMemo, useCallback, memo, useEffect } from 'react';
 import CustomizationModal from './CustomizationModal';
-
-const dessertImageMap: Record<string, string> = {
-  'tiramisu': '/images/desserts/tiramissu.png',
-  'tiramissu': '/images/desserts/tiramissu.png',
-};
-
-const soupImageMap: Record<string, string> = {
-  'tomato soup': '/images/soups/tomato-soup.jpg',
-  'tomato-soup': '/images/soups/tomato-soup.jpg',
-  'paradajková polievka': '/images/soups/tomato-soup.jpg',
-  'paradajkova polievka': '/images/soups/tomato-soup.jpg',
-  'paradajková': '/images/soups/tomato-soup.jpg',
-  'paradajkova': '/images/soups/tomato-soup.jpg',
-  'polievka': '/images/soups/tomato-soup.jpg',
-};
-
-const drinkImageMap: Record<string, string> = {
-  'bonaqua nesýtená 1,5l': '/images/drinks/bonaqua-nesytena.png',
-  'bonaqua nesytena 1,5l': '/images/drinks/bonaqua-nesytena.png',
-  'bonaqua nesýtená': '/images/drinks/bonaqua-nesytena.png',
-  'bonaqua nesytena': '/images/drinks/bonaqua-nesytena.png',
-  'bon aqua nesýtená': '/images/drinks/bonaqua-nesytena.png',
-  'bon aqua nesytena': '/images/drinks/bonaqua-nesytena.png',
-  'bonaqua sýtená 1,5l': '/images/drinks/bonaqua-sytena.png',
-  'bonaqua sytena 1,5l': '/images/drinks/bonaqua-sytena.png',
-  'bonaqua sýtená': '/images/drinks/bonaqua-sytena.png',
-  'bonaqua sytena': '/images/drinks/bonaqua-sytena.png',
-  'bon aqua sýtená': '/images/drinks/bonaqua-sytena.png',
-  'bon aqua sytena': '/images/drinks/bonaqua-sytena.png',
-  'kofola 2l': '/images/drinks/kofola.png',
-  'kofola': '/images/drinks/kofola.png',
-  'pepsi 1l': '/images/drinks/pepsi-1l.png',
-  'pepsi': '/images/drinks/pepsi-1l.png',
-  'pepsi zero 1l': '/images/drinks/pepsi-cola-zero.png',
-  'pepsi cola zero': '/images/drinks/pepsi-cola-zero.png',
-  'pepsi cola zero 1l': '/images/drinks/pepsi-cola-zero.png',
-  'pepsi zero': '/images/drinks/pepsi-cola-zero.png',
-  'pepsi-cola-zero': '/images/drinks/pepsi-cola-zero.png',
-  'pepsi-cola-zero-1l': '/images/drinks/pepsi-cola-zero.png',
-  'sprite 1l': '/images/drinks/sprite.png',
-  'sprite': '/images/drinks/sprite.png',
-  'fanta 1l': '/images/drinks/fanta-1l.png',
-  'fanta': '/images/drinks/fanta-1l.png',
-  'coca cola 1l': '/images/drinks/coca-cola-1l.png',
-  'coca-cola 1l': '/images/drinks/coca-cola-1l.png',
-  'coca cola classic': '/images/drinks/coca-cola-1l.png',
-  'coca-cola classic': '/images/drinks/coca-cola-1l.png',
-  'cola zero 1l': '/images/drinks/cola-zero-1l.png',
-  'coca cola zero': '/images/drinks/cola-zero-1l.png',
-  'coca-cola zero': '/images/drinks/cola-zero-1l.png',
-  'coca cola zero sugar': '/images/drinks/cola-zero-1l.png',
-  'coca-cola zero sugar': '/images/drinks/cola-zero-1l.png',
-};
 
 interface ProductCardProps {
   product: Product;
@@ -103,84 +51,19 @@ export const ProductCard = memo(function ProductCard({ product, index = 0, isBes
   const displayDescription = useMemo(() => {
     return getLocalizedDescription(product, language, translation);
   }, [product, language, translation]);
+  // Use centralized fallback image logic
   const fallbackImage = useMemo(() => {
-    // Check if product is a drink and has a fallback image
-    if (product.category === 'DRINKS') {
-      const key = product.name.toLowerCase().trim();
-      const translatedKey = translation.name?.toLowerCase().trim();
-      // Try multiple variations
-      const variations = [
-        key,
-        translatedKey,
-        key.replace(/[.,]/g, ''), // Remove dots and commas
-        translatedKey?.replace(/[.,]/g, ''),
-        key.replace(/\s+/g, ' '), // Normalize spaces
-        translatedKey?.replace(/\s+/g, ' '),
-      ].filter(Boolean);
-      
-      for (const variation of variations) {
-        if (variation && drinkImageMap[variation]) {
-          console.log(`[ProductCard] Found fallback for "${product.name}": ${drinkImageMap[variation]} (matched: "${variation}")`);
-          return drinkImageMap[variation];
-        }
-      }
-      console.log(`[ProductCard] No fallback found for drink "${product.name}" (key: "${key}", translated: "${translatedKey}")`);
-    }
-    
-    // Check if product is a dessert and has a fallback image
-    if (product.category === 'DESSERTS') {
-      const key = product.name.toLowerCase().trim();
-      const translatedKey = translation.name?.toLowerCase().trim();
-      // Try multiple variations
-      const variations = [
-        key,
-        translatedKey,
-        key.replace(/[.,]/g, ''), // Remove dots and commas
-        translatedKey?.replace(/[.,]/g, ''),
-        key.replace(/\s+/g, ' '), // Normalize spaces
-        translatedKey?.replace(/\s+/g, ' '),
-      ].filter(Boolean);
-      
-      for (const variation of variations) {
-        if (variation && dessertImageMap[variation]) {
-          console.log(`[ProductCard] Found fallback for "${product.name}": ${dessertImageMap[variation]} (matched: "${variation}")`);
-          return dessertImageMap[variation];
-        }
-      }
-      console.log(`[ProductCard] No fallback found for dessert "${product.name}" (key: "${key}", translated: "${translatedKey}")`);
-    }
-    
-    // Check if product is a soup and has a fallback image
-    if (product.category === 'SOUP' || product.category === 'SOUPS') {
-      const key = product.name.toLowerCase().trim();
-      const translatedKey = translation.name?.toLowerCase().trim();
-      // Try multiple variations
-      const variations = [
-        key,
-        translatedKey,
-        key.replace(/[.,]/g, ''), // Remove dots and commas
-        translatedKey?.replace(/[.,]/g, ''),
-        key.replace(/\s+/g, ' '), // Normalize spaces
-        translatedKey?.replace(/\s+/g, ' '),
-      ].filter(Boolean);
-      
-      for (const variation of variations) {
-        if (variation && soupImageMap[variation]) {
-          console.log(`[ProductCard] Found fallback for "${product.name}": ${soupImageMap[variation]} (matched: "${variation}")`);
-          return soupImageMap[variation];
-        }
-      }
-      console.log(`[ProductCard] No fallback found for soup "${product.name}" (key: "${key}", translated: "${translatedKey}")`);
-    }
-    
-    return undefined;
-  }, [product.name, product.category, translation.name]);
+    return getProductFallbackImage(product.name, translation.name);
+  }, [product.name, translation.name]);
   
-  // Use fallback if image is null, empty string, or undefined
+  // Use centralized display image logic
   // For soups, always prefer fallback image if available (to override wrong DB images)
-  const displayImage = (product.category === 'SOUP' || product.category === 'SOUPS') 
-    ? (fallbackImage || (product.image && product.image.trim() !== '' ? product.image : undefined))
-    : ((product.image && product.image.trim() !== '') ? product.image : fallbackImage);
+  const displayImage = useMemo(() => {
+    if (product.category === 'SOUP' || product.category === 'SOUPS') {
+      return fallbackImage || (product.image && product.image.trim() !== '' ? product.image : undefined);
+    }
+    return getProductDisplayImage(product, translation.name);
+  }, [product, translation.name, fallbackImage]);
   
   // Debug logging
   useEffect(() => {

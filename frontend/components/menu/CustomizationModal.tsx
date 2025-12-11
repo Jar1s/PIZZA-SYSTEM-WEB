@@ -7,6 +7,7 @@ import { Product } from '@pizza-ecosystem/shared';
 import { pizzaCustomizations, stangleCustomizations, CustomizationOption, CustomizationCategory, getCustomizationOptions } from '@pizza-ecosystem/shared';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { getProductTranslation, getAllergenDescription, getProductDisplayName, getLocalizedDescription } from '@/lib/product-translations';
+import { getProductDisplayImage } from '@/lib/product-images';
 import Image from 'next/image';
 
 interface CustomizationModalProps {
@@ -61,6 +62,10 @@ export default function CustomizationModal({
   const displayName = getProductDisplayName(product, language);
   // Use centralized function: DB description (by language) → translation description
   const displayDescription = getLocalizedDescription(product, language, translation);
+  // Use centralized image logic
+  const displayImage = useMemo(() => {
+    return getProductDisplayImage(product, translation.name);
+  }, [product, translation.name]);
 
   // Get customization options based on product category
   const customizations: CustomizationCategory[] = useMemo(() => {
@@ -258,10 +263,10 @@ export default function CustomizationModal({
               </button>
 
                 <div className="flex gap-3 sm:gap-4 items-start pr-12 sm:pr-14">
-                  {product.image && (
+                  {displayImage && (
                     <div className="relative w-16 h-16 sm:w-20 sm:h-20 rounded-lg overflow-hidden flex-shrink-0 shadow-md">
                       <Image
-                        src={product.image}
+                        src={displayImage}
                         alt={product.name}
                         fill
                         sizes="80px"
