@@ -70,6 +70,11 @@ export function OrderCard({ order, onStatusUpdate, isExpanded = false, onToggleE
   
   // Get translated status label
   const getStatusLabel = (status: OrderStatus): string => {
+    // For delivery payment (cash/card on delivery), show "Potvrdené" instead of "Zaplatené" for PAID status
+    if (status === OrderStatus.PAID && isDeliveryPayment) {
+      return language === 'sk' ? 'Potvrdené' : 'Confirmed';
+    }
+    
     const statusMap: Record<OrderStatus, string> = {
       [OrderStatus.PENDING]: t.orderStatusPending,
       [OrderStatus.PAID]: t.orderStatusPaid,
