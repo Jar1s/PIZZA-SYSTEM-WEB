@@ -4,7 +4,7 @@ import { Product } from '@pizza-ecosystem/shared';
 import { useCart } from '@/hooks/useCart';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useToastContext } from '@/contexts/ToastContext';
-import { getProductTranslation, getProductDisplayName, getLocalizedDescription } from '@/lib/product-translations';
+import { getProductTranslation, getProductDisplayName, getLocalizedDescription, getLocalizedSubHeader } from '@/lib/product-translations';
 import { getProductFallbackImage, getProductDisplayImage } from '@/lib/product-images';
 import Image from 'next/image';
 import { motion } from 'framer-motion';
@@ -51,6 +51,10 @@ export const ProductCard = memo(function ProductCard({ product, index = 0, isBes
   const displayDescription = useMemo(() => {
     return getLocalizedDescription(product, language, translation);
   }, [product, language, translation]);
+  
+  const displaySubHeader = useMemo(() => {
+    return getLocalizedSubHeader(product, language);
+  }, [product, language]);
   // Use centralized fallback image logic
   const fallbackImage = useMemo(() => {
     return getProductFallbackImage(product.name, translation.name);
@@ -221,7 +225,7 @@ export const ProductCard = memo(function ProductCard({ product, index = 0, isBes
       {/* Content */}
       <div className="p-3 sm:p-4 md:p-5 lg:p-6 flex flex-col flex-grow min-h-[220px] sm:min-h-[240px] md:min-h-[260px] lg:min-h-[280px]">
         {/* Product Name - Fixed height to align descriptions */}
-        <div className="h-16 mb-2 flex items-start">
+        <div className="h-16 mb-1 flex items-start">
           <h3 
             className={`text-2xl font-bold transition-colors ${isDark ? 'text-porno-glow' : 'text-gray-900 group-hover:text-primary'}`}
             style={isDark ? {
@@ -233,6 +237,15 @@ export const ProductCard = memo(function ProductCard({ product, index = 0, isBes
             {displayName}
           </h3>
         </div>
+        
+        {/* Sub Header - Hneď pod názvom produktu */}
+        {displaySubHeader && (
+          <div className="mb-2">
+            <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+              {displaySubHeader}
+            </p>
+          </div>
+        )}
         
         {/* Description - Fixed height for consistent alignment */}
         <div className="h-12 mb-3">

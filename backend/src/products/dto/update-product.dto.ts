@@ -56,6 +56,10 @@ export class UpdateProductDto extends OmitType(
   @IsOptional()
   @IsString()
   displayName?: string;
+
+  @IsOptional()
+  @IsString()
+  subHeader?: string;
 }
 
 

@@ -752,3 +752,38 @@ export function getLocalizedDescription(
   
   return '';
 }
+
+/**
+ * Centralized function to get localized product sub-header
+ * Priority: DB subHeader (parsed JSON by language) → empty string
+ * 
+ * @param product - Product object with subHeader field
+ * @param language - Language ('sk' | 'en')
+ * @returns The localized sub-header to show on website
+ */
+export function getLocalizedSubHeader(
+  product: Product | { subHeader?: string | null },
+  language: 'sk' | 'en'
+): string {
+  // Try to parse subHeader as JSON {sk: "...", en: "..."}
+  let parsed: { sk?: string; en?: string } = {};
+  
+  if (product.subHeader) {
+    try {
+      const parsedValue = JSON.parse(product.subHeader);
+      if (parsedValue && typeof parsedValue === 'object' && (parsedValue.sk || parsedValue.en)) {
+        parsed = parsedValue;
+      }
+    } catch (e) {
+      // Not valid JSON, treat as empty
+      parsed = {};
+    }
+  }
+  
+  // Priority: DB subHeader (by language) → empty string
+  if (parsed[language]) {
+    return parsed[language];
+  }
+  
+  return '';
+}

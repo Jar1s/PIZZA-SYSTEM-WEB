@@ -13,6 +13,7 @@ export interface Product {
   weightGrams?: number | null;  // Gramáž v gramoch (napr. 450, 500, 520)
   allergens?: string[] | null; // Pole alergénov (napr. ["1", "7"])
   displayName?: string | null; // Voliteľný webový názov (prepíše mapovanie, používa sa pre všetky jazyky)
+  subHeader?: string | null; // Sub-header v JSON formáte {sk: "...", en: "..."}
   createdAt: Date;
   updatedAt: Date;
 }

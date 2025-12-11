@@ -49,6 +49,7 @@ model Product {
   weightGrams  Int?        // Gramáž v gramoch (napr. 450, 500, 520)
   allergens    String[]    // Pole alergénov (napr. ["1", "7"])
   displayName  String?     // Voliteľný webový názov (prepíše mapovanie, používa sa pre všetky jazyky)
+  subHeader    String?     // Sub-header v JSON formáte {sk: "...", en: "..."}
   orderItems   OrderItem[]
   tenant       Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 

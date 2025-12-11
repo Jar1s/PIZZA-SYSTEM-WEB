@@ -35,6 +35,8 @@ export function EditProductModal({
     name: '',
     descriptionSk: '',
     descriptionEn: '',
+    subHeaderSk: '',
+    subHeaderEn: '',
     price: 0, // Price in euros (for display)
     category: 'PIZZA',
     image: '',
@@ -89,10 +91,27 @@ export function EditProductModal({
         }
       }
       
+      // Parse subHeader as JSON {sk: "...", en: "..."}
+      let parsedSubHeader: { sk?: string; en?: string } = {};
+      
+      if ((product as any).subHeader) {
+        try {
+          const parsedValue = JSON.parse((product as any).subHeader);
+          if (parsedValue && typeof parsedValue === 'object' && (parsedValue.sk || parsedValue.en)) {
+            parsedSubHeader = parsedValue;
+          }
+        } catch (e) {
+          // Not valid JSON, treat as empty
+          parsedSubHeader = {};
+        }
+      }
+      
       setFormData({
         name: product.name || '',
         descriptionSk: parsed.sk ?? rawText ?? translationSk.description ?? '',
         descriptionEn: parsed.en ?? rawText ?? translationEn.description ?? '',
+        subHeaderSk: parsedSubHeader.sk ?? '',
+        subHeaderEn: parsedSubHeader.en ?? '',
         price: (product.priceCents || 0) / 100, // Convert cents to euros
         category: product.category || 'PIZZA',
         image: product.image || '',
@@ -186,9 +205,16 @@ export function EditProductModal({
         en: formData.descriptionEn || '',
       });
 
+      // Create JSON string from subHeaderSk and subHeaderEn
+      const subHeaderJson = JSON.stringify({
+        sk: formData.subHeaderSk || '',
+        en: formData.subHeaderEn || '',
+      });
+
       await updateProduct(tenantSlug, product.id, {
         name: formData.name,
         description: (formData.descriptionSk || formData.descriptionEn) ? descriptionJson : null,
+        subHeader: (formData.subHeaderSk || formData.subHeaderEn) ? subHeaderJson : null,
         priceCents: Math.round(formData.price * 100), // Convert euros to cents
         category: formData.category,
         image: imageUrl || null,
@@ -280,6 +306,38 @@ export function EditProductModal({
                         onChange={(e) => setFormData({ ...formData, descriptionEn: e.target.value })}
                         placeholder="Enter description in English..."
                         rows={3}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Sub Header */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Sub Header (zobrazí sa hneď pod názvom produktu)
+                  </label>
+                  <p className="text-xs text-gray-500 mb-3">
+                    Voliteľný sub-header, ktorý sa zobrazí hneď pod názvom produktu
+                  </p>
+                  <div className="space-y-3">
+                    <div>
+                      <label className="text-xs text-gray-600 mb-1 block">Slovensky (SK):</label>
+                      <textarea
+                        value={formData.subHeaderSk}
+                        onChange={(e) => setFormData({ ...formData, subHeaderSk: e.target.value })}
+                        placeholder="Zadajte sub-header v slovenčine..."
+                        rows={2}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-600 mb-1 block">English (EN):</label>
+                      <textarea
+                        value={formData.subHeaderEn}
+                        onChange={(e) => setFormData({ ...formData, subHeaderEn: e.target.value })}
+                        placeholder="Enter sub-header in English..."
+                        rows={2}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                       />
                     </div>
