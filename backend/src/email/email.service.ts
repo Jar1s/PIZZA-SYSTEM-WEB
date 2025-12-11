@@ -926,7 +926,7 @@ export class EmailService {
       },
       [OrderStatus.DELIVERED]: {
         subject: `✅ Objednávka #${orderNumber} doručená`,
-        message: `Vaša objednávka bola doručená! Dobrú chuť! 🍕`,
+        message: `Vaša objednávka bola doručená! Dobrú chuť!`,
       },
       [OrderStatus.CANCELED]: {
         subject: `❌ Objednávka #${orderNumber} zrušená`,
@@ -940,12 +940,17 @@ export class EmailService {
       return; // No email for this status
     }
 
+    // Get tenant theme from order.tenant
+    const tenantTheme = (order.tenant as any)?.theme || {};
+
     const emailHtml = this.buildStatusUpdateEmail(
       order,
       customer,
       tenantName,
       trackingUrl,
       notification.message,
+      tenantTheme,
+      tenantDomain,
     );
 
     try {
@@ -1053,10 +1058,57 @@ export class EmailService {
     tenantName: string,
     trackingUrl: string,
     message: string,
+    tenantTheme?: any,
+    tenantDomain?: string,
   ): string {
     const orderNumber = order.orderNumber 
       ? order.orderNumber.toString().padStart(4, '0')
       : order.id.slice(0, 8).toUpperCase(); // Fallback for old orders without orderNumber
+
+    // Get theme colors - fallback to brand colors
+    const primaryColor = tenantTheme?.primaryColor || '#FF6B00';
+    
+    // Build asset base URL for logo
+    let rawAssetBase =
+      process.env.FRONTEND_URL ||
+      process.env.EMAIL_ASSET_BASE_URL ||
+      tenantDomain ||
+      '';
+    
+    // Fix common domain issues: add www. prefix if missing and not localhost
+    if (rawAssetBase && !rawAssetBase.includes('localhost') && !rawAssetBase.includes('127.0.0.1')) {
+      if (!rawAssetBase.startsWith('http://') && !rawAssetBase.startsWith('https://')) {
+        rawAssetBase = `https://${rawAssetBase}`;
+      }
+      
+      const urlObj = new URL(rawAssetBase);
+      if (!urlObj.hostname.startsWith('www.') && !urlObj.hostname.includes('localhost') && !urlObj.hostname.includes('127.0.0.1')) {
+        urlObj.hostname = `www.${urlObj.hostname}`;
+        rawAssetBase = urlObj.toString();
+      }
+    }
+    
+    const trimmedBase = rawAssetBase.replace(/\/$/, '');
+    const hasProtocol = trimmedBase.startsWith('http://') || trimmedBase.startsWith('https://');
+    const isLocal = trimmedBase.includes('localhost') || trimmedBase.includes('127.0.0.1');
+    const protocol = isLocal ? 'http' : 'https';
+    const assetBase = hasProtocol ? trimmedBase : trimmedBase ? `${protocol}://${trimmedBase}` : '';
+    
+    const buildAssetUrl = (path: string | null | undefined) => {
+      if (!path || path.trim() === '') return null;
+      const cleanPath = path.trim();
+      if (cleanPath.startsWith('http://') || cleanPath.startsWith('https://')) {
+        return cleanPath;
+      }
+      if (!assetBase) return null;
+      return `${assetBase}${cleanPath.startsWith('/') ? cleanPath : '/' + cleanPath}`;
+    };
+    
+    // Build logo URL
+    let logoUrl =
+      buildAssetUrl(tenantTheme?.logo) ||
+      buildAssetUrl('/PORNO PIZZA PINK GRANDIENT.png') ||
+      '';
 
     return `
 <!DOCTYPE html>
@@ -1065,36 +1117,83 @@ export class EmailService {
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Aktualizácia stavu objednávky</title>
+  <style>
+    @media only screen and (max-width: 600px) {
+      .email-container {
+        width: 100% !important;
+        max-width: 100% !important;
+      }
+      .email-content {
+        padding: 20px 15px !important;
+      }
+      .email-header {
+        padding: 20px 15px !important;
+      }
+      .logo-img {
+        max-width: 150px !important;
+      }
+      .track-button {
+        padding: 12px 30px !important;
+        font-size: 14px !important;
+        display: block !important;
+        width: calc(100% - 60px) !important;
+        margin: 20px auto !important;
+      }
+    }
+  </style>
 </head>
 <body style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #f4f4f4;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f4f4f4; padding: 20px;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f4f4f4; padding: 10px;">
     <tr>
       <td align="center">
-        <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+        <table class="email-container" width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1); max-width: 100%;">
+          
+          <!-- Header -->
           <tr>
-            <td style="padding: 40px; text-align: center; background-color: #ff6b35;">
-              <h1 style="margin: 0; color: #ffffff; font-size: 28px;">${tenantName}</h1>
+            <td class="email-header" style="background-color: ${primaryColor}; padding: 30px 20px; text-align: center;">
+              ${logoUrl ? `
+              <img src="${logoUrl}" alt="${tenantName}" class="logo-img" style="max-width: 200px; height: auto; margin-bottom: 10px;" />
+              ` : `
+              <h1 style="color: #ffffff; margin: 0; font-size: 28px;">🍕 ${tenantName}</h1>
+              `}
+              <p style="color: #ffffff; margin: 10px 0 0 0; font-size: 16px;">Aktualizácia stavu objednávky</p>
             </td>
           </tr>
+
+          <!-- Content -->
           <tr>
-            <td style="padding: 40px;">
-              <h2 style="margin: 0 0 20px 0; color: #333333; font-size: 24px;">Aktualizácia stavu objednávky</h2>
-              <p style="margin: 0 0 20px 0; color: #666666; font-size: 16px; line-height: 1.6;">
-                Ahoj ${customer.name},
-              </p>
-              <p style="margin: 0 0 20px 0; color: #666666; font-size: 16px; line-height: 1.6;">
+            <td class="email-content" style="padding: 40px 30px;">
+              
+              <h2 class="greeting" style="color: #333; margin: 0 0 10px 0; font-size: 22px;">Ahoj ${customer.name}! 👋</h2>
+              <p class="greeting-text" style="color: #666; font-size: 16px; line-height: 1.6; margin: 0 0 20px 0;">
                 ${message}
               </p>
-              <p style="margin: 30px 0; text-align: center;">
-                <a href="${trackingUrl}" style="display: inline-block; padding: 12px 30px; background-color: #ff6b35; color: #ffffff; text-decoration: none; border-radius: 5px; font-weight: bold;">
-                  Sledovať objednávku
+
+              <!-- Track Order Button -->
+              <div style="text-align: center; margin: 30px 0;">
+                <a href="${trackingUrl}" class="track-button" style="display: inline-block; background-color: ${primaryColor}; color: #ffffff; padding: 15px 40px; text-decoration: none; border-radius: 5px; font-size: 16px; font-weight: bold;">
+                  📦 Sledovať objednávku
                 </a>
-              </p>
-              <p style="margin: 20px 0 0 0; color: #999999; font-size: 14px; line-height: 1.6;">
-                Objednávka #${orderNumber}
+              </div>
+
+              <!-- Order Number -->
+              <div class="order-number-box" style="background-color: #f8f9fa; border-left: 4px solid ${primaryColor}; padding: 15px; margin: 20px 0;">
+                <p class="order-number-label" style="margin: 0; color: #666; font-size: 14px;">Číslo objednávky</p>
+                <p class="order-number-value" style="margin: 5px 0 0 0; color: #333; font-size: 24px; font-weight: bold;">#${orderNumber}</p>
+              </div>
+
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="background-color: #f8f9fa; padding: 20px 30px; text-align: center;">
+              <p style="color: #999; font-size: 14px; margin: 0;">
+                © ${new Date().getFullYear()} ${tenantName}. Všetky práva vyhradené.
               </p>
             </td>
           </tr>
+
         </table>
       </td>
     </tr>
