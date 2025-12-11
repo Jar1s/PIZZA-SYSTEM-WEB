@@ -60,12 +60,27 @@ export function OrderCard({ order, onStatusUpdate, isExpanded = false, onToggleE
   const hasWoltDelivery = !!order.deliveryId || !!order.delivery;
   const woltDelivery = order.delivery;
   
-  // Check payment type - delivery payment is when paymentStatus is 'pending' (cash/card on delivery)
-  // For online payments, paymentStatus is null or 'success'/'failed'
-  const isDeliveryPayment = order.paymentStatus === 'pending';
-  const isPendingDelivery = order.status === OrderStatus.PENDING && isDeliveryPayment;
-  const isPendingOnline = order.status === OrderStatus.PENDING && !isDeliveryPayment;
-  const isPaidOnline = order.status === OrderStatus.PAID && !isDeliveryPayment;
+  // Helper function to check if payment is on delivery (cash/card on delivery)
+  // Normalized check: case-insensitive, handles null/undefined
+  const isDeliveryPayment = (): boolean => {
+    const status = order.paymentStatus?.toLowerCase();
+    return status === 'pending';
+  };
+  
+  // Helper function to determine if "→ PAID" button should be shown
+  // Hide button for PAID orders with delivery payment (cash/card on delivery)
+  const shouldShowPaidButton = (): boolean => {
+    if (!nextStatus) return false;
+    if (order.status === OrderStatus.PAID && isDeliveryPayment()) {
+      return false; // Hide for delivery payment - payment is handled at delivery
+    }
+    return true;
+  };
+  
+  const isDeliveryPaymentValue = isDeliveryPayment();
+  const isPendingDelivery = order.status === OrderStatus.PENDING && isDeliveryPaymentValue;
+  const isPendingOnline = order.status === OrderStatus.PENDING && !isDeliveryPaymentValue;
+  const isPaidOnline = order.status === OrderStatus.PAID && !isDeliveryPaymentValue;
   const isPaid = order.status === OrderStatus.PAID;
   const isPending = order.status === OrderStatus.PENDING;
   
@@ -241,7 +256,7 @@ export function OrderCard({ order, onStatusUpdate, isExpanded = false, onToggleE
                 {creatingWolt ? '⏳' : '🚚 Wolt'}
               </button>
             )}
-            {nextStatus && !(order.status === OrderStatus.PAID && isDeliveryPayment) && (
+            {shouldShowPaidButton() && (
               <button
                 onClick={() => onStatusUpdate(order.id, nextStatus)}
                 className="flex-1 min-w-[120px] px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm font-semibold"
@@ -356,7 +371,7 @@ export function OrderCard({ order, onStatusUpdate, isExpanded = false, onToggleE
               {creatingWolt ? '⏳' : '🚚 Wolt'}
             </button>
           )}
-          {nextStatus && !(order.status === OrderStatus.PAID && isDeliveryPayment) && (
+          {shouldShowPaidButton() && (
             <button
               onClick={() => onStatusUpdate(order.id, nextStatus)}
               className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
