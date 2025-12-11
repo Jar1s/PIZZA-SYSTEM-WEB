@@ -11,6 +11,7 @@ interface CustomerUser {
   phone?: string;
   phoneVerified?: boolean;
   role: 'CUSTOMER';
+  googleId?: string | null;
 }
 
 interface CustomerAuthContextType {

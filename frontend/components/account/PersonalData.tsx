@@ -73,6 +73,7 @@ export default function PersonalData({ tenant, isDark = false }: PersonalDataPro
             email: data.email || user.email,
             phone: data.phone || user.phone,
             phoneVerified: data.phoneVerified !== undefined ? data.phoneVerified : user.phoneVerified,
+            googleId: data.googleId !== undefined ? data.googleId : user.googleId,
           };
           setUser(updatedUser);
           localStorage.setItem('customer_auth_user', JSON.stringify(updatedUser));
@@ -135,6 +136,7 @@ export default function PersonalData({ tenant, isDark = false }: PersonalDataPro
             email: data.email || user.email,
             phone: data.phone || user.phone,
             phoneVerified: data.phoneVerified !== undefined ? data.phoneVerified : user.phoneVerified,
+            googleId: data.googleId !== undefined ? data.googleId : user.googleId,
           };
           setUser(updatedUser);
           localStorage.setItem('customer_auth_user', JSON.stringify(updatedUser));
@@ -190,7 +192,7 @@ export default function PersonalData({ tenant, isDark = false }: PersonalDataPro
       key: 'email',
       label: t.email,
       value: formData.email || user?.email || '',
-      editable: false, // Email cannot be changed
+      editable: !user?.googleId, // Email can be changed if user didn't login via Google
     },
     {
       key: 'name',

@@ -85,6 +85,7 @@ export class CustomerService {
         email: true,
         phone: true,
         phoneVerified: true,
+        googleId: true,
       },
     });
 
@@ -98,6 +99,7 @@ export class CustomerService {
       email: user.email || '',
       phone: user.phone || '',
       phoneVerified: user.phoneVerified || false,
+      googleId: user.googleId || null,
     };
   }
 
@@ -113,10 +115,21 @@ export class CustomerService {
       throw new NotFoundException('Customer not found');
     }
 
-    // Email cannot be changed - ignore email updates
+    // Email can only be changed if user didn't login via Google (no googleId)
     if (data.email && data.email !== user.email) {
-      // Silently ignore email changes - email is locked
-      delete data.email;
+      if (user.googleId) {
+        // User logged in via Google - email cannot be changed
+        throw new BadRequestException('Email cannot be changed for Google accounts');
+      }
+      // Check if new email is already taken
+      const existingUser = await this.prisma.user.findUnique({
+        where: { email: data.email.toLowerCase().trim() },
+      });
+      if (existingUser && existingUser.id !== userId) {
+        throw new BadRequestException('Email is already taken');
+      }
+      // Email can be changed - normalize it
+      data.email = data.email.toLowerCase().trim();
     }
 
     // Normalize phone number (remove spaces, keep only digits and +)
