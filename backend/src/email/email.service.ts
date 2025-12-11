@@ -645,10 +645,10 @@ export class EmailService {
         padding: 20px 15px !important;
       }
       .email-header {
-        padding: 20px 15px !important;
+        padding: 25px 15px !important;
       }
       .logo-img {
-        max-width: 150px !important;
+        max-width: 140px !important;
       }
       .order-number-box {
         padding: 12px !important;
@@ -1235,21 +1235,21 @@ export class EmailService {
           
           <!-- Header with Gradient -->
           <tr>
-            <td class="email-header" style="background: linear-gradient(135deg, ${primaryColor} 0%, ${primaryColor}dd 100%); padding: 50px 30px; text-align: center; position: relative;">
-              <!-- Decorative circles -->
-              <div style="position: absolute; top: -50px; right: -50px; width: 150px; height: 150px; background: rgba(255,255,255,0.1); border-radius: 50%;"></div>
-              <div style="position: absolute; bottom: -30px; left: -30px; width: 100px; height: 100px; background: rgba(255,255,255,0.08); border-radius: 50%;"></div>
+            <td class="email-header" style="background: linear-gradient(135deg, ${primaryColor} 0%, ${primaryColor}dd 100%); padding: 30px 20px; text-align: center; position: relative;">
+              <!-- Decorative circles - smaller -->
+              <div style="position: absolute; top: -30px; right: -30px; width: 80px; height: 80px; background: rgba(255,255,255,0.1); border-radius: 50%;"></div>
+              <div style="position: absolute; bottom: -20px; left: -20px; width: 60px; height: 60px; background: rgba(255,255,255,0.08); border-radius: 50%;"></div>
               
               ${logoUrl ? `
               <div style="position: relative; z-index: 1;">
-                <img src="${logoUrl}" alt="${tenantName}" class="logo-img" style="max-width: 220px; height: auto; margin-bottom: 15px; filter: drop-shadow(0 4px 8px rgba(0,0,0,0.2));" />
+                <img src="${logoUrl}" alt="${tenantName}" class="logo-img" style="max-width: 160px; height: auto; margin-bottom: 8px; filter: drop-shadow(0 4px 8px rgba(0,0,0,0.2));" />
               </div>
               ` : `
               <div style="position: relative; z-index: 1;">
-                <h1 style="color: #ffffff; margin: 0 0 10px 0; font-size: 36px; font-weight: 700; text-shadow: 0 2px 10px rgba(0,0,0,0.2); letter-spacing: -0.5px;">🍕 ${tenantName}</h1>
+                <h1 style="color: #ffffff; margin: 0 0 6px 0; font-size: 28px; font-weight: 700; text-shadow: 0 2px 10px rgba(0,0,0,0.2); letter-spacing: -0.5px;">🍕 ${tenantName}</h1>
               </div>
               `}
-              <p style="color: #ffffff; margin: 15px 0 0 0; font-size: 18px; font-weight: 300; position: relative; z-index: 1; text-shadow: 0 1px 3px rgba(0,0,0,0.2);">Vitajte v našej rodine! 🎉</p>
+              <p style="color: #ffffff; margin: 8px 0 0 0; font-size: 16px; font-weight: 300; position: relative; z-index: 1; text-shadow: 0 1px 3px rgba(0,0,0,0.2);">Vitajte v našej rodine! 🎉</p>
             </td>
           </tr>
 
