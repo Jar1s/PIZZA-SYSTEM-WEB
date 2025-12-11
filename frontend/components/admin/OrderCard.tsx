@@ -60,7 +60,8 @@ export function OrderCard({ order, onStatusUpdate, isExpanded = false, onToggleE
   const hasWoltDelivery = !!order.deliveryId || !!order.delivery;
   const woltDelivery = order.delivery;
   
-  // Check payment type
+  // Check payment type - delivery payment is when paymentStatus is 'pending' (cash/card on delivery)
+  // For online payments, paymentStatus is null or 'success'/'failed'
   const isDeliveryPayment = order.paymentStatus === 'pending';
   const isPendingDelivery = order.status === OrderStatus.PENDING && isDeliveryPayment;
   const isPendingOnline = order.status === OrderStatus.PENDING && !isDeliveryPayment;
