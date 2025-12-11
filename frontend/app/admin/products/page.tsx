@@ -28,29 +28,21 @@ export default function ProductsPage() {
   
   const [products, setProducts] = useState<ProductWithTenant[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState<'all' | 'pornopizza' | 'pizzavnudzi'>(contextTenant === 'all' ? 'all' : contextTenant as 'pornopizza' | 'pizzavnudzi');
+  // Use contextTenant directly as filter - no local state needed
+  const filter: 'all' | 'pornopizza' | 'pizzavnudzi' = contextTenant === 'all' ? 'all' : contextTenant as 'pornopizza' | 'pizzavnudzi';
   const [showInactive, setShowInactive] = useState(false); // Filter for inactive products
   const [editingProduct, setEditingProduct] = useState<ProductWithTenant | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [selectedTenant, setSelectedTenant] = useState<'pornopizza' | 'pizzavnudzi'>(defaultTenant as 'pornopizza' | 'pizzavnudzi');
-  const [filterInitialized, setFilterInitialized] = useState(false);
-
-  // Update filter when context tenant changes (only on initial load or when context changes externally)
-  useEffect(() => {
-    if (!filterInitialized) {
-      const newFilter = contextTenant === 'all' ? 'all' : contextTenant as 'pornopizza' | 'pizzavnudzi';
-      setFilter(newFilter);
-      setFilterInitialized(true);
-    }
-  }, [contextTenant, filterInitialized]);
+  const selectedTenant = defaultTenant as 'pornopizza' | 'pizzavnudzi';
 
   const fetchProducts = useCallback(async () => {
     try {
       setLoading(true);
-      const tenants = filter === 'all' 
+      // Use contextTenant directly instead of filter
+      const tenants = contextTenant === 'all' 
         ? ['pornopizza', 'pizzavnudzi']
-        : [filter];
+        : [contextTenant];
       const allProducts: ProductWithTenant[] = [];
       
       for (const tenant of tenants) {
@@ -104,7 +96,7 @@ export default function ProductsPage() {
     } finally {
       setLoading(false);
     }
-  }, [filter]);
+  }, [contextTenant]);
 
   useEffect(() => {
     fetchProducts();
@@ -169,14 +161,6 @@ export default function ProductsPage() {
           </p>
         </div>
         <div className="flex flex-col sm:flex-row gap-2 sm:gap-4">
-          <select
-            value={selectedTenant}
-            onChange={(e) => setSelectedTenant(e.target.value as 'pornopizza' | 'pizzavnudzi')}
-            className="w-full sm:w-auto px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="pornopizza">PornoPizza</option>
-            <option value="pizzavnudzi">Pizza v Núdzi</option>
-          </select>
           <button 
             onClick={() => setIsAddModalOpen(true)}
             className="w-full sm:w-auto px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-semibold"
@@ -186,56 +170,20 @@ export default function ProductsPage() {
         </div>
       </div>
 
-      {/* Filter */}
+      {/* Show Inactive Toggle */}
       <div className="mb-4 lg:mb-6">
-        <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 items-start sm:items-center">
-          <div className="flex flex-wrap gap-2 sm:gap-4">
-            <button
-              onClick={() => setFilter('all')}
-              className={`px-4 sm:px-6 py-2 rounded-lg font-semibold transition-all text-sm ${
-                filter === 'all'
-                  ? 'bg-blue-600 text-white shadow-lg'
-                  : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-300'
-              }`}
-            >
-              All ({products.length})
-            </button>
-            <button
-              onClick={() => setFilter('pornopizza')}
-              className={`px-4 sm:px-6 py-2 rounded-lg font-semibold transition-all text-sm ${
-                filter === 'pornopizza'
-                  ? 'bg-blue-600 text-white shadow-lg'
-                  : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-300'
-              }`}
-            >
-              PornoPizza ({products.filter(p => p.tenantSlug === 'pornopizza').length})
-            </button>
-            <button
-              onClick={() => setFilter('pizzavnudzi')}
-              className={`px-4 sm:px-6 py-2 rounded-lg font-semibold transition-all text-sm ${
-                filter === 'pizzavnudzi'
-                  ? 'bg-blue-600 text-white shadow-lg'
-                  : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-300'
-              }`}
-            >
-              Pizza v Núdzi ({products.filter(p => p.tenantSlug === 'pizzavnudzi').length})
-            </button>
-          </div>
-          
-          {/* Show Inactive Toggle */}
-          <div className="w-full sm:w-auto flex items-center gap-2 sm:ml-auto">
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={showInactive}
-                onChange={(e) => setShowInactive(e.target.checked)}
-                className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-              />
-              <span className="text-sm text-gray-700 font-medium">
-                Show Inactive ({products.filter(p => !p.isActive).length})
-              </span>
-            </label>
-          </div>
+        <div className="flex items-center gap-2">
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={showInactive}
+              onChange={(e) => setShowInactive(e.target.checked)}
+              className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+            />
+            <span className="text-sm text-gray-700 font-medium">
+              Show Inactive ({products.filter(p => !p.isActive).length})
+            </span>
+          </label>
         </div>
       </div>
 

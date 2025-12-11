@@ -64,7 +64,8 @@ export default function AnalyticsPage() {
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [timeRange, setTimeRange] = useState<'7' | '30' | '90'>('30');
-  const [selectedTenant, setSelectedTenant] = useState<'all' | 'pornopizza' | 'pizzavnudzi'>(contextTenant === 'all' ? 'all' : contextTenant as 'pornopizza' | 'pizzavnudzi');
+  // Use contextTenant directly - no local state needed
+  const selectedTenant: 'all' | 'pornopizza' | 'pizzavnudzi' = contextTenant === 'all' ? 'all' : contextTenant as 'pornopizza' | 'pizzavnudzi';
 
   const fetchAnalytics = useCallback(async () => {
     try {
@@ -93,14 +94,6 @@ export default function AnalyticsPage() {
       setLoading(false);
     }
   }, [timeRange, selectedTenant]);
-
-  // Update selectedTenant when context changes
-  useEffect(() => {
-    const newTenant = contextTenant === 'all' ? 'all' : contextTenant as 'pornopizza' | 'pizzavnudzi';
-    if (newTenant !== selectedTenant) {
-      setSelectedTenant(newTenant);
-    }
-  }, [contextTenant, selectedTenant]);
 
   useEffect(() => {
     fetchAnalytics();
@@ -181,17 +174,6 @@ export default function AnalyticsPage() {
         
         {/* Filters */}
         <div className="flex gap-2 items-center flex-wrap">
-          {/* Tenant Filter */}
-          <select
-            value={selectedTenant}
-            onChange={(e) => setSelectedTenant(e.target.value as 'all' | 'pornopizza' | 'pizzavnudzi')}
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="all">All Brands</option>
-            <option value="pornopizza">PornoPizza</option>
-            <option value="pizzavnudzi">Pizza v Núdzi</option>
-          </select>
-          
           {/* Time Range Selector */}
           <div className="flex gap-2">
           <button

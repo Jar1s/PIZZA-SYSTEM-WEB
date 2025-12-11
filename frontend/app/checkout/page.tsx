@@ -2063,23 +2063,32 @@ export default function CheckoutPage() {
                   <label className="block text-sm font-medium mb-2">
                     {t.street} <span className="text-red-500">*</span>
                   </label>
-                  <input
-                    type="text"
+                  <AddressAutocomplete
                     value={guestData.street}
-                    onChange={(e) => {
-                      setGuestData({...guestData, street: e.target.value});
-                      // Trigger geocoding validation when street is entered and we have city/postal code
-                      if (e.target.value.trim() && guestData.city && guestData.postalCode) {
-                        validateAddressWithGeocoding(e.target.value, guestData.city, guestData.postalCode);
-                      } else {
-                        // Clear error if street is empty
+                    onChange={(address, details) => {
+                      if (details) {
+                        // Auto-fill city and postal code from Google autocomplete
+                        setGuestData({
+                          ...guestData,
+                          street: details.street || address,
+                          city: details.city || guestData.city,
+                          postalCode: details.postalCode || guestData.postalCode,
+                          country: details.country || guestData.country,
+                        });
+                        // Clear validation error when address is selected
                         setAddressValidationError(null);
+                      } else {
+                        // Manual typing - update street only
+                        setGuestData({...guestData, street: address});
+                        // Trigger geocoding validation when street is entered and we have city/postal code
+                        if (address.trim() && guestData.city && guestData.postalCode) {
+                          validateAddressWithGeocoding(address, guestData.city, guestData.postalCode);
+                        } else {
+                          // Clear error if street is empty
+                          setAddressValidationError(null);
+                        }
                       }
                     }}
-                    required
-                    className={`w-full px-4 py-2 border rounded-lg ${
-                      addressValidationError ? 'border-red-500' : ''
-                    }`}
                   />
                 </div>
                 <div>
