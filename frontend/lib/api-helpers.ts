@@ -3,7 +3,7 @@
  */
 
 /**
- * Handle 401 Unauthorized response - clear auth and redirect to login
+ * Handle 401 Unauthorized response - clear auth and redirect to login (for customer auth)
  */
 export async function handle401Response(tenant: string = 'pornopizza'): Promise<void> {
   // Clear auth data
@@ -28,6 +28,21 @@ export async function handle401Response(tenant: string = 'pornopizza'): Promise<
     setTimeout(() => {
       window.location.href = `/auth/login?tenant=${tenant}`;
     }, 1000);
+  }
+}
+
+/**
+ * Handle 401 Unauthorized response for admin - clear auth and redirect to login
+ */
+export function handleAdmin401Response(): void {
+  // Clear admin auth data
+  localStorage.removeItem('auth_token');
+  localStorage.removeItem('auth_user');
+  localStorage.removeItem('refresh_token');
+  
+  // Redirect to login immediately
+  if (typeof window !== 'undefined') {
+    window.location.href = '/login';
   }
 }
 

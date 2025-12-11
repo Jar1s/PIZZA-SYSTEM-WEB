@@ -1,9 +1,11 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAdminContext } from '@/app/admin/admin-context';
 import { getTenantSlug } from '@/lib/tenant-utils';
+import { handleAdmin401Response } from '@/lib/api-helpers';
 
 interface Customer {
   id: string;
@@ -30,6 +32,7 @@ interface CustomersResponse {
 
 export default function CustomersPage() {
   const { user } = useAuth();
+  const router = useRouter();
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -83,9 +86,10 @@ export default function CustomersPage() {
 
       if (!res.ok) {
         if (res.status === 401) {
-          const errorData = await res.json().catch(() => ({ message: 'Unauthorized' }));
-          console.error('401 Unauthorized:', errorData);
-          throw new Error(errorData.message || 'Unauthorized - Only admins and operators can view customers. Please check your login.');
+          // Session expired - redirect to login
+          console.error('401 Unauthorized - Session expired, redirecting to login');
+          handleAdmin401Response();
+          return;
         }
         if (res.status === 404) {
           throw new Error('Endpoint not found. Please ensure backend is running and restarted after adding the customers endpoint.');
@@ -159,6 +163,12 @@ export default function CustomersPage() {
       );
 
       if (!res.ok) {
+        if (res.status === 401) {
+          // Session expired - redirect to login
+          console.error('401 Unauthorized - Session expired, redirecting to login');
+          handleAdmin401Response();
+          return;
+        }
         const errorData = await res.json().catch(() => ({ message: 'Failed to delete customer' }));
         throw new Error(errorData.message || 'Failed to delete customer');
       }
