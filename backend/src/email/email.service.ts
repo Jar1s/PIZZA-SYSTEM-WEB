@@ -1202,158 +1202,75 @@ export class EmailService {
         padding: 20px 15px !important;
       }
       .email-header {
-        padding: 30px 15px !important;
+        padding: 20px 15px !important;
       }
       .logo-img {
-        max-width: 180px !important;
+        max-width: 150px !important;
       }
       .welcome-button {
-        padding: 14px 35px !important;
-        font-size: 15px !important;
+        padding: 12px 30px !important;
+        font-size: 14px !important;
         display: block !important;
         width: calc(100% - 60px) !important;
-        margin: 25px auto !important;
+        margin: 20px auto !important;
       }
       .section-title {
-        font-size: 17px !important;
-        margin: 25px 0 12px 0 !important;
+        font-size: 16px !important;
+        margin: 20px 0 10px 0 !important;
       }
       .benefits-list {
-        font-size: 15px !important;
-      }
-      .benefit-item {
-        margin-bottom: 12px !important;
+        font-size: 14px !important;
       }
     }
   </style>
 </head>
-<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); padding: 30px 10px;">
+<body style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #f4f4f4;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f4f4f4; padding: 10px;">
     <tr>
       <td align="center">
-        <table class="email-container" width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 10px 40px rgba(0,0,0,0.15); max-width: 100%;">
+        <table class="email-container" width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1); max-width: 100%;">
           
-          <!-- Header with Gradient -->
+          <!-- Header -->
           <tr>
-            <td class="email-header" style="background: linear-gradient(135deg, ${primaryColor} 0%, ${primaryColor}dd 100%); padding: 15px 20px; text-align: center; position: relative;">
-              <!-- Decorative circles - smaller -->
-              <div style="position: absolute; top: -15px; right: -15px; width: 50px; height: 50px; background: rgba(255,255,255,0.1); border-radius: 50%;"></div>
-              <div style="position: absolute; bottom: -10px; left: -10px; width: 40px; height: 40px; background: rgba(255,255,255,0.08); border-radius: 50%;"></div>
-              
+            <td class="email-header" style="background-color: ${primaryColor}; padding: 30px 20px; text-align: center;">
               ${logoUrl ? `
-              <div style="position: relative; z-index: 1; margin: 0;">
-                <img src="${logoUrl}" alt="${tenantName}" class="logo-img" style="max-width: 140px; height: auto; margin: 0 0 5px 0; filter: drop-shadow(0 4px 8px rgba(0,0,0,0.2));" />
-              </div>
+              <img src="${logoUrl}" alt="${tenantName}" class="logo-img" style="max-width: 200px; height: auto; margin-bottom: 10px;" />
               ` : `
-              <div style="position: relative; z-index: 1; margin: 0;">
-                <h1 style="color: #ffffff; margin: 0 0 4px 0; font-size: 24px; font-weight: 700; text-shadow: 0 2px 10px rgba(0,0,0,0.2); letter-spacing: -0.5px;">🍕 ${tenantName}</h1>
-              </div>
+              <h1 style="color: #ffffff; margin: 0 0 10px 0; font-size: 28px;">🍕 ${tenantName}</h1>
               `}
-              <p style="color: #ffffff; margin: 5px 0 0 0; font-size: 14px; font-weight: 300; position: relative; z-index: 1; text-shadow: 0 1px 3px rgba(0,0,0,0.2);">Vitajte v našej rodine!</p>
+              <p style="color: #ffffff; margin: 10px 0 0 0; font-size: 16px;">Vitajte v našej rodine!</p>
             </td>
           </tr>
 
           <!-- Content -->
           <tr>
-            <td class="email-content" style="padding: 50px 40px; background: linear-gradient(to bottom, #ffffff 0%, #fafbfc 100%);">
+            <td class="email-content" style="padding: 40px 30px;">
               
-              <!-- Welcome Message -->
-              <div style="text-align: center; margin-bottom: 35px;">
-                <h2 style="color: #1a1a1a; margin: 0 0 15px 0; font-size: 28px; font-weight: 700;">Ahoj ${user.name}! 👋</h2>
-                <p style="color: #555; font-size: 17px; line-height: 1.7; margin: 0; max-width: 500px; margin-left: auto; margin-right: auto;">
-                  Ďakujeme, že ste sa prihlásili! Váš účet bol úspešne vytvorený a teraz môžete objednávať naše lahodné pizze.
-                </p>
-              </div>
+              <h2 class="greeting" style="color: #333; margin: 0 0 10px 0; font-size: 22px;">Ahoj ${user.name}! 👋</h2>
+              <p class="greeting-text" style="color: #666; font-size: 16px; line-height: 1.6; margin: 0 0 20px 0;">
+                Ďakujeme, že ste sa prihlásili! Váš účet bol úspešne vytvorený a teraz môžete objednávať naše lahodné pizze.
+              </p>
 
-              <!-- Order Button with Shadow -->
-              <div style="text-align: center; margin: 40px 0;">
-                <a href="${orderUrl}" class="welcome-button" style="display: inline-block; background: linear-gradient(135deg, ${primaryColor} 0%, ${primaryColor}dd 100%); color: #ffffff; padding: 18px 50px; text-decoration: none; border-radius: 50px; font-size: 18px; font-weight: 700; box-shadow: 0 8px 20px rgba(0,0,0,0.2); transition: all 0.3s ease;">
+              <!-- Order Button -->
+              <div style="text-align: center; margin: 30px 0;">
+                <a href="${orderUrl}" class="welcome-button" style="display: inline-block; background-color: ${primaryColor}; color: #ffffff; padding: 15px 40px; text-decoration: none; border-radius: 5px; font-size: 16px; font-weight: bold;">
                   🍕 Objednať teraz
                 </a>
               </div>
 
-              <!-- Benefits Section -->
-              <div style="background: #ffffff; border-radius: 12px; padding: 35px; margin: 40px 0; box-shadow: 0 4px 15px rgba(0,0,0,0.08);">
-                <h3 class="section-title" style="color: #1a1a1a; margin: 0 0 25px 0; font-size: 22px; font-weight: 700; text-align: center; border-bottom: 3px solid ${primaryColor}; padding-bottom: 15px; display: inline-block; width: 100%;">Čo získate s účtom</h3>
-                
-                <table width="100%" cellpadding="0" cellspacing="0">
-                  <tr>
-                    <td class="benefit-item" style="padding: 12px 0; border-bottom: 1px solid #f0f0f0;">
-                      <table width="100%" cellpadding="0" cellspacing="0">
-                        <tr>
-                          <td width="40" style="vertical-align: top; padding-right: 15px;">
-                            <div style="width: 32px; height: 32px; background: ${primaryColor}15; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px;">📦</div>
-                          </td>
-                          <td style="vertical-align: middle;">
-                            <p style="margin: 0; color: #333; font-size: 16px; font-weight: 500; line-height: 1.5;">Sledovanie stavu objednávok v reálnom čase</p>
-                          </td>
-                        </tr>
-                      </table>
-                    </td>
-                  </tr>
-                  <tr>
-                    <td class="benefit-item" style="padding: 12px 0; border-bottom: 1px solid #f0f0f0;">
-                      <table width="100%" cellpadding="0" cellspacing="0">
-                        <tr>
-                          <td width="40" style="vertical-align: top; padding-right: 15px;">
-                            <div style="width: 32px; height: 32px; background: ${primaryColor}15; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px;">📋</div>
-                          </td>
-                          <td style="vertical-align: middle;">
-                            <p style="margin: 0; color: #333; font-size: 16px; font-weight: 500; line-height: 1.5;">História všetkých objednávok</p>
-                          </td>
-                        </tr>
-                      </table>
-                    </td>
-                  </tr>
-                  <tr>
-                    <td class="benefit-item" style="padding: 12px 0; border-bottom: 1px solid #f0f0f0;">
-                      <table width="100%" cellpadding="0" cellspacing="0">
-                        <tr>
-                          <td width="40" style="vertical-align: top; padding-right: 15px;">
-                            <div style="width: 32px; height: 32px; background: ${primaryColor}15; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px;">⚡</div>
-                          </td>
-                          <td style="vertical-align: middle;">
-                            <p style="margin: 0; color: #333; font-size: 16px; font-weight: 500; line-height: 1.5;">Rýchlejšie budúce objednávky</p>
-                          </td>
-                        </tr>
-                      </table>
-                    </td>
-                  </tr>
-                  <tr>
-                    <td class="benefit-item" style="padding: 12px 0; border-bottom: 1px solid #f0f0f0;">
-                      <table width="100%" cellpadding="0" cellspacing="0">
-                        <tr>
-                          <td width="40" style="vertical-align: top; padding-right: 15px;">
-                            <div style="width: 32px; height: 32px; background: ${primaryColor}15; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px;">📍</div>
-                          </td>
-                          <td style="vertical-align: middle;">
-                            <p style="margin: 0; color: #333; font-size: 16px; font-weight: 500; line-height: 1.5;">Uložené adresy pre doručenie</p>
-                          </td>
-                        </tr>
-                      </table>
-                    </td>
-                  </tr>
-                  <tr>
-                    <td class="benefit-item" style="padding: 12px 0;">
-                      <table width="100%" cellpadding="0" cellspacing="0">
-                        <tr>
-                          <td width="40" style="vertical-align: top; padding-right: 15px;">
-                            <div style="width: 32px; height: 32px; background: ${primaryColor}15; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px;">🎁</div>
-                          </td>
-                          <td style="vertical-align: middle;">
-                            <p style="margin: 0; color: #333; font-size: 16px; font-weight: 500; line-height: 1.5;">Exkluzívne ponuky a zľavy</p>
-                          </td>
-                        </tr>
-                      </table>
-                    </td>
-                  </tr>
-                </table>
-              </div>
+              <!-- Benefits -->
+              <h3 class="section-title" style="color: #333; margin: 30px 0 15px 0; font-size: 18px; border-bottom: 2px solid #f0f0f0; padding-bottom: 10px;">Čo získate s účtom</h3>
+              <ul class="benefits-list" style="color: #666; font-size: 16px; line-height: 1.8; margin: 0; padding-left: 20px;">
+                <li>📦 Sledovanie stavu objednávok v reálnom čase</li>
+                <li>📋 História všetkých objednávok</li>
+                <li>⚡ Rýchlejšie budúce objednávky</li>
+                <li>📍 Uložené adresy pre doručenie</li>
+                <li>🎁 Exkluzívne ponuky a zľavy</li>
+              </ul>
 
-              <!-- Tip Box -->
-              <div style="background: linear-gradient(135deg, #e7f3ff 0%, #d6e9f5 100%); border-left: 5px solid ${primaryColor}; border-radius: 8px; padding: 20px; margin: 35px 0; box-shadow: 0 2px 10px rgba(0,0,0,0.05);">
-                <p style="margin: 0; color: #0c5460; font-size: 15px; line-height: 1.7; font-weight: 500;">
-                  <strong style="color: ${primaryColor}; font-size: 18px;">💡 Tip:</strong> Uložte si svoje obľúbené adresy a budúce objednávky budú ešte rýchlejšie!
+              <div style="background-color: #e7f3ff; border-left: 4px solid ${primaryColor}; padding: 15px; margin: 30px 0;">
+                <p style="margin: 0; color: #0c5460; font-size: 14px; line-height: 1.6;">
+                  <strong>💡 Tip:</strong> Uložte si svoje obľúbené adresy a budúce objednávky budú ešte rýchlejšie!
                 </p>
               </div>
 
@@ -1362,8 +1279,8 @@ export class EmailService {
 
           <!-- Footer -->
           <tr>
-            <td style="background: linear-gradient(to bottom, #f8f9fa 0%, #e9ecef 100%); padding: 30px; text-align: center; border-top: 1px solid #e0e0e0;">
-              <p style="color: #666; font-size: 14px; margin: 0; line-height: 1.6;">
+            <td style="background-color: #f8f9fa; padding: 20px 30px; text-align: center;">
+              <p style="color: #999; font-size: 14px; margin: 0;">
                 © ${new Date().getFullYear()} ${tenantName}. Všetky práva vyhradené.
               </p>
             </td>
