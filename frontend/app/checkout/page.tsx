@@ -112,6 +112,49 @@ export default function CheckoutPage() {
   const [addressFormError, setAddressFormError] = useState<string | null>(null);
   const [phoneFormError, setPhoneFormError] = useState<string | null>(null);
 
+  // Validate phone number function (must be declared before useMemo hooks)
+  const validatePhone = (phone: string, prefix: string): { isValid: boolean; message?: string } => {
+    const trimmed = phone.trim();
+    if (!trimmed) {
+      return { isValid: false, message: 'Telefónne číslo je povinné.' };
+    }
+    
+    // Remove spaces, dashes, and parentheses
+    const cleaned = trimmed.replace(/[\s\-\(\)]/g, '');
+    
+    // Check if it contains only digits
+    if (!/^\d+$/.test(cleaned)) {
+      return { isValid: false, message: 'Telefónne číslo môže obsahovať len číslice.' };
+    }
+    
+    // Validate based on prefix
+    if (prefix === '+421') {
+      // Slovak phone numbers: 9 digits (without prefix)
+      if (cleaned.length !== 9) {
+        return { isValid: false, message: 'Slovenské telefónne číslo musí mať 9 číslic (napr. 912345678).' };
+      }
+      // Must start with 9
+      if (!cleaned.startsWith('9')) {
+        return { isValid: false, message: 'Slovenské mobilné číslo musí začínať na 9.' };
+      }
+    } else if (prefix === '+420') {
+      // Czech phone numbers: 9 digits
+      if (cleaned.length !== 9) {
+        return { isValid: false, message: 'České telefónne číslo musí mať 9 číslic.' };
+      }
+    } else {
+      // For other countries, just check minimum length
+      if (cleaned.length < 7) {
+        return { isValid: false, message: 'Telefónne číslo je príliš krátke.' };
+      }
+      if (cleaned.length > 15) {
+        return { isValid: false, message: 'Telefónne číslo je príliš dlhé.' };
+      }
+    }
+    
+    return { isValid: true };
+  };
+
   // Validate phone number for button state
   const isPhoneValid = useMemo(() => {
     if (!phoneFormData.phone.trim()) return false;
@@ -866,48 +909,6 @@ export default function CheckoutPage() {
     return { isValid: true };
   };
 
-  // Validate phone number
-  const validatePhone = (phone: string, prefix: string): { isValid: boolean; message?: string } => {
-    const trimmed = phone.trim();
-    if (!trimmed) {
-      return { isValid: false, message: 'Telefónne číslo je povinné.' };
-    }
-    
-    // Remove spaces, dashes, and parentheses
-    const cleaned = trimmed.replace(/[\s\-\(\)]/g, '');
-    
-    // Check if it contains only digits
-    if (!/^\d+$/.test(cleaned)) {
-      return { isValid: false, message: 'Telefónne číslo môže obsahovať len číslice.' };
-    }
-    
-    // Validate based on prefix
-    if (prefix === '+421') {
-      // Slovak phone numbers: 9 digits (without prefix)
-      if (cleaned.length !== 9) {
-        return { isValid: false, message: 'Slovenské telefónne číslo musí mať 9 číslic (napr. 912345678).' };
-      }
-      // Must start with 9
-      if (!cleaned.startsWith('9')) {
-        return { isValid: false, message: 'Slovenské mobilné číslo musí začínať na 9.' };
-      }
-    } else if (prefix === '+420') {
-      // Czech phone numbers: 9 digits
-      if (cleaned.length !== 9) {
-        return { isValid: false, message: 'České telefónne číslo musí mať 9 číslic.' };
-      }
-    } else {
-      // For other countries, just check minimum length
-      if (cleaned.length < 7) {
-        return { isValid: false, message: 'Telefónne číslo je príliš krátke.' };
-      }
-      if (cleaned.length > 15) {
-        return { isValid: false, message: 'Telefónne číslo je príliš dlhé.' };
-      }
-    }
-    
-    return { isValid: true };
-  };
 
   // Handle saving address for logged-in user
   const handleSaveAddress = async () => {
