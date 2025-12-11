@@ -60,9 +60,8 @@ export function OrderCard({ order, onStatusUpdate, isExpanded = false, onToggleE
   const hasWoltDelivery = !!order.deliveryId || !!order.delivery;
   const woltDelivery = order.delivery;
   
-  // Check if order is cash payment (paymentStatus === 'pending')
-  const isCashPayment = order.paymentStatus === 'pending';
-  const isPendingCash = order.status === OrderStatus.PENDING && isCashPayment;
+  // All PENDING orders need operator confirmation (both cash and online payment)
+  const isPending = order.status === OrderStatus.PENDING;
   const isPaid = order.status === OrderStatus.PAID;
   
   // Get translated status label
@@ -168,8 +167,8 @@ export function OrderCard({ order, onStatusUpdate, isExpanded = false, onToggleE
         {/* Action Buttons */}
         <div className="flex flex-col gap-2 pt-2">
           <div className="flex gap-2 flex-wrap">
-            {/* Cash payment - Accept/Cancel buttons */}
-            {isPendingCash && (
+            {/* PENDING orders - Accept/Cancel buttons (all orders need operator confirmation) */}
+            {isPending && (
               <>
                 <button
                   onClick={() => onStatusUpdate(order.id, OrderStatus.PAID)}
@@ -266,8 +265,8 @@ export function OrderCard({ order, onStatusUpdate, isExpanded = false, onToggleE
         </div>
         
         <div className="flex items-center gap-2 ml-4">
-          {/* Cash payment - Accept/Cancel buttons */}
-          {isPendingCash && (
+          {/* PENDING orders - Accept/Cancel buttons (all orders need operator confirmation) */}
+          {isPending && (
             <>
               <button
                 onClick={() => onStatusUpdate(order.id, OrderStatus.PAID)}

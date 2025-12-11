@@ -13,18 +13,18 @@ export function StatusTimeline({ status, paymentStatus }: StatusTimelineProps) {
   const { language } = useLanguage();
   const t = getTranslations(language);
   
-  // Check if this is cash payment pending (waiting for operator confirmation)
-  const isCashPending = status === OrderStatus.PENDING && paymentStatus === 'pending';
+  // All PENDING orders are waiting for operator confirmation (both cash and online payment)
+  const isPending = status === OrderStatus.PENDING;
   
   // Updated flow: Removed READY status
   const STATUSES = [
     { 
       key: OrderStatus.PENDING, 
-      label: isCashPending 
+      label: isPending 
         ? (language === 'sk' ? 'Čaká na potvrdenie' : 'Waiting for confirmation')
         : t.orderStatusPending, 
-      icon: isCashPending ? '⏳' : '💳', 
-      description: isCashPending
+      icon: isPending ? '⏳' : '💳', 
+      description: isPending
         ? (language === 'sk' ? 'Objednávka čaká na potvrdenie operátora' : 'Order is waiting for operator confirmation')
         : t.orderStatusPendingDesc 
     },
