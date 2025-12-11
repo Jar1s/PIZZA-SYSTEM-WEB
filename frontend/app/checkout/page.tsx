@@ -1568,7 +1568,9 @@ export default function CheckoutPage() {
                           ? 'opacity-50 cursor-not-allowed'
                           : getButtonGradientClass(tenantData) + ' hover:opacity-90'
                       }`}
-                      style={getButtonStyle(tenantData, isDark)}
+                      style={
+                        getButtonStyle(tenantData, isDark) || { backgroundColor: normalizedTenant?.theme?.primaryColor || '#E91E63' }
+                      }
                     >
                       {savingPhone ? t.loading || 'Ukladám...' : t.save || 'Uložiť'}
                     </button>
@@ -2042,7 +2044,9 @@ export default function CheckoutPage() {
                             ? 'opacity-50 cursor-not-allowed'
                             : getButtonGradientClass(tenantData) + ' hover:opacity-90'
                         }`}
-                        style={getButtonStyle(tenantData, isDark)}
+                        style={
+                          getButtonStyle(tenantData, isDark) || { backgroundColor: normalizedTenant?.theme?.primaryColor || '#E91E63' }
+                        }
                       >
                         {savingAddress ? t.loading || 'Ukladám...' : t.save || 'Uložiť'}
                       </button>
