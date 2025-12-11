@@ -54,7 +54,8 @@ export default function CheckoutPage() {
     if (!normalizedTenant) return false;
     const manualMaintenanceMode = normalizedTenant.theme?.maintenanceMode === true;
     const openingHours = (normalizedTenant.theme as any)?.openingHours;
-    const autoMaintenanceMode = openingHours ? !isCurrentlyOpen(openingHours) : false;
+    // Only apply automatic maintenance mode if opening hours are enabled
+    const autoMaintenanceMode = (openingHours?.enabled === true) ? !isCurrentlyOpen(openingHours) : false;
     return manualMaintenanceMode || autoMaintenanceMode;
   }, [normalizedTenant]);
 
@@ -1441,13 +1442,19 @@ export default function CheckoutPage() {
               {!user.phone ? (
                 // Show phone form if phone is missing
                 <div className="space-y-4">
-                  <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg mb-4">
-                    <p className="text-sm text-yellow-800">
+                  <div className={`p-4 rounded-lg mb-4 ${
+                    isDark 
+                      ? 'bg-yellow-900/30 border border-yellow-700/50' 
+                      : 'bg-yellow-50 border border-yellow-200'
+                  }`}>
+                    <p className={`text-sm ${
+                      isDark ? 'text-yellow-200' : 'text-yellow-800'
+                    }`}>
                       Pre dokončenie objednávky je potrebné vyplniť telefónne číslo.
                     </p>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium mb-2">
+                    <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-white' : 'text-gray-700'}`}>
                       {t.phoneLabel} <span className="text-red-500">*</span>
                     </label>
                     <div className="flex gap-2">
@@ -1457,7 +1464,11 @@ export default function CheckoutPage() {
                           setPhoneFormData({ ...phoneFormData, phonePrefix: e.target.value });
                           if (phoneFormError) setPhoneFormError(null);
                         }}
-                        className="px-3 py-2 border rounded-lg bg-white min-w-[120px]"
+                        className={`px-3 py-2 border rounded-lg min-w-[120px] ${
+                          isDark 
+                            ? 'bg-white/10 border-white/20 text-white' 
+                            : 'bg-white border-gray-300'
+                        }`}
                       >
                         <option value="+421">+421 (SK)</option>
                         <option value="+420">+420 (CZ)</option>
@@ -1511,22 +1522,26 @@ export default function CheckoutPage() {
                         }}
                         placeholder={t.phonePlaceholder || '912345678'}
                         className={`flex-1 px-4 py-2 border rounded-lg ${
-                          phoneFormError ? 'border-red-500' : ''
+                          phoneFormError 
+                            ? 'border-red-500' 
+                            : isDark 
+                              ? 'bg-white/10 border-white/20 text-white placeholder:text-gray-400' 
+                              : 'bg-white border-gray-300'
                         }`}
                       />
                     </div>
                     {phoneFormError && (
-                      <p className="mt-1 text-sm text-red-600">{phoneFormError}</p>
+                      <p className={`mt-1 text-sm ${isDark ? 'text-red-400' : 'text-red-600'}`}>{phoneFormError}</p>
                     )}
                     <button
                       onClick={handleSavePhone}
                       disabled={savingPhone || !phoneFormData.phone}
-                      className={`mt-3 px-6 py-2 rounded-lg font-semibold text-sm ${
+                      className={`mt-3 px-6 py-2 rounded-lg font-semibold text-sm transition-opacity text-white ${
                         savingPhone || !phoneFormData.phone
-                          ? 'bg-gray-400 cursor-not-allowed'
-                          : getButtonGradientClass(tenantData)
-                      } text-white`}
-                      style={!savingPhone && phoneFormData.phone ? getButtonStyle(tenantData, isDark) : undefined}
+                          ? 'opacity-50 cursor-not-allowed'
+                          : getButtonGradientClass(tenantData) + ' hover:opacity-90'
+                      }`}
+                      style={getButtonStyle(tenantData, isDark)}
                     >
                       {savingPhone ? t.loading || 'Ukladám...' : t.save || 'Uložiť'}
                     </button>
@@ -1534,7 +1549,7 @@ export default function CheckoutPage() {
                 </div>
               ) : (
                 // Show read-only info if phone exists
-                <div className="space-y-2 text-gray-700">
+                <div className={`space-y-2 ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>
                   <div><strong>{t.nameLabel}:</strong> {user.name || 'N/A'}</div>
                   <div><strong>{t.emailLabel}:</strong> {user.email || 'N/A'}</div>
                   <div>
@@ -1548,7 +1563,7 @@ export default function CheckoutPage() {
               <h2 className="text-xl font-semibold mb-4">{t.contactDetails}</h2>
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium mb-2">
+                  <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-white' : 'text-gray-700'}`}>
                     {t.nameLabel} <span className="text-red-500">*</span>
                   </label>
                   <input
@@ -1573,16 +1588,20 @@ export default function CheckoutPage() {
                     }}
                     required
                     className={`w-full px-4 py-2 border rounded-lg ${
-                      nameError ? 'border-red-500' : ''
+                      nameError 
+                        ? 'border-red-500' 
+                        : isDark 
+                          ? 'bg-white/10 border-white/20 text-white placeholder:text-gray-400' 
+                          : 'bg-white border-gray-300'
                     }`}
                     placeholder={t.namePlaceholderCheckout || t.namePlaceholder}
                   />
                   {nameError && (
-                    <p className="mt-1 text-sm text-red-600">{nameError}</p>
+                    <p className={`mt-1 text-sm ${isDark ? 'text-red-400' : 'text-red-600'}`}>{nameError}</p>
                   )}
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-2">
+                  <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-white' : 'text-gray-700'}`}>
                     {t.emailLabel} <span className="text-red-500">*</span>
                   </label>
                   <input
@@ -1607,16 +1626,20 @@ export default function CheckoutPage() {
                     }}
                     required
                     className={`w-full px-4 py-2 border rounded-lg ${
-                      emailError ? 'border-red-500' : ''
+                      emailError 
+                        ? 'border-red-500' 
+                        : isDark 
+                          ? 'bg-white/10 border-white/20 text-white placeholder:text-gray-400' 
+                          : 'bg-white border-gray-300'
                     }`}
                     placeholder={t.emailPlaceholderCheckout || t.emailPlaceholder}
                   />
                   {emailError && (
-                    <p className="mt-1 text-sm text-red-600">{emailError}</p>
+                    <p className={`mt-1 text-sm ${isDark ? 'text-red-400' : 'text-red-600'}`}>{emailError}</p>
                   )}
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-2">
+                  <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-white' : 'text-gray-700'}`}>
                     {t.phoneLabel} <span className="text-red-500">*</span>
                   </label>
                   <div className="flex gap-2">
@@ -1630,7 +1653,11 @@ export default function CheckoutPage() {
                           setPhoneError(validation.isValid ? null : validation.message || null);
                         }
                       }}
-                      className="px-3 py-2 border rounded-lg bg-white min-w-[120px]"
+                      className={`px-3 py-2 border rounded-lg min-w-[120px] ${
+                        isDark 
+                          ? 'bg-white/10 border-white/20 text-white' 
+                          : 'bg-white border-gray-300'
+                      }`}
                     >
                       <option value="+421">+421 (SK)</option>
                       <option value="+420">+420 (CZ)</option>
@@ -1687,12 +1714,16 @@ export default function CheckoutPage() {
                       placeholder={t.phonePlaceholder || '912345678'}
                       required
                       className={`flex-1 px-4 py-2 border rounded-lg ${
-                        phoneError ? 'border-red-500' : ''
+                        phoneError 
+                          ? 'border-red-500' 
+                          : isDark 
+                            ? 'bg-white/10 border-white/20 text-white placeholder:text-gray-400' 
+                            : 'bg-white border-gray-300'
                       }`}
                     />
                   </div>
                   {phoneError && (
-                    <p className="mt-1 text-sm text-red-600">{phoneError}</p>
+                    <p className={`mt-1 text-sm ${isDark ? 'text-red-400' : 'text-red-600'}`}>{phoneError}</p>
                   )}
                 </div>
               </div>
@@ -1798,8 +1829,14 @@ export default function CheckoutPage() {
                 // Show address form if no addresses exist
                 <div className="mb-8 pb-8 border-b">
                   <h2 className="text-xl font-semibold mb-4">{t.deliveryAddress}</h2>
-                  <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg mb-4">
-                    <p className="text-sm text-yellow-800">
+                  <div className={`p-4 rounded-lg mb-4 ${
+                    isDark 
+                      ? 'bg-yellow-900/30 border border-yellow-700/50' 
+                      : 'bg-yellow-50 border border-yellow-200'
+                  }`}>
+                    <p className={`text-sm ${
+                      isDark ? 'text-yellow-200' : 'text-yellow-800'
+                    }`}>
                       Pre dokončenie objednávky je potrebné vyplniť adresu pre doručenie.
                     </p>
                   </div>
@@ -1924,12 +1961,12 @@ export default function CheckoutPage() {
                       <button
                         onClick={handleSaveAddress}
                         disabled={savingAddress || !addressFormData.street || !addressFormData.city || !addressFormData.postalCode}
-                        className={`px-6 py-2 rounded-lg font-semibold text-sm ${
+                        className={`px-6 py-2 rounded-lg font-semibold text-sm transition-opacity text-white ${
                           savingAddress || !addressFormData.street || !addressFormData.city || !addressFormData.postalCode
-                            ? 'bg-gray-400 cursor-not-allowed'
-                            : getButtonGradientClass(tenantData)
-                        } text-white`}
-                        style={!savingAddress && addressFormData.street && addressFormData.city && addressFormData.postalCode ? getButtonStyle(tenantData, isDark) : undefined}
+                            ? 'opacity-50 cursor-not-allowed'
+                            : getButtonGradientClass(tenantData) + ' hover:opacity-90'
+                        }`}
+                        style={getButtonStyle(tenantData, isDark)}
                       >
                         {savingAddress ? t.loading || 'Ukladám...' : t.save || 'Uložiť'}
                       </button>

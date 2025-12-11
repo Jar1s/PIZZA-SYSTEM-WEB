@@ -36,7 +36,8 @@ export function Cart({ tenant = null, isDark: isDarkOverride }: CartProps) {
     if (!effectiveTenant) return false;
     const manualMaintenanceMode = effectiveTenant.theme?.maintenanceMode === true;
     const openingHours = (effectiveTenant.theme as any)?.openingHours;
-    const autoMaintenanceMode = openingHours ? !isCurrentlyOpen(openingHours) : false;
+    // Only apply automatic maintenance mode if opening hours are enabled
+    const autoMaintenanceMode = (openingHours?.enabled === true) ? !isCurrentlyOpen(openingHours) : false;
     return manualMaintenanceMode || autoMaintenanceMode;
   }, [effectiveTenant]);
 

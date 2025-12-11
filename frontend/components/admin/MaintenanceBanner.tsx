@@ -29,9 +29,12 @@ export function MaintenanceBanner() {
         setMaintenanceMode(theme.maintenanceMode === true);
         
         // Check automatic maintenance mode based on opening hours
-        if (theme.openingHours) {
+        // Only apply if opening hours are enabled
+        if (theme.openingHours?.enabled === true) {
           const isOpen = isCurrentlyOpen(theme.openingHours);
           setAutoMaintenanceMode(!isOpen);
+        } else {
+          setAutoMaintenanceMode(false);
         }
       } catch (error) {
         console.error('Failed to load tenant:', error);
@@ -51,9 +54,12 @@ export function MaintenanceBanner() {
       const theme = typeof tenant.theme === 'object' && tenant.theme !== null 
         ? tenant.theme as any
         : {};
-      if (theme.openingHours) {
+      // Only apply automatic maintenance mode if opening hours are enabled
+      if (theme.openingHours?.enabled === true) {
         const isOpen = isCurrentlyOpen(theme.openingHours);
         setAutoMaintenanceMode(!isOpen);
+      } else {
+        setAutoMaintenanceMode(false);
       }
     };
 
