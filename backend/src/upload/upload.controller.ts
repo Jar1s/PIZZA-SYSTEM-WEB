@@ -36,10 +36,11 @@ export class UploadController {
     FileInterceptor('image', {
       storage: diskStorage({
         destination: (req, file, cb) => {
-          if (!existsSync(this.uploadDir)) {
-            mkdirSync(this.uploadDir, { recursive: true });
+          const uploadDir = join(process.cwd(), 'uploads');
+          if (!existsSync(uploadDir)) {
+            mkdirSync(uploadDir, { recursive: true });
           }
-          cb(null, this.uploadDir);
+          cb(null, uploadDir);
         },
         filename: (req, file, cb) => {
           if (!file) {
