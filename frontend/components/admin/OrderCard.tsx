@@ -87,7 +87,7 @@ export function OrderCard({ order, onStatusUpdate, isExpanded = false, onToggleE
   // Get translated status label
   const getStatusLabel = (status: OrderStatus): string => {
     // For delivery payment (cash/card on delivery), show "Potvrdené" instead of "Zaplatené" for PAID status
-    if (status === OrderStatus.PAID && isDeliveryPayment) {
+    if (status === OrderStatus.PAID && isDeliveryPayment()) {
       return language === 'sk' ? 'Potvrdené' : 'Confirmed';
     }
     
@@ -256,7 +256,7 @@ export function OrderCard({ order, onStatusUpdate, isExpanded = false, onToggleE
                 {creatingWolt ? '⏳' : '🚚 Wolt'}
               </button>
             )}
-            {shouldShowPaidButton() && (
+            {shouldShowPaidButton() && nextStatus && (
               <button
                 onClick={() => onStatusUpdate(order.id, nextStatus)}
                 className="flex-1 min-w-[120px] px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm font-semibold"
@@ -371,7 +371,7 @@ export function OrderCard({ order, onStatusUpdate, isExpanded = false, onToggleE
               {creatingWolt ? '⏳' : '🚚 Wolt'}
             </button>
           )}
-          {shouldShowPaidButton() && (
+          {shouldShowPaidButton() && nextStatus && (
             <button
               onClick={() => onStatusUpdate(order.id, nextStatus)}
               className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
