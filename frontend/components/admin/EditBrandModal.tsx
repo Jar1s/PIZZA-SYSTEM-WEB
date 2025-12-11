@@ -21,10 +21,10 @@ export function EditBrandModal({
     name: '',
     subdomain: '',
     domain: '',
-    primaryColor: '#E91E63',
-    secondaryColor: '#0F141A',
     isActive: true,
   });
+  const [cashEnabled, setCashEnabled] = useState(false);
+  const [cardEnabled, setCardEnabled] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -35,14 +35,16 @@ export function EditBrandModal({
         ? tenant.theme as any
         : {};
       
+      const paymentConfig = (tenant.paymentConfig as any) || {};
+      
       setFormData({
         name: tenant.name || '',
         subdomain: tenant.subdomain || tenant.slug || '',
         domain: tenant.domain || '',
-        primaryColor: theme.primaryColor || '#E91E63',
-        secondaryColor: theme.secondaryColor || '#0F141A',
         isActive: tenant.isActive !== undefined ? tenant.isActive : true,
       });
+      setCashEnabled(paymentConfig.cashOnDeliveryEnabled === true);
+      setCardEnabled(paymentConfig.cardOnDeliveryEnabled === true);
       setError(null);
     }
   }, [tenant]);
@@ -55,20 +57,16 @@ export function EditBrandModal({
     setError(null);
 
     try {
-      // Get existing theme to preserve other properties
-      const existingTheme = typeof tenant.theme === 'object' && tenant.theme !== null 
-        ? tenant.theme as any
-        : {};
+      // Get existing paymentConfig to preserve other properties
+      const existingPaymentConfig = (tenant.paymentConfig as any) || {};
       
       await updateTenant(tenant.subdomain || tenant.slug, {
-        name: formData.name,
-        domain: formData.domain || null,
-        theme: {
-          ...existingTheme,
-          primaryColor: formData.primaryColor,
-          secondaryColor: formData.secondaryColor,
-        },
         isActive: formData.isActive,
+        paymentConfig: {
+          ...existingPaymentConfig,
+          cashOnDeliveryEnabled: cashEnabled,
+          cardOnDeliveryEnabled: cardEnabled,
+        },
       });
       
       onUpdate();
@@ -113,18 +111,17 @@ export function EditBrandModal({
                 </div>
               )}
 
-              <div className="space-y-4">
-                {/* Brand Name */}
+              <div className="space-y-4 max-h-[70vh] overflow-y-auto">
+                {/* Brand Name (read-only) */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Brand Name *
+                    Brand Name
                   </label>
                   <input
                     type="text"
-                    required
                     value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    disabled
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 text-gray-500 cursor-not-allowed"
                   />
                 </div>
 
@@ -139,73 +136,23 @@ export function EditBrandModal({
                     disabled
                     className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 text-gray-500 cursor-not-allowed"
                   />
-                  <p className="mt-1 text-xs text-gray-500">Subdomain cannot be changed</p>
                 </div>
 
-                {/* Custom Domain */}
+                {/* Custom Domain (read-only) */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Custom Domain
                   </label>
                   <input
                     type="text"
-                    value={formData.domain}
-                    onChange={(e) => setFormData({ ...formData, domain: e.target.value })}
-                    placeholder="pornopizza.sk"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    value={formData.domain || 'Not configured'}
+                    disabled
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 text-gray-500 cursor-not-allowed"
                   />
-                  <p className="mt-1 text-xs text-gray-500">Leave empty if not configured</p>
-                </div>
-
-                {/* Primary Color */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Primary Color *
-                  </label>
-                  <div className="flex gap-3">
-                    <input
-                      type="color"
-                      value={formData.primaryColor}
-                      onChange={(e) => setFormData({ ...formData, primaryColor: e.target.value })}
-                      className="h-10 w-20 border border-gray-300 rounded cursor-pointer"
-                    />
-                    <input
-                      type="text"
-                      value={formData.primaryColor}
-                      onChange={(e) => setFormData({ ...formData, primaryColor: e.target.value })}
-                      placeholder="#E91E63"
-                      className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                  <div className="mt-2 p-3 rounded" style={{ backgroundColor: formData.primaryColor }}>
-                    <p className="text-white text-sm font-medium">Preview</p>
-                  </div>
-                </div>
-
-                {/* Secondary Color */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Secondary Color *
-                  </label>
-                  <div className="flex gap-3">
-                    <input
-                      type="color"
-                      value={formData.secondaryColor}
-                      onChange={(e) => setFormData({ ...formData, secondaryColor: e.target.value })}
-                      className="h-10 w-20 border border-gray-300 rounded cursor-pointer"
-                    />
-                    <input
-                      type="text"
-                      value={formData.secondaryColor}
-                      onChange={(e) => setFormData({ ...formData, secondaryColor: e.target.value })}
-                      placeholder="#000000"
-                      className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
                 </div>
 
                 {/* Active Status */}
-                <div className="flex items-center">
+                <div className="flex items-center pt-2">
                   <input
                     type="checkbox"
                     id="isActive"
@@ -216,6 +163,68 @@ export function EditBrandModal({
                   <label htmlFor="isActive" className="ml-2 block text-sm text-gray-900">
                     Active (brand is visible to customers)
                   </label>
+                </div>
+
+                {/* Payment Settings */}
+                <div className="border-t pt-4 mt-4">
+                  <h4 className="text-md font-semibold mb-3 text-gray-900">
+                    Payment on Delivery Settings
+                  </h4>
+                  <p className="text-sm text-gray-600 mb-4">
+                    Control payment methods available for cash on delivery orders.
+                  </p>
+                  
+                  <div className="space-y-4">
+                    {/* Cash Payment Toggle */}
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <label className="text-sm font-medium text-gray-700">
+                          Cash Payment
+                        </label>
+                        <p className="text-xs text-gray-500">
+                          Allow customers to pay with cash on delivery
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setCashEnabled(!cashEnabled)}
+                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                          cashEnabled ? 'bg-green-600' : 'bg-gray-300'
+                        }`}
+                      >
+                        <span
+                          className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                            cashEnabled ? 'translate-x-6' : 'translate-x-1'
+                          }`}
+                        />
+                      </button>
+                    </div>
+                    
+                    {/* Card Payment Toggle */}
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <label className="text-sm font-medium text-gray-700">
+                          Card Payment (via Courier Terminal)
+                        </label>
+                        <p className="text-xs text-gray-500">
+                          Allow customers to pay with card via courier&apos;s terminal
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setCardEnabled(!cardEnabled)}
+                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                          cardEnabled ? 'bg-green-600' : 'bg-gray-300'
+                        }`}
+                      >
+                        <span
+                          className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                            cardEnabled ? 'translate-x-6' : 'translate-x-1'
+                          }`}
+                        />
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>

@@ -4,16 +4,13 @@ import { useEffect, useState } from 'react';
 import { Tenant } from '@pizza-ecosystem/shared';
 import { getAllTenants, updateTenant } from '@/lib/api';
 import { EditBrandModal } from '@/components/admin/EditBrandModal';
-import { BrandSettingsModal } from '@/components/admin/BrandSettingsModal';
 import { ProtectedRoute } from '@/components/admin/ProtectedRoute';
 
 export default function BrandsPage() {
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingTenant, setEditingTenant] = useState<Tenant | null>(null);
-  const [settingsTenant, setSettingsTenant] = useState<Tenant | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
 
   useEffect(() => {
     fetchTenants();
@@ -39,11 +36,6 @@ export default function BrandsPage() {
   const handleEdit = (tenant: Tenant) => {
     setEditingTenant(tenant);
     setIsEditModalOpen(true);
-  };
-
-  const handleSettings = (tenant: Tenant) => {
-    setSettingsTenant(tenant);
-    setIsSettingsModalOpen(true);
   };
 
   const handleUpdate = () => {
@@ -83,9 +75,6 @@ export default function BrandsPage() {
             Manage all pizza brands in your ecosystem. Total: {tenants.length} brands
           </p>
         </div>
-        <button className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-          + Add Brand
-        </button>
       </div>
 
       {loading ? (
@@ -199,18 +188,12 @@ export default function BrandsPage() {
                 </div>
 
                 {/* Actions */}
-                <div className="mt-6 flex gap-3">
+                <div className="mt-6">
                   <button
                     onClick={() => handleEdit(tenant)}
-                    className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-semibold transition-colors"
+                    className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-semibold transition-colors"
                   >
                     Edit Brand
-                  </button>
-                  <button
-                    onClick={() => handleSettings(tenant)}
-                    className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 font-semibold transition-colors"
-                  >
-                    Settings
                   </button>
                 </div>
               </div>
@@ -238,18 +221,6 @@ export default function BrandsPage() {
             setEditingTenant(null);
           }}
           onUpdate={handleUpdate}
-        />
-      )}
-
-      {/* Settings Modal */}
-      {settingsTenant && (
-        <BrandSettingsModal
-          tenant={settingsTenant}
-          isOpen={isSettingsModalOpen}
-          onClose={() => {
-            setIsSettingsModalOpen(false);
-            setSettingsTenant(null);
-          }}
         />
       )}
       </div>
