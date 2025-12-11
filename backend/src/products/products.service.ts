@@ -42,7 +42,7 @@ export class ProductsService {
         weightGrams: true,    // Gramáž z databázy
         allergens: true,      // Alergény z databázy
         displayName: true,    // Webový názov
-        subHeader: true,      // Sub-header
+        // subHeader: true,      // Sub-header - uncomment after running migration
         createdAt: true,
         updatedAt: true,
       } as any,  // Type assertion needed until Prisma client regenerated on Render
