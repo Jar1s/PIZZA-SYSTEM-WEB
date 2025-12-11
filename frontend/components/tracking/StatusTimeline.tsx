@@ -13,36 +13,90 @@ export function StatusTimeline({ status, paymentStatus }: StatusTimelineProps) {
   const { language } = useLanguage();
   const t = getTranslations(language);
   
-  // All PENDING orders are waiting for operator confirmation (both cash and online payment)
-  const isPending = status === OrderStatus.PENDING;
+  // Check if this is delivery payment (cash/card on delivery)
+  const isDeliveryPayment = paymentStatus === 'pending';
   
-  // Updated flow: Removed READY status
-  const STATUSES = [
+  // Online payment flow: Payment → Confirmation → Preparation → ...
+  const STATUSES_ONLINE = [
     { 
       key: OrderStatus.PENDING, 
-      label: isPending 
-        ? (language === 'sk' ? 'Čaká na potvrdenie' : 'Waiting for confirmation')
-        : t.orderStatusPending, 
-      icon: isPending ? '⏳' : '💳', 
-      description: isPending
-        ? (language === 'sk' ? 'Objednávka čaká na potvrdenie operátora' : 'Order is waiting for operator confirmation')
-        : t.orderStatusPendingDesc 
+      label: language === 'sk' ? 'Čaká na platbu' : 'Waiting for payment',
+      icon: '💳', 
+      description: language === 'sk' ? 'Objednávka prijatá, čaká sa na platbu' : 'Order received, waiting for payment'
     },
-    { key: OrderStatus.PAID, label: t.orderStatusPaid, icon: '💳', description: t.orderStatusPaidDesc },
-    { key: OrderStatus.PREPARING, label: t.orderStatusPreparing, icon: '👨‍🍳', description: t.orderStatusPreparingDesc },
-    { key: OrderStatus.OUT_FOR_DELIVERY, label: t.orderStatusOutForDelivery, icon: '🚗', description: t.orderStatusOutForDeliveryDesc },
-    { key: OrderStatus.DELIVERED, label: t.orderStatusDelivered, icon: '🎉', description: t.orderStatusDeliveredDesc },
+    { 
+      key: OrderStatus.PAID, 
+      label: language === 'sk' ? 'Zaplatené' : 'Paid',
+      icon: '💳', 
+      description: language === 'sk' ? 'Platba úspešná' : 'Payment successful'
+    },
+    { 
+      key: OrderStatus.PREPARING, 
+      label: t.orderStatusPreparing, 
+      icon: '👨‍🍳', 
+      description: t.orderStatusPreparingDesc 
+    },
+    { 
+      key: OrderStatus.OUT_FOR_DELIVERY, 
+      label: t.orderStatusOutForDelivery, 
+      icon: '🚗', 
+      description: t.orderStatusOutForDeliveryDesc 
+    },
+    { 
+      key: OrderStatus.DELIVERED, 
+      label: t.orderStatusDelivered, 
+      icon: '🎉', 
+      description: t.orderStatusDeliveredDesc 
+    },
   ];
   
-  const currentIndex = STATUSES.findIndex(s => s.key === status);
+  // Delivery payment flow: Confirmation → Preparation → ... (no payment step)
+  const STATUSES_DELIVERY = [
+    { 
+      key: OrderStatus.PENDING, 
+      label: language === 'sk' ? 'Čaká na potvrdenie' : 'Waiting for confirmation',
+      icon: '⏳', 
+      description: language === 'sk' ? 'Objednávka čaká na potvrdenie operátora' : 'Order is waiting for operator confirmation'
+    },
+    { 
+      key: OrderStatus.PAID, 
+      label: language === 'sk' ? 'Potvrdené' : 'Confirmed',
+      icon: '✅', 
+      description: language === 'sk' ? 'Objednávka potvrdená' : 'Order confirmed'
+    },
+    { 
+      key: OrderStatus.PREPARING, 
+      label: t.orderStatusPreparing, 
+      icon: '👨‍🍳', 
+      description: t.orderStatusPreparingDesc 
+    },
+    { 
+      key: OrderStatus.OUT_FOR_DELIVERY, 
+      label: t.orderStatusOutForDelivery, 
+      icon: '🚗', 
+      description: t.orderStatusOutForDeliveryDesc 
+    },
+    { 
+      key: OrderStatus.DELIVERED, 
+      label: t.orderStatusDelivered, 
+      icon: '🎉', 
+      description: t.orderStatusDeliveredDesc 
+    },
+  ];
+  
+  // Select the appropriate flow based on payment type
+  const STATUSES = isDeliveryPayment ? STATUSES_DELIVERY : STATUSES_ONLINE;
   
   // Handle READY status for backward compatibility (map to OUT_FOR_DELIVERY for display)
   let displayStatus = status;
   if (status === OrderStatus.READY) {
     displayStatus = OrderStatus.OUT_FOR_DELIVERY;
   }
-  const displayIndex = STATUSES.findIndex(s => s.key === displayStatus);
-  const effectiveIndex = displayIndex >= 0 ? displayIndex : currentIndex;
+  
+  // For online payment: if status is PAID but not yet PREPARING, show as "waiting for confirmation"
+  // This is handled by showing PAID step as current
+  const currentIndex = STATUSES.findIndex(s => s.key === displayStatus);
+  const effectiveIndex = currentIndex >= 0 ? currentIndex : STATUSES.findIndex(s => s.key === status);
   
   if (status === OrderStatus.CANCELED) {
     return (

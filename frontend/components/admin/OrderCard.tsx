@@ -60,8 +60,10 @@ export function OrderCard({ order, onStatusUpdate, isExpanded = false, onToggleE
   const hasWoltDelivery = !!order.deliveryId || !!order.delivery;
   const woltDelivery = order.delivery;
   
-  // All PENDING orders need operator confirmation (both cash and online payment)
-  const isPending = order.status === OrderStatus.PENDING;
+  // Check payment type
+  const isDeliveryPayment = order.paymentStatus === 'pending';
+  const isPendingDelivery = order.status === OrderStatus.PENDING && isDeliveryPayment;
+  const isPaidOnline = order.status === OrderStatus.PAID && !isDeliveryPayment;
   const isPaid = order.status === OrderStatus.PAID;
   
   // Get translated status label
@@ -167,8 +169,8 @@ export function OrderCard({ order, onStatusUpdate, isExpanded = false, onToggleE
         {/* Action Buttons */}
         <div className="flex flex-col gap-2 pt-2">
           <div className="flex gap-2 flex-wrap">
-            {/* PENDING orders - Accept/Cancel buttons (all orders need operator confirmation) */}
-            {isPending && (
+            {/* PENDING with delivery payment - Accept/Cancel buttons */}
+            {isPendingDelivery && (
               <>
                 <button
                   onClick={() => onStatusUpdate(order.id, OrderStatus.PAID)}
@@ -184,15 +186,23 @@ export function OrderCard({ order, onStatusUpdate, isExpanded = false, onToggleE
                 </button>
               </>
             )}
-            {/* Paid orders - Cancel button */}
-            {isPaid && (
-              <button
-                onClick={() => onStatusUpdate(order.id, OrderStatus.CANCELED)}
-                className="flex-1 min-w-[120px] px-3 py-2 bg-red-600 text-white rounded hover:bg-red-700 text-sm font-semibold"
-                title="Zrušiť objednávku (refund bude spracovaný neskôr)"
-              >
-                ❌ Zrušiť
-              </button>
+            {/* PAID online payment - Confirm/Reject buttons (after payment, operator must confirm) */}
+            {isPaidOnline && (
+              <>
+                <button
+                  onClick={() => onStatusUpdate(order.id, OrderStatus.PREPARING)}
+                  className="flex-1 min-w-[120px] px-3 py-2 bg-green-600 text-white rounded hover:bg-green-700 text-sm font-semibold"
+                >
+                  ✅ Potvrdiť
+                </button>
+                <button
+                  onClick={() => onStatusUpdate(order.id, OrderStatus.CANCELED)}
+                  className="flex-1 min-w-[120px] px-3 py-2 bg-red-600 text-white rounded hover:bg-red-700 text-sm font-semibold"
+                  title="Odmietnuť objednávku (refund bude spracovaný neskôr)"
+                >
+                  ❌ Odmietnuť
+                </button>
+              </>
             )}
             {!isStoryousSynced && (
               <button
@@ -265,8 +275,8 @@ export function OrderCard({ order, onStatusUpdate, isExpanded = false, onToggleE
         </div>
         
         <div className="flex items-center gap-2 ml-4">
-          {/* PENDING orders - Accept/Cancel buttons (all orders need operator confirmation) */}
-          {isPending && (
+          {/* PENDING with delivery payment - Accept/Cancel buttons */}
+          {isPendingDelivery && (
             <>
               <button
                 onClick={() => onStatusUpdate(order.id, OrderStatus.PAID)}
@@ -282,15 +292,23 @@ export function OrderCard({ order, onStatusUpdate, isExpanded = false, onToggleE
               </button>
             </>
           )}
-          {/* Paid orders - Cancel button */}
-          {isPaid && (
-            <button
-              onClick={() => onStatusUpdate(order.id, OrderStatus.CANCELED)}
-              className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 text-sm font-semibold"
-              title="Zrušiť objednávku (refund bude spracovaný neskôr)"
-            >
-              ❌ Zrušiť
-            </button>
+          {/* PAID online payment - Confirm/Reject buttons (after payment, operator must confirm) */}
+          {isPaidOnline && (
+            <>
+              <button
+                onClick={() => onStatusUpdate(order.id, OrderStatus.PREPARING)}
+                className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 text-sm font-semibold"
+              >
+                ✅ Potvrdiť
+              </button>
+              <button
+                onClick={() => onStatusUpdate(order.id, OrderStatus.CANCELED)}
+                className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 text-sm font-semibold"
+                title="Odmietnuť objednávku (refund bude spracovaný neskôr)"
+              >
+                ❌ Odmietnuť
+              </button>
+            </>
           )}
           {!isStoryousSynced && (
             <button
