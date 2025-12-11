@@ -34,14 +34,16 @@ export default function ProductsPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [selectedTenant, setSelectedTenant] = useState<'pornopizza' | 'pizzavnudzi'>(defaultTenant as 'pornopizza' | 'pizzavnudzi');
+  const [filterInitialized, setFilterInitialized] = useState(false);
 
-  // Update filter when context tenant changes
+  // Update filter when context tenant changes (only on initial load or when context changes externally)
   useEffect(() => {
-    const newFilter = contextTenant === 'all' ? 'all' : contextTenant as 'pornopizza' | 'pizzavnudzi';
-    if (newFilter !== filter) {
+    if (!filterInitialized) {
+      const newFilter = contextTenant === 'all' ? 'all' : contextTenant as 'pornopizza' | 'pizzavnudzi';
       setFilter(newFilter);
+      setFilterInitialized(true);
     }
-  }, [contextTenant, filter]);
+  }, [contextTenant, filterInitialized]);
 
   const fetchProducts = useCallback(async () => {
     try {
