@@ -23,6 +23,10 @@ export function EditBrandModal({
     domain: '',
     isActive: true,
   });
+  const [themeColors, setThemeColors] = useState({
+    primaryColor: '#E91E63',
+    secondaryColor: '#0F141A',
+  });
   const [cashEnabled, setCashEnabled] = useState(false);
   const [cardEnabled, setCardEnabled] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -42,6 +46,10 @@ export function EditBrandModal({
         subdomain: tenant.subdomain || tenant.slug || '',
         domain: tenant.domain || '',
         isActive: tenant.isActive !== undefined ? tenant.isActive : true,
+      });
+      setThemeColors({
+        primaryColor: theme.primaryColor || '#E91E63',
+        secondaryColor: theme.secondaryColor || '#0F141A',
       });
       setCashEnabled(paymentConfig.cashOnDeliveryEnabled === true);
       setCardEnabled(paymentConfig.cardOnDeliveryEnabled === true);
@@ -117,12 +125,9 @@ export function EditBrandModal({
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Brand Name
                   </label>
-                  <input
-                    type="text"
-                    value={formData.name}
-                    disabled
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 text-gray-500 cursor-not-allowed"
-                  />
+                  <div className="text-gray-900 font-medium">
+                    {formData.name}
+                  </div>
                 </div>
 
                 {/* Subdomain (read-only) */}
@@ -130,12 +135,9 @@ export function EditBrandModal({
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Subdomain
                   </label>
-                  <input
-                    type="text"
-                    value={formData.subdomain}
-                    disabled
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 text-gray-500 cursor-not-allowed"
-                  />
+                  <div className="text-gray-900 font-medium">
+                    {formData.subdomain}
+                  </div>
                 </div>
 
                 {/* Custom Domain (read-only) */}
@@ -143,12 +145,38 @@ export function EditBrandModal({
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Custom Domain
                   </label>
-                  <input
-                    type="text"
-                    value={formData.domain || 'Not configured'}
-                    disabled
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 text-gray-500 cursor-not-allowed"
-                  />
+                  <div className="text-gray-900 font-medium">
+                    {formData.domain || <span className="text-gray-400 italic">Not configured</span>}
+                  </div>
+                </div>
+
+                {/* Theme Colors (read-only) */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Theme Colors
+                  </label>
+                  <div className="flex gap-4">
+                    <div className="flex items-center gap-2">
+                      <div
+                        className="w-10 h-10 rounded border-2 border-gray-200"
+                        style={{ backgroundColor: themeColors.primaryColor }}
+                      />
+                      <div>
+                        <div className="text-xs text-gray-500">Primary</div>
+                        <div className="text-sm text-gray-900 font-medium">{themeColors.primaryColor}</div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div
+                        className="w-10 h-10 rounded border-2 border-gray-200"
+                        style={{ backgroundColor: themeColors.secondaryColor }}
+                      />
+                      <div>
+                        <div className="text-xs text-gray-500">Secondary</div>
+                        <div className="text-sm text-gray-900 font-medium">{themeColors.secondaryColor}</div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
                 {/* Active Status */}
