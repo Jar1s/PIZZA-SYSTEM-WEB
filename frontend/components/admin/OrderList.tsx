@@ -244,8 +244,8 @@ export function OrderList({ todayOnly = false, selectedTenant }: OrderListProps 
 
   return (
     <div className="bg-white rounded-lg shadow text-gray-900" style={{ backgroundColor: '#ffffff', color: '#111827' }}>
-      <div className="p-6 border-b border-gray-200">
-        <h2 className="text-2xl font-bold text-gray-900" style={{ color: '#111827' }}>Orders</h2>
+      <div className="p-4 lg:p-6 border-b border-gray-200">
+        <h2 className="text-xl lg:text-2xl font-bold text-gray-900" style={{ color: '#111827' }}>Orders</h2>
         {todayOnly ? (
           <div className="mt-4 text-sm text-gray-600" style={{ color: '#4b5563' }}>
             Showing orders from today ({new Date().toLocaleDateString('sk-SK')})

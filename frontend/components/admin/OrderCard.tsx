@@ -124,14 +124,91 @@ export function OrderCard({ order, onStatusUpdate, isExpanded = false, onToggleE
   };
   
   return (
-    <div className="p-4 hover:bg-gray-50">
-      <div className="flex items-center justify-between">
+    <div className="p-3 sm:p-4 hover:bg-gray-50">
+      {/* Mobile Layout */}
+      <div className="md:hidden space-y-3">
+        {/* Top Row: Order Number and Status */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="font-mono text-sm font-semibold text-gray-900">
+            {order.orderNumber != null && order.orderNumber > 0
+              ? `#${order.orderNumber.toString().padStart(4, '0')}`
+              : `#${order.id.slice(0, 8).toUpperCase()}`}
+          </span>
+          <span className={`px-2 py-0.5 rounded text-xs font-semibold whitespace-nowrap ${STATUS_COLORS[order.status]}`}>
+            {getStatusLabel(order.status)}
+          </span>
+          {isStoryousSynced && (
+            <span className="px-2 py-0.5 rounded text-xs font-semibold bg-green-100 text-green-800 whitespace-nowrap">
+              📦 Storyous
+            </span>
+          )}
+          {hasWoltDelivery && (
+            <span className="px-2 py-0.5 rounded text-xs font-semibold bg-orange-100 text-orange-800 whitespace-nowrap">
+              🚚 Wolt
+            </span>
+          )}
+        </div>
+        
+        {/* Customer Info */}
+        <div>
+          <div className="text-sm font-medium text-gray-900">{customer.name}</div>
+          <div className="text-xs text-gray-600">{customer.phone}</div>
+        </div>
+        
+        {/* Order Summary */}
+        <div className="text-sm text-gray-600">
+          {order.items.length} items • €{(order.totalCents / 100).toFixed(2)}
+        </div>
+        
+        {/* Action Buttons */}
+        <div className="flex flex-col gap-2 pt-2">
+          <div className="flex gap-2 flex-wrap">
+            {!isStoryousSynced && (
+              <button
+                onClick={handleSyncStoryous}
+                disabled={syncingStoryous}
+                className="flex-1 min-w-[120px] px-3 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-semibold"
+                title="Send to Storyous"
+              >
+                {syncingStoryous ? '⏳' : '📦 Storyous'}
+              </button>
+            )}
+            {!hasWoltDelivery && order.status === OrderStatus.PAID && (
+              <button
+                onClick={handleCreateWoltDelivery}
+                disabled={creatingWolt}
+                className="flex-1 min-w-[120px] px-3 py-2 bg-orange-600 text-white rounded hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-semibold"
+                title="Create Wolt delivery"
+              >
+                {creatingWolt ? '⏳' : '🚚 Wolt'}
+              </button>
+            )}
+            {nextStatus && (
+              <button
+                onClick={() => onStatusUpdate(order.id, nextStatus)}
+                className="flex-1 min-w-[120px] px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm font-semibold"
+              >
+                → {getNextStatusLabel(order.status)}
+              </button>
+            )}
+          </div>
+          <button
+            onClick={handleToggle}
+            className="w-full px-4 py-2 border border-gray-300 rounded hover:bg-gray-100 text-sm font-semibold"
+          >
+            {expanded ? 'Hide Details' : 'Show Details'}
+          </button>
+        </div>
+      </div>
+
+      {/* Desktop Layout */}
+      <div className="hidden md:flex items-center justify-between">
         <div className="flex-1">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-wrap">
             <span className="font-mono text-sm text-gray-500">
               {order.orderNumber != null && order.orderNumber > 0
                 ? `#${order.orderNumber.toString().padStart(4, '0')}`
-                : `#${order.id.slice(0, 8).toUpperCase()}`} {/* Fallback for old orders without orderNumber */}
+                : `#${order.id.slice(0, 8).toUpperCase()}`}
             </span>
             <span className={`px-2 py-1 rounded text-xs font-semibold ${STATUS_COLORS[order.status]}`}>
               {getStatusLabel(order.status)}
@@ -156,7 +233,7 @@ export function OrderCard({ order, onStatusUpdate, isExpanded = false, onToggleE
           </div>
         </div>
         
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 ml-4">
           {!isStoryousSynced && (
             <button
               onClick={handleSyncStoryous}
@@ -196,7 +273,7 @@ export function OrderCard({ order, onStatusUpdate, isExpanded = false, onToggleE
       </div>
       
       {expanded && (
-        <div className="mt-4 pt-4 border-t grid grid-cols-2 gap-4 text-sm">
+        <div className="mt-4 pt-4 border-t grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
           {storyousMessage && (
             <div className="col-span-2 mb-2 p-2 rounded text-xs bg-gray-100">
               {storyousMessage}
