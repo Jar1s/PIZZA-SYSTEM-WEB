@@ -73,13 +73,16 @@ export default function AdminLayout({
         )}
         
         {/* Sidebar */}
-        <div className={`
-          fixed lg:static inset-y-0 left-0 z-50
-          transform transition-transform duration-300 ease-in-out
-          ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
-        `}>
+        <aside 
+          className={`
+            fixed lg:static inset-y-0 left-0 z-50
+            transform transition-transform duration-300 ease-in-out
+            ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
+            lg:translate-x-0
+          `}
+        >
           <Sidebar onClose={() => setSidebarOpen(false)} />
-        </div>
+        </aside>
         
         <div className="flex-1 flex flex-col overflow-hidden lg:ml-0">
           <Header 
