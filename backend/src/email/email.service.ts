@@ -645,7 +645,7 @@ export class EmailService {
         padding: 20px 15px !important;
       }
       .email-header {
-        padding: 18px 15px !important;
+        padding: 12px 15px !important;
       }
       .logo-img {
         max-width: 120px !important;
@@ -1235,17 +1235,17 @@ export class EmailService {
           
           <!-- Header with Gradient -->
           <tr>
-            <td class="email-header" style="background: linear-gradient(135deg, ${primaryColor} 0%, ${primaryColor}dd 100%); padding: 20px 20px; text-align: center; position: relative;">
+            <td class="email-header" style="background: linear-gradient(135deg, ${primaryColor} 0%, ${primaryColor}dd 100%); padding: 15px 20px; text-align: center; position: relative;">
               <!-- Decorative circles - smaller -->
-              <div style="position: absolute; top: -20px; right: -20px; width: 60px; height: 60px; background: rgba(255,255,255,0.1); border-radius: 50%;"></div>
-              <div style="position: absolute; bottom: -15px; left: -15px; width: 50px; height: 50px; background: rgba(255,255,255,0.08); border-radius: 50%;"></div>
+              <div style="position: absolute; top: -15px; right: -15px; width: 50px; height: 50px; background: rgba(255,255,255,0.1); border-radius: 50%;"></div>
+              <div style="position: absolute; bottom: -10px; left: -10px; width: 40px; height: 40px; background: rgba(255,255,255,0.08); border-radius: 50%;"></div>
               
               ${logoUrl ? `
-              <div style="position: relative; z-index: 1;">
-                <img src="${logoUrl}" alt="${tenantName}" class="logo-img" style="max-width: 140px; height: auto; margin-bottom: 5px; filter: drop-shadow(0 4px 8px rgba(0,0,0,0.2));" />
+              <div style="position: relative; z-index: 1; margin: 0;">
+                <img src="${logoUrl}" alt="${tenantName}" class="logo-img" style="max-width: 140px; height: auto; margin: 0 0 5px 0; filter: drop-shadow(0 4px 8px rgba(0,0,0,0.2));" />
               </div>
               ` : `
-              <div style="position: relative; z-index: 1;">
+              <div style="position: relative; z-index: 1; margin: 0;">
                 <h1 style="color: #ffffff; margin: 0 0 4px 0; font-size: 24px; font-weight: 700; text-shadow: 0 2px 10px rgba(0,0,0,0.2); letter-spacing: -0.5px;">🍕 ${tenantName}</h1>
               </div>
               `}
