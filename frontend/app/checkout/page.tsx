@@ -1191,16 +1191,16 @@ export default function CheckoutPage() {
         deliveryFeeCents: deliveryFeeCents, // Add delivery fee from zone calculation
       };
 
-      // Add guest checkout fields
-      if (!user) {
-        if (paymentType === 'cash_on_delivery') {
-          // Cash on delivery - mandatory registration
-          orderData.paymentMethod = cashOnDeliveryMethod;
+      // Set payment method for cash on delivery (both guest and logged-in users)
+      if (paymentType === 'cash_on_delivery') {
+        orderData.paymentMethod = cashOnDeliveryMethod;
+        if (!user) {
+          // Cash on delivery - mandatory registration for guests
           orderData.saveAccount = true; // Always true for cash on delivery
-        } else if (paymentType === 'online') {
-          // Online payment - optional registration
-          orderData.saveAccount = saveAccount;
         }
+      } else if (paymentType === 'online' && !user) {
+        // Online payment - optional registration (only for guests)
+        orderData.saveAccount = saveAccount;
       }
 
       const result = await createOrder(tenantSlug, orderData);
