@@ -60,22 +60,6 @@ export default function CheckoutPage() {
     return manualMaintenanceMode || autoMaintenanceMode;
   }, [normalizedTenant]);
 
-  // Validate phone number for button state
-  const isPhoneValid = useMemo(() => {
-    if (!phoneFormData.phone.trim()) return false;
-    const validation = validatePhone(phoneFormData.phone.replace(/\D/g, ''), phoneFormData.phonePrefix);
-    return validation.isValid;
-  }, [phoneFormData.phone, phoneFormData.phonePrefix]);
-
-  // Validate address for button state
-  const isAddressValid = useMemo(() => {
-    return !!(
-      addressFormData.street?.trim() &&
-      addressFormData.city?.trim() &&
-      addressFormData.postalCode?.trim()
-    );
-  }, [addressFormData.street, addressFormData.city, addressFormData.postalCode]);
-
   // Guest checkout state
   const [guestData, setGuestData] = useState({
     name: '',
@@ -127,6 +111,22 @@ export default function CheckoutPage() {
   const [savingPhone, setSavingPhone] = useState(false);
   const [addressFormError, setAddressFormError] = useState<string | null>(null);
   const [phoneFormError, setPhoneFormError] = useState<string | null>(null);
+
+  // Validate phone number for button state
+  const isPhoneValid = useMemo(() => {
+    if (!phoneFormData.phone.trim()) return false;
+    const validation = validatePhone(phoneFormData.phone.replace(/\D/g, ''), phoneFormData.phonePrefix);
+    return validation.isValid;
+  }, [phoneFormData.phone, phoneFormData.phonePrefix]);
+
+  // Validate address for button state
+  const isAddressValid = useMemo(() => {
+    return !!(
+      addressFormData.street?.trim() &&
+      addressFormData.city?.trim() &&
+      addressFormData.postalCode?.trim()
+    );
+  }, [addressFormData.street, addressFormData.city, addressFormData.postalCode]);
 
   // Calculate delivery fee when address changes
   useEffect(() => {
