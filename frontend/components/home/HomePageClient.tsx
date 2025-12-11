@@ -615,7 +615,6 @@ export function HomePageClient({ products, tenant }: HomePageClientProps) {
                 </div>
               )}
             </div>
-            </>
           ) : (
             <>
               {/* Category Title and Subtitle for DRINKS */}
