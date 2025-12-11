@@ -1,12 +1,16 @@
 'use client';
 
-import { useEffect, useState, Suspense, useCallback } from 'react';
+import { useEffect, useState, Suspense, useCallback, useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import { Product } from '@pizza-ecosystem/shared';
 import { getProducts, updateProduct, deleteProduct } from '@/lib/api';
 import { ProtectedRoute } from '@/components/admin/ProtectedRoute';
 import { useAdminContext } from '@/app/admin/admin-context';
 import { getTenantSlug } from '@/lib/tenant-utils';
+import { getProductDisplayImage } from '@/lib/product-images';
+import { getProductTranslation } from '@/lib/product-translations';
+import Image from 'next/image';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 // Lazy load modals for code splitting
 const EditProductModal = dynamic(() => import('@/components/admin/EditProductModal').then(mod => ({ default: mod.EditProductModal })), {
@@ -25,6 +29,7 @@ export default function ProductsPage() {
   const { selectedTenant: contextTenant } = useAdminContext();
   const currentTenant = getTenantSlug();
   const defaultTenant = contextTenant === 'all' ? currentTenant : contextTenant;
+  const { language } = useLanguage();
   
   const [products, setProducts] = useState<ProductWithTenant[]>([]);
   const [loading, setLoading] = useState(true);
@@ -35,6 +40,12 @@ export default function ProductsPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const selectedTenant = defaultTenant as 'pornopizza' | 'pizzavnudzi';
+  
+  // Helper function to get product display image
+  const getProductImage = useCallback((product: ProductWithTenant) => {
+    const translation = getProductTranslation(product.name, language);
+    return getProductDisplayImage(product, translation.name);
+  }, [language]);
 
   const fetchProducts = useCallback(async () => {
     try {
@@ -215,10 +226,26 @@ export default function ProductsPage() {
                   return product.description;
                 };
 
+                const productImage = getProductImage(product);
+                
                 return (
                   <div key={product.id} className="bg-white rounded-lg shadow p-4">
-                    <div className="flex items-start justify-between mb-3">
-                      <div className="flex-1">
+                    <div className="flex items-start gap-3 mb-3">
+                      {productImage && (
+                        <div className="relative w-16 h-16 flex-shrink-0 overflow-hidden rounded-lg bg-gray-100">
+                          <Image
+                            src={productImage}
+                            alt={product.name}
+                            fill
+                            sizes="64px"
+                            className="object-cover"
+                            onError={(e) => {
+                              e.currentTarget.style.display = 'none';
+                            }}
+                          />
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0">
                         <div className="text-sm font-medium text-gray-900">
                           {product.name}
                         </div>
@@ -321,37 +348,57 @@ export default function ProductsPage() {
                       </td>
                     </tr>
                   ) : (
-                    filteredProducts.map((product) => (
+                    filteredProducts.map((product) => {
+                      const productImage = getProductImage(product);
+                      return (
                       <tr key={product.id} className="hover:bg-gray-50">
                         <td className="px-6 py-4">
-                          <div className="text-sm font-medium text-gray-900">
-                            {product.name}
-                          </div>
-                          {product.displayName && (
-                            <div className={`text-xs mt-1 ${product.displayName !== product.name ? 'text-blue-600' : 'text-gray-500'}`}>
-                              Web: {product.displayName}
-                            </div>
-                          )}
-                          {product.description && (() => {
-                            // Try to parse as JSON {sk: "...", en: "..."}
-                            try {
-                              const parsed = JSON.parse(product.description);
-                              if (parsed && typeof parsed === 'object' && (parsed.sk || parsed.en)) {
+                          <div className="flex items-center gap-3">
+                            {productImage && (
+                              <div className="relative w-12 h-12 flex-shrink-0 overflow-hidden rounded-lg bg-gray-100">
+                                <Image
+                                  src={productImage}
+                                  alt={product.name}
+                                  fill
+                                  sizes="48px"
+                                  className="object-cover"
+                                  onError={(e) => {
+                                    e.currentTarget.style.display = 'none';
+                                  }}
+                                />
+                              </div>
+                            )}
+                            <div className="flex-1 min-w-0">
+                              <div className="text-sm font-medium text-gray-900">
+                                {product.name}
+                              </div>
+                              {product.displayName && (
+                                <div className={`text-xs mt-1 ${product.displayName !== product.name ? 'text-blue-600' : 'text-gray-500'}`}>
+                                  Web: {product.displayName}
+                                </div>
+                              )}
+                              {product.description && (() => {
+                                // Try to parse as JSON {sk: "...", en: "..."}
+                                try {
+                                  const parsed = JSON.parse(product.description);
+                                  if (parsed && typeof parsed === 'object' && (parsed.sk || parsed.en)) {
+                                    return (
+                                      <div className="text-xs text-gray-500 mt-1 line-clamp-1">
+                                        {parsed.sk || parsed.en || product.description}
+                                      </div>
+                                    );
+                                  }
+                                } catch (e) {
+                                  // Not JSON, show as is
+                                }
                                 return (
                                   <div className="text-xs text-gray-500 mt-1 line-clamp-1">
-                                    {parsed.sk || parsed.en || product.description}
+                                    {product.description}
                                   </div>
                                 );
-                              }
-                            } catch (e) {
-                              // Not JSON, show as is
-                            }
-                            return (
-                              <div className="text-xs text-gray-500 mt-1 line-clamp-1">
-                                {product.description}
-                              </div>
-                            );
-                          })()}
+                              })()}
+                            </div>
+                          </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm text-gray-900">
@@ -399,7 +446,8 @@ export default function ProductsPage() {
                           </button>
                         </td>
                       </tr>
-                    ))
+                    );
+                    })
                   )}
                 </tbody>
               </table>
