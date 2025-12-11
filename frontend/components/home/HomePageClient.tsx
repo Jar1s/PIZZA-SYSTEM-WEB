@@ -81,17 +81,7 @@ export function HomePageClient({ products, tenant }: HomePageClientProps) {
     
     // Sort products within each category
     Object.keys(grouped).forEach(category => {
-      grouped[category].sort((a, b) => {
-        if (category === 'PIZZA') {
-          const aIsBuildYourOwn = a.name === 'Vyskladaj si vlastnú pizzu' || a.name === 'Build Your Own Pizza';
-          const bIsBuildYourOwn = b.name === 'Vyskladaj si vlastnú pizzu' || b.name === 'Build Your Own Pizza';
-          
-          if (aIsBuildYourOwn && !bIsBuildYourOwn) return -1;
-          if (!aIsBuildYourOwn && bIsBuildYourOwn) return 1;
-        }
-        
-        return a.name.localeCompare(b.name);
-      });
+      grouped[category].sort((a, b) => a.name.localeCompare(b.name));
     });
     
     return grouped;
@@ -235,10 +225,6 @@ export function HomePageClient({ products, tenant }: HomePageClientProps) {
     };
     
     pizzas.forEach(pizza => {
-      if (pizza.name === 'Vyskladaj si vlastnú pizzu' || pizza.name === 'Build Your Own Pizza') {
-        return;
-      }
-      
       const subCat = pizzaSubCategoryMap[pizza.name];
       if (subCat) {
         grouped[subCat].push(pizza);
@@ -248,8 +234,21 @@ export function HomePageClient({ products, tenant }: HomePageClientProps) {
     });
     
     // Sort each subcategory by price (lowest to highest)
+    // But put "Vyskladaj si vlastnú pizzu" first in FOREPLAY
     Object.keys(grouped).forEach(subCat => {
-      grouped[subCat].sort((a, b) => a.priceCents - b.priceCents);
+      if (subCat === 'FOREPLAY') {
+        grouped[subCat].sort((a, b) => {
+          const aIsBuildYourOwn = a.name === 'Vyskladaj si vlastnú pizzu' || a.name === 'vyskladaj si vlastnú pizzu' || a.name === 'Build Your Own Pizza';
+          const bIsBuildYourOwn = b.name === 'Vyskladaj si vlastnú pizzu' || b.name === 'vyskladaj si vlastnú pizzu' || b.name === 'Build Your Own Pizza';
+          
+          if (aIsBuildYourOwn && !bIsBuildYourOwn) return -1;
+          if (!aIsBuildYourOwn && bIsBuildYourOwn) return 1;
+          
+          return a.priceCents - b.priceCents;
+        });
+      } else {
+        grouped[subCat].sort((a, b) => a.priceCents - b.priceCents);
+      }
     });
     
     return grouped;
@@ -366,9 +365,7 @@ export function HomePageClient({ products, tenant }: HomePageClientProps) {
         // If no best sellers, use first 3 pizzas as fallback
         const productsToShow = bestSellerProducts.length > 0 
           ? bestSellerProducts 
-          : (productsByCategory.PIZZA || []).filter(
-              p => p.name !== 'Vyskladaj si vlastnú pizzu' && p.name !== 'Build Your Own Pizza'
-            ).slice(0, 3);
+          : (productsByCategory.PIZZA || []).slice(0, 3);
         
         if (productsToShow.length === 0) return null;
         
@@ -489,178 +486,135 @@ export function HomePageClient({ products, tenant }: HomePageClientProps) {
 
           {/* Products by Category */}
           {categoryFilter === 'PIZZA' ? (
-            <>
-              {(() => {
-                const buildYourOwnPizza = productsByCategory.PIZZA?.find(
-                  p => p.name === 'Vyskladaj si vlastnú pizzu' || p.name === 'Build Your Own Pizza'
-                );
-                
-                const buildYourOwnTranslation = buildYourOwnPizza 
-                  ? getProductTranslation(buildYourOwnPizza.name, language)
-                  : null;
-                
-                return (
-                  <div className="mb-16" style={{ position: 'relative', zIndex: 1 }}>
-                    {/* FOREPLAY */}
-                    {productsBySubCategory.FOREPLAY.length > 0 && (
-                      <div className="mb-16">
-                        <motion.div
-                          initial={{ opacity: 0, x: -20 }}
-                          whileInView={{ opacity: 1, x: 0 }}
-                          viewport={{ once: true }}
-                          className="mb-8 text-center"
-                        >
-                          <h3 
-                            className={`text-4xl md:text-5xl font-black mb-2 ${isDarkTheme ? 'text-porno-glow' : ''}`}
-                            style={{ 
-                              color: isDarkTheme ? '#FF6B9D' : primaryColor,
-                              textShadow: isDarkTheme 
-                                ? '0 0 20px rgba(255, 107, 157, 0.7), 0 0 40px rgba(255, 107, 157, 0.4), 0 2px 8px rgba(0, 0, 0, 0.9)'
-                                : '0 2px 4px rgba(0, 0, 0, 0.1)',
-                              letterSpacing: '-0.02em'
-                            }}
-                          >
-                            🔥 {t.foreplay}
-                          </h3>
-                          <p className={`mb-4 text-lg ${isDarkTheme ? 'text-gray-400' : ''}`} style={{ color: isDarkTheme ? '#999' : '#666666' }}>{t.foreplayDesc}</p>
-                          <div className="h-1 w-32 rounded mx-auto" style={{ backgroundColor: primaryColor }}></div>
-                        </motion.div>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5 md:gap-6">
-                          {productsBySubCategory.FOREPLAY.map((product, index) => (
-                            <ProductCard key={product.id} product={product} index={index} isDark={isDarkTheme} />
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* MAIN ACTION */}
-                    {productsBySubCategory.MAIN_ACTION.length > 0 && (
-                      <div className="mb-16">
-                        <motion.div
-                          initial={{ opacity: 0, x: -20 }}
-                          whileInView={{ opacity: 1, x: 0 }}
-                          viewport={{ once: true }}
-                          className="mb-8 text-center"
-                        >
-                          <h3 
-                            className={`text-4xl md:text-5xl font-black mb-2 ${isDarkTheme ? 'text-porno-glow' : ''}`}
-                            style={{ 
-                              color: isDarkTheme ? '#FF6B9D' : primaryColor,
-                              textShadow: isDarkTheme 
-                                ? '0 0 20px rgba(255, 107, 157, 0.7), 0 0 40px rgba(255, 107, 157, 0.4), 0 2px 8px rgba(0, 0, 0, 0.9)'
-                                : '0 2px 4px rgba(0, 0, 0, 0.1)',
-                              letterSpacing: '-0.02em'
-                            }}
-                          >
-                            😈 {t.mainAction}
-                          </h3>
-                          <p className={`mb-4 text-lg ${isDarkTheme ? 'text-gray-400' : ''}`} style={{ color: isDarkTheme ? '#999' : '#666666' }}>{t.mainActionDesc}</p>
-                          <div className="h-1 w-32 rounded mx-auto" style={{ backgroundColor: primaryColor }}></div>
-                        </motion.div>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5 md:gap-6">
-                          {productsBySubCategory.MAIN_ACTION.map((product, index) => (
-                            <ProductCard key={product.id} product={product} index={index} isDark={isDarkTheme} />
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* DELUXE FETISH */}
-                    {productsBySubCategory.DELUXE_FETISH.length > 0 && (
-                      <div className="mb-16">
-                        <motion.div
-                          initial={{ opacity: 0, x: -20 }}
-                          whileInView={{ opacity: 1, x: 0 }}
-                          viewport={{ once: true }}
-                          className="mb-8 text-center"
-                        >
-                          <h3 
-                            className={`text-4xl md:text-5xl font-black mb-2 ${isDarkTheme ? 'text-porno-glow' : ''}`}
-                            style={{ 
-                              color: isDarkTheme ? '#FF6B9D' : primaryColor,
-                              textShadow: isDarkTheme 
-                                ? '0 0 20px rgba(255, 107, 157, 0.7), 0 0 40px rgba(255, 107, 157, 0.4), 0 2px 8px rgba(0, 0, 0, 0.9)'
-                                : '0 2px 4px rgba(0, 0, 0, 0.1)',
-                              letterSpacing: '-0.02em'
-                            }}
-                          >
-                            💋 {t.deluxeFetish}
-                          </h3>
-                          <p className={`mb-4 text-lg ${isDarkTheme ? 'text-gray-400' : ''}`} style={{ color: isDarkTheme ? '#999' : '#666666' }}>{t.deluxeFetishDesc}</p>
-                          <div className="h-1 w-32 rounded mx-auto" style={{ backgroundColor: primaryColor }}></div>
-                        </motion.div>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5 md:gap-6">
-                          {productsBySubCategory.DELUXE_FETISH.map((product, index) => (
-                            <ProductCard key={product.id} product={product} index={index} isDark={isDarkTheme} />
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* PREMIUM SINS */}
-                    {productsBySubCategory.PREMIUM_SINS.length > 0 && (
-                      <div className="mb-16">
-                        <motion.div
-                          initial={{ opacity: 0, x: -20 }}
-                          whileInView={{ opacity: 1, x: 0 }}
-                          viewport={{ once: true }}
-                          className="mb-8 text-center"
-                        >
-                          <h3 
-                            className={`text-4xl md:text-5xl font-black mb-2 ${isDarkTheme ? 'text-porno-glow' : ''}`}
-                            style={{ 
-                              color: isDarkTheme ? '#FF6B9D' : primaryColor,
-                              textShadow: isDarkTheme 
-                                ? '0 0 20px rgba(255, 107, 157, 0.7), 0 0 40px rgba(255, 107, 157, 0.4), 0 2px 8px rgba(0, 0, 0, 0.9)'
-                                : '0 2px 4px rgba(0, 0, 0, 0.1)',
-                              letterSpacing: '-0.02em'
-                            }}
-                          >
-                            🍑 {t.premiumSins}
-                          </h3>
-                          <p className={`mb-4 text-lg ${isDarkTheme ? 'text-gray-400' : ''}`} style={{ color: isDarkTheme ? '#999' : '#666666' }}>{t.premiumSinsDesc}</p>
-                          <div className="h-1 w-32 rounded mx-auto" style={{ backgroundColor: primaryColor }}></div>
-                        </motion.div>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5 md:gap-6">
-                          {productsBySubCategory.PREMIUM_SINS.map((product, index) => (
-                            <ProductCard key={product.id} product={product} index={index} isDark={isDarkTheme} />
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Build Your Own Pizza */}
-                    {buildYourOwnPizza && (
-                      <div className="mb-16">
-                        <motion.div
-                          initial={{ opacity: 0, x: -20 }}
-                          whileInView={{ opacity: 1, x: 0 }}
-                          viewport={{ once: true }}
-                          className="mb-8 text-center"
-                        >
-                          <h3 
-                            className={`text-4xl md:text-5xl font-black mb-2 flex items-center justify-center gap-3 ${isDarkTheme ? 'text-porno-glow' : ''}`}
-                            style={{ 
-                              color: isDarkTheme ? '#FF6B9D' : primaryColor,
-                              textShadow: isDarkTheme 
-                                ? '0 0 20px rgba(255, 107, 157, 0.7), 0 0 40px rgba(255, 107, 157, 0.4), 0 2px 8px rgba(0, 0, 0, 0.9)'
-                                : '0 2px 4px rgba(0, 0, 0, 0.1)',
-                              letterSpacing: '-0.02em'
-                            }}
-                          >
-                            <span className="text-5xl">🍕</span>
-                            {buildYourOwnTranslation?.name || 'Vyskladaj si vlastnú pizzu'}
-                          </h3>
-                          <div className="h-1 w-32 rounded mx-auto" style={{ backgroundColor: primaryColor }}></div>
-                        </motion.div>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5 md:gap-6">
-                          <ProductCard key={buildYourOwnPizza.id} product={buildYourOwnPizza} index={0} isDark={isDarkTheme} />
-                        </div>
-                      </div>
-                    )}
+            <div className="mb-16" style={{ position: 'relative', zIndex: 1 }}>
+              {/* FOREPLAY */}
+              {productsBySubCategory.FOREPLAY.length > 0 && (
+                <div className="mb-16">
+                  <motion.div
+                    initial={{ opacity: 0, x: -20 }}
+                    whileInView={{ opacity: 1, x: 0 }}
+                    viewport={{ once: true }}
+                    className="mb-8 text-center"
+                  >
+                    <h3 
+                      className={`text-4xl md:text-5xl font-black mb-2 ${isDarkTheme ? 'text-porno-glow' : ''}`}
+                      style={{ 
+                        color: isDarkTheme ? '#FF6B9D' : primaryColor,
+                        textShadow: isDarkTheme 
+                          ? '0 0 20px rgba(255, 107, 157, 0.7), 0 0 40px rgba(255, 107, 157, 0.4), 0 2px 8px rgba(0, 0, 0, 0.9)'
+                          : '0 2px 4px rgba(0, 0, 0, 0.1)',
+                        letterSpacing: '-0.02em'
+                      }}
+                    >
+                      🔥 {t.foreplay}
+                    </h3>
+                    <p className={`mb-4 text-lg ${isDarkTheme ? 'text-gray-400' : ''}`} style={{ color: isDarkTheme ? '#999' : '#666666' }}>{t.foreplayDesc}</p>
+                    <div className="h-1 w-32 rounded mx-auto" style={{ backgroundColor: primaryColor }}></div>
+                  </motion.div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5 md:gap-6">
+                    {productsBySubCategory.FOREPLAY.map((product, index) => (
+                      <ProductCard key={product.id} product={product} index={index} isDark={isDarkTheme} />
+                    ))}
                   </div>
-                );
-              })()}
+                </div>
+              )}
+
+              {/* MAIN ACTION */}
+              {productsBySubCategory.MAIN_ACTION.length > 0 && (
+                <div className="mb-16">
+                  <motion.div
+                    initial={{ opacity: 0, x: -20 }}
+                    whileInView={{ opacity: 1, x: 0 }}
+                    viewport={{ once: true }}
+                    className="mb-8 text-center"
+                  >
+                    <h3 
+                      className={`text-4xl md:text-5xl font-black mb-2 ${isDarkTheme ? 'text-porno-glow' : ''}`}
+                      style={{ 
+                        color: isDarkTheme ? '#FF6B9D' : primaryColor,
+                        textShadow: isDarkTheme 
+                          ? '0 0 20px rgba(255, 107, 157, 0.7), 0 0 40px rgba(255, 107, 157, 0.4), 0 2px 8px rgba(0, 0, 0, 0.9)'
+                          : '0 2px 4px rgba(0, 0, 0, 0.1)',
+                        letterSpacing: '-0.02em'
+                      }}
+                    >
+                      😈 {t.mainAction}
+                    </h3>
+                    <p className={`mb-4 text-lg ${isDarkTheme ? 'text-gray-400' : ''}`} style={{ color: isDarkTheme ? '#999' : '#666666' }}>{t.mainActionDesc}</p>
+                    <div className="h-1 w-32 rounded mx-auto" style={{ backgroundColor: primaryColor }}></div>
+                  </motion.div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5 md:gap-6">
+                    {productsBySubCategory.MAIN_ACTION.map((product, index) => (
+                      <ProductCard key={product.id} product={product} index={index} isDark={isDarkTheme} />
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* DELUXE FETISH */}
+              {productsBySubCategory.DELUXE_FETISH.length > 0 && (
+                <div className="mb-16">
+                  <motion.div
+                    initial={{ opacity: 0, x: -20 }}
+                    whileInView={{ opacity: 1, x: 0 }}
+                    viewport={{ once: true }}
+                    className="mb-8 text-center"
+                  >
+                    <h3 
+                      className={`text-4xl md:text-5xl font-black mb-2 ${isDarkTheme ? 'text-porno-glow' : ''}`}
+                      style={{ 
+                        color: isDarkTheme ? '#FF6B9D' : primaryColor,
+                        textShadow: isDarkTheme 
+                          ? '0 0 20px rgba(255, 107, 157, 0.7), 0 0 40px rgba(255, 107, 157, 0.4), 0 2px 8px rgba(0, 0, 0, 0.9)'
+                          : '0 2px 4px rgba(0, 0, 0, 0.1)',
+                        letterSpacing: '-0.02em'
+                      }}
+                    >
+                      💋 {t.deluxeFetish}
+                    </h3>
+                    <p className={`mb-4 text-lg ${isDarkTheme ? 'text-gray-400' : ''}`} style={{ color: isDarkTheme ? '#999' : '#666666' }}>{t.deluxeFetishDesc}</p>
+                    <div className="h-1 w-32 rounded mx-auto" style={{ backgroundColor: primaryColor }}></div>
+                  </motion.div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5 md:gap-6">
+                    {productsBySubCategory.DELUXE_FETISH.map((product, index) => (
+                      <ProductCard key={product.id} product={product} index={index} isDark={isDarkTheme} />
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* PREMIUM SINS */}
+              {productsBySubCategory.PREMIUM_SINS.length > 0 && (
+                <div className="mb-16">
+                  <motion.div
+                    initial={{ opacity: 0, x: -20 }}
+                    whileInView={{ opacity: 1, x: 0 }}
+                    viewport={{ once: true }}
+                    className="mb-8 text-center"
+                  >
+                    <h3 
+                      className={`text-4xl md:text-5xl font-black mb-2 ${isDarkTheme ? 'text-porno-glow' : ''}`}
+                      style={{ 
+                        color: isDarkTheme ? '#FF6B9D' : primaryColor,
+                        textShadow: isDarkTheme 
+                          ? '0 0 20px rgba(255, 107, 157, 0.7), 0 0 40px rgba(255, 107, 157, 0.4), 0 2px 8px rgba(0, 0, 0, 0.9)'
+                          : '0 2px 4px rgba(0, 0, 0, 0.1)',
+                        letterSpacing: '-0.02em'
+                      }}
+                    >
+                      🍑 {t.premiumSins}
+                    </h3>
+                    <p className={`mb-4 text-lg ${isDarkTheme ? 'text-gray-400' : ''}`} style={{ color: isDarkTheme ? '#999' : '#666666' }}>{t.premiumSinsDesc}</p>
+                    <div className="h-1 w-32 rounded mx-auto" style={{ backgroundColor: primaryColor }}></div>
+                  </motion.div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5 md:gap-6">
+                    {productsBySubCategory.PREMIUM_SINS.map((product, index) => (
+                      <ProductCard key={product.id} product={product} index={index} isDark={isDarkTheme} />
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
             </>
           ) : (
             <>

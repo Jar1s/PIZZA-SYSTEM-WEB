@@ -28,6 +28,15 @@ export const productTranslations: Record<string, ProductTranslation> = {
     weight: '450g',
     allergens: ['1', '7'] // Depends on selections
   },
+  'vyskladaj si vlastnú pizzu': {
+    name: { sk: 'vyskladaj si vlastnú pizzu', en: 'Build Your Own Pizza' },
+    description: {
+      sk: 'Vytvor si vlastnú pizzu podľa svojich predstáv. Vyber si cesto, syr, základ a prílohy.',
+      en: 'Create your own pizza according to your preferences. Choose dough, cheese, base sauce and toppings.'
+    },
+    weight: '450g',
+    allergens: ['1', '7'] // Depends on selections
+  },
   
   // 🔥 PREDOHRA / FOREPLAY
   'Margherita': {

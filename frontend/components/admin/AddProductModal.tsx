@@ -100,25 +100,15 @@ export function AddProductModal({
         imageUrl = await uploadImage(imageFile);
       }
 
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
-      const res = await fetch(`${API_URL}/api/${tenantSlug}/products`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: formData.name,
-          description: formData.description || null,
-          priceCents: Math.round(formData.price * 100), // Convert euros to cents
-          category: formData.category,
-          image: imageUrl || null,
-          isActive: formData.isActive,
-          isBestSeller: formData.isBestSeller,
-        }),
+      await createProduct(tenantSlug, {
+        name: formData.name,
+        description: formData.description || null,
+        priceCents: Math.round(formData.price * 100), // Convert euros to cents
+        category: formData.category,
+        image: imageUrl || null,
+        isActive: formData.isActive,
+        isBestSeller: formData.isBestSeller,
       });
-
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => ({ message: 'Failed to create product' }));
-        throw new Error(errorData.message || 'Failed to create product');
-      }
       
       // Reset form
       setFormData({
