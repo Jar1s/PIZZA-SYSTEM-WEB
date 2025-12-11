@@ -210,26 +210,26 @@ export default function CustomersPage() {
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold">Customers</h1>
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 lg:mb-6 gap-2">
+        <h1 className="text-2xl lg:text-3xl font-bold">Customers</h1>
         <div className="text-sm text-gray-600">
           Total: {pagination.total} customers
         </div>
       </div>
 
       {/* Search */}
-      <form onSubmit={handleSearch} className="mb-6">
-        <div className="flex gap-2">
+      <form onSubmit={handleSearch} className="mb-4 lg:mb-6">
+        <div className="flex flex-col sm:flex-row gap-2">
           <input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search by name, email, or phone..."
-            className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+            className="w-full sm:flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
           />
           <button
             type="submit"
-            className="px-6 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 font-semibold"
+            className="w-full sm:w-auto px-6 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 font-semibold"
           >
             Search
           </button>
@@ -240,7 +240,7 @@ export default function CustomersPage() {
                 setSearch('');
                 setPage(1);
               }}
-              className="px-6 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-semibold"
+              className="w-full sm:w-auto px-6 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-semibold"
             >
               Clear
             </button>
@@ -263,146 +263,228 @@ export default function CustomersPage() {
         </div>
       )}
 
-      {/* Customers Table */}
+      {/* Customers - Mobile Card View */}
       {!loading && !error && (
         <>
-          <div className="bg-white rounded-lg shadow overflow-hidden">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Customer
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Contact
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Orders
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Total Spent
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Status
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Registered
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {customers.length === 0 ? (
-                  <tr>
-                    <td colSpan={7} className="px-6 py-12 text-center text-gray-500">
-                      No customers found
-                    </td>
-                  </tr>
-                ) : (
-                  customers.map((customer) => (
-                    <tr key={customer.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center">
-                          <div className="flex-shrink-0 h-10 w-10 rounded-full bg-orange-100 flex items-center justify-center">
-                            <span className="text-orange-600 font-semibold">
-                              {customer.name?.charAt(0).toUpperCase() || '?'}
-                            </span>
-                          </div>
-                          <div className="ml-4">
-                            <div className="text-sm font-medium text-gray-900">
-                              {customer.name || 'No name'}
-                            </div>
-                            {customer.email && (
-                              <div className="text-sm text-gray-500">{customer.email}</div>
-                            )}
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">
-                          {customer.phone ? (
-                            <div className="flex items-center gap-2">
-                              <span>{customer.phone}</span>
-                              {customer.phoneVerified && (
-                                <span className="text-green-500" title="Phone verified">
-                                  ✓
-                                </span>
-                              )}
-                            </div>
-                          ) : (
-                            <span className="text-gray-400">No phone</span>
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900 font-semibold">
-                          {customer.orderCount}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-semibold text-gray-900">
-                          €{(customer.totalSpentCents / 100).toFixed(2)}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span
-                          className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                            customer.isActive
-                              ? 'bg-green-100 text-green-800'
-                              : 'bg-red-100 text-red-800'
-                          }`}
-                        >
-                          {customer.isActive ? 'Active' : 'Inactive'}
+          {/* Mobile Card Layout */}
+          <div className="md:hidden space-y-4">
+            {customers.length === 0 ? (
+              <div className="bg-white rounded-lg shadow p-6 text-center text-gray-500">
+                No customers found
+              </div>
+            ) : (
+              customers.map((customer) => (
+                <div key={customer.id} className="bg-white rounded-lg shadow p-4">
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex items-center gap-3">
+                      <div className="flex-shrink-0 h-10 w-10 rounded-full bg-orange-100 flex items-center justify-center">
+                        <span className="text-orange-600 font-semibold">
+                          {customer.name?.charAt(0).toUpperCase() || '?'}
                         </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      </div>
+                      <div>
+                        <div className="text-sm font-medium text-gray-900">
+                          {customer.name || 'No name'}
+                        </div>
+                        {customer.email && (
+                          <div className="text-xs text-gray-500 mt-1">{customer.email}</div>
+                        )}
+                      </div>
+                    </div>
+                    <span
+                      className={`px-2 py-1 text-xs font-semibold rounded-full ${
+                        customer.isActive
+                          ? 'bg-green-100 text-green-800'
+                          : 'bg-red-100 text-red-800'
+                      }`}
+                    >
+                      {customer.isActive ? 'Active' : 'Inactive'}
+                    </span>
+                  </div>
+                  
+                  <div className="space-y-2 text-sm">
+                    {customer.phone && (
+                      <div className="flex items-center gap-2">
+                        <span className="text-gray-600">Phone:</span>
+                        <span className="text-gray-900">{customer.phone}</span>
+                        {customer.phoneVerified && (
+                          <span className="text-green-500" title="Phone verified">✓</span>
+                        )}
+                      </div>
+                    )}
+                    <div className="flex items-center gap-2">
+                      <span className="text-gray-600">Orders:</span>
+                      <span className="text-gray-900 font-semibold">{customer.orderCount}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-gray-600">Total Spent:</span>
+                      <span className="text-gray-900 font-semibold">€{(customer.totalSpentCents / 100).toFixed(2)}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-gray-600">Registered:</span>
+                      <span className="text-gray-900">
                         {new Date(customer.createdAt).toLocaleDateString('sk-SK', {
                           year: 'numeric',
                           month: 'short',
                           day: 'numeric',
                         })}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm">
-                        <button
-                          onClick={() => handleDeleteClick(customer)}
-                          className="px-3 py-1 bg-red-600 text-white rounded-lg hover:bg-red-700 font-semibold text-xs"
-                          title="Delete customer"
-                        >
-                          Delete
-                        </button>
+                      </span>
+                    </div>
+                  </div>
+                  
+                  <div className="mt-4 pt-4 border-t border-gray-200">
+                    <button
+                      onClick={() => handleDeleteClick(customer)}
+                      className="w-full px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-semibold text-sm"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+
+          {/* Desktop Table Layout */}
+          <div className="hidden md:block bg-white rounded-lg shadow overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Customer
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Contact
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Orders
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Total Spent
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Status
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Registered
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {customers.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="px-6 py-12 text-center text-gray-500">
+                        No customers found
                       </td>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+                  ) : (
+                    customers.map((customer) => (
+                      <tr key={customer.id} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center">
+                            <div className="flex-shrink-0 h-10 w-10 rounded-full bg-orange-100 flex items-center justify-center">
+                              <span className="text-orange-600 font-semibold">
+                                {customer.name?.charAt(0).toUpperCase() || '?'}
+                              </span>
+                            </div>
+                            <div className="ml-4">
+                              <div className="text-sm font-medium text-gray-900">
+                                {customer.name || 'No name'}
+                              </div>
+                              {customer.email && (
+                                <div className="text-sm text-gray-500">{customer.email}</div>
+                              )}
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-900">
+                            {customer.phone ? (
+                              <div className="flex items-center gap-2">
+                                <span>{customer.phone}</span>
+                                {customer.phoneVerified && (
+                                  <span className="text-green-500" title="Phone verified">
+                                    ✓
+                                  </span>
+                                )}
+                              </div>
+                            ) : (
+                              <span className="text-gray-400">No phone</span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-900 font-semibold">
+                            {customer.orderCount}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm font-semibold text-gray-900">
+                            €{(customer.totalSpentCents / 100).toFixed(2)}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span
+                            className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                              customer.isActive
+                                ? 'bg-green-100 text-green-800'
+                                : 'bg-red-100 text-red-800'
+                            }`}
+                          >
+                            {customer.isActive ? 'Active' : 'Inactive'}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {new Date(customer.createdAt).toLocaleDateString('sk-SK', {
+                            year: 'numeric',
+                            month: 'short',
+                            day: 'numeric',
+                          })}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm">
+                          <button
+                            onClick={() => handleDeleteClick(customer)}
+                            className="px-3 py-1 bg-red-600 text-white rounded-lg hover:bg-red-700 font-semibold text-xs"
+                            title="Delete customer"
+                          >
+                            Delete
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
 
           {/* Pagination */}
           {pagination.totalPages > 1 && (
-            <div className="mt-6 flex items-center justify-between">
-              <div className="text-sm text-gray-700">
+            <div className="mt-4 lg:mt-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="hidden sm:block text-sm text-gray-700">
                 Showing {((page - 1) * pagination.limit) + 1} to{' '}
                 {Math.min(page * pagination.limit, pagination.total)} of{' '}
                 {pagination.total} customers
               </div>
-              <div className="flex gap-2">
+              <div className="flex gap-2 w-full sm:w-auto">
                 <button
                   onClick={() => setPage((p) => Math.max(1, p - 1))}
                   disabled={page === 1}
-                  className="px-4 py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                  className="flex-1 sm:flex-none px-4 py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
                 >
                   Previous
                 </button>
-                <span className="px-4 py-2 text-sm text-gray-700">
+                <span className="px-4 py-2 text-sm text-gray-700 flex items-center">
                   Page {page} of {pagination.totalPages}
                 </span>
                 <button
                   onClick={() => setPage((p) => Math.min(pagination.totalPages, p + 1))}
                   disabled={page === pagination.totalPages}
-                  className="px-4 py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                  className="flex-1 sm:flex-none px-4 py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
                 >
                   Next
                 </button>

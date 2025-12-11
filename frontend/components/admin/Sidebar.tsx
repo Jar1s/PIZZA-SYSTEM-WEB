@@ -4,7 +4,11 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 
-export function Sidebar() {
+interface SidebarProps {
+  onClose?: () => void;
+}
+
+export function Sidebar({ onClose }: SidebarProps) {
   const pathname = usePathname();
   const { user, logout, isAdmin } = useAuth();
   
@@ -29,9 +33,22 @@ export function Sidebar() {
   );
   
   return (
-    <div className="w-64 bg-gray-900 text-white flex flex-col">
-      <div className="p-6">
-        <h1 className="text-2xl font-bold">Pizza HQ</h1>
+    <div className="w-64 bg-gray-900 text-white flex flex-col h-full">
+      <div className="p-4 lg:p-6">
+        <div className="flex items-center justify-between">
+          <h1 className="text-xl lg:text-2xl font-bold">Pizza HQ</h1>
+          {onClose && (
+            <button
+              onClick={onClose}
+              className="lg:hidden text-gray-400 hover:text-white p-1"
+              aria-label="Close menu"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          )}
+        </div>
         {user && (
           <div className="mt-2 text-sm text-gray-400">
             <div>{user.name}</div>
@@ -42,12 +59,13 @@ export function Sidebar() {
         )}
       </div>
       
-      <nav className="mt-6 flex-1">
+      <nav className="mt-4 lg:mt-6 flex-1 overflow-y-auto">
         {visibleLinks.map(link => (
           <Link
             key={link.href}
             href={link.href}
-            className={`block px-6 py-3 hover:bg-gray-800 transition-colors ${
+            onClick={onClose}
+            className={`block px-4 lg:px-6 py-2 lg:py-3 hover:bg-gray-800 transition-colors ${
               pathname === link.href ? 'bg-gray-800 border-l-4 border-orange-500' : ''
             }`}
           >
@@ -59,7 +77,7 @@ export function Sidebar() {
 
       {/* Logout button */}
       {user && (
-        <div className="p-6 border-t border-gray-800">
+        <div className="p-4 lg:p-6 border-t border-gray-800">
           <button
             onClick={logout}
             className="w-full px-4 py-2 bg-red-600 hover:bg-red-700 rounded-lg text-sm font-semibold transition-colors"

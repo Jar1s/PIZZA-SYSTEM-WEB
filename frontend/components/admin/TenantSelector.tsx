@@ -34,7 +34,7 @@ export function TenantSelector({ selectedTenant, onTenantChange }: TenantSelecto
   // Only show selector for ADMIN role
   if (user?.role !== 'ADMIN') {
     return (
-      <div className="text-sm text-gray-600">
+      <div className="text-xs sm:text-sm text-gray-600">
         <span className="font-medium">Brand:</span>{' '}
         <span className="capitalize">{currentTenant}</span>
       </div>
@@ -42,16 +42,16 @@ export function TenantSelector({ selectedTenant, onTenantChange }: TenantSelecto
   }
 
   if (loading) {
-    return <div className="text-sm text-gray-500">Loading...</div>;
+    return <div className="text-xs sm:text-sm text-gray-500">Loading...</div>;
   }
 
   return (
-    <div className="flex items-center gap-2">
-      <span className="text-sm text-gray-600 font-medium">Brand:</span>
+    <div className="flex items-center gap-1 sm:gap-2">
+      <span className="text-xs sm:text-sm text-gray-600 font-medium hidden sm:inline">Brand:</span>
       <select
         value={selectedTenant}
         onChange={(e) => onTenantChange(e.target.value as 'all' | string)}
-        className="px-3 py-1.5 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+        className="px-2 py-1 sm:px-3 sm:py-1.5 border border-gray-300 rounded-md text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
       >
         <option value={currentTenant}>
           {tenants.find(t => t.slug === currentTenant)?.name || currentTenant} (Current)

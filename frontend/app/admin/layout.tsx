@@ -16,6 +16,7 @@ export default function AdminLayout({
   const { user, loading } = useAuth();
   const router = useRouter();
   const [selectedTenant, setSelectedTenant] = useState<'all' | string>(() => getTenantSlug());
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
     // Remove dark theme classes from body for admin dashboard
@@ -63,13 +64,30 @@ export default function AdminLayout({
   return (
     <AdminContextProvider selectedTenant={selectedTenant}>
       <div className="flex h-screen bg-gray-100 text-gray-900" style={{ backgroundColor: '#f3f4f6', color: '#111827' }}>
-        <Sidebar />
-        <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Mobile sidebar overlay */}
+        {sidebarOpen && (
+          <div 
+            className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
+            onClick={() => setSidebarOpen(false)}
+          />
+        )}
+        
+        {/* Sidebar */}
+        <div className={`
+          fixed lg:static inset-y-0 left-0 z-50
+          transform transition-transform duration-300 ease-in-out
+          ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+        `}>
+          <Sidebar onClose={() => setSidebarOpen(false)} />
+        </div>
+        
+        <div className="flex-1 flex flex-col overflow-hidden lg:ml-0">
           <Header 
             selectedTenant={selectedTenant} 
-            onTenantChange={setSelectedTenant} 
+            onTenantChange={setSelectedTenant}
+            onMenuClick={() => setSidebarOpen(!sidebarOpen)}
           />
-          <main className="flex-1 overflow-y-auto p-6 bg-gray-50 text-gray-900" style={{ backgroundColor: '#f9fafb', color: '#111827' }}>
+          <main className="flex-1 overflow-y-auto p-4 lg:p-6 bg-gray-50 text-gray-900" style={{ backgroundColor: '#f9fafb', color: '#111827' }}>
             {children}
           </main>
         </div>

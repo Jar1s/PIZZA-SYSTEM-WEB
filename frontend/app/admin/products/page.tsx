@@ -159,25 +159,25 @@ export default function ProductsPage() {
   return (
     // <ProtectedRoute requiredRole="ADMIN"> // Disabled for development
     <div>
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center mb-4 lg:mb-6 gap-4">
         <div>
-          <h1 className="text-3xl font-bold">Products Management</h1>
-          <p className="text-gray-600 mt-2">
+          <h1 className="text-2xl lg:text-3xl font-bold">Products Management</h1>
+          <p className="text-gray-600 mt-2 text-sm lg:text-base">
             Manage products across all brands. Total: {products.length} products
           </p>
         </div>
-        <div className="flex gap-4 items-center">
+        <div className="flex flex-col sm:flex-row gap-2 sm:gap-4">
           <select
             value={selectedTenant}
             onChange={(e) => setSelectedTenant(e.target.value as 'pornopizza' | 'pizzavnudzi')}
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full sm:w-auto px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             <option value="pornopizza">PornoPizza</option>
             <option value="pizzavnudzi">Pizza v Núdzi</option>
           </select>
           <button 
             onClick={() => setIsAddModalOpen(true)}
-            className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            className="w-full sm:w-auto px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-semibold"
           >
             + Add Product
           </button>
@@ -185,12 +185,12 @@ export default function ProductsPage() {
       </div>
 
       {/* Filter */}
-      <div className="mb-6">
-        <div className="flex gap-4 items-center flex-wrap">
-          <div className="flex gap-4">
+      <div className="mb-4 lg:mb-6">
+        <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 items-start sm:items-center">
+          <div className="flex flex-wrap gap-2 sm:gap-4">
             <button
               onClick={() => setFilter('all')}
-              className={`px-6 py-2 rounded-lg font-semibold transition-all ${
+              className={`px-4 sm:px-6 py-2 rounded-lg font-semibold transition-all text-sm ${
                 filter === 'all'
                   ? 'bg-blue-600 text-white shadow-lg'
                   : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-300'
@@ -200,7 +200,7 @@ export default function ProductsPage() {
             </button>
             <button
               onClick={() => setFilter('pornopizza')}
-              className={`px-6 py-2 rounded-lg font-semibold transition-all ${
+              className={`px-4 sm:px-6 py-2 rounded-lg font-semibold transition-all text-sm ${
                 filter === 'pornopizza'
                   ? 'bg-blue-600 text-white shadow-lg'
                   : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-300'
@@ -210,7 +210,7 @@ export default function ProductsPage() {
             </button>
             <button
               onClick={() => setFilter('pizzavnudzi')}
-              className={`px-6 py-2 rounded-lg font-semibold transition-all ${
+              className={`px-4 sm:px-6 py-2 rounded-lg font-semibold transition-all text-sm ${
                 filter === 'pizzavnudzi'
                   ? 'bg-blue-600 text-white shadow-lg'
                   : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-300'
@@ -221,7 +221,7 @@ export default function ProductsPage() {
           </div>
           
           {/* Show Inactive Toggle */}
-          <div className="ml-auto flex items-center gap-2">
+          <div className="w-full sm:w-auto flex items-center gap-2 sm:ml-auto">
             <label className="flex items-center gap-2 cursor-pointer">
               <input
                 type="checkbox"
@@ -237,15 +237,105 @@ export default function ProductsPage() {
         </div>
       </div>
 
-      {/* Products Table */}
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        {loading ? (
-          <div className="p-8 text-center">
-            <div className="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-600"></div>
-            <p className="mt-4 text-gray-600">Loading products...</p>
+      {loading ? (
+        <div className="bg-white rounded-lg shadow p-8 text-center">
+          <div className="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-600"></div>
+          <p className="mt-4 text-gray-600">Loading products...</p>
+        </div>
+      ) : (
+        <>
+          {/* Mobile Card Layout */}
+          <div className="md:hidden space-y-4">
+            {filteredProducts.length === 0 ? (
+              <div className="bg-white rounded-lg shadow p-6 text-center text-gray-500">
+                No products found
+              </div>
+            ) : (
+              filteredProducts.map((product) => {
+                const getDescription = () => {
+                  if (!product.description) return null;
+                  try {
+                    const parsed = JSON.parse(product.description);
+                    if (parsed && typeof parsed === 'object' && (parsed.sk || parsed.en)) {
+                      return parsed.sk || parsed.en || product.description;
+                    }
+                  } catch (e) {
+                    // Not JSON
+                  }
+                  return product.description;
+                };
+
+                return (
+                  <div key={product.id} className="bg-white rounded-lg shadow p-4">
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex-1">
+                        <div className="text-sm font-medium text-gray-900">
+                          {product.name}
+                        </div>
+                        {product.displayName && product.displayName !== product.name && (
+                          <div className="text-xs text-blue-600 mt-1">
+                            Web: {product.displayName}
+                          </div>
+                        )}
+                        {getDescription() && (
+                          <div className="text-xs text-gray-500 mt-1 line-clamp-2">
+                            {getDescription()}
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex flex-col items-end gap-2 ml-2">
+                        <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
+                          product.isActive
+                            ? 'bg-green-100 text-green-800'
+                            : 'bg-red-100 text-red-800'
+                        }`}>
+                          {product.isActive ? 'Active' : 'Inactive'}
+                        </span>
+                        {product.isBestSeller && (
+                          <span className="px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">
+                            ⭐ Best
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    
+                    <div className="space-y-2 text-sm mb-4">
+                      <div className="flex items-center gap-2">
+                        <span className="text-gray-600">Brand:</span>
+                        <span className="text-gray-900">{getBrandName(product.tenantSlug)}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-gray-600">Category:</span>
+                        <span className="text-gray-900">{product.category}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-gray-600">Price:</span>
+                        <span className="text-gray-900 font-semibold">€{(product.priceCents / 100).toFixed(2)}</span>
+                      </div>
+                    </div>
+                    
+                    <div className="pt-4 border-t border-gray-200 flex gap-2">
+                      <button
+                        onClick={() => handleEdit(product)}
+                        className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-semibold text-sm"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => handleDelete(product)}
+                        className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-semibold text-sm"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                );
+              })
+            )}
           </div>
-        ) : (
-          <>
+
+          {/* Desktop Table Layout */}
+          <div className="hidden md:block bg-white rounded-lg shadow overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead className="bg-gray-50 border-b">
@@ -274,97 +364,99 @@ export default function ProductsPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
-                  {filteredProducts.map((product) => (
-                    <tr key={product.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4">
-                        <div className="text-sm font-medium text-gray-900">
-                          {product.name}
-                        </div>
-                        {product.displayName && (
-                          <div className={`text-xs mt-1 ${product.displayName !== product.name ? 'text-blue-600' : 'text-gray-500'}`}>
-                            Web: {product.displayName}
-                          </div>
-                        )}
-                        {product.description && (() => {
-                          // Try to parse as JSON {sk: "...", en: "..."}
-                          try {
-                            const parsed = JSON.parse(product.description);
-                            if (parsed && typeof parsed === 'object' && (parsed.sk || parsed.en)) {
-                              return (
-                                <div className="text-xs text-gray-500 mt-1 line-clamp-1">
-                                  {parsed.sk || parsed.en || product.description}
-                                </div>
-                              );
-                            }
-                          } catch (e) {
-                            // Not JSON, show as is
-                          }
-                          return (
-                            <div className="text-xs text-gray-500 mt-1 line-clamp-1">
-                              {product.description}
-                            </div>
-                          );
-                        })()}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">
-                          {getBrandName(product.tenantSlug)}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-500">{product.category}</div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-gray-900">
-                          €{(product.priceCents / 100).toFixed(2)}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                          product.isActive
-                            ? 'bg-green-100 text-green-800'
-                            : 'bg-red-100 text-red-800'
-                        }`}>
-                          {product.isActive ? 'Active' : 'Inactive'}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        {product.isBestSeller ? (
-                          <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
-                            ⭐ Best Seller
-                          </span>
-                        ) : (
-                          <span className="text-xs text-gray-400">—</span>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <button
-                          onClick={() => handleEdit(product)}
-                          className="text-blue-600 hover:text-blue-900 mr-4 font-semibold"
-                        >
-                          Edit
-                        </button>
-                        <button
-                          onClick={() => handleDelete(product)}
-                          className="text-red-600 hover:text-red-900 font-semibold"
-                        >
-                          Delete
-                        </button>
+                  {filteredProducts.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="px-6 py-12 text-center text-gray-500">
+                        No products found
                       </td>
                     </tr>
-                  ))}
+                  ) : (
+                    filteredProducts.map((product) => (
+                      <tr key={product.id} className="hover:bg-gray-50">
+                        <td className="px-6 py-4">
+                          <div className="text-sm font-medium text-gray-900">
+                            {product.name}
+                          </div>
+                          {product.displayName && (
+                            <div className={`text-xs mt-1 ${product.displayName !== product.name ? 'text-blue-600' : 'text-gray-500'}`}>
+                              Web: {product.displayName}
+                            </div>
+                          )}
+                          {product.description && (() => {
+                            // Try to parse as JSON {sk: "...", en: "..."}
+                            try {
+                              const parsed = JSON.parse(product.description);
+                              if (parsed && typeof parsed === 'object' && (parsed.sk || parsed.en)) {
+                                return (
+                                  <div className="text-xs text-gray-500 mt-1 line-clamp-1">
+                                    {parsed.sk || parsed.en || product.description}
+                                  </div>
+                                );
+                              }
+                            } catch (e) {
+                              // Not JSON, show as is
+                            }
+                            return (
+                              <div className="text-xs text-gray-500 mt-1 line-clamp-1">
+                                {product.description}
+                              </div>
+                            );
+                          })()}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-900">
+                            {getBrandName(product.tenantSlug)}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-500">{product.category}</div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm font-medium text-gray-900">
+                            €{(product.priceCents / 100).toFixed(2)}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                            product.isActive
+                              ? 'bg-green-100 text-green-800'
+                              : 'bg-red-100 text-red-800'
+                          }`}>
+                            {product.isActive ? 'Active' : 'Inactive'}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          {product.isBestSeller ? (
+                            <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
+                              ⭐ Best Seller
+                            </span>
+                          ) : (
+                            <span className="text-xs text-gray-400">—</span>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                          <button
+                            onClick={() => handleEdit(product)}
+                            className="text-blue-600 hover:text-blue-900 mr-4 font-semibold"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => handleDelete(product)}
+                            className="text-red-600 hover:text-red-900 font-semibold"
+                          >
+                            Delete
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>
-            
-            {!loading && filteredProducts.length === 0 && (
-              <div className="p-8 text-center text-gray-500">
-                No products found
-              </div>
-            )}
-          </>
-        )}
-      </div>
+          </div>
+        </>
+      )}
 
       {/* Edit Modal */}
       {editingProduct && (

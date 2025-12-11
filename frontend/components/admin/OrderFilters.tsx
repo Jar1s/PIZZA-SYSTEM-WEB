@@ -31,11 +31,11 @@ export function OrderFilters({ filters, onChange }: OrderFiltersProps) {
     return statusMap[status] || status;
   };
   return (
-    <div className="flex gap-4 mt-4">
+    <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 mt-4">
       <select
         value={filters.tenantSlug}
         onChange={e => onChange({ ...filters, tenantSlug: e.target.value })}
-        className="border rounded px-3 py-2"
+        className="border rounded px-2 py-1 sm:px-3 sm:py-2 text-sm"
       >
         <option value="all">All Brands</option>
         <option value="pornopizza">PornoPizza</option>
@@ -45,7 +45,7 @@ export function OrderFilters({ filters, onChange }: OrderFiltersProps) {
       <select
         value={filters.status}
         onChange={e => onChange({ ...filters, status: e.target.value })}
-        className="border rounded px-3 py-2"
+        className="border rounded px-2 py-1 sm:px-3 sm:py-2 text-sm"
       >
         <option value="all">{language === 'sk' ? 'Všetky stavy' : 'All Statuses'}</option>
         <option value={OrderStatus.PENDING}>{getStatusLabel(OrderStatus.PENDING)}</option>
@@ -60,7 +60,7 @@ export function OrderFilters({ filters, onChange }: OrderFiltersProps) {
         type="date"
         value={filters.startDate}
         onChange={e => onChange({ ...filters, startDate: e.target.value })}
-        className="border rounded px-3 py-2"
+        className="border rounded px-2 py-1 sm:px-3 sm:py-2 text-sm w-full sm:w-auto"
         placeholder="Start Date"
       />
       
@@ -68,7 +68,7 @@ export function OrderFilters({ filters, onChange }: OrderFiltersProps) {
         type="date"
         value={filters.endDate}
         onChange={e => onChange({ ...filters, endDate: e.target.value })}
-        className="border rounded px-3 py-2"
+        className="border rounded px-2 py-1 sm:px-3 sm:py-2 text-sm w-full sm:w-auto"
         placeholder="End Date"
       />
     </div>
