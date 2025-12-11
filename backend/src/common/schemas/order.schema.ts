@@ -32,6 +32,7 @@ export const OrderResponseSchema = z.object({
   address: z.record(z.string(), z.unknown()),
   items: z.array(OrderItemSchema).optional(),
   paymentRef: z.string().nullable().optional(),
+  paymentStatus: z.string().nullable().optional(),
   storyousOrderId: z.string().nullable().optional(),
   createdAt: z.date().or(z.string()),
   updatedAt: z.date().or(z.string()),
