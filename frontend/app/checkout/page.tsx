@@ -40,6 +40,7 @@ export default function CheckoutPage() {
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
   const [loadingAddresses, setLoadingAddresses] = useState(true);
+  const [showAddAddressForm, setShowAddAddressForm] = useState(false);
   
   // Get normalized tenant theme (ensures PornoPizza never uses legacy orange)
   const normalizedTenant = withTenantThemeDefaults(tenantData);
@@ -58,6 +59,22 @@ export default function CheckoutPage() {
     const autoMaintenanceMode = (openingHours?.enabled === true) ? !isCurrentlyOpen(openingHours) : false;
     return manualMaintenanceMode || autoMaintenanceMode;
   }, [normalizedTenant]);
+
+  // Validate phone number for button state
+  const isPhoneValid = useMemo(() => {
+    if (!phoneFormData.phone.trim()) return false;
+    const validation = validatePhone(phoneFormData.phone.replace(/\D/g, ''), phoneFormData.phonePrefix);
+    return validation.isValid;
+  }, [phoneFormData.phone, phoneFormData.phonePrefix]);
+
+  // Validate address for button state
+  const isAddressValid = useMemo(() => {
+    return !!(
+      addressFormData.street?.trim() &&
+      addressFormData.city?.trim() &&
+      addressFormData.postalCode?.trim()
+    );
+  }, [addressFormData.street, addressFormData.city, addressFormData.postalCode]);
 
   // Guest checkout state
   const [guestData, setGuestData] = useState({
@@ -948,6 +965,8 @@ export default function CheckoutPage() {
           country: 'SK',
           isPrimary: true,
         });
+        // Hide add address form
+        setShowAddAddressForm(false);
       } else {
         const error = await res.json().catch(() => ({ message: 'Nepodarilo sa uložiť adresu' }));
         setAddressFormError(error.message || 'Nepodarilo sa uložiť adresu');
@@ -1461,8 +1480,15 @@ export default function CheckoutPage() {
                       <select
                         value={phoneFormData.phonePrefix}
                         onChange={(e) => {
-                          setPhoneFormData({ ...phoneFormData, phonePrefix: e.target.value });
-                          if (phoneFormError) setPhoneFormError(null);
+                          const newPrefix = e.target.value;
+                          setPhoneFormData({ ...phoneFormData, phonePrefix: newPrefix });
+                          // Re-validate phone when prefix changes
+                          if (phoneFormData.phone.trim()) {
+                            const validation = validatePhone(phoneFormData.phone.replace(/\D/g, ''), newPrefix);
+                            setPhoneFormError(validation.isValid ? null : validation.message || null);
+                          } else {
+                            setPhoneFormError(null);
+                          }
                         }}
                         className={`px-3 py-2 border rounded-lg min-w-[120px] ${
                           isDark 
@@ -1535,9 +1561,9 @@ export default function CheckoutPage() {
                     )}
                     <button
                       onClick={handleSavePhone}
-                      disabled={savingPhone || !phoneFormData.phone}
+                      disabled={savingPhone || !isPhoneValid}
                       className={`mt-3 px-6 py-2 rounded-lg font-semibold text-sm transition-opacity text-white ${
-                        savingPhone || !phoneFormData.phone
+                        savingPhone || !isPhoneValid
                           ? 'opacity-50 cursor-not-allowed'
                           : getButtonGradientClass(tenantData) + ' hover:opacity-90'
                       }`}
@@ -1733,8 +1759,8 @@ export default function CheckoutPage() {
           {/* Address Selection - Guest Form or Address List */}
           {user ? (
             !loadingAddresses && (
-              addresses.length > 0 ? (
-                // Show address list if addresses exist
+              addresses.length > 0 && !showAddAddressForm ? (
+                // Show address list if addresses exist and form is not shown
                 <div className="mb-8 pb-8 border-b">
                   <h2 className="text-xl font-semibold mb-4">{t.deliveryAddress}</h2>
                   <div className="space-y-3">
@@ -1816,7 +1842,7 @@ export default function CheckoutPage() {
                   </div>
                   <button
                     type="button"
-                    onClick={() => router.push(`/account?tenant=${tenantSlug}&section=address`)}
+                    onClick={() => setShowAddAddressForm(true)}
                     className={`mt-4 text-sm font-medium hover:underline ${
                       isDark ? 'text-white' : ''
                     }`}
@@ -1826,20 +1852,45 @@ export default function CheckoutPage() {
                   </button>
                 </div>
               ) : (
-                // Show address form if no addresses exist
+                // Show address form if no addresses exist or if user clicked "Add new address"
                 <div className="mb-8 pb-8 border-b">
                   <h2 className="text-xl font-semibold mb-4">{t.deliveryAddress}</h2>
-                  <div className={`p-4 rounded-lg mb-4 ${
-                    isDark 
-                      ? 'bg-yellow-900/30 border border-yellow-700/50' 
-                      : 'bg-yellow-50 border border-yellow-200'
-                  }`}>
-                    <p className={`text-sm ${
-                      isDark ? 'text-yellow-200' : 'text-yellow-800'
+                  {addresses.length === 0 && (
+                    <div className={`p-4 rounded-lg mb-4 ${
+                      isDark 
+                        ? 'bg-yellow-900/30 border border-yellow-700/50' 
+                        : 'bg-yellow-50 border border-yellow-200'
                     }`}>
-                      Pre dokončenie objednávky je potrebné vyplniť adresu pre doručenie.
-                    </p>
-                  </div>
+                      <p className={`text-sm ${
+                        isDark ? 'text-yellow-200' : 'text-yellow-800'
+                      }`}>
+                        Pre dokončenie objednávky je potrebné vyplniť adresu pre doručenie.
+                      </p>
+                    </div>
+                  )}
+                  {showAddAddressForm && addresses.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowAddAddressForm(false);
+                        setAddressFormData({
+                          street: '',
+                          description: '',
+                          city: '',
+                          postalCode: '',
+                          country: 'SK',
+                          isPrimary: false,
+                        });
+                        setAddressFormError(null);
+                      }}
+                      className={`mb-4 text-sm font-medium hover:underline ${
+                        isDark ? 'text-white' : ''
+                      }`}
+                      style={!isDark ? { color: 'var(--color-primary)' } : undefined}
+                    >
+                      ← Späť na zoznam adries
+                    </button>
+                  )}
                   <div className="space-y-4">
                     <div>
                       <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-white' : 'text-gray-700'}`}>
@@ -1954,15 +2005,39 @@ export default function CheckoutPage() {
                     </div>
 
                     {addressFormError && (
-                      <p className="text-sm text-red-600">{addressFormError}</p>
+                      <p className={`text-sm ${isDark ? 'text-red-400' : 'text-red-600'}`}>{addressFormError}</p>
                     )}
 
                     <div className="flex gap-3 pt-2">
+                      {showAddAddressForm && addresses.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowAddAddressForm(false);
+                            setAddressFormData({
+                              street: '',
+                              description: '',
+                              city: '',
+                              postalCode: '',
+                              country: 'SK',
+                              isPrimary: false,
+                            });
+                            setAddressFormError(null);
+                          }}
+                          className={`px-6 py-2 rounded-lg font-semibold text-sm border ${
+                            isDark
+                              ? 'border-white/20 text-white hover:bg-white/10'
+                              : 'border-gray-300 text-gray-700 hover:bg-gray-50'
+                          }`}
+                        >
+                          Zrušiť
+                        </button>
+                      )}
                       <button
                         onClick={handleSaveAddress}
-                        disabled={savingAddress || !addressFormData.street || !addressFormData.city || !addressFormData.postalCode}
+                        disabled={savingAddress || !isAddressValid}
                         className={`px-6 py-2 rounded-lg font-semibold text-sm transition-opacity text-white ${
-                          savingAddress || !addressFormData.street || !addressFormData.city || !addressFormData.postalCode
+                          savingAddress || !isAddressValid
                             ? 'opacity-50 cursor-not-allowed'
                             : getButtonGradientClass(tenantData) + ' hover:opacity-90'
                         }`}
