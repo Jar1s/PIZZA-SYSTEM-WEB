@@ -63,8 +63,10 @@ export function OrderCard({ order, onStatusUpdate, isExpanded = false, onToggleE
   // Check payment type
   const isDeliveryPayment = order.paymentStatus === 'pending';
   const isPendingDelivery = order.status === OrderStatus.PENDING && isDeliveryPayment;
+  const isPendingOnline = order.status === OrderStatus.PENDING && !isDeliveryPayment;
   const isPaidOnline = order.status === OrderStatus.PAID && !isDeliveryPayment;
   const isPaid = order.status === OrderStatus.PAID;
+  const isPending = order.status === OrderStatus.PENDING;
   
   // Get translated status label
   const getStatusLabel = (status: OrderStatus): string => {
@@ -186,6 +188,15 @@ export function OrderCard({ order, onStatusUpdate, isExpanded = false, onToggleE
                 </button>
               </>
             )}
+            {/* PENDING with online payment - Cancel button only (waiting for customer payment) */}
+            {isPendingOnline && (
+              <button
+                onClick={() => onStatusUpdate(order.id, OrderStatus.CANCELED)}
+                className="flex-1 min-w-[120px] px-3 py-2 bg-red-600 text-white rounded hover:bg-red-700 text-sm font-semibold"
+              >
+                ❌ Zrušiť
+              </button>
+            )}
             {/* PAID online payment - Confirm/Reject buttons (after payment, operator must confirm) */}
             {isPaidOnline && (
               <>
@@ -291,6 +302,15 @@ export function OrderCard({ order, onStatusUpdate, isExpanded = false, onToggleE
                 ❌ Zrušiť
               </button>
             </>
+          )}
+          {/* PENDING with online payment - Cancel button only (waiting for customer payment) */}
+          {isPendingOnline && (
+            <button
+              onClick={() => onStatusUpdate(order.id, OrderStatus.CANCELED)}
+              className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 text-sm font-semibold"
+            >
+              ❌ Zrušiť
+            </button>
           )}
           {/* PAID online payment - Confirm/Reject buttons (after payment, operator must confirm) */}
           {isPaidOnline && (
