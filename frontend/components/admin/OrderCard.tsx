@@ -67,12 +67,14 @@ export function OrderCard({ order, onStatusUpdate, isExpanded = false, onToggleE
     return status === 'pending';
   };
   
-  // Helper function to determine if "→ PAID" button should be shown
-  // Hide button for PAID orders with delivery payment (cash/card on delivery)
-  const shouldShowPaidButton = (): boolean => {
+  // Helper function to determine if next status button should be shown
+  // Hide button only if nextStatus would be PAID for delivery payment orders
+  // For PAID orders with delivery payment, nextStatus is PREPARING, so button should be shown
+  const shouldShowNextStatusButton = (): boolean => {
     if (!nextStatus) return false;
-    if (order.status === OrderStatus.PAID && isDeliveryPayment()) {
-      return false; // Hide for delivery payment - payment is handled at delivery
+    // Only hide if nextStatus would be PAID (which shouldn't happen based on NEXT_STATUS, but check for safety)
+    if (nextStatus === OrderStatus.PAID && isDeliveryPayment()) {
+      return false; // Hide "→ PAID" button for delivery payment - payment is handled at delivery
     }
     return true;
   };
@@ -104,12 +106,15 @@ export function OrderCard({ order, onStatusUpdate, isExpanded = false, onToggleE
   };
   
   const getNextStatusLabel = (status: OrderStatus): string => {
-    // Only PREPARING and OUT_FOR_DELIVERY have next status buttons
+    // Map current status to next status label
+    if (status === OrderStatus.PAID) {
+      return t.orderStatusPreparing; // PAID → PREPARING
+    }
     if (status === OrderStatus.PREPARING) {
-      return t.orderStatusOutForDelivery;
+      return t.orderStatusOutForDelivery; // PREPARING → OUT_FOR_DELIVERY
     }
     if (status === OrderStatus.OUT_FOR_DELIVERY) {
-      return t.orderStatusDelivered;
+      return t.orderStatusDelivered; // OUT_FOR_DELIVERY → DELIVERED
     }
     return status; // Fallback (shouldn't happen as nextStatus is checked before calling)
   };
@@ -256,7 +261,7 @@ export function OrderCard({ order, onStatusUpdate, isExpanded = false, onToggleE
                 {creatingWolt ? '⏳' : '🚚 Wolt'}
               </button>
             )}
-            {shouldShowPaidButton() && nextStatus && (
+            {shouldShowNextStatusButton() && nextStatus && (
               <button
                 onClick={() => onStatusUpdate(order.id, nextStatus!)}
                 className="flex-1 min-w-[120px] px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm font-semibold"
