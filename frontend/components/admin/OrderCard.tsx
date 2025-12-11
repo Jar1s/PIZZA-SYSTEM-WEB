@@ -240,7 +240,7 @@ export function OrderCard({ order, onStatusUpdate, isExpanded = false, onToggleE
                 {creatingWolt ? '⏳' : '🚚 Wolt'}
               </button>
             )}
-            {nextStatus && (
+            {nextStatus && !(order.status === OrderStatus.PAID && isDeliveryPayment) && (
               <button
                 onClick={() => onStatusUpdate(order.id, nextStatus)}
                 className="flex-1 min-w-[120px] px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm font-semibold"
@@ -355,7 +355,7 @@ export function OrderCard({ order, onStatusUpdate, isExpanded = false, onToggleE
               {creatingWolt ? '⏳' : '🚚 Wolt'}
             </button>
           )}
-          {nextStatus && (
+          {nextStatus && !(order.status === OrderStatus.PAID && isDeliveryPayment) && (
             <button
               onClick={() => onStatusUpdate(order.id, nextStatus)}
               className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
