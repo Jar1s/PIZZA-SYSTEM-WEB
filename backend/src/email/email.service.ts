@@ -312,16 +312,37 @@ export class EmailService {
     tenantName: string,
     tenantDomain: string,
     tenantSlug?: string,
+    tenantTheme?: any,
   ): Promise<void> {
-    // Use tenant slug in URL if available, otherwise use domain
+    // Generate frontend URL - use FRONTEND_URL if available, otherwise fix tenantDomain
+    let frontendDomain = process.env.FRONTEND_URL || tenantDomain;
+    
+    // Remove protocol if present
+    frontendDomain = frontendDomain.replace(/^https?:\/\//, '');
+    
+    // Add www. prefix if missing and not localhost
+    if (!frontendDomain.includes('localhost') && !frontendDomain.includes('127.0.0.1')) {
+      if (!frontendDomain.startsWith('www.')) {
+        frontendDomain = `www.${frontendDomain}`;
+      }
+    }
+    
+    // Use https for production, http for localhost
+    const protocol = frontendDomain.includes('localhost') || frontendDomain.includes('127.0.0.1') ? 'http' : 'https';
+    const frontendUrl = `${protocol}://${frontendDomain}`;
+    
+    // Build reset URL with tenant slug if available
     const resetUrl = tenantSlug 
-      ? `http://${tenantDomain}/auth/set-password?token=${passwordResetToken}&tenant=${tenantSlug}`
-      : `http://${tenantDomain}/auth/set-password?token=${passwordResetToken}`;
+      ? `${frontendUrl}/auth/set-password?token=${passwordResetToken}&tenant=${tenantSlug}`
+      : `${frontendUrl}/auth/set-password?token=${passwordResetToken}`;
+    
+    this.logger.log(`📧 Generated password setup URL: ${resetUrl} (from FRONTEND_URL: ${process.env.FRONTEND_URL || 'not set'}, tenantDomain: ${tenantDomain})`);
     
     const emailHtml = this.buildPasswordSetupEmail(
       user,
       resetUrl,
       tenantName,
+      tenantTheme,
     );
 
     try {
@@ -330,7 +351,7 @@ export class EmailService {
         const info = await this.transporter.sendMail({
           from: this.getEmailFrom(tenantName, tenantDomain),
           to: user.email,
-          subject: `🔐 Nastavte si heslo pre váš účet - ${tenantName}`,
+          subject: `Nastavte si heslo pre váš účet - ${tenantName}`,
           html: emailHtml,
         });
         this.logger.log(`✅ Password setup email sent to ${user.email}: ${info.messageId}`);
@@ -357,7 +378,51 @@ export class EmailService {
     user: { name: string },
     resetUrl: string,
     tenantName: string,
+    tenantTheme?: any,
   ): string {
+    // Get theme colors - fallback to brand colors
+    const primaryColor = tenantTheme?.primaryColor || '#E91E63';
+    
+    // Build logo URL - same logic as order confirmation
+    let rawAssetBase =
+      process.env.FRONTEND_URL ||
+      process.env.EMAIL_ASSET_BASE_URL ||
+      '';
+    
+    if (rawAssetBase && !rawAssetBase.includes('localhost') && !rawAssetBase.includes('127.0.0.1')) {
+      if (!rawAssetBase.startsWith('http://') && !rawAssetBase.startsWith('https://')) {
+        rawAssetBase = `https://${rawAssetBase}`;
+      }
+      
+      const urlObj = new URL(rawAssetBase);
+      if (!urlObj.hostname.startsWith('www.') && !urlObj.hostname.includes('localhost') && !urlObj.hostname.includes('127.0.0.1')) {
+        urlObj.hostname = `www.${urlObj.hostname}`;
+        rawAssetBase = urlObj.toString();
+      }
+    }
+    
+    const trimmedBase = rawAssetBase.replace(/\/$/, '');
+    const hasProtocol = trimmedBase.startsWith('http://') || trimmedBase.startsWith('https://');
+    const isLocal = trimmedBase.includes('localhost') || trimmedBase.includes('127.0.0.1');
+    const protocol = isLocal ? 'http' : 'https';
+    const assetBase = hasProtocol ? trimmedBase : trimmedBase ? `${protocol}://${trimmedBase}` : '';
+    
+    const buildAssetUrl = (path: string | null | undefined) => {
+      if (!path || path.trim() === '') return null;
+      const cleanPath = path.trim();
+      if (cleanPath.startsWith('http://') || cleanPath.startsWith('https://')) {
+        return cleanPath;
+      }
+      if (!assetBase) return null;
+      return `${assetBase}${cleanPath.startsWith('/') ? cleanPath : '/' + cleanPath}`;
+    };
+    
+    // Build logo URL
+    let logoUrl =
+      buildAssetUrl(tenantTheme?.logo) ||
+      buildAssetUrl('/PORNO PIZZA PINK GRANDIENT.png') ||
+      '';
+
     return `
 <!DOCTYPE html>
 <html>
@@ -365,66 +430,84 @@ export class EmailService {
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Nastavte si heslo</title>
+  <style>
+    @media only screen and (max-width: 600px) {
+      .email-container {
+        width: 100% !important;
+      }
+      .email-header {
+        padding: 20px 15px !important;
+      }
+      .logo-img {
+        max-width: 150px !important;
+      }
+      .email-content {
+        padding: 30px 20px !important;
+      }
+      .greeting {
+        font-size: 20px !important;
+      }
+      .greeting-text {
+        font-size: 14px !important;
+      }
+      .setup-button {
+        padding: 12px 30px !important;
+        font-size: 14px !important;
+        display: block !important;
+        width: calc(100% - 60px) !important;
+        margin: 20px auto !important;
+      }
+    }
+  </style>
 </head>
 <body style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #f4f4f4;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f4f4f4; padding: 20px;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f4f4f4; padding: 10px;">
     <tr>
       <td align="center">
-        <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+        <table class="email-container" width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1); max-width: 100%;">
           
           <!-- Header -->
           <tr>
-            <td style="background-color: #ff6b35; padding: 30px 20px; text-align: center;">
-              <h1 style="color: #ffffff; margin: 0; font-size: 28px;">🍕 ${tenantName}</h1>
-              <p style="color: #ffffff; margin: 10px 0 0 0; font-size: 16px;">Vitajte v našej rodine!</p>
+            <td class="email-header" style="background-color: ${primaryColor}; padding: 30px 20px; text-align: center;">
+              ${logoUrl ? `<img src="${logoUrl}" alt="${tenantName}" class="logo-img" style="max-width: 200px; height: auto; margin: 0 0 10px 0;" />` : `<h1 style="color: #ffffff; margin: 0; font-size: 28px;">${tenantName}</h1>`}
+              <p style="color: #ffffff; margin: 10px 0 0 0; font-size: 16px;">Nastavte si heslo</p>
             </td>
           </tr>
 
           <!-- Content -->
           <tr>
-            <td style="padding: 40px 30px;">
+            <td class="email-content" style="padding: 40px 30px;">
               
-              <h2 style="color: #333; margin: 0 0 10px 0; font-size: 22px;">Ahoj ${user.name}! 👋</h2>
-              <p style="color: #666; font-size: 16px; line-height: 1.6; margin: 0 0 20px 0;">
-                Ďakujeme, že ste sa prihlásili! Váš účet bol úspešne vytvorený a teraz môžete objednávať naše lahodné pizze.
-              </p>
-              <p style="color: #666; font-size: 16px; line-height: 1.6; margin: 0 0 20px 0;">
-                Teraz si prosím nastavte heslo, aby ste sa mohli prihlásiť a sledovať svoje objednávky.
+              <h2 class="greeting" style="color: #333; margin: 0 0 10px 0; font-size: 22px;">Ahoj ${user.name}!</h2>
+              <p class="greeting-text" style="color: #666; font-size: 16px; line-height: 1.6; margin: 0 0 20px 0;">
+                Váš účet bol úspešne vytvorený. Teraz si prosím nastavte heslo, aby ste sa mohli prihlásiť a sledovať svoje objednávky.
               </p>
 
               <!-- Setup Password Button -->
               <div style="text-align: center; margin: 30px 0;">
-                <a href="${resetUrl}" style="display: inline-block; background-color: #ff6b35; color: #ffffff; padding: 15px 40px; text-decoration: none; border-radius: 5px; font-size: 16px; font-weight: bold;">
-                  🔐 Nastaviť heslo
+                <a href="${resetUrl}" class="setup-button" style="display: inline-block; background-color: ${primaryColor}; color: #ffffff; padding: 15px 40px; text-decoration: none; border-radius: 5px; font-size: 16px; font-weight: bold;">
+                  Nastaviť heslo
                 </a>
               </div>
 
               <p style="color: #666; font-size: 14px; line-height: 1.6; margin: 20px 0 0 0;">
                 Alebo skopírujte tento odkaz do prehliadača:<br>
-                <a href="${resetUrl}" style="color: #ff6b35; text-decoration: none; word-break: break-all;">${resetUrl}</a>
+                <a href="${resetUrl}" style="color: ${primaryColor}; text-decoration: none; word-break: break-all;">${resetUrl}</a>
               </p>
 
-              <div style="background-color: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin: 30px 0;">
-                <p style="margin: 0; color: #856404; font-size: 14px; line-height: 1.6;">
-                  <strong>⚠️ Dôležité:</strong> Tento odkaz je platný 7 dní. Po nastavení hesla sa budete môcť prihlásiť a sledovať stav svojich objednávok.
-                </p>
-              </div>
+              <p style="color: #666; font-size: 14px; line-height: 1.6; margin: 20px 0 0 0;">
+                Tento odkaz je platný 7 dní. Po nastavení hesla sa budete môcť prihlásiť a sledovať stav svojich objednávok.
+              </p>
 
               <!-- Benefits -->
               <h3 style="color: #333; margin: 30px 0 15px 0; font-size: 18px; border-bottom: 2px solid #f0f0f0; padding-bottom: 10px;">Čo získate s účtom</h3>
               <ul style="color: #666; font-size: 16px; line-height: 1.8; margin: 0; padding-left: 20px;">
-                <li>📦 Sledovanie stavu objednávok v reálnom čase</li>
-                <li>📋 História všetkých objednávok</li>
-                <li>⚡ Rýchlejšie budúce objednávky</li>
-                <li>📍 Uložené adresy pre doručenie</li>
-                <li>🎁 Exkluzívne ponuky a zľavy</li>
+                <li>Sledovanie stavu objednávok v reálnom čase</li>
+                <li>História všetkých objednávok</li>
+                <li>Rýchlejšie budúce objednávky</li>
+                <li>Uložené adresy pre doručenie</li>
+                <li>Exkluzívne ponuky a zľavy</li>
               </ul>
-
-              <div style="background-color: #e7f3ff; border-left: 4px solid #2196F3; padding: 15px; margin: 30px 0;">
-                <p style="margin: 0; color: #0c5460; font-size: 14px; line-height: 1.6;">
-                  <strong>💡 Tip:</strong> Uložte si svoje obľúbené adresy a budúce objednávky budú ešte rýchlejšie!
-                </p>
-              </div>
 
             </td>
           </tr>
@@ -913,23 +996,23 @@ export class EmailService {
     // PAID a PENDING sa neposielajú (PENDING má confirmation email pri vytvorení objednávky)
     const statusMessages: Partial<Record<OrderStatus, { subject: string; message: string }>> = {
       [OrderStatus.PREPARING]: {
-        subject: `👨‍🍳 Objednávka #${orderNumber} je v príprave`,
+        subject: `Objednávka #${orderNumber} je v príprave`,
         message: `Skvelá správa! Vaša objednávka sa teraz pripravuje v našej kuchyni.`,
       },
       [OrderStatus.READY]: {
-        subject: `🍕 Objednávka #${orderNumber} je pripravená!`,
+        subject: `Objednávka #${orderNumber} je pripravená!`,
         message: `Vaša objednávka je pripravená! Čoskoro bude doručená.`,
       },
       [OrderStatus.OUT_FOR_DELIVERY]: {
-        subject: `🚗 Objednávka #${orderNumber} odovzdaná kuriérovi`,
-        message: `Vaša objednávka je na ceste! Sledujte doručenie: ${trackingUrl}`,
+        subject: `Objednávka #${orderNumber} odovzdaná kuriérovi`,
+        message: `Vaša objednávka je na ceste! Sledujte doručenie.`,
       },
       [OrderStatus.DELIVERED]: {
-        subject: `✅ Objednávka #${orderNumber} doručená`,
+        subject: `Objednávka #${orderNumber} doručená`,
         message: `Vaša objednávka bola doručená! Dobrú chuť!`,
       },
       [OrderStatus.CANCELED]: {
-        subject: `❌ Objednávka #${orderNumber} zrušená`,
+        subject: `Objednávka #${orderNumber} zrušená`,
         message: `Vaša objednávka bola zrušená. Ak máte otázky, kontaktujte nás prosím.`,
       },
       // PAID a PENDING sa neposielajú
@@ -1151,11 +1234,7 @@ export class EmailService {
           <!-- Header -->
           <tr>
             <td class="email-header" style="background-color: ${primaryColor}; padding: 30px 20px; text-align: center;">
-              ${logoUrl ? `
-              <img src="${logoUrl}" alt="${tenantName}" class="logo-img" style="max-width: 200px; height: auto; margin-bottom: 10px;" />
-              ` : `
-              <h1 style="color: #ffffff; margin: 0; font-size: 28px;">🍕 ${tenantName}</h1>
-              `}
+              ${logoUrl ? `<img src="${logoUrl}" alt="${tenantName}" class="logo-img" style="max-width: 200px; height: auto; margin: 0 0 10px 0;" />` : `<h1 style="color: #ffffff; margin: 0; font-size: 28px;">${tenantName}</h1>`}
               <p style="color: #ffffff; margin: 10px 0 0 0; font-size: 16px;">Aktualizácia stavu objednávky</p>
             </td>
           </tr>
@@ -1164,7 +1243,7 @@ export class EmailService {
           <tr>
             <td class="email-content" style="padding: 40px 30px;">
               
-              <h2 class="greeting" style="color: #333; margin: 0 0 10px 0; font-size: 22px;">Ahoj ${customer.name}! 👋</h2>
+              <h2 class="greeting" style="color: #333; margin: 0 0 10px 0; font-size: 22px;">Ahoj ${customer.name}!</h2>
               <p class="greeting-text" style="color: #666; font-size: 16px; line-height: 1.6; margin: 0 0 20px 0;">
                 ${message}
               </p>
@@ -1172,7 +1251,7 @@ export class EmailService {
               <!-- Track Order Button -->
               <div style="text-align: center; margin: 30px 0;">
                 <a href="${trackingUrl}" class="track-button" style="display: inline-block; background-color: ${primaryColor}; color: #ffffff; padding: 15px 40px; text-decoration: none; border-radius: 5px; font-size: 16px; font-weight: bold;">
-                  📦 Sledovať objednávku
+                  Sledovať objednávku
                 </a>
               </div>
 

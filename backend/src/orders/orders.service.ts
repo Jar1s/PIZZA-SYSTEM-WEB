@@ -617,6 +617,7 @@ export class OrdersService {
           tenantName, // Use cleaned tenantName
           tenantDomain,
           tenant.slug,
+          tenantTheme, // Pass tenant theme for colors and logo
         );
         this.logger.log(`✅ Password setup email sent to ${createdUser.email}`, { userId: createdUser.id, email: createdUser.email, tenantId });
       } catch (error: any) {
