@@ -4,13 +4,16 @@ import {
   UseInterceptors,
   UploadedFile,
   BadRequestException,
+  UseGuards,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { extname, join } from 'path';
 import { existsSync, mkdirSync } from 'fs';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
 @Controller('upload')
+@UseGuards(JwtAuthGuard)
 export class UploadController {
   constructor() {
     // Ensure upload directory exists
@@ -39,7 +42,7 @@ export class UploadController {
         },
       }),
       limits: {
-        fileSize: 5 * 1024 * 1024, // 5MB
+        fileSize: 20 * 1024 * 1024, // 20MB
       },
       fileFilter: (req, file, cb) => {
         // Accept only image files

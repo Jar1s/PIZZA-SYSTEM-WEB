@@ -140,13 +140,23 @@ export function EditProductModal({
     const formData = new FormData();
     formData.append('image', file);
     
+    const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
+    const headers: HeadersInit = {};
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+    
     const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
     const res = await fetch(`${API_URL}/api/upload/image`, {
       method: 'POST',
+      headers,
       body: formData,
     });
     
     if (!res.ok) {
+      if (res.status === 401) {
+        throw new Error('Unauthorized - Please log in again');
+      }
       const error = await res.json().catch(() => ({ message: 'Failed to upload image' }));
       throw new Error(error.message || 'Failed to upload image');
     }
