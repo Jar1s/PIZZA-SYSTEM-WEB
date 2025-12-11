@@ -16,6 +16,7 @@ import { geocodeAddress, validateBratislavaAddressSimple } from '@/lib/geocoding
 import { isDarkTheme, getBackgroundClass, getButtonGradientClass, getButtonStyle, withTenantThemeDefaults } from '@/lib/tenant-utils';
 import { isCurrentlyOpen } from '@/lib/opening-hours';
 import { getProductDisplayName } from '@/lib/product-translations';
+import AddressAutocomplete from '@/components/account/AddressAutocomplete';
 
 interface Address {
   id: string;
@@ -90,6 +91,24 @@ export default function CheckoutPage() {
   const [deliveryFeeLoading, setDeliveryFeeLoading] = useState(false);
   const [deliveryFeeError, setDeliveryFeeError] = useState<string | null>(null);
   const [deliveryFeeFeatureEnabled, setDeliveryFeeFeatureEnabled] = useState(true);
+
+  // Inline form state for logged-in users
+  const [addressFormData, setAddressFormData] = useState({
+    street: '',
+    description: '',
+    city: '',
+    postalCode: '',
+    country: 'SK',
+    isPrimary: true,
+  });
+  const [phoneFormData, setPhoneFormData] = useState({
+    phone: '',
+    phonePrefix: '+421',
+  });
+  const [savingAddress, setSavingAddress] = useState(false);
+  const [savingPhone, setSavingPhone] = useState(false);
+  const [addressFormError, setAddressFormError] = useState<string | null>(null);
+  const [phoneFormError, setPhoneFormError] = useState<string | null>(null);
 
   // Calculate delivery fee when address changes
   useEffect(() => {
@@ -872,6 +891,138 @@ export default function CheckoutPage() {
     return { isValid: true };
   };
 
+  // Handle saving address for logged-in user
+  const handleSaveAddress = async () => {
+    if (!user) return;
+
+    // Validate required fields
+    if (!addressFormData.street || !addressFormData.city || !addressFormData.postalCode) {
+      setAddressFormError('Prosím, vyplňte všetky povinné polia (ulica, mesto, PSČ).');
+      return;
+    }
+
+    setSavingAddress(true);
+    setAddressFormError(null);
+
+    try {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+      const token = localStorage.getItem('customer_auth_token');
+
+      if (!token) {
+        setAddressFormError('Nie ste prihlásený');
+        setSavingAddress(false);
+        return;
+      }
+
+      const res = await fetch(`${API_URL}/api/customer/account/addresses`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          street: addressFormData.street,
+          city: addressFormData.city,
+          postalCode: addressFormData.postalCode,
+          country: addressFormData.country,
+          description: addressFormData.description || undefined,
+          isPrimary: addressFormData.isPrimary,
+        }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        // Refresh addresses
+        await fetchAddresses();
+        // If this is primary or it's the first address, select it
+        if (data.id) {
+          setSelectedAddressId(data.id);
+        }
+        // Reset form
+        setAddressFormData({
+          street: '',
+          description: '',
+          city: '',
+          postalCode: '',
+          country: 'SK',
+          isPrimary: true,
+        });
+      } else {
+        const error = await res.json().catch(() => ({ message: 'Nepodarilo sa uložiť adresu' }));
+        setAddressFormError(error.message || 'Nepodarilo sa uložiť adresu');
+      }
+    } catch (error) {
+      console.error('Failed to save address:', error);
+      setAddressFormError('Nepodarilo sa uložiť adresu');
+    } finally {
+      setSavingAddress(false);
+    }
+  };
+
+  // Handle saving phone for logged-in user
+  const handleSavePhone = async () => {
+    if (!user) return;
+
+    // Validate phone
+    const phoneValidation = validatePhone(phoneFormData.phone, phoneFormData.phonePrefix);
+    if (!phoneValidation.isValid) {
+      setPhoneFormError(phoneValidation.message || 'Neplatné telefónne číslo');
+      return;
+    }
+
+    setSavingPhone(true);
+    setPhoneFormError(null);
+
+    try {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+      const token = localStorage.getItem('customer_auth_token');
+
+      if (!token) {
+        setPhoneFormError('Nie ste prihlásený');
+        setSavingPhone(false);
+        return;
+      }
+
+      const fullPhone = `${phoneFormData.phonePrefix}${phoneFormData.phone.replace(/\D/g, '')}`;
+
+      const res = await fetch(`${API_URL}/api/customer/account/profile`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ phone: fullPhone }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        // Update user in context
+        if (setUser) {
+          const updatedUser = {
+            ...user,
+            phone: data.phone || fullPhone,
+            phoneVerified: data.phoneVerified !== undefined ? data.phoneVerified : user.phoneVerified,
+          };
+          setUser(updatedUser);
+          localStorage.setItem('customer_auth_user', JSON.stringify(updatedUser));
+        }
+        // Reset form
+        setPhoneFormData({
+          phone: '',
+          phonePrefix: '+421',
+        });
+      } else {
+        const error = await res.json().catch(() => ({ message: 'Nepodarilo sa uložiť telefónne číslo' }));
+        setPhoneFormError(error.message || 'Nepodarilo sa uložiť telefónne číslo');
+      }
+    } catch (error) {
+      console.error('Failed to save phone:', error);
+      setPhoneFormError('Nepodarilo sa uložiť telefónne číslo');
+    } finally {
+      setSavingPhone(false);
+    }
+  };
+
   const handlePay = async () => {
     // Validate guest data if user is not logged in
     if (!user) {
@@ -927,7 +1078,13 @@ export default function CheckoutPage() {
         }
       }
     } else {
-      // User is logged in - check address
+      // User is logged in - check phone and address
+      if (!user.phone) {
+        alert('Musíte mať vyplnené telefónne číslo pred vytvorením objednávky. Prosím, vyplňte telefónne číslo vyššie.');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        return;
+      }
+
       // Wait for addresses to finish loading before checking
       if (loadingAddresses) {
         alert('Načítavajú sa adresy, prosím počkajte...');
@@ -935,7 +1092,7 @@ export default function CheckoutPage() {
       }
       
       if (addresses.length === 0) {
-        alert('Musíte mať vyplnenú adresu pred vytvorením objednávky. Prosím, pridajte adresu pomocou tlačidla nižšie.');
+        alert('Musíte mať vyplnenú adresu pred vytvorením objednávky. Prosím, pridajte adresu pomocou formulára nižšie.');
         // Scroll to top to show the address message
         window.scrollTo({ top: 0, behavior: 'smooth' });
         return;
@@ -1189,44 +1346,6 @@ export default function CheckoutPage() {
     );
   }
 
-  // Show message if no addresses
-  if (!loadingAddresses && addresses.length === 0 && user) {
-    return (
-      <div className={`min-h-screen ${backgroundClass} ${isDark ? 'text-white' : ''} flex items-center justify-center py-8`}>
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-2xl w-full">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className={`${isDark ? 'checkout-card-dark text-center' : 'bg-white rounded-lg shadow-md text-center'} p-8 sm:p-10 md:p-12`}
-          >
-            <h2 className="text-2xl font-bold mb-4" style={{ color: 'var(--color-primary)' }}>
-              Adresa je povinná
-            </h2>
-            <p className={`${isDark ? 'text-gray-200' : 'text-gray-700'} mb-6`}>
-              Pred vytvorením objednávky musíte mať vyplnenú adresu pre doručenie.
-            </p>
-            <button
-              onClick={() => router.push(`/account?tenant=${tenantSlug}&section=address`)}
-              className={`w-full py-3 rounded-2xl font-semibold text-lg ${getButtonGradientClass(tenantData)}`}
-              style={getButtonStyle(tenantData, isDark)}
-            >
-              Pridať adresu
-            </button>
-            <button
-              type="button"
-              onClick={() => router.push('/')}
-              className={`w-full py-3 mt-4 rounded-2xl border-2 font-semibold text-lg ${
-                isDark ? 'border-white/30 text-white hover:bg-white/10' : ''
-              }`}
-              style={!isDark ? { borderColor: 'var(--color-primary)', color: 'var(--color-primary)' } : undefined}
-            >
-              Späť na menu
-            </button>
-          </motion.div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className={`min-h-screen ${backgroundClass} ${isDark ? 'text-white py-10' : 'py-8'}`}>
@@ -1319,15 +1438,110 @@ export default function CheckoutPage() {
           {user ? (
             <div className="mb-8 pb-8 border-b">
               <h2 className="text-xl font-semibold mb-4">{t.customerInformation}</h2>
-              <div className="space-y-2 text-gray-700">
-                <div><strong>{t.nameLabel}:</strong> {user.name || 'N/A'}</div>
-                <div><strong>{t.emailLabel}:</strong> {user.email || 'N/A'}</div>
-                {user.phone && (
+              {!user.phone ? (
+                // Show phone form if phone is missing
+                <div className="space-y-4">
+                  <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg mb-4">
+                    <p className="text-sm text-yellow-800">
+                      Pre dokončenie objednávky je potrebné vyplniť telefónne číslo.
+                    </p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-2">
+                      {t.phoneLabel} <span className="text-red-500">*</span>
+                    </label>
+                    <div className="flex gap-2">
+                      <select
+                        value={phoneFormData.phonePrefix}
+                        onChange={(e) => {
+                          setPhoneFormData({ ...phoneFormData, phonePrefix: e.target.value });
+                          if (phoneFormError) setPhoneFormError(null);
+                        }}
+                        className="px-3 py-2 border rounded-lg bg-white min-w-[120px]"
+                      >
+                        <option value="+421">+421 (SK)</option>
+                        <option value="+420">+420 (CZ)</option>
+                        <option value="+48">+48 (PL)</option>
+                        <option value="+36">+36 (HU)</option>
+                        <option value="+43">+43 (AT)</option>
+                        <option value="+49">+49 (DE)</option>
+                        <option value="+1">+1 (US/CA)</option>
+                        <option value="+44">+44 (GB)</option>
+                        <option value="+33">+33 (FR)</option>
+                        <option value="+39">+39 (IT)</option>
+                        <option value="+34">+34 (ES)</option>
+                        <option value="+351">+351 (PT)</option>
+                        <option value="+31">+31 (NL)</option>
+                        <option value="+32">+32 (BE)</option>
+                        <option value="+41">+41 (CH)</option>
+                        <option value="+46">+46 (SE)</option>
+                        <option value="+47">+47 (NO)</option>
+                        <option value="+45">+45 (DK)</option>
+                        <option value="+358">+358 (FI)</option>
+                        <option value="+353">+353 (IE)</option>
+                        <option value="+30">+30 (GR)</option>
+                        <option value="+40">+40 (RO)</option>
+                        <option value="+359">+359 (BG)</option>
+                        <option value="+385">+385 (HR)</option>
+                        <option value="+386">+386 (SI)</option>
+                        <option value="+372">+372 (EE)</option>
+                        <option value="+371">+371 (LV)</option>
+                        <option value="+370">+370 (LT)</option>
+                        <option value="+352">+352 (LU)</option>
+                        <option value="+356">+356 (MT)</option>
+                        <option value="+357">+357 (CY)</option>
+                      </select>
+                      <input
+                        type="tel"
+                        value={phoneFormData.phone}
+                        onChange={(e) => {
+                          setPhoneFormData({ ...phoneFormData, phone: e.target.value.replace(/\D/g, '') });
+                          if (phoneFormError) setPhoneFormError(null);
+                          // Real-time validation
+                          if (e.target.value.trim()) {
+                            const validation = validatePhone(e.target.value.replace(/\D/g, ''), phoneFormData.phonePrefix);
+                            setPhoneFormError(validation.isValid ? null : validation.message || null);
+                          }
+                        }}
+                        onBlur={(e) => {
+                          if (e.target.value.trim()) {
+                            const validation = validatePhone(e.target.value.replace(/\D/g, ''), phoneFormData.phonePrefix);
+                            setPhoneFormError(validation.isValid ? null : validation.message || null);
+                          }
+                        }}
+                        placeholder={t.phonePlaceholder || '912345678'}
+                        className={`flex-1 px-4 py-2 border rounded-lg ${
+                          phoneFormError ? 'border-red-500' : ''
+                        }`}
+                      />
+                    </div>
+                    {phoneFormError && (
+                      <p className="mt-1 text-sm text-red-600">{phoneFormError}</p>
+                    )}
+                    <button
+                      onClick={handleSavePhone}
+                      disabled={savingPhone || !phoneFormData.phone}
+                      className={`mt-3 px-6 py-2 rounded-lg font-semibold text-sm ${
+                        savingPhone || !phoneFormData.phone
+                          ? 'bg-gray-400 cursor-not-allowed'
+                          : getButtonGradientClass(tenantData)
+                      } text-white`}
+                      style={!savingPhone && phoneFormData.phone ? getButtonStyle(tenantData, isDark) : undefined}
+                    >
+                      {savingPhone ? t.loading || 'Ukladám...' : t.save || 'Uložiť'}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                // Show read-only info if phone exists
+                <div className="space-y-2 text-gray-700">
+                  <div><strong>{t.nameLabel}:</strong> {user.name || 'N/A'}</div>
+                  <div><strong>{t.emailLabel}:</strong> {user.email || 'N/A'}</div>
                   <div>
                     <strong>{t.phoneLabel}:</strong> {user.phone}
                   </div>
-                )}
-              </div>
+                </div>
+              )}
             </div>
           ) : (
             <div className="mb-8 pb-8 border-b">
@@ -1487,98 +1701,243 @@ export default function CheckoutPage() {
           
           {/* Address Selection - Guest Form or Address List */}
           {user ? (
-            !loadingAddresses && addresses.length > 0 && (
-            <div className="mb-8 pb-8 border-b">
-              <h2 className="text-xl font-semibold mb-4">{t.deliveryAddress}</h2>
-              <div className="space-y-3">
-                {addresses.map((address) => (
-                  <label
-                    key={address.id}
-                    onClick={() => {
-                      console.log('[Checkout] Address clicked:', {
-                        addressId: address.id,
-                        street: address.street,
-                        city: address.city,
-                        postalCode: address.postalCode,
-                        previousAddressId: selectedAddressId,
-                        userId: user?.id,
-                        userEmail: user?.email,
-                      });
-                      setSelectedAddressId(address.id);
-                    }}
-                    className={`flex items-start rounded-2xl p-4 cursor-pointer transition-all border ${
-                      selectedAddressId === address.id
-                        ? isDark
-                          ? 'bg-white/10 border-white/30 shadow-[0_20px_60px_rgba(0,0,0,0.6)]'
-                          : 'shadow'
-                        : isDark
-                          ? 'bg-white/5 border-white/10 hover:border-white/25'
-                          : 'border-gray-200 hover:border-gray-300'
+            !loadingAddresses && (
+              addresses.length > 0 ? (
+                // Show address list if addresses exist
+                <div className="mb-8 pb-8 border-b">
+                  <h2 className="text-xl font-semibold mb-4">{t.deliveryAddress}</h2>
+                  <div className="space-y-3">
+                    {addresses.map((address) => (
+                      <label
+                        key={address.id}
+                        onClick={() => {
+                          console.log('[Checkout] Address clicked:', {
+                            addressId: address.id,
+                            street: address.street,
+                            city: address.city,
+                            postalCode: address.postalCode,
+                            previousAddressId: selectedAddressId,
+                            userId: user?.id,
+                            userEmail: user?.email,
+                          });
+                          setSelectedAddressId(address.id);
+                        }}
+                        className={`flex items-start rounded-2xl p-4 cursor-pointer transition-all border ${
+                          selectedAddressId === address.id
+                            ? isDark
+                              ? 'bg-white/10 border-white/30 shadow-[0_20px_60px_rgba(0,0,0,0.6)]'
+                              : 'shadow'
+                            : isDark
+                              ? 'bg-white/5 border-white/10 hover:border-white/25'
+                              : 'border-gray-200 hover:border-gray-300'
+                        }`}
+                        style={selectedAddressId === address.id && !isDark ? {
+                          borderColor: 'var(--color-primary)',
+                          backgroundColor: `${primaryColor}15`
+                        } : undefined}
+                      >
+                        <input
+                          type="radio"
+                          name="address"
+                          value={address.id}
+                          checked={selectedAddressId === address.id}
+                          onChange={() => {
+                            console.log('[Checkout] Address changed via radio:', {
+                              addressId: address.id,
+                              street: address.street,
+                              city: address.city,
+                              postalCode: address.postalCode,
+                              previousAddressId: selectedAddressId,
+                              userId: user?.id,
+                              userEmail: user?.email,
+                            });
+                            setSelectedAddressId(address.id);
+                          }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                          }}
+                          className="mt-1 mr-3 cursor-pointer accent-[var(--color-primary)]"
+                        />
+                        <div className={`flex-1 ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                          <div className="font-semibold">
+                            {address.street}
+                            {address.isPrimary && (
+                              <span className={`ml-2 text-xs px-2 py-1 rounded ${
+                                isDark ? 'bg-white/15 text-white' : ''
+                              }`}
+                              style={!isDark ? {
+                                backgroundColor: `${primaryColor}20`,
+                                color: primaryColor
+                              } : undefined}>
+                                {t.primary}
+                              </span>
+                            )}
+                          </div>
+                          {address.description && (
+                            <div className={`text-sm mt-1 ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>{address.description}</div>
+                          )}
+                          <div className={`text-sm mt-1 ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
+                            {address.postalCode} {address.city}, {address.country}
+                          </div>
+                        </div>
+                      </label>
+                    ))}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => router.push(`/account?tenant=${tenantSlug}&section=address`)}
+                    className={`mt-4 text-sm font-medium hover:underline ${
+                      isDark ? 'text-white' : ''
                     }`}
-                    style={selectedAddressId === address.id && !isDark ? {
-                      borderColor: 'var(--color-primary)',
-                      backgroundColor: `${primaryColor}15`
-                    } : undefined}
+                    style={!isDark ? { color: 'var(--color-primary)' } : undefined}
                   >
-                    <input
-                      type="radio"
-                      name="address"
-                      value={address.id}
-                      checked={selectedAddressId === address.id}
-                      onChange={() => {
-                        console.log('[Checkout] Address changed via radio:', {
-                          addressId: address.id,
-                          street: address.street,
-                          city: address.city,
-                          postalCode: address.postalCode,
-                          previousAddressId: selectedAddressId,
-                          userId: user?.id,
-                          userEmail: user?.email,
-                        });
-                        setSelectedAddressId(address.id);
-                      }}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                      }}
-                      className="mt-1 mr-3 cursor-pointer accent-[var(--color-primary)]"
-                    />
-                    <div className={`flex-1 ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                      <div className="font-semibold">
-                        {address.street}
-                        {address.isPrimary && (
-                          <span className={`ml-2 text-xs px-2 py-1 rounded ${
-                            isDark ? 'bg-white/15 text-white' : ''
+                    {t.addNewAddress}
+                  </button>
+                </div>
+              ) : (
+                // Show address form if no addresses exist
+                <div className="mb-8 pb-8 border-b">
+                  <h2 className="text-xl font-semibold mb-4">{t.deliveryAddress}</h2>
+                  <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg mb-4">
+                    <p className="text-sm text-yellow-800">
+                      Pre dokončenie objednávky je potrebné vyplniť adresu pre doručenie.
+                    </p>
+                  </div>
+                  <div className="space-y-4">
+                    <div>
+                      <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-white' : 'text-gray-700'}`}>
+                        {t.address || 'Adresa'} <span className="text-red-500">*</span>
+                      </label>
+                      <AddressAutocomplete
+                        value={addressFormData.street}
+                        onChange={(address, details) => {
+                          if (details) {
+                            setAddressFormData({
+                              ...addressFormData,
+                              street: details.street || address,
+                              city: details.city || addressFormData.city,
+                              postalCode: details.postalCode || addressFormData.postalCode,
+                              country: details.country || addressFormData.country,
+                            });
+                          } else {
+                            setAddressFormData({
+                              ...addressFormData,
+                              street: address,
+                            });
+                          }
+                          if (addressFormError) setAddressFormError(null);
+                        }}
+                      />
+                    </div>
+
+                    <div>
+                      <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-white' : 'text-gray-700'}`}>
+                        {t.description || 'Popis'} ({t.optional || 'voliteľné'})
+                      </label>
+                      <input
+                        type="text"
+                        value={addressFormData.description}
+                        onChange={(e) => setAddressFormData({ ...addressFormData, description: e.target.value })}
+                        placeholder={t.apartmentNumber || 'Číslo bytu, poschodie, atď.'}
+                        className={`w-full px-4 py-2 border rounded-lg ${
+                          isDark 
+                            ? 'bg-white/5 border-white/20 text-white placeholder:text-gray-400' 
+                            : 'bg-white border-gray-300'
+                        }`}
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-white' : 'text-gray-700'}`}>
+                          {t.cityLabel || 'Mesto'} <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          value={addressFormData.city}
+                          onChange={(e) => setAddressFormData({ ...addressFormData, city: e.target.value })}
+                          className={`w-full px-4 py-2 border rounded-lg ${
+                            isDark 
+                              ? 'bg-white/5 border-white/20 text-white placeholder:text-gray-400' 
+                              : 'bg-white border-gray-300'
                           }`}
-                          style={!isDark ? {
-                            backgroundColor: `${primaryColor}20`,
-                            color: primaryColor
-                          } : undefined}>
-                            {t.primary}
-                          </span>
-                        )}
+                        />
                       </div>
-                      {address.description && (
-                        <div className={`text-sm mt-1 ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>{address.description}</div>
-                      )}
-                      <div className={`text-sm mt-1 ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
-                        {address.postalCode} {address.city}, {address.country}
+
+                      <div>
+                        <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-white' : 'text-gray-700'}`}>
+                          {t.postalCodeLabel || 'PSČ'} <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          value={addressFormData.postalCode}
+                          onChange={(e) => setAddressFormData({ ...addressFormData, postalCode: e.target.value })}
+                          className={`w-full px-4 py-2 border rounded-lg ${
+                            isDark 
+                              ? 'bg-white/5 border-white/20 text-white placeholder:text-gray-400' 
+                              : 'bg-white border-gray-300'
+                          }`}
+                        />
                       </div>
                     </div>
-                  </label>
-                ))}
-              </div>
-              <button
-                type="button"
-                onClick={() => router.push(`/account?tenant=${tenantSlug}&section=address`)}
-                className={`mt-4 text-sm font-medium hover:underline ${
-                  isDark ? 'text-white' : ''
-                }`}
-                style={!isDark ? { color: 'var(--color-primary)' } : undefined}
-              >
-                {t.addNewAddress}
-              </button>
-            </div>
-          )
+
+                    <div>
+                      <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-white' : 'text-gray-700'}`}>
+                        {t.countryLabel || 'Krajina'}
+                      </label>
+                      <select
+                        value={addressFormData.country}
+                        onChange={(e) => setAddressFormData({ ...addressFormData, country: e.target.value })}
+                        className={`w-full px-4 py-2 border rounded-lg ${
+                          isDark 
+                            ? 'bg-white/5 border-white/20 text-white' 
+                            : 'bg-white border-gray-300'
+                        }`}
+                      >
+                        <option value="SK">Slovensko</option>
+                        <option value="CZ">Česká republika</option>
+                        <option value="PL">Polsko</option>
+                        <option value="HU">Maďarsko</option>
+                        <option value="AT">Rakúsko</option>
+                        <option value="DE">Nemecko</option>
+                      </select>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        id="isPrimary"
+                        checked={addressFormData.isPrimary}
+                        onChange={(e) => setAddressFormData({ ...addressFormData, isPrimary: e.target.checked })}
+                        className="w-4 h-4 rounded accent-[var(--color-primary)]"
+                      />
+                      <label htmlFor="isPrimary" className={`text-sm ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
+                        {t.setAsPrimary || 'Nastaviť ako primárnu adresu'}
+                      </label>
+                    </div>
+
+                    {addressFormError && (
+                      <p className="text-sm text-red-600">{addressFormError}</p>
+                    )}
+
+                    <div className="flex gap-3 pt-2">
+                      <button
+                        onClick={handleSaveAddress}
+                        disabled={savingAddress || !addressFormData.street || !addressFormData.city || !addressFormData.postalCode}
+                        className={`px-6 py-2 rounded-lg font-semibold text-sm ${
+                          savingAddress || !addressFormData.street || !addressFormData.city || !addressFormData.postalCode
+                            ? 'bg-gray-400 cursor-not-allowed'
+                            : getButtonGradientClass(tenantData)
+                        } text-white`}
+                        style={!savingAddress && addressFormData.street && addressFormData.city && addressFormData.postalCode ? getButtonStyle(tenantData, isDark) : undefined}
+                      >
+                        {savingAddress ? t.loading || 'Ukladám...' : t.save || 'Uložiť'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )
+            )
           ) : (
             <div className="mb-8 pb-8 border-b">
               <h2 className="text-xl font-semibold mb-4">{t.deliveryAddress}</h2>
