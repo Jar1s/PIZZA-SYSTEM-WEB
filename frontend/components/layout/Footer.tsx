@@ -11,11 +11,6 @@ interface FooterProps {
 export const Footer = ({ tenantName, primaryColor }: FooterProps) => {
   const { t } = useLanguage();
   const year = new Date().getFullYear();
-  const quickLinks = [
-    { label: t.home, href: '/' },
-    { label: t.menu, href: '/#menu' },
-    { label: t.orderNow2, href: '/checkout' },
-  ];
 
   const socialLinks = [
     { icon: '📸', label: 'Instagram' },
@@ -28,7 +23,7 @@ export const Footer = ({ tenantName, primaryColor }: FooterProps) => {
       <div className="container mx-auto px-4">
         <div className="relative overflow-hidden rounded-3xl bg-black text-white border border-white/10 footer-grid">
           <div className="absolute inset-0 bg-gradient-to-br from-white/10 via-transparent to-white/5 pointer-events-none" aria-hidden />
-          <div className="relative px-8 py-12 grid grid-cols-1 md:grid-cols-4 gap-10">
+          <div className="relative px-8 py-12 grid grid-cols-1 md:grid-cols-3 gap-10">
             <div className="space-y-4">
               <h3 className="text-3xl font-black" style={{ color: primaryColor }}>
                 {tenantName}
@@ -36,19 +31,6 @@ export const Footer = ({ tenantName, primaryColor }: FooterProps) => {
               <p className="text-gray-300 leading-relaxed">
                 {t.footerTagline}
               </p>
-            </div>
-
-            <div>
-              <h4 className="text-lg font-bold mb-4 uppercase tracking-[0.3em] text-gray-400">{t.quickLinks}</h4>
-              <ul className="space-y-2 text-gray-300">
-                {quickLinks.map((link) => (
-                  <li key={link.label}>
-                    <a href={link.href} className="hover:text-white transition">
-                      {link.label}
-                    </a>
-                  </li>
-                ))}
-              </ul>
             </div>
 
             <div>
