@@ -57,6 +57,13 @@ const drinkImageMap: Record<string, string> = {
   'coca-cola zero sugar': '/images/drinks/cola-zero-1l.png',
 };
 
+const pizzaImageMap: Record<string, string> = {
+  'vyskladaj si vlastnú pizzu': '/images/pizzas/build-your-own.jpg',
+  'vyskladaj si vlastnu pizzu': '/images/pizzas/build-your-own.jpg',
+  'build your own pizza': '/images/pizzas/build-your-own.jpg',
+  'build-your-own': '/images/pizzas/build-your-own.jpg',
+};
+
 /**
  * Get fallback image for a product based on its name
  * Works regardless of product category - finds images by product name
@@ -103,7 +110,15 @@ export function getProductFallbackImage(
     }
   }
   
-  return undefined;
+  // Check pizza image map (works regardless of category)
+  for (const variation of variations) {
+    if (variation && pizzaImageMap[variation]) {
+      return pizzaImageMap[variation];
+    }
+  }
+  
+  // Universal fallback for all products
+  return '/images/placeholder-pizza.jpg';
 }
 
 /**
