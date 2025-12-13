@@ -198,8 +198,15 @@ export const ProductCard = memo(function ProductCard({ product, index = 0, isBes
             <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-300" />
           </>
         ) : (
-          <div className="w-full h-full flex items-center justify-center bg-gray-200">
-            <span className="text-6xl">🍕</span>
+          <div className="relative w-full h-full">
+            <Image
+              src={fallbackImage || '/images/placeholder-pizza.jpg'}
+              alt={product.name}
+              fill
+              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+              className="object-cover"
+              unoptimized
+            />
           </div>
         )}
         
