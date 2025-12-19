@@ -82,6 +82,44 @@ export class WoltDriveService {
     return false;
   }
 
+  /**
+   * Format Wolt API error into user-friendly message
+   */
+  private formatWoltError(response: Response, errorData: any): string {
+    const status = response.status;
+    const statusText = response.statusText;
+
+    // Handle specific error cases
+    if (status === 401) {
+      return 'Wolt API autentifikácia zlyhala. Skontrolujte, či máte správne API kľúče nakonfigurované v nastaveniach.';
+    }
+
+    if (status === 403) {
+      return 'Wolt API odmietol požiadavku. Skontrolujte oprávnenia vášho API kľúča.';
+    }
+
+    if (status === 404) {
+      return 'Wolt API endpoint nebol nájdený. Skontrolujte konfiguráciu.';
+    }
+
+    if (status === 400) {
+      const message = errorData?.message || errorData?.error || 'Neplatná požiadavka';
+      if (message.includes('pickup') || message.includes('dropoff')) {
+        return `Neplatná adresa: ${message}`;
+      }
+      return `Neplatná požiadavka: ${message}`;
+    }
+
+    if (status === 422) {
+      const message = errorData?.message || errorData?.error || 'Nedá sa spracovať';
+      return `Wolt API nemôže spracovať požiadavku: ${message}`;
+    }
+
+    // Generic error message with details from API if available
+    const apiMessage = errorData?.message || errorData?.error || statusText;
+    return `Wolt API chyba (${status}): ${apiMessage}`;
+  }
+
   async getQuote(
     apiKey: string,
     pickupAddress: Address,
@@ -220,8 +258,10 @@ export class WoltDriveService {
 
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({}));
-          const errorMessage = errorData.message || errorData.error || response.statusText;
-          const error = new Error(`Wolt API error: ${errorMessage}`);
+          const userFriendlyMessage = this.formatWoltError(response, errorData);
+          const error = new Error(userFriendlyMessage);
+          (error as any).status = response.status;
+          (error as any).originalError = errorData;
           
           if (!this.isRetryableError(error, response)) {
             throw error; // Don't retry 4xx errors
@@ -336,7 +376,12 @@ export class WoltDriveService {
         });
 
         if (!response.ok) {
-          const error = new Error(`Wolt API error: ${response.statusText}`);
+          const errorData = await response.json().catch(() => ({}));
+          const userFriendlyMessage = this.formatWoltError(response, errorData);
+          const error = new Error(userFriendlyMessage);
+          (error as any).status = response.status;
+          (error as any).originalError = errorData;
+          
           if (!this.isRetryableError(error, response)) {
             throw error; // Don't retry 4xx errors
           }

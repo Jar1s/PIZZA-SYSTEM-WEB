@@ -113,13 +113,23 @@ export class DeliveryService {
     const address = order.address as any;
 
     // Get shipment promise from Wolt
-    return this.woltDrive.getShipmentPromise(
-      woltConfig.apiKey,
-      pickupAddress,
-      address,
-      customer.name,
-      customer.phone,
-    );
+    try {
+      return await this.woltDrive.getShipmentPromise(
+        woltConfig.apiKey,
+        pickupAddress,
+        address,
+        customer.name,
+        customer.phone,
+      );
+    } catch (error: any) {
+      // Propagate user-friendly error message from WoltDriveService
+      this.logger.error('Failed to get shipment promise', { 
+        orderId, 
+        error: error.message,
+        status: error.status,
+      });
+      throw new BadRequestException(error.message || 'Nepodarilo sa skontrolovať dostupnosť Wolt');
+    }
   }
 
   async createDeliveryForOrder(orderId: string, shipmentPromiseId?: string) {
@@ -152,15 +162,26 @@ export class DeliveryService {
 
     // Create Wolt delivery with tenant-specific pickup address
     // If shipmentPromiseId is provided, use it (proper flow according to documentation)
-    const woltDelivery = await this.woltDrive.createDelivery(
-      woltConfig.apiKey,
-      order.id,
-      pickupAddress,
-      address,
-      customer.name,
-      customer.phone,
-      shipmentPromiseId, // Optional: if provided, will use shipment promise ID
-    );
+    let woltDelivery;
+    try {
+      woltDelivery = await this.woltDrive.createDelivery(
+        woltConfig.apiKey,
+        order.id,
+        pickupAddress,
+        address,
+        customer.name,
+        customer.phone,
+        shipmentPromiseId, // Optional: if provided, will use shipment promise ID
+      );
+    } catch (error: any) {
+      // Propagate user-friendly error message from WoltDriveService
+      this.logger.error('Failed to create Wolt delivery', { 
+        orderId, 
+        error: error.message,
+        status: error.status,
+      });
+      throw new BadRequestException(error.message || 'Nepodarilo sa vytvoriť Wolt doručenie');
+    }
 
     // Save delivery record
     const delivery = await this.prisma.delivery.create({

@@ -510,8 +510,9 @@ export async function checkWoltAvailability(orderId: string): Promise<{
   });
   
   if (!res.ok) {
-    const error = await res.json().catch(() => ({ message: 'Failed to check Wolt availability' }));
-    throw new Error(error.message || 'Failed to check Wolt availability');
+    const error = await res.json().catch(() => ({ message: 'Nepodarilo sa skontrolovať dostupnosť Wolt' }));
+    // Backend now returns user-friendly messages in error.message
+    throw new Error(error.message || error.error || 'Nepodarilo sa skontrolovať dostupnosť Wolt');
   }
   
   return await res.json();
@@ -533,8 +534,9 @@ export async function createWoltDelivery(orderId: string, promiseId?: string): P
   });
   
   if (!res.ok) {
-    const error = await res.json().catch(() => ({ message: 'Failed to create Wolt delivery' }));
-    throw new Error(error.message || 'Failed to create Wolt delivery');
+    const error = await res.json().catch(() => ({ message: 'Nepodarilo sa vytvoriť Wolt doručenie' }));
+    // Backend now returns user-friendly messages in error.message
+    throw new Error(error.message || error.error || 'Nepodarilo sa vytvoriť Wolt doručenie');
   }
   
   const delivery = await res.json();
