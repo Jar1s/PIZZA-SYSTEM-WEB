@@ -496,9 +496,16 @@ export async function checkWoltAvailability(orderId: string): Promise<{
   validUntil: string;
   currency: string;
 }> {
+  const token = localStorage.getItem('auth_token');
+  const headers: HeadersInit = { 'Content-Type': 'application/json' };
+  
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  
   const res = await fetch(`${API_URL}/api/delivery/check-availability`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers,
     body: JSON.stringify({ orderId }),
   });
   
@@ -512,9 +519,16 @@ export async function checkWoltAvailability(orderId: string): Promise<{
 
 // Admin: Create Wolt delivery
 export async function createWoltDelivery(orderId: string, promiseId?: string): Promise<{ success: boolean; deliveryId?: string; trackingUrl?: string; message: string }> {
+  const token = localStorage.getItem('auth_token');
+  const headers: HeadersInit = { 'Content-Type': 'application/json' };
+  
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  
   const res = await fetch(`${API_URL}/api/delivery/create`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers,
     body: JSON.stringify({ orderId, promiseId }),
   });
   
