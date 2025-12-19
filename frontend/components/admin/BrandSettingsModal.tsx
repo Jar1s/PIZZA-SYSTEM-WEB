@@ -19,12 +19,38 @@ export function BrandSettingsModal({
   const [cashEnabled, setCashEnabled] = useState(false);
   const [cardEnabled, setCardEnabled] = useState(false);
   const [saving, setSaving] = useState(false);
+  
+  // Wolt/Delivery settings
+  const [woltApiKey, setWoltApiKey] = useState('');
+  const [pickupStreet, setPickupStreet] = useState('');
+  const [pickupCity, setPickupCity] = useState('');
+  const [pickupPostalCode, setPickupPostalCode] = useState('');
+  const [pickupCountry, setPickupCountry] = useState('SK');
+  const [pickupLat, setPickupLat] = useState('');
+  const [pickupLng, setPickupLng] = useState('');
+  const [pickupPhone, setPickupPhone] = useState('');
+  const [pickupInstructions, setPickupInstructions] = useState('');
 
   useEffect(() => {
     if (tenant) {
       const paymentConfig = (tenant.paymentConfig as any) || {};
       setCashEnabled(paymentConfig.cashOnDeliveryEnabled === true);
       setCardEnabled(paymentConfig.cardOnDeliveryEnabled === true);
+      
+      // Load Wolt/Delivery settings
+      const deliveryConfig = (tenant.deliveryConfig as any) || {};
+      const woltConfig = deliveryConfig.woltConfig || {};
+      const pickupAddress = deliveryConfig.pickupAddress || {};
+      
+      setWoltApiKey(woltConfig.apiKey || '');
+      setPickupStreet(pickupAddress.street || '');
+      setPickupCity(pickupAddress.city || '');
+      setPickupPostalCode(pickupAddress.postalCode || '');
+      setPickupCountry(pickupAddress.country || 'SK');
+      setPickupLat(pickupAddress.coordinates?.lat?.toString() || '');
+      setPickupLng(pickupAddress.coordinates?.lng?.toString() || '');
+      setPickupPhone(pickupAddress.phone || '');
+      setPickupInstructions(pickupAddress.instructions || '');
     }
   }, [tenant]);
 
@@ -50,6 +76,69 @@ export function BrandSettingsModal({
     } catch (error: any) {
       console.error('Failed to save payment config:', error);
       alert('Failed to save payment settings: ' + (error.message || 'Unknown error'));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleSaveWoltConfig = async () => {
+    if (!tenant) return;
+    
+    // Validate required fields
+    if (!woltApiKey.trim()) {
+      alert('Wolt API kľúč je povinný');
+      return;
+    }
+    
+    if (!pickupStreet.trim() || !pickupCity.trim() || !pickupPostalCode.trim() || !pickupCountry.trim()) {
+      alert('Adresa kuchyne je neúplná. Vyplňte ulicu, mesto, PSČ a krajinu.');
+      return;
+    }
+    
+    if (!pickupLat.trim() || !pickupLng.trim()) {
+      alert('GPS súradnice kuchyne sú povinné (lat a lng)');
+      return;
+    }
+    
+    const lat = parseFloat(pickupLat);
+    const lng = parseFloat(pickupLng);
+    
+    if (isNaN(lat) || isNaN(lng)) {
+      alert('GPS súradnice musia byť platné čísla');
+      return;
+    }
+    
+    setSaving(true);
+    try {
+      const deliveryConfig = {
+        ...((tenant.deliveryConfig as any) || {}),
+        woltConfig: {
+          apiKey: woltApiKey.trim(),
+        },
+        pickupAddress: {
+          street: pickupStreet.trim(),
+          city: pickupCity.trim(),
+          postalCode: pickupPostalCode.trim(),
+          country: pickupCountry.trim(),
+          coordinates: {
+            lat: lat,
+            lng: lng,
+          },
+          phone: pickupPhone.trim() || undefined,
+          instructions: pickupInstructions.trim() || undefined,
+        },
+      };
+      
+      await updateTenant(tenant.slug, {
+        deliveryConfig: deliveryConfig as any,
+      });
+      
+      // Reload tenant to get updated data
+      const updatedTenant = await getTenant(tenant.slug);
+      alert('Wolt nastavenia boli uložené!');
+    } catch (error: any) {
+      console.error('Failed to save Wolt config:', error);
+      alert('Nepodarilo sa uložiť Wolt nastavenia: ' + (error.message || 'Unknown error'));
     } finally {
       setSaving(false);
     }
@@ -308,6 +397,164 @@ export function BrandSettingsModal({
                       className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {saving ? 'Saving...' : 'Save Payment Settings'}
+                    </button>
+                  </div>
+
+                  {/* Wolt/Delivery Settings */}
+                  <div className="border-t pt-6">
+                    <h4 className="text-lg font-semibold mb-4">
+                      🚚 Wolt Delivery Settings
+                    </h4>
+                    <p className="text-sm text-gray-600 mb-4">
+                      Konfigurácia Wolt API a adresy kuchyne pre doručovanie.
+                    </p>
+                    
+                    <div className="space-y-4">
+                      {/* Wolt API Key */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Wolt API Kľúč <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="password"
+                          value={woltApiKey}
+                          onChange={(e) => setWoltApiKey(e.target.value)}
+                          placeholder="wolt_api_key_..."
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                        />
+                        <p className="mt-1 text-xs text-gray-500">
+                          API kľúč z Wolt Drive dashboardu
+                        </p>
+                      </div>
+
+                      {/* Pickup Address Section */}
+                      <div className="border-t pt-4">
+                        <h5 className="text-sm font-semibold text-gray-700 mb-3">
+                          📍 Adresa Kuchyne (Pickup Address)
+                        </h5>
+                        
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="col-span-2">
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              Ulica <span className="text-red-500">*</span>
+                            </label>
+                            <input
+                              type="text"
+                              value={pickupStreet}
+                              onChange={(e) => setPickupStreet(e.target.value)}
+                              placeholder="Hlavná 123"
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                            />
+                          </div>
+                          
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              Mesto <span className="text-red-500">*</span>
+                            </label>
+                            <input
+                              type="text"
+                              value={pickupCity}
+                              onChange={(e) => setPickupCity(e.target.value)}
+                              placeholder="Bratislava"
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                            />
+                          </div>
+                          
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              PSČ <span className="text-red-500">*</span>
+                            </label>
+                            <input
+                              type="text"
+                              value={pickupPostalCode}
+                              onChange={(e) => setPickupPostalCode(e.target.value)}
+                              placeholder="81101"
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                            />
+                          </div>
+                          
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              Krajina <span className="text-red-500">*</span>
+                            </label>
+                            <input
+                              type="text"
+                              value={pickupCountry}
+                              onChange={(e) => setPickupCountry(e.target.value)}
+                              placeholder="SK"
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                            />
+                          </div>
+                          
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              GPS Lat (Zemepisná šírka) <span className="text-red-500">*</span>
+                            </label>
+                            <input
+                              type="number"
+                              step="any"
+                              value={pickupLat}
+                              onChange={(e) => setPickupLat(e.target.value)}
+                              placeholder="48.1486"
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                            />
+                          </div>
+                          
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              GPS Lng (Zemepisná dĺžka) <span className="text-red-500">*</span>
+                            </label>
+                            <input
+                              type="number"
+                              step="any"
+                              value={pickupLng}
+                              onChange={(e) => setPickupLng(e.target.value)}
+                              placeholder="17.1077"
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                            />
+                          </div>
+                          
+                          <div className="col-span-2">
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              Telefón Kuchyne
+                            </label>
+                            <input
+                              type="text"
+                              value={pickupPhone}
+                              onChange={(e) => setPickupPhone(e.target.value)}
+                              placeholder="+421900000000"
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                            />
+                            <p className="mt-1 text-xs text-gray-500">
+                              Telefón pre kontakt s kuchyňou (voliteľné, ale odporúčané)
+                            </p>
+                          </div>
+                          
+                          <div className="col-span-2">
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              Inštrukcie pre kuriéra
+                            </label>
+                            <textarea
+                              value={pickupInstructions}
+                              onChange={(e) => setPickupInstructions(e.target.value)}
+                              placeholder="Napríklad: Vchod z ulice, 2. poschodie..."
+                              rows={2}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                            />
+                            <p className="mt-1 text-xs text-gray-500">
+                              Voliteľné inštrukcie pre kuriéra pri vyzdvihnutí
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <button
+                      onClick={handleSaveWoltConfig}
+                      disabled={saving}
+                      className="mt-4 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {saving ? 'Ukladá sa...' : 'Uložiť Wolt Nastavenia'}
                     </button>
                   </div>
 
