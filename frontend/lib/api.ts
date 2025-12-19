@@ -488,12 +488,34 @@ export async function updateOrderStatus(
   }
 }
 
-// Admin: Create Wolt delivery
-export async function createWoltDelivery(orderId: string): Promise<{ success: boolean; deliveryId?: string; trackingUrl?: string; message: string }> {
-  const res = await fetch(`${API_URL}/api/delivery/create`, {
+// Admin: Check Wolt availability and get shipment promise
+export async function checkWoltAvailability(orderId: string): Promise<{
+  promiseId: string;
+  feeCents: number;
+  etaMinutes: number;
+  validUntil: string;
+  currency: string;
+}> {
+  const res = await fetch(`${API_URL}/api/delivery/check-availability`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ orderId }),
+  });
+  
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({ message: 'Failed to check Wolt availability' }));
+    throw new Error(error.message || 'Failed to check Wolt availability');
+  }
+  
+  return await res.json();
+}
+
+// Admin: Create Wolt delivery
+export async function createWoltDelivery(orderId: string, promiseId?: string): Promise<{ success: boolean; deliveryId?: string; trackingUrl?: string; message: string }> {
+  const res = await fetch(`${API_URL}/api/delivery/create`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ orderId, promiseId }),
   });
   
   if (!res.ok) {

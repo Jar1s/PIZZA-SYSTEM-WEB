@@ -84,7 +84,45 @@ export class DeliveryService {
     );
   }
 
-  async createDeliveryForOrder(orderId: string) {
+  /**
+   * Get shipment promise for an order (check availability and get pricing)
+   * This is the proper way according to Wolt Drive API documentation
+   */
+  async getShipmentPromiseForOrder(orderId: string) {
+    const order = await this.ordersService.getOrderById(orderId);
+    
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id: order.tenantId },
+    });
+
+    if (!tenant) {
+      throw new BadRequestException('Tenant not found');
+    }
+
+    const deliveryConfig = tenant.deliveryConfig as DeliveryConfig;
+    const woltConfig = deliveryConfig.woltConfig;
+    
+    if (!woltConfig?.apiKey) {
+      throw new BadRequestException('Wolt API key not configured for this tenant');
+    }
+
+    // Get tenant-specific pickup address
+    const pickupAddress = this.getPickupAddress(order.tenantId, deliveryConfig);
+    
+    const customer = order.customer as any;
+    const address = order.address as any;
+
+    // Get shipment promise from Wolt
+    return this.woltDrive.getShipmentPromise(
+      woltConfig.apiKey,
+      pickupAddress,
+      address,
+      customer.name,
+      customer.phone,
+    );
+  }
+
+  async createDeliveryForOrder(orderId: string, shipmentPromiseId?: string) {
     const order = await this.ordersService.getOrderById(orderId);
     
     if (order.status !== OrderStatus.PAID) {
@@ -113,6 +151,7 @@ export class DeliveryService {
     const address = order.address as any;
 
     // Create Wolt delivery with tenant-specific pickup address
+    // If shipmentPromiseId is provided, use it (proper flow according to documentation)
     const woltDelivery = await this.woltDrive.createDelivery(
       woltConfig.apiKey,
       order.id,
@@ -120,6 +159,7 @@ export class DeliveryService {
       address,
       customer.name,
       customer.phone,
+      shipmentPromiseId, // Optional: if provided, will use shipment promise ID
     );
 
     // Save delivery record

@@ -10,9 +10,14 @@ export class DeliveryController {
     return this.deliveryService.getQuote(data.tenantId, data.dropoffAddress);
   }
 
+  @Post('check-availability')
+  async checkAvailability(@Body() data: { orderId: string }) {
+    return this.deliveryService.getShipmentPromiseForOrder(data.orderId);
+  }
+
   @Post('create')
-  async createDelivery(@Body() data: { orderId: string }) {
-    return this.deliveryService.createDeliveryForOrder(data.orderId);
+  async createDelivery(@Body() data: { orderId: string; promiseId?: string }) {
+    return this.deliveryService.createDeliveryForOrder(data.orderId, data.promiseId);
   }
 
   @Get(':id')

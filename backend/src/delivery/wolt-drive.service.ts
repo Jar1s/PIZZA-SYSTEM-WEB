@@ -25,6 +25,7 @@ interface WoltQuoteRequest {
 export class WoltDriveService {
   private readonly logger = new Logger(WoltDriveService.name);
   private apiUrl = 'https://daas-public-api.wolt.com/merchants/v1/deliveries';
+  private shipmentPromisesUrl = 'https://daas-public-api.wolt.com/merchants/v1/shipment-promises';
   
   /**
    * Get kitchen phone number with validation
@@ -170,6 +171,107 @@ export class WoltDriveService {
     throw lastError || new Error('Wolt API getQuote failed');
   }
 
+  /**
+   * Get shipment promise from Wolt Drive API (correct endpoint according to documentation)
+   * This is the proper way to check availability and get pricing before creating a delivery
+   */
+  async getShipmentPromise(
+    apiKey: string,
+    pickupAddress: Address,
+    dropoffAddress: Address,
+    customerName: string,
+    customerPhone: string,
+    maxRetries = 3,
+  ) {
+    const request = {
+      pickup: {
+        location: {
+          lat: pickupAddress.coordinates?.lat || 0,
+          lon: pickupAddress.coordinates?.lng || 0,
+        },
+        comment: pickupAddress.instructions || 'Kitchen entrance',
+      },
+      dropoff: {
+        location: {
+          lat: dropoffAddress.coordinates?.lat || 0,
+          lon: dropoffAddress.coordinates?.lng || 0,
+        },
+        comment: dropoffAddress.instructions || '',
+        contact: {
+          name: customerName,
+          phone: customerPhone,
+        },
+      },
+    };
+
+    let lastError: Error | null = null;
+    
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+      try {
+        // Use correct endpoint: /shipment-promises (not /deliveries/quote)
+        const response = await fetch(this.shipmentPromisesUrl, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${apiKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(request),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          const errorMessage = errorData.message || errorData.error || response.statusText;
+          const error = new Error(`Wolt API error: ${errorMessage}`);
+          
+          if (!this.isRetryableError(error, response)) {
+            throw error; // Don't retry 4xx errors
+          }
+          lastError = error;
+          throw error;
+        }
+
+        const data = await response.json();
+        
+        return {
+          promiseId: data.id, // Required for delivery creation
+          feeCents: data.fee.amount, // Wolt returns in cents
+          etaMinutes: data.dropoff_eta,
+          validUntil: data.valid_until, // ISO 8601 timestamp
+          currency: data.fee.currency,
+          distance: data.distance,
+        };
+      } catch (error: any) {
+        lastError = error instanceof Error ? error : new Error(String(error));
+        
+        // Check if error is retryable
+        if (!this.isRetryableError(error, undefined)) {
+          this.logger.error('Non-retryable error from Wolt API', { error: lastError.message });
+          throw lastError;
+        }
+        
+        // If this is the last attempt, throw the error
+        if (attempt === maxRetries - 1) {
+          this.logger.error(`Wolt API getShipmentPromise failed after ${maxRetries} attempts`, { 
+            error: lastError.message,
+            attempts: maxRetries,
+          });
+          throw lastError;
+        }
+        
+        // Exponential backoff: 1s, 2s, 4s
+        const delayMs = Math.pow(2, attempt) * 1000;
+        this.logger.warn(`Wolt API getShipmentPromise attempt ${attempt + 1}/${maxRetries} failed, retrying in ${delayMs}ms`, {
+          error: lastError.message,
+        });
+        
+        await this.delay(delayMs);
+      }
+    }
+    
+    // Should never reach here, but TypeScript needs it
+    throw lastError || new Error('Wolt API getShipmentPromise failed');
+  }
+
   async createDelivery(
     apiKey: string,
     orderId: string,
@@ -177,9 +279,10 @@ export class WoltDriveService {
     dropoffAddress: Address,
     customerName: string,
     customerPhone: string,
+    shipmentPromiseId?: string, // Optional: if provided, use shipment promise ID
     maxRetries = 3,
   ) {
-    const request = {
+    const request: any = {
       pickup: {
         location: {
           lat: pickupAddress.coordinates?.lat || 0,
@@ -205,11 +308,19 @@ export class WoltDriveService {
         },
       },
       merchant_order_reference: orderId,
-      contents: {
-        description: 'Pizza delivery',
-        count: 1,
-      },
+      contents: [
+        {
+          description: 'Pizza delivery',
+          identifier: orderId,
+          count: 1,
+        },
+      ],
     };
+
+    // Add shipment promise ID if provided (required by Wolt API for proper flow)
+    if (shipmentPromiseId) {
+      request.shipment_promise_id = shipmentPromiseId;
+    }
 
     let lastError: Error | null = null;
     

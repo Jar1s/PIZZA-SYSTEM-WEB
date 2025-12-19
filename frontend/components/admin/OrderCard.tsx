@@ -3,7 +3,7 @@
 import { Order, OrderStatus } from '@pizza-ecosystem/shared';
 import { useState } from 'react';
 import { formatModifiers } from '@/lib/format-modifiers';
-import { syncOrderToStoryous, createWoltDelivery } from '@/lib/api';
+import { syncOrderToStoryous, createWoltDelivery, checkWoltAvailability } from '@/lib/api';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { calculateOrderItemPrice } from '@/lib/calculate-order-item-price';
 import { getTranslations } from '@/lib/translations';
@@ -52,6 +52,16 @@ export function OrderCard({ order, onStatusUpdate, isExpanded = false, onToggleE
   const [storyousMessage, setStoryousMessage] = useState<string | null>(null);
   const [creatingWolt, setCreatingWolt] = useState(false);
   const [woltMessage, setWoltMessage] = useState<string | null>(null);
+  const [showWoltModal, setShowWoltModal] = useState(false);
+  const [checkingWolt, setCheckingWolt] = useState(false);
+  const [woltPromise, setWoltPromise] = useState<{
+    promiseId: string;
+    feeCents: number;
+    etaMinutes: number;
+    validUntil: string;
+    currency: string;
+  } | null>(null);
+  const [woltError, setWoltError] = useState<string | null>(null);
   
   const customer = order.customer;
   const address = order.address;
@@ -139,22 +149,48 @@ export function OrderCard({ order, onStatusUpdate, isExpanded = false, onToggleE
   };
 
   const handleCreateWoltDelivery = async () => {
-    setCreatingWolt(true);
+    setShowWoltModal(true);
+    setCheckingWolt(true);
+    setWoltError(null);
+    setWoltPromise(null);
     setWoltMessage(null);
+    
     try {
-      const result = await createWoltDelivery(order.id);
+      const promise = await checkWoltAvailability(order.id);
+      setWoltPromise(promise);
+    } catch (error: any) {
+      setWoltError(error.message || 'Wolt nie je dostupný');
+    } finally {
+      setCheckingWolt(false);
+    }
+  };
+
+  const handleConfirmWoltDelivery = async () => {
+    if (!woltPromise) return;
+    
+    setCreatingWolt(true);
+    setWoltError(null);
+    try {
+      const result = await createWoltDelivery(order.id, woltPromise.promiseId);
       if (result.success) {
+        setShowWoltModal(false);
         setWoltMessage(`✅ Wolt delivery created! ${result.trackingUrl ? `Tracking: ${result.trackingUrl}` : ''}`);
         // Refresh the page to show updated order
         setTimeout(() => window.location.reload(), 1500);
       } else {
-        setWoltMessage(`❌ ${result.message}`);
+        setWoltError(result.message || 'Nepodarilo sa vytvoriť doručenie');
       }
     } catch (error: any) {
-      setWoltMessage(`❌ Error: ${error.message}`);
+      setWoltError(error.message || 'Nepodarilo sa vytvoriť doručenie');
     } finally {
       setCreatingWolt(false);
     }
+  };
+
+  const handleCancelWoltModal = () => {
+    setShowWoltModal(false);
+    setWoltPromise(null);
+    setWoltError(null);
   };
   
   return (
@@ -474,6 +510,135 @@ export function OrderCard({ order, onStatusUpdate, isExpanded = false, onToggleE
             <div className="mt-2 pt-2 border-t flex justify-between font-semibold">
               <span>Total</span>
               <span>€{(order.totalCents / 100).toFixed(2)}</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Wolt Confirmation Modal */}
+      {showWoltModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
+            {/* Header */}
+            <div className="px-6 py-4 border-b border-gray-200">
+              <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+                {woltError ? '❌ Wolt nie je dostupný' : '🚚 Potvrdiť Wolt doručenie?'}
+              </h2>
+            </div>
+
+            {/* Content */}
+            <div className="px-6 py-4">
+              {checkingWolt && (
+                <div className="text-center py-8">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600 mx-auto mb-4"></div>
+                  <p className="text-gray-600">Kontroluje dostupnosť Wolt...</p>
+                </div>
+              )}
+
+              {woltError && !checkingWolt && (
+                <div className="space-y-4">
+                  <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                    <p className="text-red-800 font-semibold mb-2">Dôvod:</p>
+                    <p className="text-red-700">{woltError}</p>
+                  </div>
+                  
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <p className="text-sm text-gray-600 mb-1">📍 Adresa:</p>
+                    <p className="text-gray-900 font-medium">
+                      {address.street}, {address.postalCode} {address.city}
+                    </p>
+                  </div>
+
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                    <p className="text-sm text-blue-800">
+                      💡 <strong>Tip:</strong> Skontrolujte, či je adresa v rámci doručovacej zóny Wolt.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {woltPromise && !woltError && !checkingWolt && (
+                <div className="space-y-4">
+                  {/* Order Info */}
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-sm text-gray-600">📦 Objednávka:</span>
+                      <span className="font-mono font-semibold text-gray-900">
+                        #{order.orderNumber?.toString().padStart(4, '0') || order.id.slice(0, 8).toUpperCase()}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-600">👤 Zákazník:</span>
+                      <span className="font-semibold text-gray-900">{customer.name}</span>
+                    </div>
+                  </div>
+
+                  <div className="border-t border-gray-200 my-4"></div>
+
+                  {/* Delivery Info */}
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-600">💰 Poplatok za doručenie:</span>
+                      <span className="text-xl font-bold text-orange-600">
+                        €{(woltPromise.feeCents / 100).toFixed(2)}
+                      </span>
+                    </div>
+                    
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-600">⏱️ Odhadovaný čas:</span>
+                      <span className="text-lg font-semibold text-gray-900">
+                        ~{woltPromise.etaMinutes} minút
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="border-t border-gray-200 my-4"></div>
+
+                  {/* Address */}
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <p className="text-sm text-gray-600 mb-2">📍 Adresa doručenia:</p>
+                    <p className="text-gray-900 font-medium">
+                      {address.street}
+                    </p>
+                    <p className="text-gray-700">
+                      {address.postalCode} {address.city}
+                    </p>
+                    {address.instructions && (
+                      <p className="text-sm text-gray-500 mt-2">
+                        💬 {address.instructions}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="px-6 py-4 border-t border-gray-200 flex gap-3 justify-end">
+              <button
+                onClick={handleCancelWoltModal}
+                disabled={checkingWolt || creatingWolt}
+                className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {woltError ? 'Zavrieť' : 'Zrušiť'}
+              </button>
+              
+              {!woltError && woltPromise && (
+                <button
+                  onClick={handleConfirmWoltDelivery}
+                  disabled={checkingWolt || creatingWolt}
+                  className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 font-semibold disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                >
+                  {creatingWolt ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                      Vytvára sa...
+                    </>
+                  ) : (
+                    '✅ Potvrdiť'
+                  )}
+                </button>
+              )}
             </div>
           </div>
         </div>
