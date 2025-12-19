@@ -142,13 +142,24 @@ export function EditBrandModal({
         }
       }
       
+      // Build paymentConfig with GoPay credentials
+      const paymentConfig: any = {
+        ...existingPaymentConfig,
+        cashOnDeliveryEnabled: cashEnabled,
+        cardOnDeliveryEnabled: cardEnabled,
+      };
+      
+      // Add GoPay credentials if provided
+      if (gopayClientId.trim() || gopayClientSecret.trim() || gopayGoId.trim()) {
+        paymentConfig.clientId = gopayClientId.trim() || undefined;
+        paymentConfig.clientSecret = gopayClientSecret.trim() || undefined;
+        paymentConfig.goId = gopayGoId.trim() || undefined;
+        paymentConfig.environment = gopayEnvironment || 'sandbox';
+      }
+      
       const updateData: any = {
         isActive: formData.isActive,
-        paymentConfig: {
-          ...existingPaymentConfig,
-          cashOnDeliveryEnabled: cashEnabled,
-          cardOnDeliveryEnabled: cardEnabled,
-        },
+        paymentConfig: paymentConfig,
       };
       
       // Only include deliveryConfig if it has content
@@ -343,6 +354,83 @@ export function EditBrandModal({
                           }`}
                         />
                       </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* GoPay Settings */}
+                <div className="border-t pt-4 mt-4">
+                  <h4 className="text-md font-semibold mb-3 text-gray-900">
+                    💳 GoPay Settings
+                  </h4>
+                  <p className="text-sm text-gray-600 mb-4">
+                    Konfigurácia GoPay credentials pre online platby kartou.
+                  </p>
+                  
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        GoPay Client ID
+                      </label>
+                      <input
+                        type="text"
+                        value={gopayClientId}
+                        onChange={(e) => setGopayClientId(e.target.value)}
+                        placeholder="Client ID z GoPay dashboardu"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                      />
+                      <p className="mt-1 text-xs text-gray-500">
+                        Client ID z GoPay administrácie
+                      </p>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        GoPay Client Secret
+                      </label>
+                      <input
+                        type="password"
+                        value={gopayClientSecret}
+                        onChange={(e) => setGopayClientSecret(e.target.value)}
+                        placeholder="Client Secret z GoPay dashboardu"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                      />
+                      <p className="mt-1 text-xs text-gray-500">
+                        Client Secret z GoPay administrácie
+                      </p>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        GoPay GoID
+                      </label>
+                      <input
+                        type="text"
+                        value={gopayGoId}
+                        onChange={(e) => setGopayGoId(e.target.value)}
+                        placeholder="GoID z GoPay dashboardu"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                      />
+                      <p className="mt-1 text-xs text-gray-500">
+                        GoID identifikátor z GoPay administrácie
+                      </p>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        GoPay Environment
+                      </label>
+                      <select
+                        value={gopayEnvironment}
+                        onChange={(e) => setGopayEnvironment(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                      >
+                        <option value="sandbox">Sandbox (testovacie prostredie)</option>
+                        <option value="production">Production (produkčné prostredie)</option>
+                      </select>
+                      <p className="mt-1 text-xs text-gray-500">
+                        Vyberte prostredie: Sandbox pre testovanie, Production pre skutočné platby
+                      </p>
                     </div>
                   </div>
                 </div>
