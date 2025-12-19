@@ -99,48 +99,68 @@ export function EditBrandModal({
         ...existingDeliveryConfig,
       };
       
-      // Only add Wolt config if API key is provided
+      // Add Wolt config if API key is provided
       if (woltApiKey.trim()) {
         deliveryConfig.woltConfig = {
+          ...(existingDeliveryConfig.woltConfig || {}),
           apiKey: woltApiKey.trim(),
         };
+      }
+      
+      // Validate and add pickup address if required fields are present (even without API key)
+      if (pickupStreet.trim() && pickupCity.trim() && pickupPostalCode.trim() && pickupCountry.trim() && pickupLat.trim() && pickupLng.trim()) {
+        const lat = parseFloat(pickupLat);
+        const lng = parseFloat(pickupLng);
         
-        // Validate and add pickup address if required fields are present
-        if (pickupStreet.trim() && pickupCity.trim() && pickupPostalCode.trim() && pickupCountry.trim() && pickupLat.trim() && pickupLng.trim()) {
-          const lat = parseFloat(pickupLat);
-          const lng = parseFloat(pickupLng);
-          
-          if (!isNaN(lat) && !isNaN(lng)) {
-            deliveryConfig.pickupAddress = {
-              street: pickupStreet.trim(),
-              city: pickupCity.trim(),
-              postalCode: pickupPostalCode.trim(),
-              country: pickupCountry.trim(),
-              coordinates: {
-                lat: lat,
-                lng: lng,
-              },
-              phone: pickupPhone.trim() || undefined,
-              instructions: pickupInstructions.trim() || undefined,
-            };
-          }
+        if (!isNaN(lat) && !isNaN(lng)) {
+          deliveryConfig.pickupAddress = {
+            street: pickupStreet.trim(),
+            city: pickupCity.trim(),
+            postalCode: pickupPostalCode.trim(),
+            country: pickupCountry.trim(),
+            coordinates: {
+              lat: lat,
+              lng: lng,
+            },
+            phone: pickupPhone.trim() || undefined,
+            instructions: pickupInstructions.trim() || undefined,
+          };
+        } else {
+          throw new Error('GPS súradnice musia byť platné čísla');
         }
       }
       
-      await updateTenant(tenant.subdomain || tenant.slug, {
+      const updateData: any = {
         isActive: formData.isActive,
         paymentConfig: {
           ...existingPaymentConfig,
           cashOnDeliveryEnabled: cashEnabled,
           cardOnDeliveryEnabled: cardEnabled,
         },
-        deliveryConfig: deliveryConfig,
+      };
+      
+      // Only include deliveryConfig if it has content
+      if (Object.keys(deliveryConfig).length > 0 || Object.keys(existingDeliveryConfig).length > 0) {
+        updateData.deliveryConfig = deliveryConfig;
+      }
+      
+      console.log('[EditBrandModal] Saving tenant data:', {
+        slug: tenant.subdomain || tenant.slug,
+        deliveryConfig: updateData.deliveryConfig,
       });
       
+      const updatedTenant = await updateTenant(tenant.subdomain || tenant.slug, updateData);
+      
+      console.log('[EditBrandModal] Tenant updated successfully:', {
+        deliveryConfig: updatedTenant.deliveryConfig,
+      });
+      
+      alert('Nastavenia boli úspešne uložené!');
       onUpdate();
       onClose();
     } catch (err: any) {
-      setError(err.message || 'Failed to update brand');
+      console.error('[EditBrandModal] Failed to update brand:', err);
+      setError(err.message || 'Nepodarilo sa uložiť nastavenia. Skúste to znova.');
     } finally {
       setLoading(false);
     }
