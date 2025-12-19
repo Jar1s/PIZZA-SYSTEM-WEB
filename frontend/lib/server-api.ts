@@ -32,7 +32,6 @@ export async function getTenantServer(slug: string): Promise<Tenant | null> {
         headers: {
           'Content-Type': 'application/json',
         },
-        next: { revalidate: 0 },
       });
       
       clearTimeout(timeoutId);
@@ -135,7 +134,6 @@ export async function getProductsServer(tenantSlug: string): Promise<Product[]> 
       const res = await fetch(url, {
         cache: 'no-store',
         signal: controller.signal,
-        next: { revalidate: 0 }, // Disable Next.js cache
         headers: {
           'Content-Type': 'application/json',
           'Cache-Control': 'no-cache, no-store, must-revalidate',
