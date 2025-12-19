@@ -33,9 +33,9 @@ export function EditBrandModal({
   const [error, setError] = useState<string | null>(null);
   
   // GoPay settings
-  const [gopayClientId, setGopayClientId] = useState(');
-  const [gopayClientSecret, setGopayClientSecret] = useState(');
-  const [gopayGoId, setGopayGoId] = useState(');
+  const [gopayClientId, setGopayClientId] = useState('');
+  const [gopayClientSecret, setGopayClientSecret] = useState('');
+  const [gopayGoId, setGopayGoId] = useState('');
   const [gopayEnvironment, setGopayEnvironment] = useState('sandbox');
 
   // Wolt/Delivery settings
@@ -68,9 +68,9 @@ export function EditBrandModal({
         isActive: tenant.isActive !== undefined ? tenant.isActive : true,
       });
       // Load GoPay settings
-      setGopayClientId(paymentConfig.clientId || ');
-      setGopayClientSecret(paymentConfig.clientSecret || ');
-      setGopayGoId(paymentConfig.goId || ');
+      setGopayClientId(paymentConfig.clientId || '');
+      setGopayClientSecret(paymentConfig.clientSecret || '');
+      setGopayGoId(paymentConfig.goId || '');
       setGopayEnvironment(paymentConfig.environment || 'sandbox');
 
       setThemeColors({
