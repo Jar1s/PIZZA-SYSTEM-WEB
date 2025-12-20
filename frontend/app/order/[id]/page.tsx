@@ -196,7 +196,8 @@ export default function OrderTrackingPage() {
         pollingIntervalRef.current = null;
       }
     };
-  }, [order, fetchOrder]); // Include order and fetchOrder in dependencies
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [order?.id, order?.status, fetchOrder]); // Only depend on order.id and order.status to prevent interval reset on every order update
 
   // Get tenant theme - Force dark theme for tracking page
   const normalizedTenant = withTenantThemeDefaults(tenant);

@@ -174,7 +174,7 @@ export default function CheckoutPage() {
   // Calculate delivery fee when address changes
   useEffect(() => {
     const calculateFee = async () => {
-      let address: { postalCode?: string; city?: string; cityPart?: string } | null = null;
+      let address: { street?: string; postalCode?: string; city?: string; cityPart?: string } | null = null;
 
       if (user && selectedAddressId) {
         const selectedAddress = addresses.find(addr => addr.id === selectedAddressId);
