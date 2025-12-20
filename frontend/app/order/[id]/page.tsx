@@ -163,7 +163,7 @@ export default function OrderTrackingPage() {
   // Initial fetch on mount
   useEffect(() => {
     fetchOrder(0);
-  }, [orderId, fetchOrder]); // Include fetchOrder to satisfy exhaustive-deps
+  }, [orderId, fetchOrder]); // Include fetchOrder in dependencies
 
   // Poll for updates every 45 seconds (only after order is loaded and if order is not delivered/canceled)
   // Increased to 45s to be well under the 30 req/min limit (allows ~1.3 req/min)
@@ -196,7 +196,7 @@ export default function OrderTrackingPage() {
         pollingIntervalRef.current = null;
       }
     };
-  }, [order?.id, order?.status, fetchOrder]); // Include fetchOrder to satisfy exhaustive-deps
+  }, [order, fetchOrder]); // Include order and fetchOrder in dependencies
 
   // Get tenant theme - Force dark theme for tracking page
   const normalizedTenant = withTenantThemeDefaults(tenant);
