@@ -68,6 +68,11 @@ const SoundNotificationSettings = dynamic(() => import('@/components/admin/Sound
   ssr: false,
 });
 
+const DeliveryFeeTiersSettings = dynamic(() => import('@/components/admin/DeliveryFeeTiersSettings').then(mod => ({ default: mod.default })), {
+  loading: () => <div className="animate-pulse bg-gray-200 h-64 rounded-lg mb-6" />,
+  ssr: false,
+});
+
 const OpeningHoursSettings = dynamic(() => import('@/components/admin/OpeningHoursSettings').then(mod => ({ default: mod.OpeningHoursSettings })), {
   loading: () => <div className="animate-pulse bg-gray-200 h-64 rounded-lg mb-6" />,
   ssr: false,
@@ -110,6 +115,13 @@ export default function AdminDashboard() {
           </Suspense>
         </ErrorBoundary>
       </div>
+
+      {/* Delivery Fee Tiers Settings */}
+      <ErrorBoundary>
+        <Suspense fallback={<div className="animate-pulse bg-gray-200 h-64 rounded-lg mb-6" />}>
+          <DeliveryFeeTiersSettings />
+        </Suspense>
+      </ErrorBoundary>
 
       {/* Main Content */}
       <ErrorBoundary>

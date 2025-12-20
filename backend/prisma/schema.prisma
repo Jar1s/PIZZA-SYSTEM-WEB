@@ -25,6 +25,7 @@ model Tenant {
   currency        String           @default("EUR")
   deliveries      Delivery[]
   deliveryZones   DeliveryZone[]
+  deliveryFeeTiers DeliveryFeeTier[]
   orders          Order[]
   productMappings ProductMapping[]
   products        Product[]
@@ -250,3 +251,22 @@ enum UserRole {
   OPERATOR
   CUSTOMER
 }
+
+model DeliveryFeeTier {
+  id                String    @id @default(cuid())
+  tenantId          String?
+  minDistanceMeters Int
+  maxDistanceMeters Int
+  deliveryFeeCents  Int
+  isActive          Boolean   @default(true)
+  priority          Int       @default(0)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  tenant            Tenant?   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, isActive])
+  @@index([tenantId, priority])
+  @@index([isActive, priority])
+  @@map("delivery_fee_tiers")
+}
+

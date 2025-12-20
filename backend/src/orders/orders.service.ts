@@ -7,7 +7,7 @@ import { CreateOrderDto } from './dto';
 import { EmailService } from '../email/email.service';
 import { StoryousService } from '../storyous/storyous.service';
 import { ProductMappingService } from '../products/product-mapping.service';
-import { DeliveryZoneService } from '../delivery/delivery-zone.service';
+import { DeliveryFeeTierService } from '../delivery/delivery-fee-tier.service';
 import { OrderNumberService } from './order-number.service';
 import { TenantTheme } from '../types/tenant.types';
 import { appConfig } from '../config/app.config';
@@ -61,7 +61,7 @@ export class OrdersService {
     private emailService: EmailService,
     private storyousService: StoryousService,
     private productMappingService: ProductMappingService,
-    private deliveryZoneService: DeliveryZoneService,
+    private deliveryFeeTierService: DeliveryFeeTierService,
     private orderNumberService: OrderNumberService,
     private jwtService: JwtService,
   ) {}
@@ -420,30 +420,24 @@ export class OrdersService {
     // (Ceny na webe sú už vrátane DPH, takže nepridávame DPH navyše)
     const taxCents = 0;
     
-    // SECURITY FIX: Calculate delivery fee server-side based on address
+    // SECURITY FIX: Calculate delivery fee server-side based on distance
     // Ignore client-provided deliveryFeeCents to prevent manipulation
     let deliveryFeeCents = 0;
     try {
-      const deliveryFeeResult = await this.deliveryZoneService.getDeliveryFee(
+      // Distance-based calculation only
+      const distanceResult = await this.deliveryFeeTierService.getDeliveryFeeByDistance(
         tenantId,
         {
-          postalCode: data.address.postalCode,
+          street: data.address.street,
           city: data.address.city,
-          cityPart: undefined, // Can be added if needed
+          postalCode: data.address.postalCode,
+          country: data.address.country || 'SK',
+          coordinates: (data.address as any).coordinates,
         }
       );
-      
-      if (deliveryFeeResult) {
-        deliveryFeeCents = deliveryFeeResult.deliveryFeeCents;
-        
-        // Validate minimum order amount if zone has one
-        if (deliveryFeeResult.minOrderCents !== null && subtotalCents < deliveryFeeResult.minOrderCents) {
-          throw new BadRequestException(
-            `Minimum order amount for ${deliveryFeeResult.zoneName} is ${(deliveryFeeResult.minOrderCents / 100).toFixed(2)} €. Your order total is ${(subtotalCents / 100).toFixed(2)} €.`
-          );
-        }
-      } else {
-        // No zone found - check tenant delivery config for default fee
+
+      if (!distanceResult) {
+        // BUG FIX: Check for default fee before throwing error
         const tenantForDelivery = await this.prisma.tenant.findUnique({
           where: { id: tenantId },
           select: { deliveryConfig: true },
@@ -453,39 +447,48 @@ export class OrdersService {
         
         if (defaultDeliveryFee !== undefined && typeof defaultDeliveryFee === 'number') {
           deliveryFeeCents = defaultDeliveryFee;
+          this.logger.warn('No tier matched, using default fee', {
+            tenantId,
+            defaultDeliveryFee,
+          });
         } else {
-          // If no default and no zone, reject the order for security
-          this.logger.warn(
-            `No delivery zone found for address: ${data.address.city}, ${data.address.postalCode}. Order rejected.`,
-            { tenantId, address: data.address, city: data.address.city, postalCode: data.address.postalCode }
-          );
+          this.logger.warn('No delivery tier found for distance', {
+            tenantId,
+            address: data.address,
+          });
           throw new BadRequestException(
-            'Delivery is not available to this address. Please contact us for delivery options.'
+            'Delivery is not available to this address. Please check the delivery distance.'
           );
         }
+      } else if (distanceResult.isOutOfRange) {
+        // Address is outside delivery range
+        this.logger.warn('Address is outside delivery range', {
+          tenantId,
+          distanceMeters: distanceResult.distanceMeters,
+          address: data.address,
+        });
+        throw new BadRequestException(
+          'Adresa je mimo dosahu doručovania. Delivery is not available to this address.'
+        );
+      } else {
+        deliveryFeeCents = distanceResult.deliveryFeeCents;
+        this.logger.log('Delivery fee calculated by distance', {
+          tenantId,
+          distanceMeters: distanceResult.distanceMeters,
+          deliveryFeeCents,
+        });
       }
     } catch (error) {
       if (error instanceof BadRequestException) {
         throw error;
       }
-      // Log error but don't fail order creation - use default fee
-      this.logger.error(`Error calculating delivery fee: ${error instanceof Error ? error.message : String(error)}`, {
+      this.logger.error('Error calculating delivery fee', {
+        error: error instanceof Error ? error.message : String(error),
         tenantId,
         address: data.address,
-        error: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined,
       });
-      const tenantForDelivery = await this.prisma.tenant.findUnique({
-        where: { id: tenantId },
-        select: { deliveryConfig: true },
-      });
-      const deliveryConfig = (tenantForDelivery?.deliveryConfig || {}) as { defaultFeeCents?: number };
-      const defaultDeliveryFee = deliveryConfig?.defaultFeeCents;
-      if (defaultDeliveryFee !== undefined && typeof defaultDeliveryFee === 'number') {
-        deliveryFeeCents = defaultDeliveryFee;
-      }
+      throw new BadRequestException('Failed to calculate delivery fee. Please try again.');
     }
-    
     // Total = subtotal + delivery fee (prices already include VAT)
     const totalCents = subtotalCents + deliveryFeeCents;
 

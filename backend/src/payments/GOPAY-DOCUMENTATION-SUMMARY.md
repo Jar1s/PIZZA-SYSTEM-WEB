@@ -202,3 +202,5 @@ GoPay může používat buď `signature` nebo `X-GoPay-Signature` header. Aktuá
 - **Dokumentace**: https://doc.gopay.cz/
 - **Anglická verze**: https://doc.gopay.com/
 - **Support**: integrace@gopay.cz
+
+

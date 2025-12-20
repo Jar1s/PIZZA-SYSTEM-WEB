@@ -2,6 +2,7 @@ import { Controller, Post, Body, Param, Get, Logger } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { Public } from '../auth/decorators/public.decorator';
 import { DeliveryZoneService, AddressForZone } from './delivery-zone.service';
+import { DeliveryFeeTierService, AddressForGeocoding } from './delivery-fee-tier.service';
 import { TenantsService } from '../tenants/tenants.service';
 
 @Controller('delivery-zones')
@@ -10,19 +11,21 @@ export class DeliveryZoneController {
 
   constructor(
     private deliveryZoneService: DeliveryZoneService,
+    private deliveryFeeTierService: DeliveryFeeTierService,
     private tenantsService: TenantsService,
   ) {}
 
   /**
    * Get delivery fee for address
    * POST /delivery-zones/:tenantSlug/calculate-fee
+   * Uses distance-based calculation
    */
   @Public() // Public endpoint - used in checkout before user is logged in
   @Throttle({ default: { limit: 20, ttl: 60000 } }) // 20 fee calculations per minute
   @Post(':tenantSlug/calculate-fee')
   async calculateDeliveryFee(
     @Param('tenantSlug') tenantSlug: string,
-    @Body() body: { address: AddressForZone },
+    @Body() body: { address: AddressForZone & { street?: string; coordinates?: { lat: number; lng: number } } },
   ) {
     try {
       this.logger.log('calculateDeliveryFee called', {
@@ -33,38 +36,56 @@ export class DeliveryZoneController {
       const tenant = await this.tenantsService.getTenantBySlug(tenantSlug);
       this.logger.debug('Tenant found', { tenantId: tenant.id, slug: tenant.slug });
       
-      const result = await this.deliveryZoneService.getDeliveryFee(
+      // Distance-based calculation only
+      const distanceResult = await this.deliveryFeeTierService.getDeliveryFeeByDistance(
         tenant.id,
-        body.address,
+        {
+          street: body.address.street,
+          city: body.address.city,
+          postalCode: body.address.postalCode,
+          country: 'SK',
+          coordinates: body.address.coordinates,
+        }
       );
 
-      if (!result) {
-        this.logger.warn('No delivery zone found for address', {
+      if (!distanceResult) {
+        this.logger.warn('No delivery tier found for distance', {
           tenantSlug,
           address: body.address,
         });
         return {
           available: false,
-          message: 'Doprava nie je dostupná pre túto adresu',
+          message: 'Doprava nie je dostupná pre túto vzdialenosť',
         };
       }
 
-      this.logger.log('Delivery fee calculated', {
+      // Check if address is out of range
+      if (distanceResult.isOutOfRange) {
+        this.logger.warn('Address is outside delivery range', {
+          tenantSlug,
+          distanceMeters: distanceResult.distanceMeters,
+        });
+        return {
+          available: false,
+          message: 'Adresa je mimo dosahu doručovania',
+        };
+      }
+
+      this.logger.log('Delivery fee calculated by distance', {
         tenantSlug,
-        zoneName: result.zoneName,
-        deliveryFeeCents: result.deliveryFeeCents,
-        minOrderCents: result.minOrderCents,
+        distanceMeters: distanceResult.distanceMeters,
+        deliveryFeeCents: distanceResult.deliveryFeeCents,
       });
 
       return {
         available: true,
-        deliveryFeeCents: result.deliveryFeeCents,
-        deliveryFeeEuros: (result.deliveryFeeCents / 100).toFixed(2),
-        minOrderCents: result.minOrderCents,
-        minOrderEuros: result.minOrderCents
-          ? (result.minOrderCents / 100).toFixed(2)
-          : null,
-        zoneName: result.zoneName,
+        deliveryFeeCents: distanceResult.deliveryFeeCents,
+        deliveryFeeEuros: (distanceResult.deliveryFeeCents / 100).toFixed(2),
+        distanceMeters: distanceResult.distanceMeters,
+        distanceKm: (distanceResult.distanceMeters / 1000).toFixed(2),
+        minOrderCents: null,
+        minOrderEuros: null,
+        zoneName: null,
       };
     } catch (error: any) {
       this.logger.error('Error calculating delivery fee', {
@@ -108,4 +129,3 @@ export class DeliveryZoneController {
     };
   }
 }
-

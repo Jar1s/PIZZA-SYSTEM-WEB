@@ -188,17 +188,21 @@ export default function CheckoutPage() {
             userEmail: user?.email,
           });
           address = {
+            street: selectedAddress.street,
             postalCode: selectedAddress.postalCode,
             city: selectedAddress.city,
+            cityPart: selectedAddress.city.includes(' - ')
+              ? selectedAddress.city.split(' - ')[1]
+              : selectedAddress.city,
           };
         }
       } else if (!user && guestData.postalCode && guestData.city) {
         address = {
+          street: guestData.street + (guestData.houseNumber ? ' ' + guestData.houseNumber : ''),
           postalCode: guestData.postalCode,
           city: guestData.city,
-          // Try to extract city part from city name (e.g., "Bratislava - Jarovce" -> "Jarovce")
-          cityPart: guestData.city.includes(' - ') 
-            ? guestData.city.split(' - ')[1] 
+          cityPart: guestData.city.includes(' - ')
+            ? guestData.city.split(' - ')[1]
             : guestData.city,
         };
       }

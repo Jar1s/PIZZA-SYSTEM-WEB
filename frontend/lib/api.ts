@@ -580,9 +580,11 @@ export async function syncOrderToStoryous(orderId: string, tenantSlug?: string):
 // Delivery zones
 export interface DeliveryFeeRequest {
   address: {
+    street?: string;
     postalCode?: string;
     city?: string;
     cityPart?: string;
+    coordinates?: { lat: number; lng: number };
   };
 }
 
@@ -590,10 +592,13 @@ export interface DeliveryFeeResponse {
   available: boolean;
   deliveryFeeCents?: number;
   deliveryFeeEuros?: string;
+  distanceMeters?: number;
+  distanceKm?: string;
   minOrderCents?: number | null;
   minOrderEuros?: string | null;
   zoneName?: string;
   message?: string;
+  isOutOfRange?: boolean; // true if address is outside delivery range
 }
 
 export async function calculateDeliveryFee(
@@ -618,9 +623,6 @@ export async function calculateDeliveryFee(
 
 export interface ValidateMinOrderRequest {
   address: {
-    postalCode?: string;
-    city?: string;
-    cityPart?: string;
   };
   orderTotalCents: number;
 }
