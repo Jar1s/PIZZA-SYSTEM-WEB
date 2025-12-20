@@ -255,7 +255,7 @@ export default function CheckoutPage() {
     };
 
     calculateFee();
-  }, [user, selectedAddressId, addresses, guestData.postalCode, guestData.city, tenantSlug, deliveryFeeFeatureEnabled]);
+  }, [user, selectedAddressId, addresses, guestData.postalCode, guestData.city, guestData.street, guestData.houseNumber, tenantSlug, deliveryFeeFeatureEnabled]);
 
   useEffect(() => {
     const layout = tenantData?.theme?.layout || {};
