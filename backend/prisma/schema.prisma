@@ -270,3 +270,12 @@ model DeliveryFeeTier {
   @@map("delivery_fee_tiers")
 }
 
+model GlobalSettings {
+  id        String   @id @default("global")
+  storyous  Json?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("global_settings")
+}
+
