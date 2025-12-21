@@ -2052,6 +2052,7 @@ export default function CheckoutPage() {
                               postalCode: '',
                               country: 'SK',
                               isPrimary: false,
+                              coordinates: null,
                             });
                             setAddressFormError(null);
                           }}
