@@ -5,6 +5,7 @@ import { Tenant } from '@pizza-ecosystem/shared';
 import { getAllTenants, updateTenant } from '@/lib/api';
 import { EditBrandModal } from '@/components/admin/EditBrandModal';
 import { ProtectedRoute } from '@/components/admin/ProtectedRoute';
+import DeliveryFeeTiersSettings from '@/components/admin/DeliveryFeeTiersSettings';
 
 export default function BrandsPage() {
   const [tenants, setTenants] = useState<Tenant[]>([]);
@@ -75,6 +76,11 @@ export default function BrandsPage() {
             Manage all pizza brands in your ecosystem. Total: {tenants.length} brands
           </p>
         </div>
+      </div>
+
+      {/* Delivery fee tiers management (based on selected brand from header) */}
+      <div className="mb-6">
+        <DeliveryFeeTiersSettings />
       </div>
 
       {loading ? (

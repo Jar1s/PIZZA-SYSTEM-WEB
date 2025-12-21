@@ -116,13 +116,6 @@ export default function AdminDashboard() {
         </ErrorBoundary>
       </div>
 
-      {/* Delivery Fee Tiers Settings */}
-      <ErrorBoundary>
-        <Suspense fallback={<div className="animate-pulse bg-gray-200 h-64 rounded-lg mb-6" />}>
-          <DeliveryFeeTiersSettings />
-        </Suspense>
-      </ErrorBoundary>
-
       {/* Main Content */}
       <ErrorBoundary>
         <Suspense fallback={<div className="animate-pulse bg-gray-200 h-32 rounded-lg mb-6" />}>
@@ -138,4 +131,3 @@ export default function AdminDashboard() {
     </div>
   );
 }
-

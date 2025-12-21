@@ -79,20 +79,20 @@ export default function DeliveryFeeTiersSettings() {
   }, [fetchTiers]);
 
   const handleSave = async () => {
+    if (!editingId) {
+      // Creating new tiers is disabled
+      return;
+    }
     try {
       const token = localStorage.getItem('auth_token');
       if (!token) {
         await handleUnauthorized();
         return;
       }
-      const url = editingId
-        ? `${API_URL}/api/delivery-fee-tiers/${editingId}`
-        : `${API_URL}/api/delivery-fee-tiers`;
+      const url = `${API_URL}/api/delivery-fee-tiers/${editingId}`;
       
-      const method = editingId ? 'PATCH' : 'POST';
-      const body = editingId
-        ? formData
-        : { ...formData, tenantId: selectedTenant === 'all' ? null : selectedTenant };
+      const method = 'PATCH';
+      const body = formData;
 
       const response = await fetch(url, {
         method,
@@ -174,27 +174,11 @@ export default function DeliveryFeeTiersSettings() {
     <div className="p-4 bg-white rounded-lg shadow">
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-xl font-bold">Delivery Fee Tiers</h2>
-        <button
-          onClick={() => {
-            setShowAddForm(true);
-            setEditingId(null);
-            setFormData({
-              minDistanceMeters: 0,
-              maxDistanceMeters: 3000,
-              deliveryFeeCents: 425,
-              isActive: true,
-              priority: 0,
-            });
-          }}
-          className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-        >
-          Add Tier
-        </button>
       </div>
 
-      {showAddForm && (
+      {showAddForm && editingId && (
         <div className="mb-4 p-4 border rounded">
-          <h3 className="font-semibold mb-2">{editingId ? 'Edit' : 'Add'} Tier</h3>
+          <h3 className="font-semibold mb-2">Edit Tier</h3>
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium mb-1">Min Distance (m)</label>
