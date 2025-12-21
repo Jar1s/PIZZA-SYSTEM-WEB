@@ -259,19 +259,42 @@ export class DeliveryFeeTierService {
     const kitchenLng = pickupAddress.coordinates.lng;
 
     // Load tiers BEFORE geocoding (needed to check max distance)
-    const tiers = await this.prisma.deliveryFeeTier.findMany({
-      where: {
-        OR: [
-          { tenantId },
-          { tenantId: null },
+    let tiers;
+    try {
+      tiers = await this.prisma.deliveryFeeTier.findMany({
+        where: {
+          OR: [
+            { tenantId },
+            { tenantId: null },
+          ],
+          isActive: true,
+        },
+        orderBy: [
+          { priority: 'desc' },
+          { minDistanceMeters: 'asc' },
         ],
-        isActive: true,
-      },
-      orderBy: [
-        { priority: 'desc' },
-        { minDistanceMeters: 'asc' },
-      ],
-    });
+      });
+    } catch (error: any) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.logger.error('Failed to load delivery fee tiers from database', {
+        tenantId,
+        error: message,
+      });
+      const fallbackFee = deliveryConfig?.defaultFeeCents;
+      if (fallbackFee !== undefined && typeof fallbackFee === 'number') {
+        this.logger.warn('Using default delivery fee because tiers table is missing/unavailable', {
+          tenantId,
+          fallbackFee,
+        });
+        return {
+          deliveryFeeCents: fallbackFee,
+          distanceMeters: 0,
+        };
+      }
+      throw new BadRequestException(
+        'Delivery configuration is unavailable. Please contact support (database migration missing).'
+      );
+    }
 
     // Try to geocode and calculate distance
     let distanceMeters: number;
