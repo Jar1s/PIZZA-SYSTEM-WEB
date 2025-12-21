@@ -47,8 +47,9 @@ export default function DeliveryFeeTiersSettings() {
       if (response.ok) {
         const data = await response.json();
         // Filter by selected tenant or show global (null) tiers
-        const filtered = selectedTenant
-          ? data.filter((t: DeliveryFeeTier) => t.tenantId === selectedTenant.id || t.tenantId === null)
+        const tenantSlug = selectedTenant === 'all' ? null : selectedTenant;
+        const filtered = tenantSlug
+          ? data.filter((t: DeliveryFeeTier) => t.tenantId === tenantSlug || t.tenantId === null)
           : data.filter((t: DeliveryFeeTier) => t.tenantId === null);
         setTiers(filtered);
       }
@@ -69,7 +70,7 @@ export default function DeliveryFeeTiersSettings() {
       const method = editingId ? 'PATCH' : 'POST';
       const body = editingId
         ? formData
-        : { ...formData, tenantId: selectedTenant?.id || null };
+        : { ...formData, tenantId: selectedTenant === 'all' ? null : selectedTenant };
 
       const response = await fetch(url, {
         method,
