@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAdminContext } from '@/app/admin/admin-context';
 
 interface DeliveryFeeTier {
@@ -31,11 +31,7 @@ export default function DeliveryFeeTiersSettings() {
     priority: 0,
   });
 
-  useEffect(() => {
-    fetchTiers();
-  }, [selectedTenant]);
-
-  const fetchTiers = async () => {
+  const fetchTiers = useCallback(async () => {
     try {
       setLoading(true);
       const token = localStorage.getItem('auth_token');
@@ -58,7 +54,11 @@ export default function DeliveryFeeTiersSettings() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedTenant]);
+
+  useEffect(() => {
+    fetchTiers();
+  }, [fetchTiers]);
 
   const handleSave = async () => {
     try {

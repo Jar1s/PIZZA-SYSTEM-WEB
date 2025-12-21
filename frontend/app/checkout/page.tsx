@@ -977,6 +977,7 @@ export default function CheckoutPage() {
           postalCode: '',
           country: 'SK',
           isPrimary: true,
+          coordinates: null,
         });
         // Hide add address form
         setShowAddAddressForm(false);
