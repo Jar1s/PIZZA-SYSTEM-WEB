@@ -59,6 +59,16 @@ export class OrdersController {
     const tenant = await this.tenantsService.getTenantBySlug(tenantSlug);
     return this.ordersService.createOrder(tenant.id, data);
   }
+
+  @Post(':id/sync-storyous')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN', 'OPERATOR')
+  async syncToStoryous(
+    @Param('tenantSlug') tenantSlug: string,
+    @Param('id') id: string,
+  ) {
+    return this.ordersService.syncOrderToStoryous(id);
+  }
 }
 
 /**
@@ -128,14 +138,12 @@ export class AdminOrdersController {
     });
   }
 
-  @Public() // TODO: Remove in production - add proper authentication
   @Get(':id')
   @Roles('ADMIN', 'OPERATOR')
   async getOrder(@Param('id') id: string) {
     return this.ordersService.getOrderById(id);
   }
 
-  @Public() // TODO: Remove in production - add proper authentication
   @Patch(':id/status')
   @Roles('ADMIN', 'OPERATOR')
   async updateOrderStatus(
@@ -177,9 +185,6 @@ export class TrackingController {
     }
   }
 }
-
-
-
 
 
 
