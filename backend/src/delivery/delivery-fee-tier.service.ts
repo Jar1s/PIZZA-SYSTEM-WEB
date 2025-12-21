@@ -230,6 +230,12 @@ export class DeliveryFeeTierService {
     tenantId: string,
     address: AddressForGeocoding,
   ): Promise<DeliveryFeeByDistanceResult | null> {
+    // Safety guard in case Prisma client isn't regenerated with deliveryFeeTier model
+    if (!(this.prisma as any).deliveryFeeTier) {
+      this.logger.error('Prisma client is missing deliveryFeeTier delegate. Run `prisma generate`.');
+      throw new BadRequestException('Delivery calculation service is temporarily unavailable. Please try again.');
+    }
+
     const tenant = await this.prisma.tenant.findUnique({
       where: { id: tenantId },
       select: { deliveryConfig: true },
@@ -293,7 +299,18 @@ export class DeliveryFeeTierService {
         error: geocodingError instanceof Error ? geocodingError.message : String(geocodingError),
         address,
       });
-      throw geocodingError; // Re-throw to let caller handle
+      const fallbackFee = deliveryConfig?.defaultFeeCents;
+      if (fallbackFee !== undefined && typeof fallbackFee === 'number') {
+        this.logger.warn('Using default delivery fee due to geocoding failure', {
+          tenantId,
+          fallbackFee,
+        });
+        return {
+          deliveryFeeCents: fallbackFee,
+          distanceMeters: 0,
+        };
+      }
+      throw geocodingError; // Re-throw to let caller handle when no fallback fee
     }
 
     // Find matching tier

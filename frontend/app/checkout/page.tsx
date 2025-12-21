@@ -72,6 +72,7 @@ export default function CheckoutPage() {
     postalCode: '',
     country: 'SK',
     instructions: '',
+    coordinates: null as { lat: number; lng: number } | null,
   });
   
   const [paymentType, setPaymentType] = useState<'online' | 'cash_on_delivery'>('online');
@@ -93,6 +94,7 @@ export default function CheckoutPage() {
   const [deliveryFeeLoading, setDeliveryFeeLoading] = useState(false);
   const [deliveryFeeError, setDeliveryFeeError] = useState<string | null>(null);
   const [deliveryFeeFeatureEnabled, setDeliveryFeeFeatureEnabled] = useState(true);
+  const [deliveryFeeCalculated, setDeliveryFeeCalculated] = useState(false);
 
   // Inline form state for logged-in users
   const [addressFormData, setAddressFormData] = useState({
@@ -102,6 +104,7 @@ export default function CheckoutPage() {
     postalCode: '',
     country: 'SK',
     isPrimary: true,
+    coordinates: null as { lat: number; lng: number } | null,
   });
   const [phoneFormData, setPhoneFormData] = useState({
     phone: '',
@@ -204,6 +207,7 @@ export default function CheckoutPage() {
           cityPart: guestData.city.includes(' - ')
             ? guestData.city.split(' - ')[1]
             : guestData.city,
+          coordinates: guestData.coordinates || undefined,
         };
       }
 
@@ -212,6 +216,7 @@ export default function CheckoutPage() {
         setMinOrderCents(null);
         setZoneName(null);
         setDeliveryFeeError(null);
+        setDeliveryFeeCalculated(false);
         return;
       }
 
@@ -231,6 +236,7 @@ export default function CheckoutPage() {
           setMinOrderCents(result.minOrderCents || null);
           setZoneName(result.zoneName || null);
           setDeliveryFeeError(null);
+          setDeliveryFeeCalculated(true);
           if (!deliveryFeeFeatureEnabled) {
             setDeliveryFeeFeatureEnabled(true);
           }
@@ -240,6 +246,7 @@ export default function CheckoutPage() {
           setMinOrderCents(null);
           setZoneName(null);
           setDeliveryFeeError(null);
+          setDeliveryFeeCalculated(true);
         }
       } catch (error: any) {
         console.error('Failed to calculate delivery fee:', error);
@@ -248,6 +255,7 @@ export default function CheckoutPage() {
         setDeliveryFeeCents(0);
         setMinOrderCents(null);
         setZoneName(null);
+        setDeliveryFeeCalculated(false);
         // Don't disable deliveryFeeFeatureEnabled - allow retry on next address change
       } finally {
         setDeliveryFeeLoading(false);
@@ -255,7 +263,7 @@ export default function CheckoutPage() {
     };
 
     calculateFee();
-  }, [user, selectedAddressId, addresses, guestData.postalCode, guestData.city, guestData.street, guestData.houseNumber, tenantSlug, deliveryFeeFeatureEnabled]);
+  }, [user, selectedAddressId, addresses, guestData.postalCode, guestData.city, guestData.street, guestData.houseNumber, guestData.coordinates, tenantSlug, deliveryFeeFeatureEnabled]);
 
   useEffect(() => {
     const layout = tenantData?.theme?.layout || {};
@@ -1178,6 +1186,7 @@ export default function CheckoutPage() {
           city: addresses.find(addr => addr.id === selectedAddressId)!.city,
           postalCode: addresses.find(addr => addr.id === selectedAddressId)!.postalCode,
           country: addresses.find(addr => addr.id === selectedAddressId)!.country || 'SK',
+          // Coordinates are not stored on saved addresses yet; backend will geocode
         } : {
           street: guestData.street,
           houseNumber: guestData.houseNumber,
@@ -1185,6 +1194,7 @@ export default function CheckoutPage() {
           postalCode: guestData.postalCode,
           country: guestData.country,
           instructions: guestData.instructions,
+          coordinates: guestData.coordinates || undefined,
         },
         items: items.map(item => ({
           productId: item.product.id,
@@ -1410,7 +1420,7 @@ export default function CheckoutPage() {
                 </div>
               );
             })}
-            {deliveryFeeCents > 0 && (
+            {deliveryFeeCalculated && (
               <div className="flex justify-between text-sm mt-2">
                 <span>{t.deliveryFee}</span>
                 <span>€{(deliveryFeeCents / 100).toFixed(2)} {zoneName && `(${zoneName})`}</span>
@@ -1907,17 +1917,29 @@ export default function CheckoutPage() {
                         value={addressFormData.street}
                         onChange={(address, details) => {
                           if (details) {
+                            const coords = details.geometry?.location
+                              ? {
+                                  lat: typeof details.geometry.location.lat === 'function'
+                                    ? details.geometry.location.lat()
+                                    : details.geometry.location.lat,
+                                  lng: typeof details.geometry.location.lng === 'function'
+                                    ? details.geometry.location.lng()
+                                    : details.geometry.location.lng,
+                                }
+                              : null;
                             setAddressFormData({
                               ...addressFormData,
                               street: details.street || address,
                               city: details.city || addressFormData.city,
                               postalCode: details.postalCode || addressFormData.postalCode,
                               country: details.country || addressFormData.country,
+                              coordinates: coords,
                             });
                           } else {
                             setAddressFormData({
                               ...addressFormData,
                               street: address,
+                              coordinates: null,
                             });
                           }
                           if (addressFormError) setAddressFormError(null);
@@ -2071,6 +2093,16 @@ export default function CheckoutPage() {
                     value={guestData.street}
                     onChange={(address, details) => {
                       if (details) {
+                        const coords = details.geometry?.location
+                          ? {
+                              lat: typeof details.geometry.location.lat === 'function'
+                                ? details.geometry.location.lat()
+                                : details.geometry.location.lat,
+                              lng: typeof details.geometry.location.lng === 'function'
+                                ? details.geometry.location.lng()
+                                : details.geometry.location.lng,
+                            }
+                          : null;
                         // Auto-fill city and postal code from Google autocomplete
                         setGuestData({
                           ...guestData,
@@ -2078,12 +2110,13 @@ export default function CheckoutPage() {
                           city: details.city || guestData.city,
                           postalCode: details.postalCode || guestData.postalCode,
                           country: details.country || guestData.country,
+                          coordinates: coords,
                         });
                         // Clear validation error when address is selected
                         setAddressValidationError(null);
                       } else {
                         // Manual typing - update street only
-                        setGuestData({...guestData, street: address});
+                        setGuestData({...guestData, street: address, coordinates: null});
                         // Trigger geocoding validation when street is entered and we have city/postal code
                         if (address.trim() && guestData.city && guestData.postalCode) {
                           validateAddressWithGeocoding(address, guestData.city, guestData.postalCode);
