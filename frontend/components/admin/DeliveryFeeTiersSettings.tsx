@@ -72,7 +72,7 @@ export default function DeliveryFeeTiersSettings() {
     } finally {
       setLoading(false);
     }
-  }, [selectedTenant]);
+  }, [selectedTenant, handleUnauthorized]);
 
   useEffect(() => {
     fetchTiers();
