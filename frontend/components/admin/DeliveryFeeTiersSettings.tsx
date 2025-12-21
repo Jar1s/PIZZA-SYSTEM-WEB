@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/contexts/AuthContext';
 import { useAdminContext } from '@/app/admin/admin-context';
 
 interface DeliveryFeeTier {
@@ -19,6 +21,8 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
 
 export default function DeliveryFeeTiersSettings() {
   const { selectedTenant } = useAdminContext();
+  const router = useRouter();
+  const { logout } = useAuth();
   const [tiers, setTiers] = useState<DeliveryFeeTier[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -31,24 +35,38 @@ export default function DeliveryFeeTiersSettings() {
     priority: 0,
   });
 
+  const handleUnauthorized = useCallback(async () => {
+    await logout();
+    router.push('/login');
+  }, [logout, router]);
+
   const fetchTiers = useCallback(async () => {
     try {
       setLoading(true);
       const token = localStorage.getItem('auth_token');
+      if (!token) {
+        await handleUnauthorized();
+        return;
+      }
       const response = await fetch(`${API_URL}/api/delivery-fee-tiers`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
       });
-      if (response.ok) {
-        const data = await response.json();
-        // Filter by selected tenant or show global (null) tiers
-        const tenantSlug = selectedTenant === 'all' ? null : selectedTenant;
-        const filtered = tenantSlug
-          ? data.filter((t: DeliveryFeeTier) => t.tenantId === tenantSlug || t.tenantId === null)
-          : data.filter((t: DeliveryFeeTier) => t.tenantId === null);
-        setTiers(filtered);
+      if (response.status === 401) {
+        await handleUnauthorized();
+        return;
       }
+      if (!response.ok) {
+        throw new Error('Failed to fetch tiers');
+      }
+      const data = await response.json();
+      // Filter by selected tenant or show global (null) tiers
+      const tenantSlug = selectedTenant === 'all' ? null : selectedTenant;
+      const filtered = tenantSlug
+        ? data.filter((t: DeliveryFeeTier) => t.tenantId === tenantSlug || t.tenantId === null)
+        : data.filter((t: DeliveryFeeTier) => t.tenantId === null);
+      setTiers(filtered);
     } catch (error) {
       console.error('Failed to fetch tiers:', error);
     } finally {
@@ -63,6 +81,10 @@ export default function DeliveryFeeTiersSettings() {
   const handleSave = async () => {
     try {
       const token = localStorage.getItem('auth_token');
+      if (!token) {
+        await handleUnauthorized();
+        return;
+      }
       const url = editingId
         ? `${API_URL}/api/delivery-fee-tiers/${editingId}`
         : `${API_URL}/api/delivery-fee-tiers`;
@@ -80,6 +102,11 @@ export default function DeliveryFeeTiersSettings() {
         },
         body: JSON.stringify(body),
       });
+
+      if (response.status === 401) {
+        await handleUnauthorized();
+        return;
+      }
 
       if (response.ok) {
         await fetchTiers();
@@ -103,12 +130,21 @@ export default function DeliveryFeeTiersSettings() {
     
     try {
       const token = localStorage.getItem('auth_token');
+      if (!token) {
+        await handleUnauthorized();
+        return;
+      }
       const response = await fetch(`${API_URL}/api/delivery-fee-tiers/${id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
         },
       });
+
+      if (response.status === 401) {
+        await handleUnauthorized();
+        return;
+      }
 
       if (response.ok) {
         await fetchTiers();
