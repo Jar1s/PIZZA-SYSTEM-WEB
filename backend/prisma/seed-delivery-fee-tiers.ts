@@ -42,13 +42,17 @@ async function seedDeliveryFeeTiers() {
   ];
 
   for (const tier of defaultTiers) {
+    const tierId = tier.tenantId
+      ? `${tier.tenantId}-${tier.minDistanceMeters}-${tier.maxDistanceMeters}`
+      : `global-${tier.minDistanceMeters}-${tier.maxDistanceMeters}`;
+
     await prisma.deliveryFeeTier.upsert({
       where: {
-        // id will be auto-generated
+        id: tierId,
       },
       update: tier,
       create: {
-        // id will be auto-generated
+        id: tierId,
         ...tier,
       },
     });
