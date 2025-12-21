@@ -577,6 +577,68 @@ export async function syncOrderToStoryous(orderId: string, tenantSlug?: string):
   return res.json();
 }
 
+// Storyous Settings API
+export interface StoryousSettings {
+  clientId: string;
+  clientSecret: string;
+  merchantId: string;
+  placeId: string;
+  enabled: boolean;
+  autoSync: boolean;
+}
+
+function getAuthToken(): string | null {
+  if (typeof window === 'undefined') return null;
+  return localStorage.getItem('auth_token') || localStorage.getItem('authToken');
+}
+
+export async function getStoryousSettings(): Promise<StoryousSettings | null> {
+  const token = getAuthToken();
+  if (!token) {
+    throw new Error('Not authenticated');
+  }
+  
+  const res = await fetch(`${API_URL}/api/settings/storyous`, {
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+  });
+  
+  if (!res.ok) {
+    if (res.status === 404) {
+      return null;
+    }
+    const error = await res.json().catch(() => ({ message: 'Failed to get Storyous settings' }));
+    throw new Error(error.message || 'Failed to get Storyous settings');
+  }
+  
+  return res.json();
+}
+
+export async function updateStoryousSettings(data: Partial<StoryousSettings>): Promise<StoryousSettings> {
+  const token = getAuthToken();
+  if (!token) {
+    throw new Error('Not authenticated');
+  }
+  
+  const res = await fetch(`${API_URL}/api/settings/storyous`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+    },
+    body: JSON.stringify(data),
+  });
+  
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({ message: 'Failed to update Storyous settings' }));
+    throw new Error(error.message || 'Failed to update Storyous settings');
+  }
+  
+  return res.json();
+}
+
 // Delivery zones
 export interface DeliveryFeeRequest {
   address: {
