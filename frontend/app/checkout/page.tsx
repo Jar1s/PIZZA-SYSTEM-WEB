@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useCart, useCartTotal } from '@/hooks/useCart';
-import { createOrder, createPaymentSession, calculateDeliveryFee, validateMinOrder } from '@/lib/api';
+import { createOrder, createPaymentSession, calculateDeliveryFee, validateMinOrder, type DeliveryFeeRequest } from '@/lib/api';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { formatModifiers } from '@/lib/format-modifiers';
@@ -174,7 +174,7 @@ export default function CheckoutPage() {
   // Calculate delivery fee when address changes
   useEffect(() => {
     const calculateFee = async () => {
-      let address: { street?: string; postalCode?: string; city?: string; cityPart?: string } | null = null;
+      let address: DeliveryFeeRequest['address'] | null = null;
 
       if (user && selectedAddressId) {
         const selectedAddress = addresses.find(addr => addr.id === selectedAddressId);
