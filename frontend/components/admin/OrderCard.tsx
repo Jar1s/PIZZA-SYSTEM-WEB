@@ -507,6 +507,12 @@ export function OrderCard({ order, onStatusUpdate, isExpanded = false, onToggleE
               );
             })}
             
+            {order.deliveryFeeCents != null && (
+              <div className="pt-2 flex justify-between text-sm text-gray-600">
+                <span>Delivery fee</span>
+                <span>€{(order.deliveryFeeCents / 100).toFixed(2)}</span>
+              </div>
+            )}
             <div className="mt-2 pt-2 border-t flex justify-between font-semibold">
               <span>Total</span>
               <span>€{(order.totalCents / 100).toFixed(2)}</span>
@@ -646,4 +652,3 @@ export function OrderCard({ order, onStatusUpdate, isExpanded = false, onToggleE
     </div>
   );
 }
-
