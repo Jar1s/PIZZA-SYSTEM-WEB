@@ -72,12 +72,10 @@ export function OrderCard({ order, onStatusUpdate, isExpanded = false, onToggleE
   const hasWoltDelivery = !!order.deliveryId || !!order.delivery;
   const woltDelivery = order.delivery;
   
-  // Storyous button should only show after order is confirmed (PREPARING or higher)
-  const canSyncToStoryous = !isStoryousSynced && (
-    order.status === OrderStatus.PREPARING || 
-    order.status === OrderStatus.OUT_FOR_DELIVERY || 
-    order.status === OrderStatus.DELIVERED
-  );
+  // Keep manual buttons visible until delivered/canceled
+  const canSyncToStoryous = !isStoryousSynced && order.status !== OrderStatus.DELIVERED && order.status !== OrderStatus.CANCELED;
+  const canCreateWolt = !hasWoltDelivery && (order.status === OrderStatus.PAID || order.status === OrderStatus.PREPARING);
+  const canCancelAnytime = order.status !== OrderStatus.DELIVERED && order.status !== OrderStatus.CANCELED;
   
   // Helper function to check if payment is on delivery (cash/card on delivery)
   // Normalized check: case-insensitive, handles null/undefined
@@ -302,6 +300,14 @@ export function OrderCard({ order, onStatusUpdate, isExpanded = false, onToggleE
                 </button>
               </>
             )}
+            {canCancelAnytime && !isPendingDelivery && !isPendingOnline && !isPaidOnline && (
+              <button
+                onClick={() => onStatusUpdate(order.id, OrderStatus.CANCELED)}
+                className="flex-1 min-w-[120px] px-3 py-2 bg-red-600 text-white rounded hover:bg-red-700 text-sm font-semibold"
+              >
+                ❌ Zrušiť
+              </button>
+            )}
             {canSyncToStoryous && (
               <button
                 onClick={handleSyncStoryous}
@@ -312,7 +318,7 @@ export function OrderCard({ order, onStatusUpdate, isExpanded = false, onToggleE
                 {syncingStoryous ? '⏳' : '📦 Storyous'}
               </button>
             )}
-            {!hasWoltDelivery && order.status === OrderStatus.PAID && (
+            {canCreateWolt && (
               <button
                 onClick={handleCreateWoltDelivery}
                 disabled={creatingWolt}
