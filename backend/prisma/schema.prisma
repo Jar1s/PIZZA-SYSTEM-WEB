@@ -270,6 +270,7 @@ model DeliveryFeeTier {
   @@map("delivery_fee_tiers")
 }
 
+// Global settings for platform-wide configuration (e.g., Storyous credentials)
 model GlobalSettings {
   id        String   @id @default("global")
   storyous  Json?
@@ -278,4 +279,3 @@ model GlobalSettings {
 
   @@map("global_settings")
 }
-

@@ -14,6 +14,7 @@ import { CustomerModule } from './customer/customer.module';
 import { TrackingModule } from './tracking/tracking.module';
 import { UploadModule } from './upload/upload.module';
 import { HealthModule } from './health/health.module';
+import { SettingsModule } from './settings/settings.module';
 import { AppController } from './app.controller';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { DatabaseErrorInterceptor } from './common/interceptors/database-error.interceptor';
@@ -37,6 +38,7 @@ import { DatabaseErrorInterceptor } from './common/interceptors/database-error.i
     AnalyticsModule,
     UploadModule,
     HealthModule,
+    SettingsModule,
   ],
   controllers: [AppController],
   providers: [
