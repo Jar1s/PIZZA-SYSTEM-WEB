@@ -8,6 +8,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { calculateOrderItemPrice } from '@/lib/calculate-order-item-price';
 import { getTranslations } from '@/lib/translations';
 import { getProductDisplayName } from '@/lib/product-translations';
+import { useToastContext } from '@/contexts/ToastContext';
 
 interface OrderCardProps {
   order: Order;
@@ -62,6 +63,7 @@ export function OrderCard({ order, onStatusUpdate, isExpanded = false, onToggleE
     currency: string;
   } | null>(null);
   const [woltError, setWoltError] = useState<string | null>(null);
+  const { success: toastSuccess, error: toastError } = useToastContext();
   
   const customer = order.customer;
   const address = order.address;
@@ -147,11 +149,14 @@ export function OrderCard({ order, onStatusUpdate, isExpanded = false, onToggleE
       const result = await syncOrderToStoryous(order.id);
       if (result.success) {
         setStoryousMessage(`✅ Synced! Storyous ID: ${result.storyousOrderId || 'N/A'}`);
+        toastSuccess(`Storyous: objednávka odoslaná (${result.storyousOrderId || 'ID neznáme'})`);
       } else {
         setStoryousMessage(`❌ ${result.message}`);
+        toastError(result.message || 'Storyous sync zlyhal');
       }
     } catch (error: any) {
       setStoryousMessage(`❌ Error: ${error.message}`);
+      toastError(error.message || 'Storyous sync zlyhal');
     } finally {
       setSyncingStoryous(false);
     }
