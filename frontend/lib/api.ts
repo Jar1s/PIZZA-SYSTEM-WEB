@@ -555,11 +555,14 @@ export async function syncOrderToStoryous(orderId: string, tenantSlug?: string):
   // For now, we'll use a generic endpoint that works with any tenant
   // The backend will handle tenant resolution
   const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
-  const authHeaders = token ? { 'Authorization': `Bearer ${token}` } : {};
+  const headers: HeadersInit = { 'Content-Type': 'application/json' };
+  if (token) {
+    (headers as Record<string, string>)['Authorization'] = `Bearer ${token}`;
+  }
 
   const res = await fetch(`${API_URL}/api/pornopizza/orders/${orderId}/sync-storyous`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...authHeaders },
+    headers,
   });
   
   if (!res.ok) {
@@ -567,7 +570,7 @@ export async function syncOrderToStoryous(orderId: string, tenantSlug?: string):
     if (!tenantSlug || tenantSlug === 'pornopizza') {
       const res2 = await fetch(`${API_URL}/api/pizzavnudzi/orders/${orderId}/sync-storyous`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...authHeaders },
+        headers,
       });
       if (res2.ok) {
         return res2.json();
