@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Logger, Inject, forwardRef } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../prisma/prisma.service';
 import { Prisma, User, UserRole, Order as PrismaOrder } from '@prisma/client';
@@ -6,6 +6,7 @@ import { Order, OrderStatus, CustomerInfo, Address, getCustomizationOptions, cal
 import { CreateOrderDto } from './dto';
 import { EmailService } from '../email/email.service';
 import { StoryousService } from '../storyous/storyous.service';
+import { SettingsService } from '../settings/settings.service';
 import { ProductMappingService } from '../products/product-mapping.service';
 import { DeliveryFeeTierService } from '../delivery/delivery-fee-tier.service';
 import { OrderNumberService } from './order-number.service';
@@ -60,6 +61,8 @@ export class OrdersService {
     private prisma: PrismaService,
     private emailService: EmailService,
     private storyousService: StoryousService,
+    @Inject(forwardRef(() => SettingsService))
+    private settingsService: SettingsService,
     private productMappingService: ProductMappingService,
     private deliveryFeeTierService: DeliveryFeeTierService,
     private orderNumberService: OrderNumberService,
@@ -629,9 +632,8 @@ export class OrdersService {
       }
     }
 
-    // Send order to Storyous immediately (if enabled)
-    // IMPROVED: Better error handling with retry strategy
-    await this.syncOrderToStoryousWithRetry(order as unknown as OrderWithRelations, tenantTheme, tenantId);
+    // Storyous sync removed - now happens only when order is confirmed (PREPARING status)
+    // or manually via button in admin dashboard
 
     // If auto-login happened, return auth token
     if (shouldReturnAuthToken && createdUser) {
@@ -888,13 +890,16 @@ export class OrdersService {
     }
 
     try {
-      const tenant = orderWithStoryous.tenant;
-      const storyousConfig = (tenant.theme as TenantTheme)?.storyousConfig;
+      // Get global Storyous settings
+      const storyousSettings = await this.settingsService.getStoryousSettings();
+      // #region agent log
+      fetch('http://127.0.0.1:7244/ingest/c8c401c8-9b71-4e06-9291-444154701c07',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'orders.service.ts:894',message:'storyous settings loaded',data:{enabled:storyousSettings?.enabled,merchantId:storyousSettings?.merchantId,placeId:storyousSettings?.placeId,hasMerchantId:!!storyousSettings?.merchantId,hasPlaceId:!!storyousSettings?.placeId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+      // #endregion
       
-      if (!storyousConfig?.enabled || !storyousConfig?.merchantId || !storyousConfig?.placeId) {
+      if (!storyousSettings?.enabled || !storyousSettings?.merchantId || !storyousSettings?.placeId) {
         return {
           success: false,
-          message: 'Storyous is not configured for this tenant',
+          message: 'Storyous is not configured. Please configure it in admin settings.',
         };
       }
 
@@ -905,10 +910,13 @@ export class OrdersService {
         customer: orderWithStoryous.customer as unknown as CustomerInfo,
         address: orderWithStoryous.address as unknown as Address,
       } as unknown as Order;
+      // #region agent log
+      fetch('http://127.0.0.1:7244/ingest/c8c401c8-9b71-4e06-9291-444154701c07',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'orders.service.ts:910',message:'calling createOrder',data:{orderId:orderForStoryous.id,merchantId:storyousSettings.merchantId,placeId:storyousSettings.placeId,merchantIdType:typeof storyousSettings.merchantId,placeIdType:typeof storyousSettings.placeId,merchantIdLength:storyousSettings.merchantId?.length,placeIdLength:storyousSettings.placeId?.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+      // #endregion
       const storyousResult = await this.storyousService.createOrder(
         orderForStoryous,
-        storyousConfig.merchantId,
-        storyousConfig.placeId
+        storyousSettings.merchantId,
+        storyousSettings.placeId
       );
       
       if (storyousResult?.id) {
