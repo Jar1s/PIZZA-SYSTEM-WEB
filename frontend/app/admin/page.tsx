@@ -78,6 +78,7 @@ const OpeningHoursSettings = dynamic(() => import('@/components/admin/OpeningHou
   ssr: false,
 });
 
+
 export default function AdminDashboard() {
   const { selectedTenant } = useAdminContext();
   
@@ -114,6 +115,7 @@ export default function AdminDashboard() {
             <PaymentSettings />
           </Suspense>
         </ErrorBoundary>
+
       </div>
 
       {/* Main Content */}

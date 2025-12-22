@@ -6,6 +6,7 @@ import { getAllTenants, updateTenant } from '@/lib/api';
 import { EditBrandModal } from '@/components/admin/EditBrandModal';
 import { ProtectedRoute } from '@/components/admin/ProtectedRoute';
 import DeliveryFeeTiersSettings from '@/components/admin/DeliveryFeeTiersSettings';
+import { StoryousSettings } from '@/components/admin/StoryousSettings';
 
 export default function BrandsPage() {
   const [tenants, setTenants] = useState<Tenant[]>([]);
@@ -81,6 +82,11 @@ export default function BrandsPage() {
       {/* Delivery fee tiers management (based on selected brand from header) */}
       <div className="mb-6">
         <DeliveryFeeTiersSettings />
+      </div>
+
+      {/* Storyous settings (global) */}
+      <div className="mb-6">
+        <StoryousSettings />
       </div>
 
       {loading ? (
