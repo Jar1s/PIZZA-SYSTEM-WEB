@@ -72,9 +72,15 @@ export function OrderCard({ order, onStatusUpdate, isExpanded = false, onToggleE
   const hasWoltDelivery = !!order.deliveryId || !!order.delivery;
   const woltDelivery = order.delivery;
   
-  // Keep manual buttons visible until delivered/canceled
-  const canSyncToStoryous = !isStoryousSynced && order.status !== OrderStatus.DELIVERED && order.status !== OrderStatus.CANCELED;
-  const canCreateWolt = !hasWoltDelivery && (order.status === OrderStatus.PAID || order.status === OrderStatus.PREPARING);
+  // Show Storyous/Wolt buttons only while in PAID/PREPARING and not yet created
+  const canSyncToStoryous = !isStoryousSynced && (
+    order.status === OrderStatus.PAID ||
+    order.status === OrderStatus.PREPARING
+  );
+  const canCreateWolt = !hasWoltDelivery && (
+    order.status === OrderStatus.PAID ||
+    order.status === OrderStatus.PREPARING
+  );
   const canCancelAnytime = order.status !== OrderStatus.DELIVERED && order.status !== OrderStatus.CANCELED;
   
   // Helper function to check if payment is on delivery (cash/card on delivery)
