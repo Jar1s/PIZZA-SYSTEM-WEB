@@ -147,8 +147,6 @@ export function OrderCard({ order, onStatusUpdate, isExpanded = false, onToggleE
       const result = await syncOrderToStoryous(order.id);
       if (result.success) {
         setStoryousMessage(`✅ Synced! Storyous ID: ${result.storyousOrderId || 'N/A'}`);
-        // Refresh the page to show updated order
-        setTimeout(() => window.location.reload(), 1500);
       } else {
         setStoryousMessage(`❌ ${result.message}`);
       }
@@ -444,7 +442,13 @@ export function OrderCard({ order, onStatusUpdate, isExpanded = false, onToggleE
       {expanded && (
         <div className="mt-4 pt-4 border-t grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
           {storyousMessage && (
-            <div className="col-span-2 mb-2 p-2 rounded text-xs bg-gray-100">
+            <div
+              className={`col-span-2 mb-2 p-2 rounded text-xs border ${
+                storyousMessage.startsWith('✅')
+                  ? 'bg-green-50 text-green-800 border-green-200'
+                  : 'bg-red-50 text-red-800 border-red-200'
+              }`}
+            >
               {storyousMessage}
             </div>
           )}
