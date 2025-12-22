@@ -204,6 +204,17 @@ export function OrderCard({ order, onStatusUpdate, isExpanded = false, onToggleE
   
   return (
     <div className="p-3 sm:p-4 hover:bg-gray-50">
+      {storyousMessage && (
+        <div
+          className={`mb-3 p-2 rounded text-xs border ${
+            storyousMessage.startsWith('✅')
+              ? 'bg-green-50 text-green-800 border-green-200'
+              : 'bg-red-50 text-red-800 border-red-200'
+          }`}
+        >
+          {storyousMessage}
+        </div>
+      )}
       {/* Mobile Layout */}
       <div className="md:hidden space-y-3">
         {/* Top Row: Order Number and Status */}
