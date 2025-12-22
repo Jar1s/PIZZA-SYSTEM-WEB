@@ -1,5 +1,6 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Inject, forwardRef } from '@nestjs/common';
 import { Order, OrderStatus } from '@pizza-ecosystem/shared';
+import { SettingsService } from '../settings/settings.service';
 
 @Injectable()
 export class StoryousService {
@@ -7,13 +8,36 @@ export class StoryousService {
   private accessToken: string | null = null;
   private tokenExpiresAt: Date | null = null;
   
-  private readonly clientId = process.env.STORYOUS_CLIENT_ID;
-  private readonly clientSecret = process.env.STORYOUS_CLIENT_SECRET;
   private readonly apiBaseUrl = 'https://api.storyous.com';
-  private readonly enabled = process.env.STORYOUS_ENABLED === 'true';
+  
+  constructor(
+    @Inject(forwardRef(() => SettingsService))
+    private settingsService: SettingsService,
+  ) {}
+
+  private async getConfig() {
+    // Try to get from database first
+    const dbConfig = await this.settingsService.getStoryousSettings();
+    if (dbConfig?.clientId && dbConfig?.clientSecret) {
+      return {
+        clientId: dbConfig.clientId,
+        clientSecret: dbConfig.clientSecret,
+        enabled: dbConfig.enabled,
+      };
+    }
+    
+    // Fallback to environment variables
+    return {
+      clientId: process.env.STORYOUS_CLIENT_ID,
+      clientSecret: process.env.STORYOUS_CLIENT_SECRET,
+      enabled: process.env.STORYOUS_ENABLED === 'true',
+    };
+  }
 
   async getAccessToken(): Promise<string> {
-    if (!this.enabled || !this.clientId || !this.clientSecret) {
+    const config = await this.getConfig();
+    
+    if (!config.enabled || !config.clientId || !config.clientSecret) {
       throw new Error('Storyous is not configured');
     }
 
@@ -32,8 +56,8 @@ export class StoryousService {
         'Content-Type': 'application/x-www-form-urlencoded',
       },
       body: new URLSearchParams({
-        client_id: this.clientId,
-        client_secret: this.clientSecret,
+        client_id: config.clientId,
+        client_secret: config.clientSecret,
         grant_type: 'client_credentials',
       }),
     });
@@ -52,7 +76,8 @@ export class StoryousService {
   }
 
   async createOrder(order: Order, merchantId: string, placeId: string): Promise<any> {
-    if (!this.enabled) {
+    const config = await this.getConfig();
+    if (!config.enabled) {
       this.logger.debug('Storyous integration disabled, skipping');
       return null;
     }
@@ -126,7 +151,8 @@ export class StoryousService {
   }
 
   async updateOrderStatus(storyousOrderId: string, status: OrderStatus): Promise<void> {
-    if (!this.enabled) {
+    const config = await this.getConfig();
+    if (!config.enabled) {
       return;
     }
 
