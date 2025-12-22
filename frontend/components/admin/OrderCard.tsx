@@ -263,30 +263,13 @@ export function OrderCard({ order, onStatusUpdate, isExpanded = false, onToggleE
         {/* Action Buttons */}
         <div className="flex flex-col gap-2 pt-2">
           <div className="flex gap-2 flex-wrap">
-            {/* PENDING with delivery payment - Accept/Cancel buttons */}
+            {/* PENDING with delivery payment - Accept */}
             {isPendingDelivery && (
-              <>
-                <button
-                  onClick={() => onStatusUpdate(order.id, OrderStatus.PAID)}
-                  className="flex-1 min-w-[120px] px-3 py-2 bg-green-600 text-white rounded hover:bg-green-700 text-sm font-semibold"
-                >
-                  ✅ Prijať
-                </button>
-                <button
-                  onClick={() => onStatusUpdate(order.id, OrderStatus.CANCELED)}
-                  className="flex-1 min-w-[120px] px-3 py-2 bg-red-600 text-white rounded hover:bg-red-700 text-sm font-semibold"
-                >
-                  ❌ Zrušiť
-                </button>
-              </>
-            )}
-            {/* PENDING with online payment - Cancel button only (waiting for customer payment) */}
-            {isPendingOnline && (
               <button
-                onClick={() => onStatusUpdate(order.id, OrderStatus.CANCELED)}
-                className="flex-1 min-w-[120px] px-3 py-2 bg-red-600 text-white rounded hover:bg-red-700 text-sm font-semibold"
+                onClick={() => onStatusUpdate(order.id, OrderStatus.PAID)}
+                className="flex-1 min-w-[120px] px-3 py-2 bg-green-600 text-white rounded hover:bg-green-700 text-sm font-semibold"
               >
-                ❌ Zrušiť
+                ✅ Prijať
               </button>
             )}
             {/* PAID online payment - Confirm/Reject buttons (after payment, operator must confirm) */}
@@ -307,7 +290,7 @@ export function OrderCard({ order, onStatusUpdate, isExpanded = false, onToggleE
                 </button>
               </>
             )}
-            {canCancelAnytime && !isPendingDelivery && !isPendingOnline && !isPaidOnline && (
+            {canCancelAnytime && (
               <button
                 onClick={() => onStatusUpdate(order.id, OrderStatus.CANCELED)}
                 className="flex-1 min-w-[120px] px-3 py-2 bg-red-600 text-white rounded hover:bg-red-700 text-sm font-semibold"
