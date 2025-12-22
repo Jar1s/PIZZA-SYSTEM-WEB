@@ -70,6 +70,13 @@ export function OrderCard({ order, onStatusUpdate, isExpanded = false, onToggleE
   const hasWoltDelivery = !!order.deliveryId || !!order.delivery;
   const woltDelivery = order.delivery;
   
+  // Storyous button should only show after order is confirmed (PREPARING or higher)
+  const canSyncToStoryous = !isStoryousSynced && (
+    order.status === OrderStatus.PREPARING || 
+    order.status === OrderStatus.OUT_FOR_DELIVERY || 
+    order.status === OrderStatus.DELIVERED
+  );
+  
   // Helper function to check if payment is on delivery (cash/card on delivery)
   // Normalized check: case-insensitive, handles null/undefined
   const isDeliveryPayment = (): boolean => {
@@ -98,6 +105,10 @@ export function OrderCard({ order, onStatusUpdate, isExpanded = false, onToggleE
   
   // Get translated status label
   const getStatusLabel = (status: OrderStatus): string => {
+    // For delivery payment (cash/card on delivery), show "Čaká na potvrdenie" instead of "Čaká na platbu" for PENDING status
+    if (status === OrderStatus.PENDING && isDeliveryPayment()) {
+      return language === 'sk' ? 'Čaká na potvrdenie' : 'Waiting for confirmation';
+    }
     // For delivery payment (cash/card on delivery), show "Potvrdené" instead of "Zaplatené" for PAID status
     if (status === OrderStatus.PAID && isDeliveryPayment()) {
       return language === 'sk' ? 'Potvrdené' : 'Confirmed';
@@ -277,7 +288,7 @@ export function OrderCard({ order, onStatusUpdate, isExpanded = false, onToggleE
                 </button>
               </>
             )}
-            {!isStoryousSynced && (
+            {canSyncToStoryous && (
               <button
                 onClick={handleSyncStoryous}
                 disabled={syncingStoryous}
@@ -392,7 +403,7 @@ export function OrderCard({ order, onStatusUpdate, isExpanded = false, onToggleE
               </button>
             </>
           )}
-          {!isStoryousSynced && (
+          {canSyncToStoryous && (
             <button
               onClick={handleSyncStoryous}
               disabled={syncingStoryous}

@@ -66,6 +66,8 @@ export function OrderList({ todayOnly = false, selectedTenant }: OrderListProps 
 
   // Cache tenant ID to slug mapping
   const fetchTenantMapping = useCallback(async () => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
+    const headers: HeadersInit = token ? { 'Authorization': `Bearer ${token}` } : {};
     // Determine which tenants to fetch based on current filter
     const tenantsToFetch = filters.tenantSlug === 'all' 
       ? ['pornopizza', 'pizzavnudzi']
@@ -76,7 +78,7 @@ export function OrderList({ todayOnly = false, selectedTenant }: OrderListProps 
     
     for (const tenantSlug of tenantsToFetch) {
       try {
-        const res = await fetch(`${API_URL}/api/tenants/${tenantSlug}`);
+        const res = await fetch(`${API_URL}/api/tenants/${tenantSlug}`, { headers });
         if (res.ok) {
           const tenantData = await res.json();
           mapping[tenantData.id] = tenantSlug;
@@ -90,6 +92,8 @@ export function OrderList({ todayOnly = false, selectedTenant }: OrderListProps 
   }, [filters.tenantSlug]);
 
   const fetchOrders = useCallback(async () => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
+    const headers: HeadersInit = token ? { 'Authorization': `Bearer ${token}` } : {};
     // Save scroll position before update
     const scrollPosition = window.scrollY;
     const isInitial = isInitialLoad.current;
@@ -126,7 +130,8 @@ export function OrderList({ todayOnly = false, selectedTenant }: OrderListProps 
         const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
         params.set('tenantSlug', tenant);
         const res = await fetch(
-          `${API_URL}/api/orders?${params}`
+          `${API_URL}/api/orders?${params}`,
+          { headers }
         );
         
         if (res.ok) {
@@ -225,11 +230,15 @@ export function OrderList({ todayOnly = false, selectedTenant }: OrderListProps 
       const orderTenantSlug = tenantIdToSlug[order.tenantId] || 'pornopizza';
       
       const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+      const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
       const res = await fetch(
         `${API_URL}/api/orders/${orderId}/status`,
         {
           method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 
+            'Content-Type': 'application/json',
+            ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+          },
           body: JSON.stringify({ status: newStatus }),
         }
       );
@@ -289,4 +298,3 @@ export function OrderList({ todayOnly = false, selectedTenant }: OrderListProps 
     </div>
   );
 }
-
