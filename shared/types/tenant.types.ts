@@ -58,6 +58,7 @@ export interface TenantTheme {
     merchantId: string;
     placeId: string;
   };
+  analyticsConfig?: AnalyticsConfig;  // Per-tenant analytics tracking configuration
 }
 
 export interface EmailConfig {
@@ -67,4 +68,34 @@ export interface EmailConfig {
   smtpUser?: string;
   smtpPassword?: string;
   smtpSecure?: boolean;
+}
+
+export interface ProductTenantOverride {
+  displayName?: string;
+  description?: string;  // JSON string: {sk: "...", en: "..."}
+  subHeader?: string;    // JSON string: {sk: "...", en: "..."}
+  image?: string;
+}
+
+export interface AnalyticsConfig {
+  googleAnalytics?: {
+    measurementId: string;  // G-XXXXXXXXXX
+    enabled: boolean;
+  };
+  facebookPixel?: {
+    pixelId: string;
+    enabled: boolean;
+  };
+  googleTagManager?: {
+    containerId: string;  // GTM-XXXXXXX
+    enabled: boolean;
+  };
+  tiktokPixel?: {
+    pixelId: string;
+    enabled: boolean;
+  };
+  linkedinInsight?: {
+    partnerId: string;
+    enabled: boolean;
+  };
 }

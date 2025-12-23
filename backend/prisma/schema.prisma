@@ -35,26 +35,30 @@ model Tenant {
 }
 
 model Product {
-  id           String      @id @default(cuid())
-  tenantId     String
-  name         String
-  description  String?
-  priceCents   Int
-  taxRate      Float       @default(20.0)
-  category     String
-  image        String?
-  modifiers    Json?
-  isActive     Boolean     @default(true)
-  createdAt    DateTime    @default(now())
-  updatedAt    DateTime    @updatedAt
-  isBestSeller Boolean     @default(false)
-  weightGrams  Int?        // Gramáž v gramoch (napr. 450, 500, 520)
-  allergens    String[]    // Pole alergénov (napr. ["1", "7"])
-  displayName  String?     // Voliteľný webový názov (prepíše mapovanie, používa sa pre všetky jazyky)
-  subHeader    String?     // Sub-header v JSON formáte {sk: "...", en: "..."}
-  orderItems   OrderItem[]
-  tenant       Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  id              String      @id @default(cuid())
+  tenantId        String?     // null = shared, value = tenant-specific
+  slug            String       // URL-friendly identifier
+  name            String
+  description     String?
+  priceCents      Int
+  taxRate         Float       @default(20.0)
+  category        String
+  image           String?
+  modifiers       Json?
+  isActive        Boolean     @default(true)
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  isBestSeller    Boolean     @default(false)
+  weightGrams     Int?        // Gramáž v gramoch (napr. 450, 500, 520)
+  allergens       String[]    // Pole alergénov (napr. ["1", "7"])
+  displayName     String?     // Voliteľný webový názov (prepíše mapovanie, používa sa pre všetky jazyky)
+  subHeader       String?     // Sub-header v JSON formáte {sk: "...", en: "..."}
+  tenantOverrides Json?       @default("{}")  // Per-tenant customization for shared products
+  orderItems      OrderItem[]
+  tenant          Tenant?     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
+  @@unique([slug, tenantId])  // Slug unique within tenant (null tenantId = shared)
+  @@index([tenantId])         // Fast filtering by tenant
   @@index([tenantId, isActive])
   @@index([tenantId, category])
   @@map("products")

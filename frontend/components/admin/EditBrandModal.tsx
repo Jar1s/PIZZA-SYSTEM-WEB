@@ -49,6 +49,15 @@ export function EditBrandModal({
   const [pickupPhone, setPickupPhone] = useState('');
   const [pickupInstructions, setPickupInstructions] = useState('');
 
+  // Analytics & Tracking settings
+  const [analyticsConfig, setAnalyticsConfig] = useState({
+    googleAnalytics: { measurementId: '', enabled: false },
+    facebookPixel: { pixelId: '', enabled: false },
+    googleTagManager: { containerId: '', enabled: false },
+    tiktokPixel: { pixelId: '', enabled: false },
+    linkedinInsight: { partnerId: '', enabled: false },
+  });
+
   useEffect(() => {
     if (tenant) {
       // Handle theme as JSON object
@@ -90,6 +99,32 @@ export function EditBrandModal({
       setPickupLng(pickupAddress.coordinates?.lng?.toString() || '');
       setPickupPhone(pickupAddress.phone || '');
       setPickupInstructions(pickupAddress.instructions || '');
+      
+      // Load analytics config
+      const analytics = theme.analyticsConfig || {};
+      setAnalyticsConfig({
+        googleAnalytics: {
+          measurementId: analytics.googleAnalytics?.measurementId || '',
+          enabled: analytics.googleAnalytics?.enabled || false,
+        },
+        facebookPixel: {
+          pixelId: analytics.facebookPixel?.pixelId || '',
+          enabled: analytics.facebookPixel?.enabled || false,
+        },
+        googleTagManager: {
+          containerId: analytics.googleTagManager?.containerId || '',
+          enabled: analytics.googleTagManager?.enabled || false,
+        },
+        tiktokPixel: {
+          pixelId: analytics.tiktokPixel?.pixelId || '',
+          enabled: analytics.tiktokPixel?.enabled || false,
+        },
+        linkedinInsight: {
+          partnerId: analytics.linkedinInsight?.partnerId || '',
+          enabled: analytics.linkedinInsight?.enabled || false,
+        },
+      });
+      
       setError(null);
     }
   }, [tenant]);
@@ -167,9 +202,42 @@ export function EditBrandModal({
         updateData.deliveryConfig = deliveryConfig;
       }
       
+      // Update theme with analytics config
+      const existingTheme = (tenant.theme as any) || {};
+      const updatedTheme = {
+        ...existingTheme,
+        analyticsConfig: {
+          googleAnalytics: analyticsConfig.googleAnalytics.enabled && analyticsConfig.googleAnalytics.measurementId
+            ? { measurementId: analyticsConfig.googleAnalytics.measurementId, enabled: true }
+            : undefined,
+          facebookPixel: analyticsConfig.facebookPixel.enabled && analyticsConfig.facebookPixel.pixelId
+            ? { pixelId: analyticsConfig.facebookPixel.pixelId, enabled: true }
+            : undefined,
+          googleTagManager: analyticsConfig.googleTagManager.enabled && analyticsConfig.googleTagManager.containerId
+            ? { containerId: analyticsConfig.googleTagManager.containerId, enabled: true }
+            : undefined,
+          tiktokPixel: analyticsConfig.tiktokPixel.enabled && analyticsConfig.tiktokPixel.pixelId
+            ? { pixelId: analyticsConfig.tiktokPixel.pixelId, enabled: true }
+            : undefined,
+          linkedinInsight: analyticsConfig.linkedinInsight.enabled && analyticsConfig.linkedinInsight.partnerId
+            ? { partnerId: analyticsConfig.linkedinInsight.partnerId, enabled: true }
+            : undefined,
+        },
+      };
+      
+      // Remove undefined values
+      Object.keys(updatedTheme.analyticsConfig).forEach(key => {
+        if (updatedTheme.analyticsConfig[key] === undefined) {
+          delete updatedTheme.analyticsConfig[key];
+        }
+      });
+      
+      updateData.theme = updatedTheme;
+      
       console.log('[EditBrandModal] Saving tenant data:', {
         slug: tenant.subdomain || tenant.slug,
         deliveryConfig: updateData.deliveryConfig,
+        analyticsConfig: updatedTheme.analyticsConfig,
       });
       
       const updatedTenant = await updateTenant(tenant.subdomain || tenant.slug, updateData);
@@ -581,6 +649,218 @@ export function EditBrandModal({
                           </p>
                         </div>
                       </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Analytics & Tracking */}
+                <div className="border-t pt-4 mt-4">
+                  <h4 className="text-md font-semibold mb-3 text-gray-900">
+                    📊 Analytics & Tracking
+                  </h4>
+                  <p className="text-sm text-gray-600 mb-4">
+                    Configure tracking scripts for this brand. Each service can be enabled/disabled independently.
+                  </p>
+                  
+                  <div className="space-y-4">
+                    {/* Google Analytics 4 */}
+                    <div className="p-3 border border-gray-200 rounded-md">
+                      <div className="flex items-center justify-between mb-2">
+                        <label className="text-sm font-medium text-gray-700">
+                          Google Analytics 4
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => setAnalyticsConfig({
+                            ...analyticsConfig,
+                            googleAnalytics: { ...analyticsConfig.googleAnalytics, enabled: !analyticsConfig.googleAnalytics.enabled }
+                          })}
+                          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                            analyticsConfig.googleAnalytics.enabled ? 'bg-green-600' : 'bg-gray-300'
+                          }`}
+                        >
+                          <span
+                            className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                              analyticsConfig.googleAnalytics.enabled ? 'translate-x-6' : 'translate-x-1'
+                            }`}
+                          />
+                        </button>
+                      </div>
+                      {analyticsConfig.googleAnalytics.enabled && (
+                        <input
+                          type="text"
+                          value={analyticsConfig.googleAnalytics.measurementId}
+                          onChange={(e) => setAnalyticsConfig({
+                            ...analyticsConfig,
+                            googleAnalytics: { ...analyticsConfig.googleAnalytics, measurementId: e.target.value }
+                          })}
+                          placeholder="G-XXXXXXXXXX"
+                          className="w-full px-3 py-2 mt-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm"
+                        />
+                      )}
+                      <p className="text-xs text-gray-500 mt-1">
+                        Measurement ID from GA4 (format: G-XXXXXXXXXX)
+                      </p>
+                    </div>
+
+                    {/* Facebook Pixel */}
+                    <div className="p-3 border border-gray-200 rounded-md">
+                      <div className="flex items-center justify-between mb-2">
+                        <label className="text-sm font-medium text-gray-700">
+                          Facebook Pixel
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => setAnalyticsConfig({
+                            ...analyticsConfig,
+                            facebookPixel: { ...analyticsConfig.facebookPixel, enabled: !analyticsConfig.facebookPixel.enabled }
+                          })}
+                          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                            analyticsConfig.facebookPixel.enabled ? 'bg-green-600' : 'bg-gray-300'
+                          }`}
+                        >
+                          <span
+                            className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                              analyticsConfig.facebookPixel.enabled ? 'translate-x-6' : 'translate-x-1'
+                            }`}
+                          />
+                        </button>
+                      </div>
+                      {analyticsConfig.facebookPixel.enabled && (
+                        <input
+                          type="text"
+                          value={analyticsConfig.facebookPixel.pixelId}
+                          onChange={(e) => setAnalyticsConfig({
+                            ...analyticsConfig,
+                            facebookPixel: { ...analyticsConfig.facebookPixel, pixelId: e.target.value }
+                          })}
+                          placeholder="123456789012345"
+                          className="w-full px-3 py-2 mt-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm"
+                        />
+                      )}
+                      <p className="text-xs text-gray-500 mt-1">
+                        Pixel ID from Facebook Events Manager
+                      </p>
+                    </div>
+
+                    {/* Google Tag Manager */}
+                    <div className="p-3 border border-gray-200 rounded-md">
+                      <div className="flex items-center justify-between mb-2">
+                        <label className="text-sm font-medium text-gray-700">
+                          Google Tag Manager
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => setAnalyticsConfig({
+                            ...analyticsConfig,
+                            googleTagManager: { ...analyticsConfig.googleTagManager, enabled: !analyticsConfig.googleTagManager.enabled }
+                          })}
+                          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                            analyticsConfig.googleTagManager.enabled ? 'bg-green-600' : 'bg-gray-300'
+                          }`}
+                        >
+                          <span
+                            className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                              analyticsConfig.googleTagManager.enabled ? 'translate-x-6' : 'translate-x-1'
+                            }`}
+                          />
+                        </button>
+                      </div>
+                      {analyticsConfig.googleTagManager.enabled && (
+                        <input
+                          type="text"
+                          value={analyticsConfig.googleTagManager.containerId}
+                          onChange={(e) => setAnalyticsConfig({
+                            ...analyticsConfig,
+                            googleTagManager: { ...analyticsConfig.googleTagManager, containerId: e.target.value }
+                          })}
+                          placeholder="GTM-XXXXXXX"
+                          className="w-full px-3 py-2 mt-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm"
+                        />
+                      )}
+                      <p className="text-xs text-gray-500 mt-1">
+                        Container ID from GTM (format: GTM-XXXXXXX)
+                      </p>
+                    </div>
+
+                    {/* TikTok Pixel */}
+                    <div className="p-3 border border-gray-200 rounded-md">
+                      <div className="flex items-center justify-between mb-2">
+                        <label className="text-sm font-medium text-gray-700">
+                          TikTok Pixel
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => setAnalyticsConfig({
+                            ...analyticsConfig,
+                            tiktokPixel: { ...analyticsConfig.tiktokPixel, enabled: !analyticsConfig.tiktokPixel.enabled }
+                          })}
+                          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                            analyticsConfig.tiktokPixel.enabled ? 'bg-green-600' : 'bg-gray-300'
+                          }`}
+                        >
+                          <span
+                            className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                              analyticsConfig.tiktokPixel.enabled ? 'translate-x-6' : 'translate-x-1'
+                            }`}
+                          />
+                        </button>
+                      </div>
+                      {analyticsConfig.tiktokPixel.enabled && (
+                        <input
+                          type="text"
+                          value={analyticsConfig.tiktokPixel.pixelId}
+                          onChange={(e) => setAnalyticsConfig({
+                            ...analyticsConfig,
+                            tiktokPixel: { ...analyticsConfig.tiktokPixel, pixelId: e.target.value }
+                          })}
+                          placeholder="C1234567890ABCDEF"
+                          className="w-full px-3 py-2 mt-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm"
+                        />
+                      )}
+                      <p className="text-xs text-gray-500 mt-1">
+                        Pixel ID from TikTok Events Manager
+                      </p>
+                    </div>
+
+                    {/* LinkedIn Insight Tag */}
+                    <div className="p-3 border border-gray-200 rounded-md">
+                      <div className="flex items-center justify-between mb-2">
+                        <label className="text-sm font-medium text-gray-700">
+                          LinkedIn Insight Tag
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => setAnalyticsConfig({
+                            ...analyticsConfig,
+                            linkedinInsight: { ...analyticsConfig.linkedinInsight, enabled: !analyticsConfig.linkedinInsight.enabled }
+                          })}
+                          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                            analyticsConfig.linkedinInsight.enabled ? 'bg-green-600' : 'bg-gray-300'
+                          }`}
+                        >
+                          <span
+                            className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                              analyticsConfig.linkedinInsight.enabled ? 'translate-x-6' : 'translate-x-1'
+                            }`}
+                          />
+                        </button>
+                      </div>
+                      {analyticsConfig.linkedinInsight.enabled && (
+                        <input
+                          type="text"
+                          value={analyticsConfig.linkedinInsight.partnerId}
+                          onChange={(e) => setAnalyticsConfig({
+                            ...analyticsConfig,
+                            linkedinInsight: { ...analyticsConfig.linkedinInsight, partnerId: e.target.value }
+                          })}
+                          placeholder="123456"
+                          className="w-full px-3 py-2 mt-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm"
+                        />
+                      )}
+                      <p className="text-xs text-gray-500 mt-1">
+                        Partner ID from LinkedIn Campaign Manager
+                      </p>
                     </div>
                   </div>
                 </div>

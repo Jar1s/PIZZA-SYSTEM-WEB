@@ -2,8 +2,8 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Image from 'next/image';
-import { Product } from '@pizza-ecosystem/shared';
-import { updateProduct, getProductMappings, ProductMapping } from '@/lib/api';
+import { Product, Tenant, ProductTenantOverride } from '@pizza-ecosystem/shared';
+import { updateProduct, getProductMappings, ProductMapping, getAllTenants, getProductOverrides, updateProductOverrides } from '@/lib/api';
 import { getProductTranslation } from '@/lib/product-translations';
 
 interface EditProductModalProps {
@@ -50,6 +50,11 @@ export function EditProductModal({
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [mappings, setMappings] = useState<ProductMapping[]>([]);
   const [loadingMappings, setLoadingMappings] = useState(false);
+  const [tenants, setTenants] = useState<Tenant[]>([]);
+  const [selectedBrand, setSelectedBrand] = useState<string>('master'); // 'master' or tenant slug
+  const [overrideData, setOverrideData] = useState<ProductTenantOverride | null>(null);
+  const [loadingOverrides, setLoadingOverrides] = useState(false);
+  const [isTenantSpecific, setIsTenantSpecific] = useState(false);
 
   const loadMappings = useCallback(async () => {
     if (!product) return;
@@ -65,6 +70,49 @@ export function EditProductModal({
       setLoadingMappings(false);
     }
   }, [product, tenantSlug]);
+
+  // Load tenants for brand selector
+  useEffect(() => {
+    const fetchTenants = async () => {
+      try {
+        const allTenants = await getAllTenants();
+        setTenants(allTenants);
+      } catch (error) {
+        console.error('Failed to fetch tenants:', error);
+      }
+    };
+    fetchTenants();
+  }, []);
+
+  // Load overrides when brand is selected
+  useEffect(() => {
+    const loadOverrides = async () => {
+      if (!product || selectedBrand === 'master') {
+        setOverrideData(null);
+        return;
+      }
+
+      setLoadingOverrides(true);
+      try {
+        const overrides = await getProductOverrides(tenantSlug, product.id, selectedBrand);
+        setOverrideData(overrides);
+      } catch (error) {
+        console.error('Failed to load product overrides:', error);
+        setOverrideData(null);
+      } finally {
+        setLoadingOverrides(false);
+      }
+    };
+
+    loadOverrides();
+  }, [product, tenantSlug, selectedBrand]);
+
+  // Check if product is tenant-specific
+  useEffect(() => {
+    if (product) {
+      setIsTenantSpecific((product as any).tenantId !== null && (product as any).tenantId !== undefined);
+    }
+  }, [product]);
 
   useEffect(() => {
     if (product) {
@@ -192,6 +240,21 @@ export function EditProductModal({
     setError(null);
 
     try {
+      // If editing overrides for a brand
+      if (selectedBrand !== 'master' && product) {
+        // Save overrides
+        await updateProductOverrides(
+          tenantSlug,
+          product.id,
+          selectedBrand,
+          overrideData || {}
+        );
+        onUpdate();
+        onClose();
+        return;
+      }
+
+      // Otherwise, update master product
       let imageUrl = formData.image;
       
       // Upload image if file is selected
@@ -262,6 +325,54 @@ export function EditProductModal({
               {error && (
                 <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
                   <p className="text-sm text-red-600">{error}</p>
+                </div>
+              )}
+
+              {/* Brand Selector */}
+              <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Editing for Brand:
+                </label>
+                <select
+                  value={selectedBrand}
+                  onChange={(e) => setSelectedBrand(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="master">Master (Shared Product)</option>
+                  {tenants.map((tenant) => (
+                    <option key={tenant.id} value={tenant.slug}>
+                      {tenant.name}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-xs text-gray-500 mt-1">
+                  {selectedBrand === 'master' 
+                    ? 'Editing master product data (visible to all brands)' 
+                    : `Editing override for ${tenants.find(t => t.slug === selectedBrand)?.name || selectedBrand}`}
+                </p>
+              </div>
+
+              {/* Tenant-Specific Product Toggle (only for master) */}
+              {selectedBrand === 'master' && (
+                <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
+                  <div className="flex items-center">
+                    <input
+                      type="checkbox"
+                      id="isTenantSpecific"
+                      checked={isTenantSpecific}
+                      onChange={(e) => setIsTenantSpecific(e.target.checked)}
+                      className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                      disabled={!!product} // Can't change after creation
+                    />
+                    <label htmlFor="isTenantSpecific" className="ml-2 block text-sm text-gray-900">
+                      Create as tenant-specific product (only visible to {tenantSlug})
+                    </label>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">
+                    {product 
+                      ? 'Product type cannot be changed after creation'
+                      : 'If enabled, this product will only be visible to the current brand'}
+                  </p>
                 </div>
               )}
 
@@ -441,24 +552,97 @@ export function EditProductModal({
                   </label>
                 </div>
 
-                {/* Web Display Name */}
-                <div className="border-t pt-4 mt-4">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Webový názov (ako sa produkt zobrazuje na webe)
-                  </label>
-                  <p className="text-xs text-gray-500 mb-3">
-                    Ak nie je vyplnený, použije sa automatické mapovanie z prekladov podľa jazyka
-                  </p>
-                  <div>
-                    <input
-                      type="text"
-                      value={formData.displayName}
-                      onChange={(e) => setFormData({ ...formData, displayName: e.target.value })}
-                      placeholder="Napr. Fregata Missionary"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                    />
+                {/* Web Display Name - Master or Override */}
+                {selectedBrand === 'master' ? (
+                  <div className="border-t pt-4 mt-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Webový názov (ako sa produkt zobrazuje na webe)
+                    </label>
+                    <p className="text-xs text-gray-500 mb-3">
+                      Ak nie je vyplnený, použije sa automatické mapovanie z prekladov podľa jazyka
+                    </p>
+                    <div>
+                      <input
+                        type="text"
+                        value={formData.displayName}
+                        onChange={(e) => setFormData({ ...formData, displayName: e.target.value })}
+                        placeholder="Napr. Fregata Missionary"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                      />
+                    </div>
                   </div>
-                </div>
+                ) : (
+                  <div className="border-t pt-4 mt-4 bg-purple-50 p-4 rounded-md border-purple-200">
+                    <h4 className="text-sm font-medium text-gray-900 mb-3">
+                      Override for {tenants.find(t => t.slug === selectedBrand)?.name || selectedBrand}
+                    </h4>
+                    <p className="text-xs text-gray-600 mb-4">
+                      These values will override the master product for this brand only. Leave empty to use master values.
+                    </p>
+                    
+                    {loadingOverrides ? (
+                      <div className="text-sm text-gray-500">Loading overrides...</div>
+                    ) : (
+                      <div className="space-y-4">
+                        {/* Override Display Name */}
+                        <div>
+                          <label className="block text-xs font-medium text-gray-700 mb-1">
+                            Display Name Override
+                          </label>
+                          <input
+                            type="text"
+                            value={overrideData?.displayName || ''}
+                            onChange={(e) => setOverrideData({ ...overrideData, displayName: e.target.value } as ProductTenantOverride)}
+                            placeholder={formData.displayName || 'Master display name'}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm"
+                          />
+                        </div>
+
+                        {/* Override Description */}
+                        <div>
+                          <label className="block text-xs font-medium text-gray-700 mb-1">
+                            Description Override (JSON: {`{sk: "...", en: "..."}`})
+                          </label>
+                          <textarea
+                            value={overrideData?.description || ''}
+                            onChange={(e) => setOverrideData({ ...overrideData, description: e.target.value } as ProductTenantOverride)}
+                            placeholder={formData.descriptionSk || 'Master description'}
+                            rows={3}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm"
+                          />
+                        </div>
+
+                        {/* Override Sub Header */}
+                        <div>
+                          <label className="block text-xs font-medium text-gray-700 mb-1">
+                            Sub Header Override (JSON: {`{sk: "...", en: "..."}`})
+                          </label>
+                          <textarea
+                            value={overrideData?.subHeader || ''}
+                            onChange={(e) => setOverrideData({ ...overrideData, subHeader: e.target.value } as ProductTenantOverride)}
+                            placeholder={formData.subHeaderSk || 'Master sub header'}
+                            rows={2}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm"
+                          />
+                        </div>
+
+                        {/* Override Image */}
+                        <div>
+                          <label className="block text-xs font-medium text-gray-700 mb-1">
+                            Image Override
+                          </label>
+                          <input
+                            type="text"
+                            value={overrideData?.image || ''}
+                            onChange={(e) => setOverrideData({ ...overrideData, image: e.target.value } as ProductTenantOverride)}
+                            placeholder={formData.image || 'Master image URL'}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm"
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {/* Product Mappings */}
                 <div className="border-t pt-4 mt-4">

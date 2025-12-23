@@ -1,4 +1,4 @@
-import { Controller, Get, Param, Query, Post, Body, Patch } from '@nestjs/common';
+import { Controller, Get, Param, Query, Post, Body, Patch, NotFoundException } from '@nestjs/common';
 import { TenantsService } from './tenants.service';
 import { Public } from '../auth/decorators/public.decorator';
 
@@ -15,7 +15,24 @@ export class TenantsController {
   @Public()
   @Get('resolve')
   async resolveTenant(@Query('domain') domain: string) {
-    return this.tenantsService.getTenantByDomain(domain);
+    // Try exact domain match first
+    let tenant = await this.tenantsService.getTenantByDomain(domain);
+    
+    // If not found, try subdomain extraction
+    if (!tenant) {
+      const subdomain = domain.split('.')[0];
+      try {
+        tenant = await this.tenantsService.getTenantBySlug(subdomain);
+      } catch (error) {
+        // Tenant not found by slug either
+      }
+    }
+    
+    if (!tenant) {
+      throw new NotFoundException('Tenant not found for domain');
+    }
+    
+    return { slug: tenant.slug, name: tenant.name };
   }
 
   @Public()
@@ -83,7 +100,6 @@ export class TenantsController {
     return this.tenantsService.syncFromMaster(data.masterSlug, data.targetSlugs);
   }
 }
-
 
 
 

@@ -46,7 +46,7 @@ export class ProductsController {
       isActiveFilter = undefined; // Return all products
     }
     
-    const products = await this.productsService.getProducts(tenant.id, {
+    const products = await this.productsService.getProducts(tenantSlug, {
       category,
       isActive: isActiveFilter,
     });
@@ -72,7 +72,8 @@ export class ProductsController {
     const tenant = await this.tenantsService.getTenantBySlug(tenantSlug);
     const product = await this.productsService.getProductById(id);
     
-    if (!product || product.tenantId !== tenant.id) {
+    // Product must exist and be either shared (tenantId = null) or belong to this tenant
+    if (!product || (product.tenantId !== null && product.tenantId !== tenant.id)) {
       throw new NotFoundException('Product not found');
     }
     
@@ -136,6 +137,29 @@ export class ProductsController {
       message: 'Prices updated',
       ...result,
     };
+  }
+
+  @UseGuards(RolesGuard)
+  @Get(':id/overrides/:targetTenantSlug')
+  @Roles('ADMIN', 'OPERATOR')
+  async getProductOverrides(
+    @Param('tenantSlug') tenantSlug: string,
+    @Param('id') id: string,
+    @Param('targetTenantSlug') targetTenantSlug: string,
+  ) {
+    return this.productsService.getProductOverrides(id, targetTenantSlug);
+  }
+
+  @UseGuards(RolesGuard)
+  @Patch(':id/overrides/:targetTenantSlug')
+  @Roles('ADMIN', 'OPERATOR')
+  async updateProductOverrides(
+    @Param('tenantSlug') tenantSlug: string,
+    @Param('id') id: string,
+    @Param('targetTenantSlug') targetTenantSlug: string,
+    @Body() overrides: any,
+  ) {
+    return this.productsService.updateProductOverrides(id, targetTenantSlug, overrides);
   }
 }
 

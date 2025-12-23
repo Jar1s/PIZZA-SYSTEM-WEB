@@ -6,6 +6,7 @@ import { getTenantServer } from '@/lib/server-api';
 import { withTenantThemeDefaults } from '@/lib/tenant-utils';
 import { Providers } from '@/components/Providers';
 import { SafeAnalytics } from '@/components/tracking/SafeAnalytics';
+import { AnalyticsScripts } from '@/components/AnalyticsScripts';
 
 // Force dynamic rendering because we use dynamic tenant resolution
 export const dynamic = 'force-dynamic';
@@ -261,6 +262,7 @@ export default async function RootLayout({
         />
         <Providers>
           {children}
+          <AnalyticsScripts />
         </Providers>
         <SafeAnalytics />
       </body>

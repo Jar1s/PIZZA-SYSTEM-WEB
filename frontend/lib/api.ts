@@ -1,4 +1,4 @@
-import { Tenant, Product, Order, OrderStatus } from '@pizza-ecosystem/shared';
+import { Tenant, Product, Order, OrderStatus, ProductTenantOverride } from '@pizza-ecosystem/shared';
 import { withTenantThemeDefaults } from '@/lib/tenant-utils';
 import { TenantSchema, ProductSchema, OrderSchema, safeParse } from '@/lib/schemas/api.schema';
 
@@ -188,6 +188,65 @@ export interface ProductMapping {
   source: string | null;
   createdAt: string;
   updatedAt: string;
+}
+
+export async function getProductOverrides(
+  tenantSlug: string,
+  productId: string,
+  targetTenantSlug: string
+): Promise<ProductTenantOverride | null> {
+  const token = localStorage.getItem('auth_token');
+  
+  const headers: HeadersInit = { 'Content-Type': 'application/json' };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  
+  const res = await fetch(
+    `${API_URL}/api/${tenantSlug}/products/${productId}/overrides/${targetTenantSlug}`,
+    { headers }
+  );
+  
+  if (!res.ok) {
+    if (res.status === 404) {
+      return null; // No overrides found
+    }
+    throw new Error('Failed to fetch product overrides');
+  }
+  
+  return res.json();
+}
+
+export async function updateProductOverrides(
+  tenantSlug: string,
+  productId: string,
+  targetTenantSlug: string,
+  overrides: ProductTenantOverride
+): Promise<void> {
+  const token = localStorage.getItem('auth_token');
+  
+  if (!token) {
+    throw new Error('Authentication required');
+  }
+  
+  const headers: HeadersInit = {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${token}`,
+  };
+  
+  const res = await fetch(
+    `${API_URL}/api/${tenantSlug}/products/${productId}/overrides/${targetTenantSlug}`,
+    {
+      method: 'PATCH',
+      headers,
+      body: JSON.stringify(overrides),
+    }
+  );
+  
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({ message: 'Failed to update product overrides' }));
+    throw new Error(error.message || 'Failed to update product overrides');
+  }
 }
 
 export async function getProductMappings(tenantSlug: string, productId: string): Promise<ProductMapping[]> {

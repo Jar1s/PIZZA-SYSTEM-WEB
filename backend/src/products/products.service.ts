@@ -1,24 +1,38 @@
-import { Injectable, NotFoundException, Logger } from '@nestjs/common';
+import { Injectable, NotFoundException, Logger, BadRequestException, Inject, forwardRef } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { Product } from '@pizza-ecosystem/shared';
+import { Product, ProductTenantOverride } from '@pizza-ecosystem/shared';
 import { CreateProductDto, UpdateProductDto } from './dto';
 import { getProductDisplayName } from '../utils/product-name-mapper';
+import { TenantsService } from '../tenants/tenants.service';
 
 @Injectable()
 export class ProductsService {
   private readonly logger = new Logger(ProductsService.name);
   
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    @Inject(forwardRef(() => TenantsService))
+    private tenantsService: TenantsService,
+  ) {}
 
-  async getProducts(tenantId: string, filters?: {
+  async getProducts(tenantSlug: string, filters?: {
     category?: string;
     isActive?: boolean;
   }): Promise<Product[]> {
+    // Get tenant ID
+    const tenant = await this.tenantsService.getTenantBySlug(tenantSlug);
+    if (!tenant) {
+      throw new NotFoundException('Tenant not found');
+    }
+    
     // Force fresh query - bypass any potential Prisma cache
-    // Use findMany with explicit select to ensure we get latest data
+    // Fetch products: shared (tenantId = null) OR tenant-specific (tenantId = tenant.id)
     const products = await this.prisma.product.findMany({
       where: {
-        tenantId,
+        OR: [
+          { tenantId: null },           // Shared products
+          { tenantId: tenant.id }       // Tenant-specific products
+        ],
         ...(filters?.category && { category: filters.category }),
         ...(filters?.isActive !== undefined && { isActive: filters.isActive }),
       },
@@ -30,6 +44,7 @@ export class ProductsService {
       select: {
         id: true,
         tenantId: true,
+        slug: true,
         name: true,
         description: true,
         priceCents: true,
@@ -43,14 +58,18 @@ export class ProductsService {
         allergens: true,      // Alergény z databázy
         displayName: true,    // Webový názov
         subHeader: true,      // Sub-header
+        tenantOverrides: true, // Per-tenant customization
         createdAt: true,
         updatedAt: true,
       } as any,  // Type assertion needed until Prisma client regenerated on Render
     });
     
+    // Apply tenant overrides for shared products
+    const productsWithOverrides = products.map(p => this.applyTenantOverrides(p as any, tenantSlug));
+    
     // Apply fallback logic for display name: DB value → mapping → name
     // Note: displayName is language-agnostic, but we still apply fallback for consistency
-    const productsWithFallback = (products as any[]).map((product: any) => ({
+    const productsWithFallback = productsWithOverrides.map((product: any) => ({
       ...product,
       displayName: product.displayName ?? getProductDisplayName(product.name, 'sk') ?? product.name,
     }));
@@ -88,14 +107,110 @@ export class ProductsService {
     return productWithFallback as any as Product;
   }
 
-  async createProduct(tenantId: string, data: CreateProductDto): Promise<Product> {
+  async getProductBySlug(slug: string, tenantSlug: string): Promise<Product | null> {
+    const tenant = await this.tenantsService.getTenantBySlug(tenantSlug);
+    if (!tenant) {
+      throw new NotFoundException('Tenant not found');
+    }
+    
+    const product = await this.prisma.product.findFirst({
+      where: {
+        slug: slug,
+        OR: [
+          { tenantId: null },
+          { tenantId: tenant.id }
+        ],
+        isActive: true
+      }
+    });
+    
+    if (!product) return null;
+    
+    // Apply tenant overrides
+    const productWithOverrides = this.applyTenantOverrides(product as any, tenantSlug);
+    
+    // Apply fallback logic for display name
+    return {
+      ...productWithOverrides,
+      displayName: (productWithOverrides as any).displayName ?? getProductDisplayName(product.name, 'sk') ?? product.name,
+    } as any as Product;
+  }
+
+  applyTenantOverrides(product: any, tenantSlug: string): any {
+    // Only apply overrides to shared products (tenantId = null)
+    if (product.tenantId !== null) return product;
+    
+    const overrides = product.tenantOverrides?.[tenantSlug] as ProductTenantOverride | undefined;
+    if (!overrides) return product;
+    
+    return {
+      ...product,
+      displayName: overrides.displayName || product.displayName,
+      description: overrides.description || product.description,
+      subHeader: overrides.subHeader || product.subHeader,
+      image: overrides.image || product.image,
+    };
+  }
+
+  async updateProductOverrides(
+    productId: string,
+    tenantSlug: string,
+    overrides: ProductTenantOverride
+  ): Promise<Product> {
+    const product = await this.prisma.product.findUnique({ where: { id: productId } });
+    if (!product) {
+      throw new NotFoundException('Product not found');
+    }
+    
+    // Only allow overrides on shared products
+    if (product.tenantId !== null) {
+      throw new BadRequestException('Cannot set overrides on tenant-specific products');
+    }
+    
+    const currentOverrides = (product.tenantOverrides as any) || {};
+    const updatedOverrides = {
+      ...currentOverrides,
+      [tenantSlug]: overrides
+    };
+    
+    return this.prisma.product.update({
+      where: { id: productId },
+      data: { tenantOverrides: updatedOverrides }
+    }) as any as Product;
+  }
+
+  async getProductOverrides(
+    productId: string,
+    tenantSlug: string
+  ): Promise<ProductTenantOverride | null> {
+    const product = await this.prisma.product.findUnique({ where: { id: productId } });
+    if (!product) {
+      throw new NotFoundException('Product not found');
+    }
+    
+    const overrides = product.tenantOverrides as any;
+    return overrides?.[tenantSlug] || null;
+  }
+
+  async createProduct(tenantId: string | null, data: CreateProductDto): Promise<Product> {
+    // Generate slug from name if not provided
+    const slug = (data as any).slug || this.generateSlug(data.name);
+    
     const product = await this.prisma.product.create({
       data: {
         ...data,
-        tenantId,
+        slug,
+        tenantId, // null for shared products, tenant.id for tenant-specific
       } as any,
     });
     return product as any as Product;
+  }
+
+  private generateSlug(name: string): string {
+    return name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '');
   }
 
   async updateProduct(id: string, data: UpdateProductDto): Promise<Product> {
@@ -125,9 +240,13 @@ export class ProductsService {
     });
   }
 
-  async bulkImportProducts(tenantId: string, products: CreateProductDto[]): Promise<number> {
+  async bulkImportProducts(tenantId: string | null, products: CreateProductDto[]): Promise<number> {
     const result = await this.prisma.product.createMany({
-      data: products.map(p => ({ ...p, tenantId })) as any,
+      data: products.map(p => ({
+        ...p,
+        slug: (p as any).slug || this.generateSlug(p.name),
+        tenantId,
+      })) as any,
     });
     return result.count;
   }

@@ -28,6 +28,33 @@ export class TenantsService {
     }
   }
 
+  async getTenantByDomain(domain: string): Promise<Tenant | null> {
+    this.logger.log(`[getTenantByDomain] Looking for tenant with domain: ${domain}`);
+    
+    const tenant = await this.prisma.tenant.findFirst({
+      where: {
+        OR: [
+          { domain: domain },
+          { subdomain: domain.split('.')[0] }
+        ],
+        isActive: true
+      }
+    });
+    
+    if (tenant) {
+      this.logger.log(`[getTenantByDomain] Tenant found: ${tenant.name} (slug: ${tenant.slug})`);
+      try {
+        return TenantResponseSchema.parse(tenant) as unknown as Tenant;
+      } catch (error) {
+        this.logger.error(`Tenant response validation failed for domain ${domain}`, { error, tenant });
+        return tenant as any as Tenant;
+      }
+    }
+    
+    this.logger.warn(`[getTenantByDomain] Tenant not found for domain: ${domain}`);
+    return null;
+  }
+
   async getTenantBySlug(slug: string): Promise<Tenant> {
     try {
       this.logger.log(`[getTenantBySlug] Looking for tenant with slug: ${slug}`);
@@ -352,10 +379,13 @@ export class TenantsService {
     };
 
     // Get master tenant with all data
+    // Only include shared products (tenantId = null) for syncing
     const masterTenant = await this.prisma.tenant.findUnique({
       where: { slug: masterSlug },
       include: {
-        products: true,
+        products: {
+          where: { tenantId: null }, // Only shared products
+        },
         deliveryZones: true,
         productMappings: true,
       },
@@ -407,32 +437,72 @@ export class TenantsService {
     targetTenant: any
   ): Promise<void> {
     return await this.prisma.$transaction(async (tx) => {
-      // 1. Delete existing products, zones, mappings (but keep tenant config)
+      // 1. Delete existing zones and mappings (but keep tenant config and products)
+      // NOTE: We don't delete products anymore - they're shared (tenantId = null)
       await tx.productMapping.deleteMany({ where: { tenantId: targetTenant.id } });
-      await tx.product.deleteMany({ where: { tenantId: targetTenant.id } });
       await tx.deliveryZone.deleteMany({ where: { tenantId: targetTenant.id } });
 
-      // 2. Clone products from master
-      for (const product of masterTenant.products) {
-        await tx.product.create({
-          data: {
-            tenantId: targetTenant.id,
-            name: product.name,
-            displayName: product.displayName,
-            description: product.description,
-            subHeader: product.subHeader,
-            priceCents: product.priceCents,
-            taxRate: product.taxRate,
-            category: product.category,
-            image: product.image,
-            modifiers: product.modifiers,
-            isActive: product.isActive,
-            isBestSeller: product.isBestSeller,
-            allergens: product.allergens,
-            weightGrams: product.weightGrams,
+      // 2. Sync shared products from master (tenantId = null)
+      // Update existing shared products, preserving tenantOverrides
+      for (const masterProduct of masterTenant.products) {
+        // Find existing product by slug (shared products have unique slug)
+        const existingProduct = await tx.product.findFirst({
+          where: {
+            slug: masterProduct.slug,
+            tenantId: null, // Only shared products
           },
         });
+
+        if (existingProduct) {
+          // Update existing shared product, but preserve tenantOverrides
+          const currentOverrides = (existingProduct.tenantOverrides as any) || {};
+          await tx.product.update({
+            where: { id: existingProduct.id },
+            data: {
+              name: masterProduct.name,
+              displayName: masterProduct.displayName,
+              description: masterProduct.description,
+              subHeader: masterProduct.subHeader,
+              priceCents: masterProduct.priceCents,
+              taxRate: masterProduct.taxRate,
+              category: masterProduct.category,
+              image: masterProduct.image,
+              modifiers: masterProduct.modifiers,
+              isActive: masterProduct.isActive,
+              isBestSeller: masterProduct.isBestSeller,
+              allergens: masterProduct.allergens,
+              weightGrams: masterProduct.weightGrams,
+              // Preserve tenantOverrides
+              tenantOverrides: currentOverrides,
+            },
+          });
+        } else {
+          // Create new shared product if it doesn't exist
+          await tx.product.create({
+            data: {
+              tenantId: null, // Shared product
+              slug: masterProduct.slug,
+              name: masterProduct.name,
+              displayName: masterProduct.displayName,
+              description: masterProduct.description,
+              subHeader: masterProduct.subHeader,
+              priceCents: masterProduct.priceCents,
+              taxRate: masterProduct.taxRate,
+              category: masterProduct.category,
+              image: masterProduct.image,
+              modifiers: masterProduct.modifiers,
+              isActive: masterProduct.isActive,
+              isBestSeller: masterProduct.isBestSeller,
+              allergens: masterProduct.allergens,
+              weightGrams: masterProduct.weightGrams,
+              tenantOverrides: {}, // Initialize empty overrides
+            },
+          });
+        }
       }
+
+      // NOTE: We do NOT sync tenant-specific products (tenantId != null)
+      // Those remain unique to each tenant
 
       // 3. Clone delivery zones from master
       for (const zone of masterTenant.deliveryZones) {

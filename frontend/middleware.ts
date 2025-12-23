@@ -5,45 +5,56 @@ export async function middleware(request: NextRequest) {
   const hostname = request.headers.get('host') || '';
   const url = new URL(request.url);
   
-  // Extract tenant from domain or query param
-  let tenant = 'pornopizza'; // default
+  let tenantSlug: string | null = null;
   
-  // For Vercel URLs, ALWAYS use query param or default - NEVER extract from hostname
-  if (hostname.includes('vercel.app')) {
-    tenant = url.searchParams.get('tenant') || 'pornopizza';
-    // Validate tenant slug
-    if (tenant !== 'pornopizza' && tenant !== 'pizzavnudzi') {
-      tenant = 'pornopizza';
+  // 1. Try environment variable (for preview/dev)
+  tenantSlug = process.env.NEXT_PUBLIC_TENANT_SLUG || null;
+  
+  // 2. If not set, try to resolve from hostname
+  if (!tenantSlug) {
+    // Remove port if present
+    const domain = hostname.split(':')[0];
+    
+    // For localhost/dev, use query param
+    if (domain.includes('localhost') || domain.includes('127.0.0.1')) {
+      tenantSlug = url.searchParams.get('tenant') || null;
+    }
+    // For Vercel preview URLs, use query param
+    else if (domain.includes('vercel.app')) {
+      tenantSlug = url.searchParams.get('tenant') || null;
+    }
+    // For production domains, lookup from backend
+    else {
+      try {
+        // Call backend API to resolve domain -> tenantSlug
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+        const resolveUrl = `${apiUrl}/api/tenants/resolve?domain=${domain}`;
+        
+        const response = await fetch(resolveUrl, {
+          cache: 'no-store',
+          headers: {
+            'Accept': 'application/json',
+          },
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          tenantSlug = data.slug;
+        }
+      } catch (error) {
+        console.error('Failed to resolve tenant from domain:', error);
+      }
     }
   }
-  // For localhost, use query param or default
-  else if (hostname.includes('localhost') || hostname.includes('127.0.0.1')) {
-    tenant = url.searchParams.get('tenant') || 'pornopizza';
-  }
-  // For known production domains, check domain first
-  else if (hostname.includes('pornopizza.sk') || hostname.includes('p0rnopizza.sk')) {
-    tenant = 'pornopizza';
-  } else if (hostname.includes('pizzavnudzi.sk')) {
-    tenant = 'pizzavnudzi';
-  } else if ((hostname.includes('pornopizza') || hostname.includes('p0rnopizza')) && !hostname.includes('vercel.app')) {
-    // Subdomain or partial match (but not Vercel)
-    tenant = 'pornopizza';
-  } else if (hostname.includes('pizzavnudzi') && !hostname.includes('vercel.app')) {
-    // Subdomain or partial match (but not Vercel)
-    tenant = 'pizzavnudzi';
-  } else {
-    // For other domains, try query param first, then default
-    tenant = url.searchParams.get('tenant') || 'pornopizza';
-  }
   
-  // Validate tenant slug (must be one of the known tenants)
-  if (tenant !== 'pornopizza' && tenant !== 'pizzavnudzi') {
-    tenant = 'pornopizza';
+  // 3. If still no tenant, return 404 (no hardcoded fallback)
+  if (!tenantSlug) {
+    return new NextResponse('Tenant not found', { status: 404 });
   }
   
   // Pass tenant to app via header
   const response = NextResponse.next();
-  response.headers.set('x-tenant', tenant);
+  response.headers.set('x-tenant', tenantSlug);
   
   return response;
 }
