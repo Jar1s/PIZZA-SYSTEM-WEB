@@ -560,16 +560,6 @@ export async function createWoltDelivery(orderId: string, promiseId?: string): P
   };
 }
 
-// Admin: Storyous settings
-export interface StoryousSettings {
-  clientId?: string;
-  clientSecret?: string;
-  merchantId?: string;
-  placeId?: string;
-  enabled?: boolean;
-  autoSync?: boolean;
-}
-
 // Admin: Sync order to Storyous
 export async function syncOrderToStoryous(orderId: string, tenantSlug?: string): Promise<{ success: boolean; storyousOrderId?: string; message: string }> {
   // If tenantSlug is not provided, try to determine it from the order
