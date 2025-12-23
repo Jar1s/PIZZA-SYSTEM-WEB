@@ -268,7 +268,7 @@ export class TenantsService {
       this.logger.log(`[cloneTenant] Created new tenant: ${newTenant.id}`);
 
       // 3. Clone products (with optional overrides)
-      const productIdMap = new Map<string, string>(); // old ID -> new ID mapping
+      const productNameMap = new Map<string, string>(); // old name -> new name mapping
 
       for (const product of sourceTenant.products) {
         const override = cloneData.productOverrides?.[product.id];
@@ -286,51 +286,46 @@ export class TenantsService {
             image: override?.image || product.image,
             modifiers: product.modifiers,
             isActive: product.isActive,
-            sortOrder: product.sortOrder,
+            isBestSeller: product.isBestSeller,
             allergens: product.allergens,
-            weight: product.weight,
+            weightGrams: product.weightGrams,
           },
         });
 
-        productIdMap.set(product.id, newProduct.id);
+        productNameMap.set(product.name, newProduct.name);
       }
 
-      this.logger.log(`[cloneTenant] Cloned ${productIdMap.size} products`);
+      this.logger.log(`[cloneTenant] Cloned ${productNameMap.size} products`);
 
       // 4. Clone delivery zones
-      const zoneIdMap = new Map<string, string>(); // old ID -> new ID mapping
-
       for (const zone of sourceTenant.deliveryZones) {
-        const newZone = await tx.deliveryZone.create({
+        await tx.deliveryZone.create({
           data: {
             tenantId: newTenant.id,
             name: zone.name,
-            coordinates: zone.coordinates,
-            feeCents: zone.feeCents,
+            deliveryFeeCents: zone.deliveryFeeCents,
             minOrderCents: zone.minOrderCents,
+            postalCodes: zone.postalCodes,
+            cityNames: zone.cityNames,
+            cityParts: zone.cityParts,
             isActive: zone.isActive,
+            priority: zone.priority,
           },
         });
-
-        zoneIdMap.set(zone.id, newZone.id);
       }
 
-      this.logger.log(`[cloneTenant] Cloned ${zoneIdMap.size} delivery zones`);
+      this.logger.log(`[cloneTenant] Cloned ${sourceTenant.deliveryZones.length} delivery zones`);
 
       // 5. Clone product mappings
       for (const mapping of sourceTenant.productMappings) {
-        const newProductId = productIdMap.get(mapping.productId);
-        
-        if (newProductId) {
-          await tx.productMapping.create({
-            data: {
-              tenantId: newTenant.id,
-              productId: newProductId,
-              externalId: mapping.externalId,
-              provider: mapping.provider,
-            },
-          });
-        }
+        await tx.productMapping.create({
+          data: {
+            tenantId: newTenant.id,
+            externalIdentifier: mapping.externalIdentifier,
+            internalProductName: mapping.internalProductName,
+            source: mapping.source,
+          },
+        });
       }
 
       this.logger.log(`[cloneTenant] Cloned ${sourceTenant.productMappings.length} product mappings`);
@@ -418,10 +413,8 @@ export class TenantsService {
       await tx.deliveryZone.deleteMany({ where: { tenantId: targetTenant.id } });
 
       // 2. Clone products from master
-      const productIdMap = new Map<string, string>();
-
       for (const product of masterTenant.products) {
-        const newProduct = await tx.product.create({
+        await tx.product.create({
           data: {
             tenantId: targetTenant.id,
             name: product.name,
@@ -434,13 +427,11 @@ export class TenantsService {
             image: product.image,
             modifiers: product.modifiers,
             isActive: product.isActive,
-            sortOrder: product.sortOrder,
+            isBestSeller: product.isBestSeller,
             allergens: product.allergens,
-            weight: product.weight,
+            weightGrams: product.weightGrams,
           },
         });
-
-        productIdMap.set(product.id, newProduct.id);
       }
 
       // 3. Clone delivery zones from master
@@ -449,28 +440,27 @@ export class TenantsService {
           data: {
             tenantId: targetTenant.id,
             name: zone.name,
-            coordinates: zone.coordinates,
-            feeCents: zone.feeCents,
+            deliveryFeeCents: zone.deliveryFeeCents,
             minOrderCents: zone.minOrderCents,
+            postalCodes: zone.postalCodes,
+            cityNames: zone.cityNames,
+            cityParts: zone.cityParts,
             isActive: zone.isActive,
+            priority: zone.priority,
           },
         });
       }
 
       // 4. Clone product mappings from master
       for (const mapping of masterTenant.productMappings) {
-        const newProductId = productIdMap.get(mapping.productId);
-        
-        if (newProductId) {
-          await tx.productMapping.create({
-            data: {
-              tenantId: targetTenant.id,
-              productId: newProductId,
-              externalId: mapping.externalId,
-              provider: mapping.provider,
-            },
-          });
-        }
+        await tx.productMapping.create({
+          data: {
+            tenantId: targetTenant.id,
+            externalIdentifier: mapping.externalIdentifier,
+            internalProductName: mapping.internalProductName,
+            source: mapping.source,
+          },
+        });
       }
 
       // 5. Update StoryousConfig in theme (if enabled in master)
