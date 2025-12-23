@@ -22,7 +22,7 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { Throttle } from '@nestjs/throttler';
 
 // Public customer-facing endpoints
-@Controller('api/:tenantSlug/orders')
+@Controller(':tenantSlug/orders')
 export class OrdersController {
   private readonly logger = new Logger(OrdersController.name);
 
@@ -66,7 +66,7 @@ export class OrdersController {
 }
 
 // Admin endpoints for managing orders
-@Controller('api/orders')
+@Controller('orders')
 export class AdminOrdersController {
   private readonly logger = new Logger(AdminOrdersController.name);
 
