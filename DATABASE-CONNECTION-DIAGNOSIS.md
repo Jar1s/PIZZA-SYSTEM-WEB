@@ -155,3 +155,9 @@ Ak stará databáza nefunguje:
 
 
 
+
+
+
+
+
+

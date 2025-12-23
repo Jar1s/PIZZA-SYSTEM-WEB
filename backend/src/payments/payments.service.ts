@@ -100,7 +100,9 @@ export class PaymentsService {
       return;
     }
 
-    if (parsed.success) {
+    // Handle different GoPay states
+    if (parsed.success && parsed.eventType === 'PAID') {
+      // Payment successful
       await this.ordersService.updatePaymentRef(order.id, parsed.paymentRef, 'success');
       await this.orderStatusService.updateStatus(order.id, OrderStatus.PAID);
       
@@ -112,9 +114,14 @@ export class PaymentsService {
         console.error('Failed to create delivery:', error);
         // Don't fail the payment, admin can manually dispatch
       }
-    } else {
+    } else if (parsed.eventType === 'CANCELED' || parsed.eventType === 'TIMEOUTED') {
+      // Payment failed or canceled
       await this.ordersService.updatePaymentRef(order.id, parsed.paymentRef, 'failed');
       await this.orderStatusService.updateStatus(order.id, OrderStatus.CANCELED);
+      console.log(`GoPay payment ${parsed.eventType.toLowerCase()} for order ${order.id}`);
+    } else {
+      // Other states (CREATED, PAYMENT_METHOD_CHOSEN) - just log, don't change status
+      console.log(`GoPay webhook received state ${parsed.eventType} for order ${order.id}, no action taken`);
     }
   }
 
@@ -145,6 +152,25 @@ export class PaymentsService {
       await this.orderStatusService.updateStatus(order.id, OrderStatus.CANCELED);
       console.log(`WePay payment failed for order ${order.id}`);
     }
+  }
+
+  async refundGopayPayment(orderId: string): Promise<void> {
+    const order = await this.ordersService.getOrderById(orderId);
+    const tenant = await this.tenantsService.getTenantById(order.tenantId);
+    
+    if (!order.paymentRef) {
+      throw new Error('Order has no payment reference');
+    }
+    
+    if (tenant.paymentProvider !== 'gopay') {
+      throw new Error(`Order payment provider is ${tenant.paymentProvider}, not gopay`);
+    }
+    
+    await this.gopayService.refundPayment(
+      order.paymentRef,
+      order.totalCents,
+      tenant
+    );
   }
 }
 

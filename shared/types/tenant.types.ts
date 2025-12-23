@@ -15,6 +15,7 @@ export interface Tenant {
   paymentProvider: PaymentProvider;
   paymentConfig: Record<string, any>;  // Encrypted API keys
   deliveryConfig: Record<string, any>; // Wolt API keys
+  emailConfig?: EmailConfig;           // Tenant-specific email configuration
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -57,4 +58,13 @@ export interface TenantTheme {
     merchantId: string;
     placeId: string;
   };
+}
+
+export interface EmailConfig {
+  fromEmail?: string;
+  smtpHost?: string;
+  smtpPort?: number;
+  smtpUser?: string;
+  smtpPassword?: string;
+  smtpSecure?: boolean;
 }

@@ -68,6 +68,11 @@ const SoundNotificationSettings = dynamic(() => import('@/components/admin/Sound
   ssr: false,
 });
 
+const StoryousSettings = dynamic(() => import('@/components/admin/StoryousSettings').then(mod => ({ default: mod.StoryousSettings })), {
+  loading: () => <div className="animate-pulse bg-gray-200 h-24 rounded-lg" />,
+  ssr: false,
+});
+
 const DeliveryFeeTiersSettings = dynamic(() => import('@/components/admin/DeliveryFeeTiersSettings').then(mod => ({ default: mod.default })), {
   loading: () => <div className="animate-pulse bg-gray-200 h-64 rounded-lg mb-6" />,
   ssr: false,
@@ -87,7 +92,7 @@ export default function AdminDashboard() {
       <h1 className="text-2xl lg:text-3xl font-bold mb-4 lg:mb-6 text-gray-900">Dashboard</h1>
       
       {/* Compact Settings Grid - Top Section */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 mb-4 lg:mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2 sm:gap-3 mb-4 lg:mb-6">
         {/* Maintenance Banner with Toggle - Compact */}
         <ErrorBoundary>
           <Suspense fallback={null}>
@@ -116,6 +121,12 @@ export default function AdminDashboard() {
           </Suspense>
         </ErrorBoundary>
 
+        {/* Storyous Settings - Compact */}
+        <ErrorBoundary>
+          <Suspense fallback={<div className="animate-pulse bg-gray-200 h-24 rounded-lg" />}>
+            <StoryousSettings />
+          </Suspense>
+        </ErrorBoundary>
       </div>
 
       {/* Main Content */}

@@ -63,3 +63,9 @@ Tieto deprecated warnings sú z:
 
 
 
+
+
+
+
+
+

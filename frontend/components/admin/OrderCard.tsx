@@ -83,6 +83,7 @@ export function OrderCard({ order, onStatusUpdate, isExpanded = false, onToggleE
     order.status === OrderStatus.PREPARING
   );
   const canCancelAnytime = order.status !== OrderStatus.DELIVERED && order.status !== OrderStatus.CANCELED;
+  const isPreparing = order.status === OrderStatus.PREPARING;
   
   // Helper function to check if payment is on delivery (cash/card on delivery)
   // Normalized check: case-insensitive, handles null/undefined
@@ -109,6 +110,15 @@ export function OrderCard({ order, onStatusUpdate, isExpanded = false, onToggleE
   const isPaidOnline = order.status === OrderStatus.PAID && !isDeliveryPaymentValue;
   const isPaid = order.status === OrderStatus.PAID;
   const isPending = order.status === OrderStatus.PENDING;
+  const canCreateWolt =
+    !hasWoltDelivery &&
+    (order.status === OrderStatus.PAID || order.status === OrderStatus.PREPARING || order.status === OrderStatus.READY);
+  const canShowCancel = [
+    OrderStatus.PAID,
+    OrderStatus.PREPARING,
+    OrderStatus.READY,
+    OrderStatus.OUT_FOR_DELIVERY,
+  ].includes(order.status);
   
   // Get translated status label
   const getStatusLabel = (status: OrderStatus): string => {
@@ -190,14 +200,14 @@ export function OrderCard({ order, onStatusUpdate, isExpanded = false, onToggleE
     setCreatingWolt(true);
     setWoltError(null);
     try {
-      const result = await createWoltDelivery(order.id, woltPromise.promiseId);
-      if (result.success) {
+      const woltResult = await createWoltDelivery(order.id, woltPromise.promiseId);
+      if (woltResult.success) {
         setShowWoltModal(false);
-        setWoltMessage(`✅ Wolt delivery created! ${result.trackingUrl ? `Tracking: ${result.trackingUrl}` : ''}`);
+        setWoltMessage(`✅ Wolt delivery created! ${woltResult.trackingUrl ? `Tracking: ${woltResult.trackingUrl}` : ''}`);
         // Refresh the page to show updated order
         setTimeout(() => window.location.reload(), 1500);
       } else {
-        setWoltError(result.message || 'Nepodarilo sa vytvoriť doručenie');
+        setWoltError(woltResult.message || 'Nepodarilo sa vytvoriť doručenie');
       }
     } catch (error: any) {
       setWoltError(error.message || 'Nepodarilo sa vytvoriť doručenie');
@@ -210,6 +220,33 @@ export function OrderCard({ order, onStatusUpdate, isExpanded = false, onToggleE
     setShowWoltModal(false);
     setWoltPromise(null);
     setWoltError(null);
+  };
+
+  // Format created time
+  const formatCreatedTime = (date: Date): string => {
+    const now = new Date();
+    const orderDate = new Date(date);
+    const diffMs = now.getTime() - orderDate.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    
+    // If less than 60 minutes ago, show relative time
+    if (diffMins < 60) {
+      if (diffMins < 1) return 'práve teraz';
+      if (diffMins === 1) return 'pred 1 minútou';
+      if (diffMins < 5) return `pred ${diffMins} minútami`;
+      return `pred ${diffMins} min`;
+    }
+    
+    // Otherwise show time and date
+    const time = orderDate.toLocaleTimeString('sk-SK', { hour: '2-digit', minute: '2-digit' });
+    const isToday = orderDate.toDateString() === now.toDateString();
+    
+    if (isToday) {
+      return `dnes o ${time}`;
+    }
+    
+    const dateStr = orderDate.toLocaleDateString('sk-SK', { day: '2-digit', month: '2-digit' });
+    return `${dateStr} o ${time}`;
   };
   
   return (
@@ -233,6 +270,9 @@ export function OrderCard({ order, onStatusUpdate, isExpanded = false, onToggleE
             {order.orderNumber != null && order.orderNumber > 0
               ? `#${order.orderNumber.toString().padStart(4, '0')}`
               : `#${order.id.slice(0, 8).toUpperCase()}`}
+          </span>
+          <span className="text-xs text-gray-500">
+            {formatCreatedTime(order.createdAt)}
           </span>
           <span className={`px-2 py-0.5 rounded text-xs font-semibold whitespace-nowrap ${STATUS_COLORS[order.status]}`}>
             {getStatusLabel(order.status)}
@@ -290,14 +330,6 @@ export function OrderCard({ order, onStatusUpdate, isExpanded = false, onToggleE
                 </button>
               </>
             )}
-            {canCancelAnytime && (
-              <button
-                onClick={() => onStatusUpdate(order.id, OrderStatus.CANCELED)}
-                className="flex-1 min-w-[120px] px-3 py-2 bg-red-600 text-white rounded hover:bg-red-700 text-sm font-semibold"
-              >
-                ❌ Zrušiť
-              </button>
-            )}
             {canSyncToStoryous && (
               <button
                 onClick={handleSyncStoryous}
@@ -326,6 +358,14 @@ export function OrderCard({ order, onStatusUpdate, isExpanded = false, onToggleE
                 → {getNextStatusLabel(order.status)}
               </button>
             )}
+            {canCancelAnytime && (
+              <button
+                onClick={() => onStatusUpdate(order.id, OrderStatus.CANCELED)}
+                className="flex-1 min-w-[120px] px-3 py-2 bg-red-600 text-white rounded hover:bg-red-700 text-sm font-semibold"
+              >
+                ❌ Zrušiť
+              </button>
+            )}
           </div>
           <button
             onClick={handleToggle}
@@ -344,6 +384,9 @@ export function OrderCard({ order, onStatusUpdate, isExpanded = false, onToggleE
               {order.orderNumber != null && order.orderNumber > 0
                 ? `#${order.orderNumber.toString().padStart(4, '0')}`
                 : `#${order.id.slice(0, 8).toUpperCase()}`}
+            </span>
+            <span className="text-xs text-gray-500">
+              {formatCreatedTime(order.createdAt)}
             </span>
             <span className={`px-2 py-1 rounded text-xs font-semibold ${STATUS_COLORS[order.status]}`}>
               {getStatusLabel(order.status)}

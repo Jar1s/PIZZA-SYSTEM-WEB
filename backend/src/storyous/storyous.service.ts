@@ -1,4 +1,4 @@
-import { Injectable, Logger, Inject, forwardRef } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { Order, OrderStatus } from '@pizza-ecosystem/shared';
 import { SettingsService } from '../settings/settings.service';
 
@@ -11,7 +11,6 @@ export class StoryousService {
   private readonly apiBaseUrl = 'https://api.storyous.com';
   
   constructor(
-    @Inject(forwardRef(() => SettingsService))
     private settingsService: SettingsService,
   ) {}
 
@@ -113,13 +112,34 @@ export class StoryousService {
       const customer = order.customer as any;
       const address = order.address as any;
       
+      this.logger.log('[Storyous] Preparing order', {
+        orderId: order.id,
+        merchantId,
+        placeId,
+        items: order.items?.length || 0,
+        totalEuros: order.totalCents ? order.totalCents / 100 : undefined,
+        customerPhone: customer?.phone,
+        addressCity: address?.city,
+      });
+      
       // Map order items to Storyous format
       const items = order.items.map(item => {
         const itemData: any = {
           name: item.productName,
           quantity: item.quantity,
+          count: item.quantity, // Storyous expects `count`
           price: item.priceCents / 100, // Convert cents to euros
+          unitPriceWithVat: item.priceCents / 100, // Storyous expects unitPriceWithVat in euros
         };
+
+        // Map Storyous itemId if available, otherwise fall back to product/id so the field is always present
+        const storyousItemId =
+          (item as any).storyousItemId ||
+          (item as any).storyous_item_id ||
+          (item as any).storyousId ||
+          item.productId ||
+          item.id;
+        itemData.itemId = storyousItemId;
         
         // Add modifiers if available
         if (item.modifiers) {
@@ -149,9 +169,12 @@ export class StoryousService {
         subtotal: order.subtotalCents / 100,
         tax: order.taxCents / 100,
         delivery_fee: order.deliveryFeeCents / 100,
-        external_id: order.id, // Your order ID for reference
+        externalId: order.id, // Storyous expects camelCase externalId
+        external_id: order.id, // keep legacy snake_case just in case
         status: this.mapOrderStatus(order.status),
       };
+
+      this.logger.debug('[Storyous] Payload', { orderId: order.id, payload: orderData });
       // #region agent log
       fetch('http://127.0.0.1:7244/ingest/c8c401c8-9b71-4e06-9291-444154701c07',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'storyous.service.ts:129',message:'request body prepared',data:{merchantId,placeId,itemsCount:items.length,hasCustomer:!!customer,hasAddress:!!address,total:orderData.total,status:orderData.status},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
       // #endregion
@@ -174,6 +197,7 @@ export class StoryousService {
 
       if (!response.ok) {
         const error = await response.text();
+        this.logger.error('[Storyous] API error response', { orderId: order.id, status: response.status, body: error });
         // #region agent log
         fetch('http://127.0.0.1:7244/ingest/c8c401c8-9b71-4e06-9291-444154701c07',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'storyous.service.ts:145',message:'error response',data:{status:response.status,error,requestUrl,requestBody:orderData},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
         // #endregion
@@ -237,12 +261,6 @@ export class StoryousService {
     return statusMap[status] || 'pending';
   }
 }
-
-
-
-
-
-
 
 
 

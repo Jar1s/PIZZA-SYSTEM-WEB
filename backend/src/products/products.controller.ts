@@ -126,11 +126,10 @@ export class ProductsController {
     return { imported: count };
   }
 
-  @Public()
   @Post('update-prices')
+  @UseGuards(RolesGuard)
+  @Roles('ADMIN', 'OPERATOR')
   async updatePrices(@Param('tenantSlug') tenantSlug: string) {
-    // One-time endpoint to fix prices - can be called once from browser
-    // TODO: Remove or protect this endpoint after use
     const tenant = await this.tenantsService.getTenantBySlug(tenantSlug);
     const result = await this.productsService.updateProductPrices(tenant.id);
     return {

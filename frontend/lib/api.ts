@@ -320,13 +320,24 @@ export async function getAllTenants(includeInactive: boolean = false): Promise<T
 }
 
 export async function updateTenant(tenantSlug: string, data: Partial<Tenant>): Promise<Tenant> {
+  const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
+  const headers: HeadersInit = { 'Content-Type': 'application/json' };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  
   const res = await fetch(`${API_URL}/api/tenants/${tenantSlug}`, {
     method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
+    headers,
     body: JSON.stringify(data),
   });
   
-  if (!res.ok) throw new Error('Failed to update tenant');
+  if (!res.ok) {
+    if (res.status === 401) {
+      throw new Error('Unauthorized - Please log in again');
+    }
+    throw new Error('Failed to update tenant');
+  }
   return res.json();
 }
 
@@ -549,6 +560,62 @@ export async function createWoltDelivery(orderId: string, promiseId?: string): P
   };
 }
 
+// Admin: Storyous settings
+export interface StoryousSettings {
+  clientId?: string;
+  clientSecret?: string;
+  merchantId?: string;
+  placeId?: string;
+  enabled?: boolean;
+  autoSync?: boolean;
+}
+
+export async function getStoryousSettings(): Promise<StoryousSettings | null> {
+  const token = localStorage.getItem('auth_token');
+  const headers: HeadersInit = { 'Content-Type': 'application/json' };
+  
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  
+  const res = await fetch(`${API_URL}/api/settings/storyous`, {
+    headers,
+  });
+  
+  if (res.status === 404) {
+    return null;
+  }
+  
+  if (!res.ok) {
+    const errorText = await res.text().catch(() => 'Failed to fetch Storyous settings');
+    throw new Error(errorText || 'Failed to fetch Storyous settings');
+  }
+  
+  return res.json();
+}
+
+export async function updateStoryousSettings(data: Partial<StoryousSettings>): Promise<StoryousSettings> {
+  const token = localStorage.getItem('auth_token');
+  const headers: HeadersInit = { 'Content-Type': 'application/json' };
+  
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  
+  const res = await fetch(`${API_URL}/api/settings/storyous`, {
+    method: 'PUT',
+    headers,
+    body: JSON.stringify(data),
+  });
+  
+  if (!res.ok) {
+    const errorText = await res.text().catch(() => 'Failed to update Storyous settings');
+    throw new Error(errorText || 'Failed to update Storyous settings');
+  }
+  
+  return res.json();
+}
+
 // Admin: Sync order to Storyous
 export async function syncOrderToStoryous(orderId: string, tenantSlug?: string): Promise<{ success: boolean; storyousOrderId?: string; message: string }> {
   // If tenantSlug is not provided, try to determine it from the order
@@ -721,5 +788,60 @@ export async function validateMinOrder(
     throw new Error(`Failed to validate min order: ${errorText}`);
   }
   
+  return res.json();
+}
+
+/**
+ * Clone a tenant with all its data
+ */
+export async function cloneTenant(
+  sourceSlug: string,
+  cloneData: {
+    name: string;
+    slug: string;
+    subdomain: string;
+    domain?: string;
+    theme?: any;
+    emailConfig?: any;
+    deliveryConfig?: any;
+    productOverrides?: Record<string, any>;
+  }
+): Promise<Tenant> {
+  const res = await fetch(`${API_URL}/api/tenants/${sourceSlug}/clone`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(cloneData),
+  });
+
+  if (!res.ok) {
+    const errorText = await res.text();
+    throw new Error(`Failed to clone tenant: ${errorText}`);
+  }
+
+  return res.json();
+}
+
+/**
+ * Sync functional data from master tenant to other tenants
+ */
+export async function syncFromMaster(
+  masterSlug: string,
+  targetSlugs?: string[]
+): Promise<{ success: boolean; synced: string[]; errors: string[] }> {
+  const res = await fetch(`${API_URL}/api/tenants/sync-from-master`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ masterSlug, targetSlugs }),
+  });
+
+  if (!res.ok) {
+    const errorText = await res.text();
+    throw new Error(`Failed to sync from master: ${errorText}`);
+  }
+
   return res.json();
 }

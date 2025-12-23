@@ -209,5 +209,289 @@ export class TenantsService {
     this.logger.log(`Tenant ${slug} updated. isActive: ${tenant.isActive}`);
     return tenant as any as Tenant;
   }
+
+  /**
+   * Clone a tenant with all its products, delivery zones, and product mappings
+   * Allows overriding specific fields like name, theme, emailConfig, etc.
+   */
+  async cloneTenant(
+    sourceSlug: string,
+    cloneData: {
+      name: string;
+      slug: string;
+      subdomain: string;
+      domain?: string;
+      theme?: any;
+      emailConfig?: any;
+      deliveryConfig?: any;
+      productOverrides?: Record<string, { displayName?: string; description?: string; subHeader?: string; image?: string }>;
+    }
+  ): Promise<Tenant> {
+    this.logger.log(`[cloneTenant] Cloning tenant ${sourceSlug} to ${cloneData.slug}`);
+
+    // Use transaction to ensure all-or-nothing operation
+    return await this.prisma.$transaction(async (tx) => {
+      // 1. Fetch source tenant with all related data
+      const sourceTenant = await tx.tenant.findUnique({
+        where: { slug: sourceSlug },
+        include: {
+          products: true,
+          deliveryZones: true,
+          productMappings: true,
+        },
+      });
+
+      if (!sourceTenant) {
+        throw new NotFoundException(`Source tenant ${sourceSlug} not found`);
+      }
+
+      this.logger.log(`[cloneTenant] Found source tenant with ${sourceTenant.products.length} products, ${sourceTenant.deliveryZones.length} zones, ${sourceTenant.productMappings.length} mappings`);
+
+      // 2. Create new tenant
+      const newTenant = await tx.tenant.create({
+        data: {
+          name: cloneData.name,
+          slug: cloneData.slug,
+          subdomain: cloneData.subdomain,
+          domain: cloneData.domain || null,
+          currency: sourceTenant.currency,
+          paymentProvider: sourceTenant.paymentProvider,
+          theme: cloneData.theme || sourceTenant.theme,
+          // Keep paymentConfig and deliveryConfig separate for each clone
+          paymentConfig: cloneData.deliveryConfig ? {} : sourceTenant.paymentConfig,
+          deliveryConfig: cloneData.deliveryConfig || {},
+          emailConfig: cloneData.emailConfig || {},
+          isActive: true,
+        },
+      });
+
+      this.logger.log(`[cloneTenant] Created new tenant: ${newTenant.id}`);
+
+      // 3. Clone products (with optional overrides)
+      const productIdMap = new Map<string, string>(); // old ID -> new ID mapping
+
+      for (const product of sourceTenant.products) {
+        const override = cloneData.productOverrides?.[product.id];
+        
+        const newProduct = await tx.product.create({
+          data: {
+            tenantId: newTenant.id,
+            name: product.name,
+            displayName: override?.displayName || product.displayName,
+            description: override?.description || product.description,
+            subHeader: override?.subHeader || product.subHeader,
+            priceCents: product.priceCents,
+            taxRate: product.taxRate,
+            category: product.category,
+            image: override?.image || product.image,
+            modifiers: product.modifiers,
+            isActive: product.isActive,
+            sortOrder: product.sortOrder,
+            allergens: product.allergens,
+            weight: product.weight,
+          },
+        });
+
+        productIdMap.set(product.id, newProduct.id);
+      }
+
+      this.logger.log(`[cloneTenant] Cloned ${productIdMap.size} products`);
+
+      // 4. Clone delivery zones
+      const zoneIdMap = new Map<string, string>(); // old ID -> new ID mapping
+
+      for (const zone of sourceTenant.deliveryZones) {
+        const newZone = await tx.deliveryZone.create({
+          data: {
+            tenantId: newTenant.id,
+            name: zone.name,
+            coordinates: zone.coordinates,
+            feeCents: zone.feeCents,
+            minOrderCents: zone.minOrderCents,
+            isActive: zone.isActive,
+          },
+        });
+
+        zoneIdMap.set(zone.id, newZone.id);
+      }
+
+      this.logger.log(`[cloneTenant] Cloned ${zoneIdMap.size} delivery zones`);
+
+      // 5. Clone product mappings
+      for (const mapping of sourceTenant.productMappings) {
+        const newProductId = productIdMap.get(mapping.productId);
+        
+        if (newProductId) {
+          await tx.productMapping.create({
+            data: {
+              tenantId: newTenant.id,
+              productId: newProductId,
+              externalId: mapping.externalId,
+              provider: mapping.provider,
+            },
+          });
+        }
+      }
+
+      this.logger.log(`[cloneTenant] Cloned ${sourceTenant.productMappings.length} product mappings`);
+      this.logger.log(`[cloneTenant] Successfully cloned tenant ${sourceSlug} to ${cloneData.slug}`);
+
+      return newTenant as any as Tenant;
+    });
+  }
+
+  /**
+   * Sync functional data from master tenant to other tenants
+   * Preserves individual branding (theme, emailConfig, paymentConfig, deliveryConfig)
+   */
+  async syncFromMaster(
+    masterSlug: string,
+    targetSlugs?: string[]
+  ): Promise<{ success: boolean; synced: string[]; errors: string[] }> {
+    this.logger.log(`[syncFromMaster] Starting sync from master tenant: ${masterSlug}`);
+
+    const result = {
+      success: true,
+      synced: [] as string[],
+      errors: [] as string[],
+    };
+
+    // Get master tenant with all data
+    const masterTenant = await this.prisma.tenant.findUnique({
+      where: { slug: masterSlug },
+      include: {
+        products: true,
+        deliveryZones: true,
+        productMappings: true,
+      },
+    });
+
+    if (!masterTenant) {
+      throw new NotFoundException(`Master tenant ${masterSlug} not found`);
+    }
+
+    // Get target tenants (all active tenants except master if not specified)
+    const targetTenants = targetSlugs
+      ? await this.prisma.tenant.findMany({
+          where: {
+            slug: { in: targetSlugs },
+            isActive: true,
+          },
+        })
+      : await this.prisma.tenant.findMany({
+          where: {
+            slug: { not: masterSlug },
+            isActive: true,
+          },
+        });
+
+    this.logger.log(`[syncFromMaster] Found ${targetTenants.length} target tenants to sync`);
+
+    // Sync each tenant
+    for (const targetTenant of targetTenants) {
+      try {
+        await this.syncTenantFromMaster(masterTenant, targetTenant);
+        result.synced.push(targetTenant.slug);
+        this.logger.log(`[syncFromMaster] Successfully synced ${targetTenant.slug}`);
+      } catch (error) {
+        result.success = false;
+        result.errors.push(`${targetTenant.slug}: ${error.message}`);
+        this.logger.error(`[syncFromMaster] Failed to sync ${targetTenant.slug}:`, error);
+      }
+    }
+
+    this.logger.log(`[syncFromMaster] Sync complete. Synced: ${result.synced.length}, Errors: ${result.errors.length}`);
+    return result;
+  }
+
+  /**
+   * Internal method to sync a single tenant from master
+   */
+  private async syncTenantFromMaster(
+    masterTenant: any,
+    targetTenant: any
+  ): Promise<void> {
+    return await this.prisma.$transaction(async (tx) => {
+      // 1. Delete existing products, zones, mappings (but keep tenant config)
+      await tx.productMapping.deleteMany({ where: { tenantId: targetTenant.id } });
+      await tx.product.deleteMany({ where: { tenantId: targetTenant.id } });
+      await tx.deliveryZone.deleteMany({ where: { tenantId: targetTenant.id } });
+
+      // 2. Clone products from master
+      const productIdMap = new Map<string, string>();
+
+      for (const product of masterTenant.products) {
+        const newProduct = await tx.product.create({
+          data: {
+            tenantId: targetTenant.id,
+            name: product.name,
+            displayName: product.displayName,
+            description: product.description,
+            subHeader: product.subHeader,
+            priceCents: product.priceCents,
+            taxRate: product.taxRate,
+            category: product.category,
+            image: product.image,
+            modifiers: product.modifiers,
+            isActive: product.isActive,
+            sortOrder: product.sortOrder,
+            allergens: product.allergens,
+            weight: product.weight,
+          },
+        });
+
+        productIdMap.set(product.id, newProduct.id);
+      }
+
+      // 3. Clone delivery zones from master
+      for (const zone of masterTenant.deliveryZones) {
+        await tx.deliveryZone.create({
+          data: {
+            tenantId: targetTenant.id,
+            name: zone.name,
+            coordinates: zone.coordinates,
+            feeCents: zone.feeCents,
+            minOrderCents: zone.minOrderCents,
+            isActive: zone.isActive,
+          },
+        });
+      }
+
+      // 4. Clone product mappings from master
+      for (const mapping of masterTenant.productMappings) {
+        const newProductId = productIdMap.get(mapping.productId);
+        
+        if (newProductId) {
+          await tx.productMapping.create({
+            data: {
+              tenantId: targetTenant.id,
+              productId: newProductId,
+              externalId: mapping.externalId,
+              provider: mapping.provider,
+            },
+          });
+        }
+      }
+
+      // 5. Update StoryousConfig in theme (if enabled in master)
+      const masterTheme = masterTenant.theme as any;
+      const targetTheme = targetTenant.theme as any;
+
+      if (masterTheme?.storyousConfig) {
+        await tx.tenant.update({
+          where: { id: targetTenant.id },
+          data: {
+            theme: {
+              ...targetTheme,
+              storyousConfig: masterTheme.storyousConfig,
+            },
+          },
+        });
+      }
+
+      // NOTE: We do NOT sync theme, emailConfig, paymentConfig, deliveryConfig
+      // Those remain individual per tenant
+    });
+  }
 }
 

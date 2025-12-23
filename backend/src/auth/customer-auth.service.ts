@@ -141,6 +141,7 @@ export class CustomerAuthService {
       }
 
       const tenantDomain = defaultTenant.domain || `${defaultTenant.subdomain}.localhost:3001`;
+      const emailConfig = (defaultTenant as any).emailConfig || {};
 
       await this.emailService.sendWelcomeEmail(
         {
@@ -151,6 +152,7 @@ export class CustomerAuthService {
         tenantDomain,
         defaultTenant.theme,
         defaultTenant.slug,
+        emailConfig,
       );
     } catch (error) {
       this.logger.error(`Error sending welcome email:`, error);

@@ -1,8 +1,10 @@
-import { Controller, Post, Body, Get, Param } from '@nestjs/common';
+import { Controller, Post, Body, Get, Param, Logger } from '@nestjs/common';
 import { DeliveryService } from './delivery.service';
 
 @Controller('delivery')
 export class DeliveryController {
+  private readonly logger = new Logger(DeliveryController.name);
+
   constructor(private deliveryService: DeliveryService) {}
 
   @Post('quote')
@@ -12,7 +14,18 @@ export class DeliveryController {
 
   @Post('check-availability')
   async checkAvailability(@Body() data: { orderId: string }) {
-    return this.deliveryService.getShipmentPromiseForOrder(data.orderId);
+    this.logger.log(`[checkAvailability] Request for order: ${data.orderId}`);
+    try {
+      const result = await this.deliveryService.getShipmentPromiseForOrder(data.orderId);
+      this.logger.log(`[checkAvailability] Success for order: ${data.orderId}`);
+      return result;
+    } catch (error: any) {
+      this.logger.error(`[checkAvailability] Failed for order: ${data.orderId}`, {
+        error: error.message,
+        status: error.status,
+      });
+      throw error;
+    }
   }
 
   @Post('create')

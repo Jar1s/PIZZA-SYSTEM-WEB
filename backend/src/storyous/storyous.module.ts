@@ -1,9 +1,9 @@
-import { Module, forwardRef } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { StoryousService } from './storyous.service';
 import { SettingsModule } from '../settings/settings.module';
 
 @Module({
-  imports: [forwardRef(() => SettingsModule)],
+  imports: [SettingsModule],
   providers: [StoryousService],
   exports: [StoryousService],
 })

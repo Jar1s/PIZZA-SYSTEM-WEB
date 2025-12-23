@@ -50,18 +50,44 @@ async function bootstrap() {
       let allowed = false;
       if (!origin) {
         allowed = true; // Allow requests with no origin
-      } else if (origin.endsWith('.vercel.app')) {
-        allowed = true; // Always allow Vercel preview URLs
-      } else if (origin.includes('p0rnopizza.sk') || origin.includes('pornopizza.sk') || origin.includes('pizzavnudzi.sk')) {
-        allowed = true; // Always allow production domains
-      } else if (origin.startsWith('http://localhost:') || 
-                 origin.startsWith('http://127.0.0.1:') ||
-                 origin.startsWith('http://pornopizza.localhost:') || 
-                 origin.startsWith('http://pizzavnudzi.localhost:')) {
-        allowed = true; // Always allow localhost
-      } else if (process.env.ALLOWED_ORIGINS) {
-        const allowedOrigins = process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim());
-        allowed = allowedOrigins.includes(origin);
+      } else {
+        // Check explicit allowed origins first
+        if (process.env.ALLOWED_ORIGINS) {
+          const allowedOrigins = process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim());
+          if (allowedOrigins.includes(origin)) {
+            allowed = true;
+          } else {
+            // Also check if origin matches any allowed pattern
+            const matchesPattern = allowedOrigins.some(allowed => {
+              if (allowed.includes('*')) {
+                const pattern = allowed.replace(/\*/g, '.*');
+                return new RegExp(`^${pattern}$`).test(origin);
+              }
+              return false;
+            });
+            if (matchesPattern) {
+              allowed = true;
+            }
+          }
+        }
+        
+        // Only allow .vercel.app domains if explicitly listed in ALLOWED_ORIGINS
+        if (!allowed && origin.endsWith('.vercel.app')) {
+          allowed = false; // Deny by default
+        }
+        
+        // Always allow production domains
+        if (!allowed && (origin.includes('p0rnopizza.sk') || origin.includes('pornopizza.sk') || origin.includes('pizzavnudzi.sk'))) {
+          allowed = true;
+        }
+        
+        // Always allow localhost
+        if (!allowed && (origin.startsWith('http://localhost:') || 
+                         origin.startsWith('http://127.0.0.1:') ||
+                         origin.startsWith('http://pornopizza.localhost:') || 
+                         origin.startsWith('http://pizzavnudzi.localhost:'))) {
+          allowed = true;
+        }
       }
       
       if (allowed) {
@@ -111,7 +137,8 @@ async function bootstrap() {
   }));
   
   // Enable CORS BEFORE helmet (CORS must be set before security headers)
-  // Enable CORS for frontend - allow all .vercel.app origins
+  // CORS is restricted to specific domains via ALLOWED_ORIGINS env var
+  // .vercel.app domains are only allowed if explicitly listed in ALLOWED_ORIGINS
   app.enableCors({
     origin: (origin, callback) => {
       // Allow requests with no origin (like mobile apps or curl requests)
@@ -119,9 +146,30 @@ async function bootstrap() {
         return callback(null, true);
       }
       
-      // Always allow all Vercel preview URLs (for dynamic deployments)
+      // Check explicit allowed origins first (includes specific .vercel.app domains)
+      if (process.env.ALLOWED_ORIGINS) {
+        const allowedOrigins = process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim());
+        if (allowedOrigins.includes(origin)) {
+          return callback(null, true);
+        }
+        // Also check if origin matches any allowed pattern (for .vercel.app subdomains)
+        const matchesPattern = allowedOrigins.some(allowed => {
+          if (allowed.includes('*')) {
+            const pattern = allowed.replace(/\*/g, '.*');
+            return new RegExp(`^${pattern}$`).test(origin);
+          }
+          return false;
+        });
+        if (matchesPattern) {
+          return callback(null, true);
+        }
+      }
+      
+      // Only allow .vercel.app domains if explicitly listed in ALLOWED_ORIGINS
+      // This prevents unauthorized access from any Vercel preview URL
       if (origin.endsWith('.vercel.app')) {
-        return callback(null, true);
+        // Deny by default - must be in ALLOWED_ORIGINS
+        return callback(null, false);
       }
       
       // Always allow production domains (p0rnopizza.sk, pornopizza.sk, etc.)
@@ -138,13 +186,6 @@ async function bootstrap() {
         return callback(null, true);
       }
       
-      // Check explicit allowed origins
-      if (process.env.ALLOWED_ORIGINS) {
-        const allowedOrigins = process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim());
-        if (allowedOrigins.includes(origin)) {
-          return callback(null, true);
-        }
-      }
       
       // Deny by default
       callback(null, false);

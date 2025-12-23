@@ -1,9 +1,11 @@
-import { Injectable, BadRequestException, Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
+import { Injectable, BadRequestException, Logger, OnModuleInit, OnModuleDestroy, Inject, forwardRef } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { OrderStatus } from '@pizza-ecosystem/shared';
+import { OrderStatus, Order, CustomerInfo, Address } from '@pizza-ecosystem/shared';
 import { EmailService } from '../email/email.service';
 import { TenantsService } from '../tenants/tenants.service';
 import { StoryousService } from '../storyous/storyous.service';
+import { SettingsService } from '../settings/settings.service';
+import { PaymentsService } from '../payments/payments.service';
 
 @Injectable()
 export class OrderStatusService implements OnModuleInit, OnModuleDestroy {
@@ -30,6 +32,9 @@ export class OrderStatusService implements OnModuleInit, OnModuleDestroy {
     private emailService: EmailService,
     private tenantsService: TenantsService,
     private storyousService: StoryousService,
+    private settingsService: SettingsService,
+    @Inject(forwardRef(() => PaymentsService))
+    private paymentsService: PaymentsService,
   ) {}
 
   async updateStatus(orderId: string, newStatus: OrderStatus): Promise<void> {
@@ -57,6 +62,42 @@ export class OrderStatusService implements OnModuleInit, OnModuleDestroy {
       data: { status: newStatus },
     });
 
+    // Auto-sync to Storyous when order is confirmed (PREPARING) and autoSync is enabled
+    // This runs ONLY ONCE when status changes to PREPARING, not on subsequent status changes
+    if (newStatus === OrderStatus.PREPARING && !(order as any).storyousOrderId) {
+      try {
+        // Get global Storyous settings
+        const storyousSettings = await this.settingsService.getStoryousSettings();
+        
+        if (storyousSettings?.enabled && storyousSettings?.autoSync && storyousSettings?.merchantId && storyousSettings?.placeId) {
+          // Convert Prisma Order to shared Order type
+          const orderForStoryous: Order = {
+            ...order,
+            status: newStatus as OrderStatus,
+            customer: order.customer as unknown as CustomerInfo,
+            address: order.address as unknown as Address,
+          } as unknown as Order;
+          
+          const storyousResult = await this.storyousService.createOrder(
+            orderForStoryous,
+            storyousSettings.merchantId,
+            storyousSettings.placeId
+          );
+          
+          if (storyousResult?.id) {
+            await this.prisma.order.update({
+              where: { id: orderId },
+              data: { storyousOrderId: storyousResult.id },
+            });
+            this.logger.log(`✅ Order ${orderId} auto-synced to Storyous: ${storyousResult.id}`);
+          }
+        }
+      } catch (error: any) {
+        // Log but don't fail status update
+        this.logger.error(`⚠️ Failed to auto-sync order ${orderId} to Storyous:`, error.message);
+      }
+    }
+
     // Update Storyous order status (if order was sent to Storyous)
     try {
       const storyousOrderId = (order as any).storyousOrderId;
@@ -70,6 +111,28 @@ export class OrderStatusService implements OnModuleInit, OnModuleDestroy {
     } catch (error: any) {
       // Log but don't fail status update
       this.logger.error(`⚠️ Failed to update Storyous order status:`, error.message);
+    }
+
+    // If order is being canceled and was paid via GoPay, initiate refund
+    if (newStatus === OrderStatus.CANCELED) {
+      const tenant = order.tenant as any;
+      const paymentProvider = tenant.paymentProvider;
+      const paymentRef = (order as any).paymentRef;
+      const paymentStatus = (order as any).paymentStatus;
+      
+      // Check if order was paid via GoPay and has payment reference
+      if (paymentProvider === 'gopay' && 
+          paymentRef && 
+          paymentStatus === 'success' &&
+          (order.status === OrderStatus.PAID || order.status === OrderStatus.PREPARING || order.status === OrderStatus.OUT_FOR_DELIVERY)) {
+        try {
+          await this.paymentsService.refundGopayPayment(orderId);
+          this.logger.log(`✅ GoPay refund initiated for order ${orderId}`);
+        } catch (error: any) {
+          // Log but don't fail status update - refund can be retried manually
+          this.logger.error(`⚠️ Failed to refund GoPay payment for order ${orderId}:`, error.message);
+        }
+      }
     }
 
     // Send notifications (email, SMS) when status changes

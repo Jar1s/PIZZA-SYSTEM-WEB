@@ -6,34 +6,31 @@ import {
   Param, 
   Body, 
   Query,
+  Request,
   NotFoundException,
   UseGuards,
   Logger,
 } from '@nestjs/common';
-import { Throttle } from '@nestjs/throttler';
 import { OrdersService } from './orders.service';
 import { OrderStatusService } from './order-status.service';
 import { TenantsService } from '../tenants/tenants.service';
 import { CreateOrderDto, UpdateOrderStatusDto } from './dto';
 import { OrderStatus } from '@pizza-ecosystem/shared';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { RolesGuard } from '../auth/guards/roles.guard';
-import { Roles } from '../auth/decorators/roles.decorator';
 import { Public } from '../auth/decorators/public.decorator';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Throttle } from '@nestjs/throttler';
 
-/**
- * Public order creation endpoint (for customers)
- * Route: /api/:tenantSlug/orders
- */
-@Controller(':tenantSlug/orders')
+// Public customer-facing endpoints
+@Controller('api/:tenantSlug/orders')
 export class OrdersController {
+  private readonly logger = new Logger(OrdersController.name);
+
   constructor(
     private ordersService: OrdersService,
     private orderStatusService: OrderStatusService,
     private tenantsService: TenantsService,
   ) {}
-
-  private readonly logger = new Logger(OrdersController.name);
 
   @Public()
   @Throttle({ default: { limit: 10, ttl: 60000 } }) // 10 orders per minute
@@ -50,43 +47,34 @@ export class OrdersController {
         productId: item.productId,
         quantity: item.quantity,
         modifiers: item.modifiers,
-        modifiersType: typeof item.modifiers,
-        modifiersKeys: item.modifiers ? Object.keys(item.modifiers) : [],
-        modifiersStringified: JSON.stringify(item.modifiers),
       })),
     });
-    
-    const tenant = await this.tenantsService.getTenantBySlug(tenantSlug);
-    return this.ordersService.createOrder(tenant.id, data);
-  }
 
-  @Post(':id/sync-storyous')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('ADMIN', 'OPERATOR')
-  async syncToStoryous(
-    @Param('tenantSlug') tenantSlug: string,
-    @Param('id') id: string,
-  ) {
-    return this.ordersService.syncOrderToStoryous(id);
+    const tenant = await this.tenantsService.getTenantBySlug(tenantSlug);
+    const order = await this.ordersService.createOrder(tenant.id, data);
+    
+    this.logger.log('Order created successfully', {
+      orderId: order.id,
+      itemsCount: order.items?.length,
+    });
+    
+    return order;
   }
 }
 
-/**
- * Admin order management endpoints
- * Route: /api/orders (protected, admin/operator only)
- * SECURITY: These endpoints require authentication and admin/operator role
- * Note: Global JwtAuthGuard applies automatically, RolesGuard enforces role requirements
- */
-@Controller('orders')
+// Admin endpoints for managing orders
+@Controller('api/orders')
 export class AdminOrdersController {
+  private readonly logger = new Logger(AdminOrdersController.name);
+
   constructor(
     private ordersService: OrdersService,
     private orderStatusService: OrderStatusService,
     private tenantsService: TenantsService,
   ) {}
 
-  @Public() // TODO: Remove in production - add proper authentication
   @Get()
+  @UseGuards(RolesGuard)
   @Roles('ADMIN', 'OPERATOR')
   async getOrders(
     @Query('tenantSlug') tenantSlug?: string,
@@ -101,36 +89,13 @@ export class AdminOrdersController {
     const tenant = await this.tenantsService.getTenantBySlug(tenantSlug);
     
     // Parse dates properly - startDate should be beginning of day, endDate should be end of day
-    // Handle YYYY-MM-DD format dates correctly to avoid timezone issues
-    let parsedStartDate: Date | undefined;
-    let parsedEndDate: Date | undefined;
-    
-    if (startDate) {
-      // If date is in YYYY-MM-DD format, parse it as UTC to avoid timezone shifts
-      if (/^\d{4}-\d{2}-\d{2}$/.test(startDate)) {
-        // Create date at beginning of day in UTC
-        parsedStartDate = new Date(`${startDate}T00:00:00.000Z`);
-      } else {
-        // Fallback for other date formats
-        const date = new Date(startDate);
-        date.setUTCHours(0, 0, 0, 0);
-        parsedStartDate = date;
-      }
-    }
-    
-    if (endDate) {
-      // If date is in YYYY-MM-DD format, parse it as UTC to avoid timezone shifts
-      if (/^\d{4}-\d{2}-\d{2}$/.test(endDate)) {
-        // Create date at end of day in UTC (23:59:59.999)
-        parsedEndDate = new Date(`${endDate}T23:59:59.999Z`);
-      } else {
-        // Fallback for other date formats
-        const date = new Date(endDate);
-        date.setUTCHours(23, 59, 59, 999);
-        parsedEndDate = date;
-      }
-    }
-    
+    const parsedStartDate = startDate ? new Date(startDate) : undefined;
+    const parsedEndDate = endDate ? (() => {
+      const date = new Date(endDate);
+      date.setHours(23, 59, 59, 999); // Set to end of day
+      return date;
+    })() : undefined;
+
     return this.ordersService.getOrders(tenant.id, {
       status,
       startDate: parsedStartDate,
@@ -139,12 +104,14 @@ export class AdminOrdersController {
   }
 
   @Get(':id')
+  @UseGuards(RolesGuard)
   @Roles('ADMIN', 'OPERATOR')
   async getOrder(@Param('id') id: string) {
     return this.ordersService.getOrderById(id);
   }
 
   @Patch(':id/status')
+  @UseGuards(RolesGuard)
   @Roles('ADMIN', 'OPERATOR')
   async updateOrderStatus(
     @Param('id') id: string,
@@ -155,6 +122,7 @@ export class AdminOrdersController {
   }
 
   @Post(':id/sync-storyous')
+  @UseGuards(RolesGuard)
   @Roles('ADMIN', 'OPERATOR')
   async syncToStoryous(
     @Param('id') id: string,
@@ -171,27 +139,32 @@ export class TrackingController {
   constructor(private ordersService: OrdersService) {}
 
   @Public()
-  @Throttle({ default: { limit: 30, ttl: 60000 } }) // 30 requests per minute for tracking
+  @Throttle({ default: { limit: 100, ttl: 60000 } }) // 100 requests per minute
   @Get(':orderId')
   async trackOrder(@Param('orderId') orderId: string) {
-    this.logger.log('trackOrder called', { orderId });
+    this.logger.log(`Tracking order: ${orderId}`);
     try {
       const order = await this.ordersService.getOrderById(orderId);
-      this.logger.debug('Order found', { orderId: order?.id });
+      this.logger.log(`Order found: ${orderId}, status: ${order.status}`);
       return order;
     } catch (error) {
-      this.logger.error('Error getting order', { orderId, error: error instanceof Error ? error.message : String(error) });
+      this.logger.error(`Error tracking order ${orderId}:`, error);
+      throw error;
+    }
+  }
+
+  @Public()
+  @Throttle({ default: { limit: 100, ttl: 60000 } })
+  @Get('api/track/:orderId')
+  async trackOrderApi(@Param('orderId') orderId: string) {
+    this.logger.log(`API tracking order: ${orderId}`);
+    try {
+      const order = await this.ordersService.getOrderById(orderId);
+      this.logger.log(`Order found via API: ${orderId}, status: ${order.status}`);
+      return order;
+    } catch (error) {
+      this.logger.error(`Error tracking order via API ${orderId}:`, error);
       throw error;
     }
   }
 }
-
-
-
-
-
-
-
-
-
-

@@ -76,6 +76,7 @@ export class WebhooksController {
   async handleGopayWebhook(
     @Body() body: any,
     @Headers('signature') signature: string,
+    @Headers('x-gopay-signature') xGopaySignature: string,
     @Req() req: Request,
     @Res() res: Response,
   ) {
@@ -86,12 +87,20 @@ export class WebhooksController {
       return res.status(500).send('Server configuration error');
     }
     
+    // GoPay may use either 'signature' or 'X-GoPay-Signature' header
+    const webhookSignature = signature || xGopaySignature;
+    
+    if (!webhookSignature) {
+      this.logger.error('GoPay webhook missing signature header (checked both "signature" and "X-GoPay-Signature")');
+      return res.status(401).send('Missing signature');
+    }
+    
     // Get client secret from env (GoPay uses client secret for webhook verification)
     const clientSecret = process.env.GOPAY_CLIENT_SECRET;
     
     // Use raw body as string for signature verification
     const rawBodyString = rawBody.toString('utf8');
-    if (!this.gopayService.verifyWebhook(signature, rawBodyString, clientSecret)) {
+    if (!this.gopayService.verifyWebhook(webhookSignature, rawBodyString, clientSecret)) {
       this.logger.error('Invalid GoPay webhook signature');
       return res.status(401).send('Invalid signature');
     }

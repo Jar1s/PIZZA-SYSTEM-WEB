@@ -98,3 +98,9 @@ To znamená, že redirect URI v Google Console **nezhoduje** s tým, čo backend
 
 
 
+
+
+
+
+
+

@@ -1,10 +1,12 @@
-import { ExecutionContext, Injectable } from '@nestjs/common';
+import { ExecutionContext, Injectable, Logger } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { AuthGuard } from '@nestjs/passport';
 import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
 
 @Injectable()
 export class JwtAuthGuard extends AuthGuard('jwt') {
+  private readonly logger = new Logger(JwtAuthGuard.name);
+
   constructor(private reflector: Reflector) {
     super();
   }
@@ -23,5 +25,16 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
     // Otherwise, use the default JWT authentication
     return super.canActivate(context);
   }
-}
 
+  handleRequest(err: any, user: any, info: any, context: ExecutionContext) {
+    const request = context.switchToHttp().getRequest();
+    const route = `${request.method} ${request.url}`;
+    
+    if (err || !user) {
+      this.logger.error(`Auth failed for ${route}: ${err?.message || info?.message || 'No user'}`);
+      throw err || new Error('Unauthorized');
+    }
+    
+    return user;
+  }
+}

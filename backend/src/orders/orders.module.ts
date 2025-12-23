@@ -9,8 +9,10 @@ import { TenantsModule } from '../tenants/tenants.module';
 import { EmailModule } from '../email/email.module';
 import { AuthModule } from '../auth/auth.module';
 import { StoryousModule } from '../storyous/storyous.module';
+import { SettingsModule } from '../settings/settings.module';
 import { ProductsModule } from '../products/products.module';
 import { DeliveryModule } from '../delivery/delivery.module';
+import { PaymentsModule } from '../payments/payments.module';
 
 @Module({
   imports: [
@@ -18,9 +20,11 @@ import { DeliveryModule } from '../delivery/delivery.module';
     TenantsModule, 
     EmailModule, 
     AuthModule, 
-    StoryousModule, 
+    SettingsModule,
+    StoryousModule,
     ProductsModule,
     forwardRef(() => DeliveryModule),
+    forwardRef(() => PaymentsModule),
     JwtModule.register({
       secret: process.env.JWT_SECRET || 'your-secret-key-change-in-production',
       signOptions: { expiresIn: '1h' },

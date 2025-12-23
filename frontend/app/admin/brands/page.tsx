@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import { Tenant } from '@pizza-ecosystem/shared';
-import { getAllTenants, updateTenant } from '@/lib/api';
+import { getAllTenants, updateTenant, syncFromMaster } from '@/lib/api';
 import { EditBrandModal } from '@/components/admin/EditBrandModal';
+import { CloneBrandModal } from '@/components/admin/CloneBrandModal';
 import { ProtectedRoute } from '@/components/admin/ProtectedRoute';
 import DeliveryFeeTiersSettings from '@/components/admin/DeliveryFeeTiersSettings';
 import { StoryousSettings } from '@/components/admin/StoryousSettings';
@@ -13,6 +14,10 @@ export default function BrandsPage() {
   const [loading, setLoading] = useState(true);
   const [editingTenant, setEditingTenant] = useState<Tenant | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [cloningTenant, setCloningTenant] = useState<Tenant | null>(null);
+  const [isCloneModalOpen, setIsCloneModalOpen] = useState(false);
+  const [showSyncConfirm, setShowSyncConfirm] = useState(false);
+  const [syncing, setSyncing] = useState(false);
 
   useEffect(() => {
     fetchTenants();
@@ -42,6 +47,29 @@ export default function BrandsPage() {
 
   const handleUpdate = () => {
     fetchTenants(); // Refresh list after update
+  };
+
+  const handleClone = (tenant: Tenant) => {
+    setCloningTenant(tenant);
+    setIsCloneModalOpen(true);
+  };
+
+  const handleCloneSuccess = () => {
+    fetchTenants(); // Refresh list after cloning
+  };
+
+  const handleSyncFromMaster = async () => {
+    setSyncing(true);
+    try {
+      const result = await syncFromMaster('pornopizza');
+      alert(`Sync complete!\nSynced: ${result.synced.join(', ')}\nErrors: ${result.errors.length > 0 ? result.errors.join(', ') : 'None'}`);
+      fetchTenants();
+    } catch (error: any) {
+      alert(`Sync failed: ${error.message}`);
+    } finally {
+      setSyncing(false);
+      setShowSyncConfirm(false);
+    }
   };
 
   const handleToggleActive = async (tenant: Tenant) => {
@@ -77,6 +105,13 @@ export default function BrandsPage() {
             Manage all pizza brands in your ecosystem. Total: {tenants.length} brands
           </p>
         </div>
+        <button
+          onClick={() => setShowSyncConfirm(true)}
+          disabled={syncing}
+          className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {syncing ? 'Syncing...' : 'Sync All from Master'}
+        </button>
       </div>
 
       {/* Delivery fee tiers management (based on selected brand from header) */}
@@ -200,12 +235,18 @@ export default function BrandsPage() {
                 </div>
 
                 {/* Actions */}
-                <div className="mt-6">
+                <div className="mt-6 space-y-2">
                   <button
                     onClick={() => handleEdit(tenant)}
                     className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-semibold transition-colors"
                   >
                     Edit Brand
+                  </button>
+                  <button
+                    onClick={() => handleClone(tenant)}
+                    className="w-full px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-semibold transition-colors"
+                  >
+                    Clone Brand
                   </button>
                 </div>
               </div>
@@ -234,6 +275,54 @@ export default function BrandsPage() {
           }}
           onUpdate={handleUpdate}
         />
+      )}
+
+      {/* Clone Modal */}
+      {cloningTenant && (
+        <CloneBrandModal
+          sourceTenant={cloningTenant}
+          isOpen={isCloneModalOpen}
+          onClose={() => {
+            setIsCloneModalOpen(false);
+            setCloningTenant(null);
+          }}
+          onSuccess={handleCloneSuccess}
+        />
+      )}
+
+      {/* Sync Confirmation Modal */}
+      {showSyncConfirm && (
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+          <div className="flex items-center justify-center min-h-screen px-4">
+            <div 
+              className="fixed inset-0 bg-gray-500 bg-opacity-75"
+              onClick={() => !syncing && setShowSyncConfirm(false)}
+            />
+            <div className="relative bg-white rounded-lg p-6 max-w-md">
+              <h3 className="text-lg font-semibold mb-4">Confirm Sync from Master</h3>
+              <p className="text-gray-600 mb-6">
+                This will synchronize products, delivery zones, and product mappings from PornoPizza 
+                to all other active tenants. Individual branding, email, and Wolt settings will be preserved.
+              </p>
+              <div className="flex gap-3 justify-end">
+                <button
+                  onClick={() => setShowSyncConfirm(false)}
+                  disabled={syncing}
+                  className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSyncFromMaster}
+                  disabled={syncing}
+                  className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 disabled:opacity-50"
+                >
+                  {syncing ? 'Syncing...' : 'Confirm Sync'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
       </div>
     // </ProtectedRoute> // Disabled for development

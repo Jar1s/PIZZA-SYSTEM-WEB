@@ -24,6 +24,15 @@ export function KPICards({ selectedTenant }: KPICardsProps = {}) {
 
   const fetchKPIs = useCallback(async () => {
     try {
+      // Get auth token for admin endpoints
+      const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json',
+      };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
       // Determine which tenant(s) to fetch
       const currentTenant = selectedTenant || getTenantSlug();
       const tenants = currentTenant === 'all' 
@@ -37,7 +46,8 @@ export function KPICards({ selectedTenant }: KPICardsProps = {}) {
       
       for (const tenant of tenants) {
         const res = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}/api/orders?tenantSlug=${tenant}`
+          `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}/api/orders?tenantSlug=${tenant}`,
+          { headers }
         );
         
         if (res.ok) {
@@ -56,6 +66,11 @@ export function KPICards({ selectedTenant }: KPICardsProps = {}) {
           activeOrders += orders.filter((o: any) => 
             o.status !== 'DELIVERED' && o.status !== 'CANCELED'
           ).length;
+        } else if (res.status === 401) {
+          // Unauthorized - redirect to login
+          console.error('Unauthorized - redirecting to login');
+          window.location.href = '/login';
+          return;
         }
       }
       

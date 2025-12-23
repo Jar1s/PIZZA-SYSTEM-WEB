@@ -47,6 +47,41 @@ export class TenantsController {
   async updateTenant(@Param('slug') slug: string, @Body() data: any) {
     return this.tenantsService.updateTenant(slug, data);
   }
+
+  /**
+   * Clone a tenant with all its products, delivery zones, and product mappings
+   * POST /api/tenants/:slug/clone
+   */
+  @Post(':slug/clone')
+  async cloneTenant(
+    @Param('slug') slug: string,
+    @Body() cloneData: {
+      name: string;
+      slug: string;
+      subdomain: string;
+      domain?: string;
+      theme?: any;
+      emailConfig?: any;
+      deliveryConfig?: any;
+      productOverrides?: Record<string, { displayName?: string; description?: string; subHeader?: string; image?: string }>;
+    }
+  ) {
+    return this.tenantsService.cloneTenant(slug, cloneData);
+  }
+
+  /**
+   * Sync functional data from master tenant to other tenants
+   * POST /api/tenants/sync-from-master
+   */
+  @Post('sync-from-master')
+  async syncFromMaster(
+    @Body() data: {
+      masterSlug: string;
+      targetSlugs?: string[];
+    }
+  ) {
+    return this.tenantsService.syncFromMaster(data.masterSlug, data.targetSlugs);
+  }
 }
 
 

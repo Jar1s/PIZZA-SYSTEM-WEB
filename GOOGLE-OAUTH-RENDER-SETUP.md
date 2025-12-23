@@ -137,3 +137,9 @@ Po úspešnom nastavení:
 
 
 
+
+
+
+
+
+

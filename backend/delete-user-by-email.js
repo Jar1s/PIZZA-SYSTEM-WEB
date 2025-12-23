@@ -2,17 +2,17 @@ const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
 async function deleteUserByEmail() {
-  const emailPattern = 'grindcast';
+  const emailToDelete = 'ivanatattooartshorts@gmail.com';
   
   try {
-    console.log(`🔍 Looking for user with email containing: ${emailPattern}`);
+    console.log(`🔍 Looking for user with email: ${emailToDelete}`);
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     
-    // Find user by email (case-insensitive)
+    // Find user by exact email (case-insensitive)
     const users = await prisma.user.findMany({
       where: {
         email: {
-          contains: emailPattern,
+          equals: emailToDelete,
           mode: 'insensitive',
         },
       },
@@ -24,7 +24,7 @@ async function deleteUserByEmail() {
     });
     
     if (users.length === 0) {
-      console.log(`❌ No user found with email containing "${emailPattern}"`);
+      console.log(`❌ No user found with email "${emailToDelete}"`);
       await prisma.$disconnect();
       return;
     }

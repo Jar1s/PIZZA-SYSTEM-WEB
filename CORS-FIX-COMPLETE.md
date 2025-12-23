@@ -77,3 +77,9 @@ Počkaj ~2-3 minúty na automatický redeploy na Render.com, potom obnov stránk
 
 
 
+
+
+
+
+
+

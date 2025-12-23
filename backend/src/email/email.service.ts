@@ -92,19 +92,27 @@ export class EmailService {
 
   /**
    * Get properly formatted email FROM address
+   * Supports tenant-specific email configuration
    */
-  private getEmailFrom(tenantName: string, tenantDomain: string): string {
+  private getEmailFrom(tenantName: string, tenantDomain: string, emailConfig?: any): string {
     // Log raw inputs for debugging
     this.logger.log(`📧 getEmailFrom called with tenantName: "${tenantName}" (length: ${tenantName.length}), tenantDomain: ${tenantDomain}`);
     this.logger.log(`📧 tenantName char codes: ${Array.from(tenantName).map(c => c.charCodeAt(0)).join(',')}`);
     
-    // If EMAIL_FROM is explicitly set, use it (but log it for debugging)
+    // Priority 1: Tenant-specific email config
+    if (emailConfig?.fromEmail) {
+      this.logger.log(`📧 Using tenant-specific fromEmail: ${emailConfig.fromEmail}`);
+      const cleanTenantName = this.cleanTenantName(tenantName);
+      return `"${cleanTenantName}" <${emailConfig.fromEmail}>`;
+    }
+    
+    // Priority 2: EMAIL_FROM env variable
     if (process.env.EMAIL_FROM) {
       this.logger.log(`📧 Using EMAIL_FROM from env: ${process.env.EMAIL_FROM}`);
       return process.env.EMAIL_FROM;
     }
 
-    // Otherwise, use SMTP_USER if available, or fallback to info@domain
+    // Priority 3: SMTP_USER or fallback to info@domain
     // IMPORTANT: Clean SMTP_USER - remove any spaces, quotes, or invalid characters
     let fromEmail = process.env.SMTP_USER || `info@${tenantDomain}`;
     fromEmail = fromEmail.trim();
@@ -123,6 +131,20 @@ export class EmailService {
     }
     
     // Format: "Display Name" <email@domain.com>
+    const cleanTenantName = this.cleanTenantName(tenantName);
+    const formattedFrom = `"${cleanTenantName}" <${fromEmail}>`;
+    
+    this.logger.log(`📧 Generated EMAIL_FROM: ${formattedFrom}`);
+    this.logger.log(`📧   - Cleaned tenantName: "${cleanTenantName}"`);
+    this.logger.log(`📧   - fromEmail: ${fromEmail}`);
+    
+    return formattedFrom;
+  }
+
+  /**
+   * Clean tenant name for email display
+   */
+  private cleanTenantName(tenantName: string): string {
     // Remove any extra spaces in tenantName and ensure it's clean
     // First, remove any non-printable characters and normalize whitespace
     let cleanTenantName = tenantName.trim();
@@ -135,17 +157,7 @@ export class EmailService {
     const safeTenantName = cleanTenantName.replace(/["<>]/g, '');
     
     // Final validation: if tenantName is empty or only spaces, use a default
-    const finalTenantName = safeTenantName.trim() || 'Pizza System';
-    
-    const formattedFrom = `"${finalTenantName}" <${fromEmail}>`;
-    this.logger.log(`📧 Generated EMAIL_FROM: ${formattedFrom}`);
-    this.logger.log(`📧   - Original tenantName: "${tenantName}" (${tenantName.length} chars)`);
-    this.logger.log(`📧   - Cleaned tenantName: "${cleanTenantName}" (${cleanTenantName.length} chars)`);
-    this.logger.log(`📧   - Safe tenantName: "${safeTenantName}" (${safeTenantName.length} chars)`);
-    this.logger.log(`📧   - Final tenantName: "${finalTenantName}"`);
-    this.logger.log(`📧   - fromEmail: ${fromEmail}`);
-    
-    return formattedFrom;
+    return safeTenantName.trim() || 'Pizza System';
   }
 
   /**
@@ -195,6 +207,7 @@ export class EmailService {
     tenantDomain: string,
     currency: string = 'EUR',
     tenantTheme?: any,
+    emailConfig?: any,
   ): Promise<void> {
     const customer = order.customer as any;
     const address = order.address as any;
@@ -283,7 +296,7 @@ export class EmailService {
       if (process.env.SMTP_HOST && this.transporter) {
         // Production: Actually send the email
         const info = await this.transporter.sendMail({
-          from: this.getEmailFrom(tenantName, tenantDomain),
+          from: this.getEmailFrom(tenantName, tenantDomain, emailConfig),
           to: customer.email,
           subject: `🍕 Objednávka prijatá #${orderNumber} - ${tenantName}`,
           html: emailHtml,
@@ -313,6 +326,7 @@ export class EmailService {
     tenantDomain: string,
     tenantSlug?: string,
     tenantTheme?: any,
+    emailConfig?: any,
   ): Promise<void> {
     // Generate frontend URL - use FRONTEND_URL if available, otherwise fix tenantDomain
     let frontendDomain = process.env.FRONTEND_URL || tenantDomain;
@@ -349,7 +363,7 @@ export class EmailService {
       if (process.env.SMTP_HOST && this.transporter) {
         // Production: Actually send the email
         const info = await this.transporter.sendMail({
-          from: this.getEmailFrom(tenantName, tenantDomain),
+          from: this.getEmailFrom(tenantName, tenantDomain, emailConfig),
           to: user.email,
           subject: `Nastavte si heslo pre váš účet - ${tenantName}`,
           html: emailHtml,
@@ -964,6 +978,7 @@ export class EmailService {
     newStatus: OrderStatus,
     tenantName: string,
     tenantDomain: string,
+    emailConfig?: any,
   ): Promise<void> {
     const customer = order.customer as any;
     if (!customer?.email) {
@@ -1040,7 +1055,7 @@ export class EmailService {
       if (process.env.SMTP_HOST && this.transporter) {
         // Production: Actually send the email
         const info = await this.transporter.sendMail({
-          from: this.getEmailFrom(tenantName, tenantDomain),
+          from: this.getEmailFrom(tenantName, tenantDomain, emailConfig),
           to: customer.email,
           subject: notification.subject,
           html: emailHtml,
@@ -1070,9 +1085,10 @@ export class EmailService {
     tenantDomain: string,
     tenantTheme?: any,
     tenantSlug?: string,
+    emailConfig?: any,
   ): Promise<void> {
     const emailHtml = this.buildWelcomeEmail(user, tenantName, tenantDomain, tenantTheme, tenantSlug);
-    const emailFrom = this.getEmailFrom(tenantName, tenantDomain);
+    const emailFrom = this.getEmailFrom(tenantName, tenantDomain, emailConfig);
     const emailSubject = `🎉 Vitajte v ${tenantName}!`;
 
     try {

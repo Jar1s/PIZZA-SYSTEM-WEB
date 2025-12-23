@@ -51,3 +51,9 @@ Ak chceš deploynúť konkrétny commit, zadaj:
 
 
 
+
+
+
+
+
+

@@ -93,7 +93,15 @@ export function OrderList({ todayOnly = false, selectedTenant }: OrderListProps 
 
   const fetchOrders = useCallback(async () => {
     const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
-    const headers: HeadersInit = token ? { 'Authorization': `Bearer ${token}` } : {};
+    
+    // If no token, redirect to login immediately
+    if (!token) {
+      console.log('No auth token found, redirecting to login');
+      window.location.href = '/login';
+      return;
+    }
+    
+    const headers: HeadersInit = { 'Authorization': `Bearer ${token}` };
     // Save scroll position before update
     const scrollPosition = window.scrollY;
     const isInitial = isInitialLoad.current;
@@ -129,14 +137,43 @@ export function OrderList({ todayOnly = false, selectedTenant }: OrderListProps 
         
         const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
         params.set('tenantSlug', tenant);
+        
+        // Debug: log request details
+        console.log('[OrderList] Fetching orders:', {
+          url: `${API_URL}/api/orders?${params}`,
+          hasToken: !!token,
+          tokenLength: token?.length,
+          headers: Object.keys(headers),
+        });
+        
         const res = await fetch(
           `${API_URL}/api/orders?${params}`,
           { headers }
         );
         
+        console.log('[OrderList] Response:', {
+          status: res.status,
+          statusText: res.statusText,
+          ok: res.ok,
+        });
+        
         if (res.ok) {
           const tenantOrders = await res.json();
           allOrders.push(...tenantOrders);
+        } else if (res.status === 401) {
+          // Unauthorized - token might be expired or invalid
+          const errorText = await res.text().catch(() => '');
+          console.error('[OrderList] 401 Unauthorized:', errorText);
+          // Don't redirect here - let the page-level auth check handle it
+          // Just skip this tenant's orders
+          continue;
+        } else if (res.status === 401) {
+          // Unauthorized - redirect to login
+          console.error('Unauthorized - redirecting to login');
+          window.location.href = '/login';
+          return;
+        } else {
+          console.error(`Failed to fetch orders for ${tenant}:`, res.status, await res.text());
         }
       }
       
@@ -231,17 +268,37 @@ export function OrderList({ todayOnly = false, selectedTenant }: OrderListProps 
       
       const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
       const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
+      
+      // Build headers with Authorization
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json',
+      };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      
+      console.log('[OrderList] Updating order status:', {
+        orderId,
+        newStatus,
+        hasToken: !!token,
+        tokenLength: token?.length,
+        url: `${API_URL}/api/orders/${orderId}/status`,
+      });
+      
       const res = await fetch(
         `${API_URL}/api/orders/${orderId}/status`,
         {
           method: 'PATCH',
-          headers: { 
-            'Content-Type': 'application/json',
-            ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
-          },
+          headers,
           body: JSON.stringify({ status: newStatus }),
         }
       );
+      
+      console.log('[OrderList] Status update response:', {
+        status: res.status,
+        statusText: res.statusText,
+        ok: res.ok,
+      });
       
       if (res.ok) {
         fetchOrders(); // Refresh list

@@ -69,3 +69,12 @@ export interface DeliveryConfig {
   defaultFeeCents?: number; // Default delivery fee if no zone matches
 }
 
+export interface EmailConfig {
+  fromEmail?: string;
+  smtpHost?: string;
+  smtpPort?: number;
+  smtpUser?: string;
+  smtpPassword?: string;
+  smtpSecure?: boolean;
+}
+

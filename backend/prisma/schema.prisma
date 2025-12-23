@@ -20,6 +20,7 @@ model Tenant {
   theme           Json
   paymentConfig   Json
   deliveryConfig  Json
+  emailConfig     Json             @default("{}")
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
   currency        String           @default("EUR")
@@ -278,4 +279,34 @@ model GlobalSettings {
   updatedAt DateTime @updatedAt
 
   @@map("global_settings")
+}
+
+// Audit log for tracking all tenant modifications
+model AuditLog {
+  id          String   @id @default(cuid())
+  tenantId    String?
+  action      String   // "CLONE", "SYNC", "UPDATE", "CREATE"
+  entityType  String   // "TENANT", "PRODUCT", "DELIVERYZONE"
+  entityId    String?
+  userId      String?  // Admin user who performed action
+  changes     Json?    // Before/after snapshot
+  metadata    Json?    // Additional context
+  createdAt   DateTime @default(now())
+  
+  @@map("audit_logs")
+  @@index([tenantId, action])
+  @@index([createdAt])
+}
+
+// Tenant backups for rollback capability
+model TenantBackup {
+  id          String   @id @default(cuid())
+  tenantId    String
+  snapshot    Json     // Full tenant data
+  createdAt   DateTime @default(now())
+  expiresAt   DateTime // Auto-delete after 30 days
+  
+  @@map("tenant_backups")
+  @@index([tenantId])
+  @@index([expiresAt])
 }

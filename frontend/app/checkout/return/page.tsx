@@ -6,11 +6,44 @@ import { useRouter, useSearchParams } from 'next/navigation';
 export default function PaymentReturnPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const orderId = searchParams.get('orderId');
-  const status = searchParams.get('status');
   const provider = searchParams.get('provider');
+  
+  // Standard parameters
+  let orderId = searchParams.get('orderId');
+  let status = searchParams.get('status');
+  
+  // GoPay specific parameters
+  const paymentSessionId = searchParams.get('paymentSessionId');
+  const gopayState = searchParams.get('state');
+  const orderNumber = searchParams.get('order_number');
 
   useEffect(() => {
+    // Handle GoPay specific parameters
+    if (provider === 'gopay') {
+      // If orderId is not in URL, try to get it from order_number
+      if (!orderId && orderNumber) {
+        orderId = orderNumber;
+      }
+      
+      // Map GoPay state to status
+      if (gopayState) {
+        switch (gopayState.toUpperCase()) {
+          case 'PAID':
+            status = 'success';
+            break;
+          case 'CANCELED':
+            status = 'canceled';
+            break;
+          case 'TIMEOUTED':
+            status = 'failed';
+            break;
+          default:
+            // If state is not recognized, use status from URL or default to failed
+            status = status || 'failed';
+        }
+      }
+    }
+
     if (!orderId) {
       router.push('/');
       return;
@@ -25,10 +58,10 @@ export default function PaymentReturnPage() {
     } else {
       // Payment failed or canceled
       setTimeout(() => {
-        router.push(`/checkout?error=payment_${status}&orderId=${orderId}`);
+        router.push(`/checkout?error=payment_${status || 'failed'}&orderId=${orderId}`);
       }, 1000);
     }
-  }, [orderId, status, router]);
+  }, [orderId, status, provider, gopayState, orderNumber, router]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">

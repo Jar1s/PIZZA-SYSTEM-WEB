@@ -73,16 +73,30 @@ export default function AnalyticsPage() {
       const days = timeRange;
       const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
       
+      // Get auth token for admin endpoints
+      const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json',
+      };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      
       // Fetch analytics based on selected tenant
       const endpoint = selectedTenant === 'all' 
         ? `${API_URL}/api/analytics/all?days=${days}`
         : `${API_URL}/api/analytics/${selectedTenant}?days=${days}`;
       
-      const res = await fetch(endpoint);
+      const res = await fetch(endpoint, { headers });
       if (res.ok) {
         const data = await res.json();
         setAnalytics(data);
       } else {
+        if (res.status === 401) {
+          // Unauthorized - redirect to login
+          window.location.href = '/login';
+          return;
+        }
         const errorText = await res.text();
         console.error('Failed to fetch analytics:', res.status, errorText);
         setAnalytics(null);

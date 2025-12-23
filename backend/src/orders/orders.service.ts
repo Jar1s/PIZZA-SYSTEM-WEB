@@ -61,7 +61,6 @@ export class OrdersService {
     private prisma: PrismaService,
     private emailService: EmailService,
     private storyousService: StoryousService,
-    @Inject(forwardRef(() => SettingsService))
     private settingsService: SettingsService,
     private productMappingService: ProductMappingService,
     private deliveryFeeTierService: DeliveryFeeTierService,
@@ -579,6 +578,8 @@ export class OrdersService {
     const currency = tenant.currency || 'EUR';
     // Get tenant theme for Storyous sync
     const tenantTheme = (tenant.theme || {}) as TenantTheme;
+    // Get tenant email config for tenant-specific email settings
+    const emailConfig = tenant.emailConfig || {};
     
     // Clean tenant.name before sending email - remove extra spaces and invalid characters
     let tenantName = String(tenant.name || '');
@@ -600,6 +601,7 @@ export class OrdersService {
       cleanedTenantName: tenantName,
       tenantNameLength: tenantName.length,
       tenantDomain,
+      hasEmailConfig: !!emailConfig?.fromEmail,
     });
     
     // Email service expects Prisma Order type
@@ -609,6 +611,7 @@ export class OrdersService {
       tenantDomain,
       currency,
       tenantTheme, // Pass tenant theme for colors and logo
+      emailConfig, // Pass tenant-specific email config
     );
 
     // Send password setup email if new account was created without password
@@ -624,6 +627,7 @@ export class OrdersService {
           tenantDomain,
           tenant.slug,
           tenantTheme, // Pass tenant theme for colors and logo
+          emailConfig, // Pass tenant-specific email config
         );
         this.logger.log(`✅ Password setup email sent to ${createdUser.email}`, { userId: createdUser.id, email: createdUser.email, tenantId });
       } catch (error: any) {
@@ -892,11 +896,13 @@ export class OrdersService {
     try {
       // Get global Storyous settings
       const storyousSettings = await this.settingsService.getStoryousSettings();
+      this.logger.log('[Storyous sync] Starting manual sync', { orderId, tenantId: orderWithStoryous.tenantId, settingsEnabled: storyousSettings?.enabled, merchantId: storyousSettings?.merchantId, placeId: storyousSettings?.placeId });
       // #region agent log
       fetch('http://127.0.0.1:7244/ingest/c8c401c8-9b71-4e06-9291-444154701c07',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'orders.service.ts:894',message:'storyous settings loaded',data:{enabled:storyousSettings?.enabled,merchantId:storyousSettings?.merchantId,placeId:storyousSettings?.placeId,hasMerchantId:!!storyousSettings?.merchantId,hasPlaceId:!!storyousSettings?.placeId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
       // #endregion
       
       if (!storyousSettings?.enabled || !storyousSettings?.merchantId || !storyousSettings?.placeId) {
+        this.logger.warn('[Storyous sync] Missing Storyous settings', { orderId, tenantId: orderWithStoryous.tenantId, settings: storyousSettings });
         return {
           success: false,
           message: 'Storyous is not configured. Please configure it in admin settings.',
@@ -910,6 +916,8 @@ export class OrdersService {
         customer: orderWithStoryous.customer as unknown as CustomerInfo,
         address: orderWithStoryous.address as unknown as Address,
       } as unknown as Order;
+
+      this.logger.debug('[Storyous sync] Payload ready', { orderId, merchantId: storyousSettings.merchantId, placeId: storyousSettings.placeId, totalCents: orderForStoryous.totalCents, items: orderForStoryous.items?.length });
       // #region agent log
       fetch('http://127.0.0.1:7244/ingest/c8c401c8-9b71-4e06-9291-444154701c07',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'orders.service.ts:910',message:'calling createOrder',data:{orderId:orderForStoryous.id,merchantId:storyousSettings.merchantId,placeId:storyousSettings.placeId,merchantIdType:typeof storyousSettings.merchantId,placeIdType:typeof storyousSettings.placeId,merchantIdLength:storyousSettings.merchantId?.length,placeIdLength:storyousSettings.placeId?.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
       // #endregion
@@ -924,6 +932,7 @@ export class OrdersService {
           where: { id: orderId },
           data: { storyousOrderId: storyousResult.id },
         });
+        this.logger.log('[Storyous sync] Success', { orderId, storyousOrderId: storyousResult.id, tenantId: orderWithStoryous.tenantId });
         this.logger.log(`✅ Order ${orderId} manually synced to Storyous: ${storyousResult.id}`, { orderId, storyousOrderId: storyousResult.id, tenantId: orderWithStoryous.tenantId });
         return {
           success: true,
@@ -932,6 +941,7 @@ export class OrdersService {
         };
       }
 
+      this.logger.error('[Storyous sync] Missing Storyous order ID', { orderId, tenantId: orderWithStoryous.tenantId });
       return {
         success: false,
         message: 'Storyous API did not return order ID',
