@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
+import { Injectable, BadRequestException, NotFoundException, Inject, forwardRef } from '@nestjs/common';
 import { AdyenService } from './adyen.service';
 import { GopayService } from './gopay.service';
 import { WepayService } from './wepay.service';
@@ -14,9 +14,12 @@ export class PaymentsService {
     private adyenService: AdyenService,
     private gopayService: GopayService,
     private wepayService: WepayService,
+    @Inject(forwardRef(() => OrdersService))
     private ordersService: OrdersService,
+    @Inject(forwardRef(() => OrderStatusService))
     private orderStatusService: OrderStatusService,
     private tenantsService: TenantsService,
+    @Inject(forwardRef(() => DeliveryService))
     private deliveryService: DeliveryService,
   ) {}
 
