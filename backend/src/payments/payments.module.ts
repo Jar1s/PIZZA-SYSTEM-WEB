@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { PaymentsService } from './payments.service';
 import { AdyenService } from './adyen.service';
 import { GopayService } from './gopay.service';
@@ -10,7 +10,11 @@ import { TenantsModule } from '../tenants/tenants.module';
 import { DeliveryModule } from '../delivery/delivery.module';
 
 @Module({
-  imports: [OrdersModule, TenantsModule, DeliveryModule],
+  imports: [
+    forwardRef(() => OrdersModule),
+    TenantsModule,
+    forwardRef(() => DeliveryModule),
+  ],
   controllers: [PaymentsController, WebhooksController],
   providers: [PaymentsService, AdyenService, GopayService, WepayService],
   exports: [PaymentsService],
