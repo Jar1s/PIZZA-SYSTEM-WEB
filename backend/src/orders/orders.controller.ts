@@ -51,14 +51,17 @@ export class OrdersController {
     });
 
     const tenant = await this.tenantsService.getTenantBySlug(tenantSlug);
-    const order = await this.ordersService.createOrder(tenant.id, data);
+    const result = await this.ordersService.createOrder(tenant.id, data);
+    
+    // Handle both return types: Order or { order: Order; authToken?: string; ... }
+    const order = 'order' in result ? result.order : result;
     
     this.logger.log('Order created successfully', {
       orderId: order.id,
       itemsCount: order.items?.length,
     });
     
-    return order;
+    return result;
   }
 }
 
