@@ -77,11 +77,6 @@ export function OrderCard({ order, onStatusUpdate, isExpanded = false, onToggleE
     order.status === OrderStatus.PAID ||
     order.status === OrderStatus.PREPARING
   );
-  // Show Wolt button while order is PAID or PREPARING (until delivery exists)
-  const canCreateWolt = !hasWoltDelivery && (
-    order.status === OrderStatus.PAID ||
-    order.status === OrderStatus.PREPARING
-  );
   const canCancelAnytime = order.status !== OrderStatus.DELIVERED && order.status !== OrderStatus.CANCELED;
   const isPreparing = order.status === OrderStatus.PREPARING;
   

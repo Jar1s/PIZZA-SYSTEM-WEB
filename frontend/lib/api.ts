@@ -570,52 +570,6 @@ export interface StoryousSettings {
   autoSync?: boolean;
 }
 
-export async function getStoryousSettings(): Promise<StoryousSettings | null> {
-  const token = localStorage.getItem('auth_token');
-  const headers: HeadersInit = { 'Content-Type': 'application/json' };
-  
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
-  }
-  
-  const res = await fetch(`${API_URL}/api/settings/storyous`, {
-    headers,
-  });
-  
-  if (res.status === 404) {
-    return null;
-  }
-  
-  if (!res.ok) {
-    const errorText = await res.text().catch(() => 'Failed to fetch Storyous settings');
-    throw new Error(errorText || 'Failed to fetch Storyous settings');
-  }
-  
-  return res.json();
-}
-
-export async function updateStoryousSettings(data: Partial<StoryousSettings>): Promise<StoryousSettings> {
-  const token = localStorage.getItem('auth_token');
-  const headers: HeadersInit = { 'Content-Type': 'application/json' };
-  
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
-  }
-  
-  const res = await fetch(`${API_URL}/api/settings/storyous`, {
-    method: 'PUT',
-    headers,
-    body: JSON.stringify(data),
-  });
-  
-  if (!res.ok) {
-    const errorText = await res.text().catch(() => 'Failed to update Storyous settings');
-    throw new Error(errorText || 'Failed to update Storyous settings');
-  }
-  
-  return res.json();
-}
-
 // Admin: Sync order to Storyous
 export async function syncOrderToStoryous(orderId: string, tenantSlug?: string): Promise<{ success: boolean; storyousOrderId?: string; message: string }> {
   // If tenantSlug is not provided, try to determine it from the order
