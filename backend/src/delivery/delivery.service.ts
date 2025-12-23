@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException, Logger } from '@nestjs/common';
+import { Injectable, BadRequestException, Logger, Inject, forwardRef } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { WoltDriveService } from './wolt-drive.service';
 import { OrdersService } from '../orders/orders.service';
@@ -14,7 +14,9 @@ export class DeliveryService {
   constructor(
     private prisma: PrismaService,
     private woltDrive: WoltDriveService,
+    @Inject(forwardRef(() => OrdersService))
     private ordersService: OrdersService,
+    @Inject(forwardRef(() => OrderStatusService))
     private orderStatusService: OrderStatusService,
     private tenantsService: TenantsService,
   ) {}
