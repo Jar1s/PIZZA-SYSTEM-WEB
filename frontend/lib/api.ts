@@ -811,9 +811,13 @@ export async function cloneTenant(
   }
 ): Promise<Tenant> {
   const token =
-    (typeof window !== 'undefined' && localStorage.getItem('access_token')) ||
-    (typeof window !== 'undefined' && localStorage.getItem('token')) ||
+    (typeof window !== 'undefined' && (localStorage.getItem('access_token') || localStorage.getItem('token') || localStorage.getItem('accessToken'))) ||
     '';
+
+  // Debug log to verify token presence (will show only in devtools)
+  if (typeof window !== 'undefined') {
+    console.debug('[cloneTenant] token present?', !!token);
+  }
 
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
