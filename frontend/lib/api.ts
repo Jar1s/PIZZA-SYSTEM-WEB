@@ -829,6 +829,7 @@ export async function cloneTenant(
   const res = await fetch(`${API_URL}/api/tenants/${sourceSlug}/clone`, {
     method: 'POST',
     headers,
+    credentials: 'include', // send cookies (admin session) if present
     body: JSON.stringify(cloneData),
   });
 
