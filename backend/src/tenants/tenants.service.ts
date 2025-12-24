@@ -238,111 +238,121 @@ export class TenantsService {
   ): Promise<Tenant> {
     this.logger.log(`[cloneTenant] Cloning tenant ${sourceSlug} to ${cloneData.slug}`);
 
-    // Use transaction to ensure all-or-nothing operation
-    return await this.prisma.$transaction(async (tx) => {
-      // 1. Fetch source tenant with all related data
-      const sourceTenant = await tx.tenant.findUnique({
-        where: { slug: sourceSlug },
-        include: {
-          products: true,
-          deliveryZones: true,
-          productMappings: true,
-        },
+    try {
+      // Use transaction to ensure all-or-nothing operation
+      return await this.prisma.$transaction(async (tx) => {
+        // 1. Fetch source tenant with all related data
+        const sourceTenant = await tx.tenant.findUnique({
+          where: { slug: sourceSlug },
+          include: {
+            products: true,
+            deliveryZones: true,
+            productMappings: true,
+          },
+        });
+
+        if (!sourceTenant) {
+          throw new NotFoundException(`Source tenant ${sourceSlug} not found`);
+        }
+
+        this.logger.log(`[cloneTenant] Found source tenant with ${sourceTenant.products.length} products, ${sourceTenant.deliveryZones.length} zones, ${sourceTenant.productMappings.length} mappings`);
+
+        // 2. Create new tenant
+        const newTenant = await tx.tenant.create({
+          data: {
+            name: cloneData.name,
+            slug: cloneData.slug,
+            subdomain: cloneData.subdomain,
+            domain: cloneData.domain || null,
+            currency: sourceTenant.currency,
+            paymentProvider: sourceTenant.paymentProvider,
+            theme: cloneData.theme || sourceTenant.theme,
+            // Keep paymentConfig and deliveryConfig separate for each clone
+            paymentConfig: cloneData.deliveryConfig ? {} : sourceTenant.paymentConfig,
+            deliveryConfig: cloneData.deliveryConfig || {},
+            emailConfig: cloneData.emailConfig || {},
+            isActive: true,
+          },
+        });
+
+        this.logger.log(`[cloneTenant] Created new tenant: ${newTenant.id}`);
+
+        // 3. Clone products (with optional overrides)
+        const productNameMap = new Map<string, string>(); // old name -> new name mapping
+
+        for (const product of sourceTenant.products) {
+          const override = cloneData.productOverrides?.[product.id];
+          
+          const newProduct = await tx.product.create({
+            data: {
+              slug: product.slug, // Preserve slug for tenant-specific clone
+              name: product.name,
+              displayName: override?.displayName || product.displayName,
+              description: override?.description || product.description,
+              subHeader: override?.subHeader || product.subHeader,
+              priceCents: product.priceCents,
+              taxRate: product.taxRate,
+              category: product.category,
+              image: override?.image || product.image,
+              modifiers: product.modifiers,
+              isActive: product.isActive,
+              isBestSeller: product.isBestSeller,
+              allergens: product.allergens,
+              weightGrams: product.weightGrams,
+              tenant: { connect: { id: newTenant.id } },
+            },
+          });
+
+          productNameMap.set(product.name, newProduct.name);
+        }
+
+        this.logger.log(`[cloneTenant] Cloned ${productNameMap.size} products`);
+
+        // 4. Clone delivery zones
+        for (const zone of sourceTenant.deliveryZones) {
+          await tx.deliveryZone.create({
+            data: {
+              tenantId: newTenant.id,
+              name: zone.name,
+              deliveryFeeCents: zone.deliveryFeeCents,
+              minOrderCents: zone.minOrderCents,
+              postalCodes: zone.postalCodes,
+              cityNames: zone.cityNames,
+              cityParts: zone.cityParts,
+              isActive: zone.isActive,
+              priority: zone.priority,
+            },
+          });
+        }
+
+        this.logger.log(`[cloneTenant] Cloned ${sourceTenant.deliveryZones.length} delivery zones`);
+
+        // 5. Clone product mappings
+        for (const mapping of sourceTenant.productMappings) {
+          await tx.productMapping.create({
+            data: {
+              tenantId: newTenant.id,
+              externalIdentifier: mapping.externalIdentifier,
+              internalProductName: mapping.internalProductName,
+              source: mapping.source,
+            },
+          });
+        }
+
+        this.logger.log(`[cloneTenant] Cloned ${sourceTenant.productMappings.length} product mappings`);
+        this.logger.log(`[cloneTenant] Successfully cloned tenant ${sourceSlug} to ${cloneData.slug}`);
+
+        return newTenant as any as Tenant;
       });
-
-      if (!sourceTenant) {
-        throw new NotFoundException(`Source tenant ${sourceSlug} not found`);
+    } catch (error: any) {
+      // Handle unique constraint errors (slug/subdomain/domain must be unique)
+      if (error?.code === 'P2002' && error?.meta?.target) {
+        this.logger.error('[cloneTenant] Unique constraint failed', { target: error.meta.target, cloneData, error: error.message });
+        throw new BadRequestException(`Tenant with the same ${error.meta.target} already exists`);
       }
-
-      this.logger.log(`[cloneTenant] Found source tenant with ${sourceTenant.products.length} products, ${sourceTenant.deliveryZones.length} zones, ${sourceTenant.productMappings.length} mappings`);
-
-      // 2. Create new tenant
-      const newTenant = await tx.tenant.create({
-        data: {
-          name: cloneData.name,
-          slug: cloneData.slug,
-          subdomain: cloneData.subdomain,
-          domain: cloneData.domain || null,
-          currency: sourceTenant.currency,
-          paymentProvider: sourceTenant.paymentProvider,
-          theme: cloneData.theme || sourceTenant.theme,
-          // Keep paymentConfig and deliveryConfig separate for each clone
-          paymentConfig: cloneData.deliveryConfig ? {} : sourceTenant.paymentConfig,
-          deliveryConfig: cloneData.deliveryConfig || {},
-          emailConfig: cloneData.emailConfig || {},
-          isActive: true,
-        },
-      });
-
-      this.logger.log(`[cloneTenant] Created new tenant: ${newTenant.id}`);
-
-      // 3. Clone products (with optional overrides)
-      const productNameMap = new Map<string, string>(); // old name -> new name mapping
-
-      for (const product of sourceTenant.products) {
-        const override = cloneData.productOverrides?.[product.id];
-        
-        const newProduct = await tx.product.create({
-          data: {
-            slug: product.slug, // Preserve slug for tenant-specific clone
-            name: product.name,
-            displayName: override?.displayName || product.displayName,
-            description: override?.description || product.description,
-            subHeader: override?.subHeader || product.subHeader,
-            priceCents: product.priceCents,
-            taxRate: product.taxRate,
-            category: product.category,
-            image: override?.image || product.image,
-            modifiers: product.modifiers,
-            isActive: product.isActive,
-            isBestSeller: product.isBestSeller,
-            allergens: product.allergens,
-            weightGrams: product.weightGrams,
-            tenant: { connect: { id: newTenant.id } },
-          },
-        });
-
-        productNameMap.set(product.name, newProduct.name);
-      }
-
-      this.logger.log(`[cloneTenant] Cloned ${productNameMap.size} products`);
-
-      // 4. Clone delivery zones
-      for (const zone of sourceTenant.deliveryZones) {
-        await tx.deliveryZone.create({
-          data: {
-            tenantId: newTenant.id,
-            name: zone.name,
-            deliveryFeeCents: zone.deliveryFeeCents,
-            minOrderCents: zone.minOrderCents,
-            postalCodes: zone.postalCodes,
-            cityNames: zone.cityNames,
-            cityParts: zone.cityParts,
-            isActive: zone.isActive,
-            priority: zone.priority,
-          },
-        });
-      }
-
-      this.logger.log(`[cloneTenant] Cloned ${sourceTenant.deliveryZones.length} delivery zones`);
-
-      // 5. Clone product mappings
-      for (const mapping of sourceTenant.productMappings) {
-        await tx.productMapping.create({
-          data: {
-            tenantId: newTenant.id,
-            externalIdentifier: mapping.externalIdentifier,
-            internalProductName: mapping.internalProductName,
-            source: mapping.source,
-          },
-        });
-      }
-
-      this.logger.log(`[cloneTenant] Cloned ${sourceTenant.productMappings.length} product mappings`);
-      this.logger.log(`[cloneTenant] Successfully cloned tenant ${sourceSlug} to ${cloneData.slug}`);
-
-      return newTenant as any as Tenant;
-    });
+      this.logger.error('[cloneTenant] Failed to clone tenant', { sourceSlug, cloneData, error: error?.message, stack: error?.stack });
+      throw error;
+    }
   }
 
   /**
