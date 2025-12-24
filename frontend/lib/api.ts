@@ -811,17 +811,18 @@ export async function cloneTenant(
   }
 ): Promise<Tenant> {
   const token =
-    (typeof window !== 'undefined' && (localStorage.getItem('access_token') || localStorage.getItem('token') || localStorage.getItem('accessToken'))) ||
-    '';
+    (typeof window !== 'undefined' && (
+      localStorage.getItem('auth_token') ||
+      localStorage.getItem('access_token') ||
+      localStorage.getItem('token') ||
+      localStorage.getItem('accessToken') ||
+      localStorage.getItem('customer_refresh_token')
+    )) ||
+    null;
 
-  // Debug log to verify token presence (will show only in devtools)
-  if (typeof window !== 'undefined') {
-    console.debug('[cloneTenant] token present?', !!token);
-  }
+  console.log('[cloneTenant] token present?', !!token);
 
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-  };
+  const headers: HeadersInit = { 'Content-Type': 'application/json' };
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
   }
@@ -829,12 +830,12 @@ export async function cloneTenant(
   const res = await fetch(`${API_URL}/api/tenants/${sourceSlug}/clone`, {
     method: 'POST',
     headers,
-    credentials: 'include', // send cookies (admin session) if present
+    credentials: 'include',
     body: JSON.stringify(cloneData),
   });
 
   if (!res.ok) {
-    const errorText = await res.text();
+    const errorText = await res.text().catch(() => 'Unknown error');
     throw new Error(`Failed to clone tenant: ${errorText}`);
   }
 
