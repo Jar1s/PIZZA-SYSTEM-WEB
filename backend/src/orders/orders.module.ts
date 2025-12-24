@@ -1,7 +1,7 @@
 import { Module, forwardRef } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { OrdersService } from './orders.service';
-import { OrdersController, AdminOrdersController } from './orders.controller';
+import { OrdersController, AdminOrdersController, TrackingController } from './orders.controller';
 import { OrderStatusService } from './order-status.service';
 import { OrderNumberService } from './order-number.service';
 import { PrismaModule } from '../prisma/prisma.module';
@@ -30,10 +30,9 @@ import { PaymentsModule } from '../payments/payments.module';
       signOptions: { expiresIn: '1h' },
     }),
   ],
-  controllers: [OrdersController, AdminOrdersController],
+  controllers: [OrdersController, AdminOrdersController, TrackingController],
   providers: [OrdersService, OrderStatusService, OrderNumberService],
   exports: [OrdersService, OrderStatusService, OrderNumberService],
 })
 export class OrdersModule {}
-
 
