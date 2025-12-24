@@ -350,8 +350,9 @@ export class TenantsService {
         this.logger.error('[cloneTenant] Unique constraint failed', { target: error.meta.target, cloneData, error: error.message });
         throw new BadRequestException(`Tenant with the same ${error.meta.target} already exists`);
       }
+      // Fallback: return a controlled error instead of generic 500
       this.logger.error('[cloneTenant] Failed to clone tenant', { sourceSlug, cloneData, error: error?.message, stack: error?.stack });
-      throw error;
+      throw new BadRequestException(error?.message || 'Failed to clone tenant');
     }
   }
 
