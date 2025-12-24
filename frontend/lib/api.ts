@@ -810,11 +810,21 @@ export async function cloneTenant(
     productOverrides?: Record<string, any>;
   }
 ): Promise<Tenant> {
+  const token =
+    (typeof window !== 'undefined' && localStorage.getItem('access_token')) ||
+    (typeof window !== 'undefined' && localStorage.getItem('token')) ||
+    '';
+
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
   const res = await fetch(`${API_URL}/api/tenants/${sourceSlug}/clone`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
+    headers,
     body: JSON.stringify(cloneData),
   });
 
