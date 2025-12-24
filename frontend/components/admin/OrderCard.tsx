@@ -108,12 +108,8 @@ export function OrderCard({ order, onStatusUpdate, isExpanded = false, onToggleE
   const canCreateWolt =
     !hasWoltDelivery &&
     (order.status === OrderStatus.PAID || order.status === OrderStatus.PREPARING || order.status === OrderStatus.READY);
-  const canShowCancel = [
-    OrderStatus.PAID,
-    OrderStatus.PREPARING,
-    OrderStatus.READY,
-    OrderStatus.OUT_FOR_DELIVERY,
-  ].includes(order.status);
+  // Show cancel for anything except delivered/canceled
+  const canShowCancel = order.status !== OrderStatus.DELIVERED && order.status !== OrderStatus.CANCELED;
   
   // Get translated status label
   const getStatusLabel = (status: OrderStatus): string => {
