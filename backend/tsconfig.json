@@ -24,7 +24,7 @@
     "paths": {
       "@pizza-ecosystem/shared": ["../shared"]
     }
-  }
+  },
+  "include": ["src/**/*.ts", "test/**/*.ts"],
+  "exclude": ["node_modules", "dist", "prisma/**", "api/**"]
 }
-
-

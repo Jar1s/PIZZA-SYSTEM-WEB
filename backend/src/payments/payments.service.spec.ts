@@ -352,6 +352,7 @@ describe('PaymentsService', () => {
         merchantReference: 'order-123',
         success: true,
         paymentRef: 'gopay-123',
+        eventType: 'PAID',
       });
       mockOrdersService.getOrderById.mockResolvedValue(mockOrder);
       mockOrdersService.updatePaymentRef.mockResolvedValue(undefined);
@@ -384,6 +385,7 @@ describe('PaymentsService', () => {
         merchantReference: 'order-123',
         success: false,
         paymentRef: 'gopay-123',
+        eventType: 'CANCELED',
       });
       mockOrdersService.getOrderById.mockResolvedValue(mockOrder);
       mockOrdersService.updatePaymentRef.mockResolvedValue(undefined);
@@ -474,4 +476,3 @@ describe('PaymentsService', () => {
     });
   });
 });
-

@@ -5,21 +5,27 @@ import { CustomerAuthService } from './customer-auth.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { SmsService } from './sms.service';
 import * as bcrypt from 'bcryptjs';
+import { EmailService } from '../email/email.service';
+import { TenantsService } from '../tenants/tenants.service';
 
 describe('CustomerAuthService', () => {
   let service: CustomerAuthService;
   let prismaService: PrismaService;
   let jwtService: JwtService;
   let smsService: SmsService;
+  let emailService: EmailService;
+  let tenantsService: TenantsService;
 
   const mockPrismaService = {
     user: {
       findUnique: jest.fn(),
+      findFirst: jest.fn(),
       create: jest.fn(),
       update: jest.fn(),
     },
     refreshToken: {
       create: jest.fn(),
+      deleteMany: jest.fn().mockResolvedValue({}),
     },
   };
 
@@ -29,6 +35,16 @@ describe('CustomerAuthService', () => {
 
   const mockSmsService = {
     verifyCode: jest.fn(),
+  };
+
+  const mockEmailService = {
+    sendPasswordResetEmail: jest.fn(),
+    sendOrderConfirmation: jest.fn(),
+    sendPasswordSetupEmail: jest.fn(),
+  };
+
+  const mockTenantsService = {
+    getTenantBySlug: jest.fn().mockResolvedValue({ id: 'tenant-1', slug: 'tenant-1', isActive: true }),
   };
 
   beforeEach(async () => {
@@ -47,6 +63,14 @@ describe('CustomerAuthService', () => {
           provide: SmsService,
           useValue: mockSmsService,
         },
+        {
+          provide: EmailService,
+          useValue: mockEmailService,
+        },
+        {
+          provide: TenantsService,
+          useValue: mockTenantsService,
+        },
       ],
     }).compile();
 
@@ -54,6 +78,8 @@ describe('CustomerAuthService', () => {
     prismaService = module.get<PrismaService>(PrismaService);
     jwtService = module.get<JwtService>(JwtService);
     smsService = module.get<SmsService>(SmsService);
+    emailService = module.get<EmailService>(EmailService);
+    tenantsService = module.get<TenantsService>(TenantsService);
   });
 
   afterEach(() => {
@@ -185,7 +211,7 @@ describe('CustomerAuthService', () => {
 
   describe('checkEmailExists', () => {
     it('should return true if email exists', async () => {
-      mockPrismaService.user.findUnique.mockResolvedValue({
+      mockPrismaService.user.findFirst.mockResolvedValue({
         id: 'user123',
         email: 'test@example.com',
       });
@@ -196,7 +222,7 @@ describe('CustomerAuthService', () => {
     });
 
     it('should return false if email does not exist', async () => {
-      mockPrismaService.user.findUnique.mockResolvedValue(null);
+      mockPrismaService.user.findFirst.mockResolvedValue(null);
 
       const result = await service.checkEmailExists('nonexistent@example.com');
 
@@ -251,4 +277,3 @@ describe('CustomerAuthService', () => {
     });
   });
 });
-

@@ -16,7 +16,7 @@ export class TenantsController {
   @Get('resolve')
   async resolveTenant(@Query('domain') domain: string) {
     // Try exact domain match first
-    let tenant = await this.tenantsService.getTenantByDomain(domain);
+    let tenant = await this.tenantsService.findTenantByDomain(domain);
     
     // If not found, try subdomain extraction
     if (!tenant) {
@@ -100,7 +100,6 @@ export class TenantsController {
     return this.tenantsService.syncFromMaster(data.masterSlug, data.targetSlugs);
   }
 }
-
 
 
 

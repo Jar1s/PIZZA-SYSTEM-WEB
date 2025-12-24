@@ -29,30 +29,8 @@ export class TenantsService {
   }
 
   async getTenantByDomain(domain: string): Promise<Tenant | null> {
-    this.logger.log(`[getTenantByDomain] Looking for tenant with domain: ${domain}`);
-    
-    const tenant = await this.prisma.tenant.findFirst({
-      where: {
-        OR: [
-          { domain: domain },
-          { subdomain: domain.split('.')[0] }
-        ],
-        isActive: true
-      }
-    });
-    
-    if (tenant) {
-      this.logger.log(`[getTenantByDomain] Tenant found: ${tenant.name} (slug: ${tenant.slug})`);
-      try {
-        return TenantResponseSchema.parse(tenant) as unknown as Tenant;
-      } catch (error) {
-        this.logger.error(`Tenant response validation failed for domain ${domain}`, { error, tenant });
-        return tenant as any as Tenant;
-      }
-    }
-    
-    this.logger.warn(`[getTenantByDomain] Tenant not found for domain: ${domain}`);
-    return null;
+    // Backward-compatible wrapper for findTenantByDomain
+    return this.findTenantByDomain(domain);
   }
 
   async getTenantBySlug(slug: string): Promise<Tenant> {
@@ -98,32 +76,31 @@ export class TenantsService {
     }
   }
 
-  async getTenantByDomain(domain: string): Promise<Tenant> {
+  async findTenantByDomain(domain: string): Promise<Tenant | null> {
+    this.logger.log(`[findTenantByDomain] Looking for tenant with domain: ${domain}`);
+    
     const tenant = await this.prisma.tenant.findFirst({
       where: {
         OR: [
-          { domain },
-          { subdomain: domain.split('.')[0] },
+          { domain: domain },
+          { subdomain: domain.split('.')[0] }
         ],
-      },
+        isActive: true
+      }
     });
     
-    if (!tenant) {
-      throw new NotFoundException(`Tenant for domain ${domain} not found`);
+    if (tenant) {
+      this.logger.log(`[findTenantByDomain] Tenant found: ${tenant.name} (slug: ${tenant.slug})`);
+      try {
+        return TenantResponseSchema.parse(tenant) as unknown as Tenant;
+      } catch (error) {
+        this.logger.error(`Tenant response validation failed for domain ${domain}`, { error, tenant });
+        return tenant as any as Tenant;
+      }
     }
     
-    // Check if tenant is active
-    if (!tenant.isActive) {
-      throw new NotFoundException(`Tenant for domain ${domain} is not active`);
-    }
-    
-    // Validate response with Zod
-    try {
-      return TenantResponseSchema.parse(tenant) as unknown as Tenant;
-    } catch (error) {
-      this.logger.error(`Tenant response validation failed for domain ${domain}`, { error, tenant });
-      return tenant as any as Tenant;
-    }
+    this.logger.warn(`[findTenantByDomain] Tenant not found for domain: ${domain}`);
+    return null;
   }
 
   async getAllTenants(includeInactive: boolean = false): Promise<Tenant[]> {
@@ -302,7 +279,7 @@ export class TenantsService {
         
         const newProduct = await tx.product.create({
           data: {
-            tenantId: newTenant.id,
+            slug: product.slug, // Preserve slug for tenant-specific clone
             name: product.name,
             displayName: override?.displayName || product.displayName,
             description: override?.description || product.description,
@@ -316,6 +293,7 @@ export class TenantsService {
             isBestSeller: product.isBestSeller,
             allergens: product.allergens,
             weightGrams: product.weightGrams,
+            tenant: { connect: { id: newTenant.id } },
           },
         });
 
@@ -554,4 +532,3 @@ export class TenantsService {
     });
   }
 }
-
