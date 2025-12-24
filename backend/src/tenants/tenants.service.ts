@@ -137,14 +137,19 @@ export class TenantsService {
     // When isActive is set to false, the tenant is just disabled, not removed
     // All tenant data (products, orders, etc.) remains intact
     
-    // First, verify the tenant exists
-    const existingTenant = await this.prisma.tenant.findUnique({
-      where: { slug },
-      select: { theme: true, paymentConfig: true, deliveryConfig: true },
+    // First, verify the tenant exists (accept slug or subdomain for backwards compatibility)
+    const existingTenant = await this.prisma.tenant.findFirst({
+      where: {
+        OR: [
+          { slug },
+          { subdomain: slug },
+        ],
+      },
+      select: { id: true, slug: true, subdomain: true, theme: true, paymentConfig: true, deliveryConfig: true },
     });
     
     if (!existingTenant) {
-      throw new NotFoundException(`Tenant with slug ${slug} not found`);
+      throw new NotFoundException(`Tenant with slug or subdomain ${slug} not found`);
     }
     
     // If theme is being updated, merge it with existing theme
@@ -197,7 +202,7 @@ export class TenantsService {
     
     // Update tenant - this only modifies the record, never deletes it
     const tenant = await this.prisma.tenant.update({
-      where: { slug },
+      where: { id: existingTenant.id },
       data,
     });
     

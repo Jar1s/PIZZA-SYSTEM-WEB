@@ -13,6 +13,7 @@ import { AnalyticsModule } from './analytics/analytics.module';
 import { DatabaseErrorInterceptor } from './common/interceptors/database-error.interceptor';
 import { HealthModule } from './health/health.module';
 import { SettingsModule } from './settings/settings.module';
+import { CustomerModule } from './customer/customer.module';
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { SettingsModule } from './settings/settings.module';
     AnalyticsModule,
     HealthModule,
     SettingsModule,
+    CustomerModule,
   ],
   controllers: [AppController],
   providers: [
