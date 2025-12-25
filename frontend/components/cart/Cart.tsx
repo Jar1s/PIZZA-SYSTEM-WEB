@@ -30,6 +30,8 @@ export function Cart({ tenant = null, isDark: isDarkOverride }: CartProps) {
   // Use tenant from props or context
   const effectiveTenant = tenant || tenantFromContext;
   const isDark = typeof isDarkOverride === 'boolean' ? isDarkOverride : isDarkTheme(effectiveTenant);
+  const primaryColor = effectiveTenant?.theme?.primaryColor || 'var(--color-primary)';
+  const secondaryColor = effectiveTenant?.theme?.secondaryColor || 'var(--color-secondary)';
   
   // Check maintenance mode (manual or automatic based on opening hours)
   const maintenanceMode = useMemo(() => {
@@ -210,7 +212,10 @@ export function Cart({ tenant = null, isDark: isDarkOverride }: CartProps) {
       >
         <div className="flex items-start justify-between gap-4 mb-6">
           <div>
-            <p className={`text-xs uppercase tracking-[0.4em] mb-2 ${isDark ? 'text-rose-200' : 'text-gray-400'}`}>
+            <p
+              className="text-xs uppercase tracking-[0.4em] mb-2"
+              style={{ color: isDark ? secondaryColor : secondaryColor }}
+            >
               {t.cartBadge}
             </p>
             <h2 className="text-3xl font-black tracking-tight">{t.yourCart}</h2>
@@ -218,14 +223,16 @@ export function Cart({ tenant = null, isDark: isDarkOverride }: CartProps) {
           </div>
           <button
             onClick={closeCart}
-            className={`rounded-full w-10 h-10 flex items-center justify-center transition-colors ${
-              isDark ? 'bg-white/10 hover:bg-white/20 text-white' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
-            }`}
-            aria-label="Zavrieť košík"
-          >
-            &times;
-          </button>
-        </div>
+              className="rounded-full w-10 h-10 flex items-center justify-center transition-colors text-white"
+              style={{
+                background: `linear-gradient(135deg, ${primaryColor}, ${secondaryColor})`,
+                boxShadow: isDark ? '0 10px 25px rgba(0,0,0,0.35)' : '0 8px 18px rgba(0,0,0,0.15)',
+              }}
+              aria-label="Zavrieť košík"
+            >
+              &times;
+            </button>
+          </div>
 
         {items.length === 0 ? (
           <div className="flex-1 flex flex-col items-center justify-center text-center gap-4">
@@ -272,15 +279,13 @@ export function Cart({ tenant = null, isDark: isDarkOverride }: CartProps) {
                 onClick={handleCheckout}
                 disabled={maintenanceMode}
                 className={`w-full py-3 sm:py-4 rounded-full text-base sm:text-lg font-semibold shadow-lg text-white touch-manipulation min-h-[48px] ${
-                  maintenanceMode 
-                    ? 'opacity-50 cursor-not-allowed' 
-                    : getButtonGradientClass(effectiveTenant)
+                  maintenanceMode ? 'opacity-50 cursor-not-allowed' : getButtonGradientClass(effectiveTenant)
                 }`}
                 style={{
                   ...(maintenanceMode ? {} : getButtonStyle(effectiveTenant, isDark)),
                   backgroundColor: maintenanceMode 
                     ? '#999' 
-                    : (effectiveTenant?.theme?.primaryColor || 'var(--color-primary)'),
+                    : (primaryColor),
                 }}
               >
                 {maintenanceMode 

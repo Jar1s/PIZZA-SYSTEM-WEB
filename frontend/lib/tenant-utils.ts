@@ -131,23 +131,32 @@ export function getSectionShellClass(tenant: Tenant | null): string {
  */
 export function getButtonGradientClass(tenant: Tenant | null): string {
   const config = getLayoutConfig(tenant);
-  
+  // Keep the gradient utility so we can pair it with inline styles
+  // (colors are injected via getButtonStyle to respect tenant theme)
   if (config.backgroundStyle === 'black' || config.headerStyle === 'dark') {
-    return 'bg-gradient-to-r from-[#e91e63] via-[#ff2d7a] to-[#ff006e] text-white';
+    return 'bg-gradient-to-r text-white shadow-lg';
   }
-  
-  return 'text-white';
+
+  return 'bg-gradient-to-r text-white';
 }
 
 /**
  * Get button style object (for inline styles)
  */
 export function getButtonStyle(tenant: Tenant | null, isDark: boolean): React.CSSProperties | undefined {
-  if (!isDark) {
-    const primaryColor = tenant?.theme?.primaryColor || '#E91E63';
-    return { backgroundColor: primaryColor };
-  }
-  return undefined;
+  const primaryColor = tenant?.theme?.primaryColor || 'var(--color-primary)';
+  const secondaryColor = tenant?.theme?.secondaryColor || 'var(--color-secondary)';
+  const gradient = `linear-gradient(135deg, ${primaryColor}, ${secondaryColor})`;
+
+  return {
+    backgroundImage: gradient,
+    color: '#fff',
+    boxShadow: isDark
+      ? '0 10px 30px rgba(0,0,0,0.45)'
+      : '0 10px 26px rgba(0,0,0,0.22)',
+    borderColor: secondaryColor,
+    backgroundColor: primaryColor,
+  };
 }
 
 /**

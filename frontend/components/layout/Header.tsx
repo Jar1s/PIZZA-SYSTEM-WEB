@@ -38,6 +38,8 @@ export function Header({ tenant }: HeaderProps) {
   const layoutConfig = getLayoutConfig(normalizedTenant);
   const headerStyle = layoutConfig.headerStyle;
   const isDarkTheme = headerStyle === 'dark';
+  const primaryColor = normalizedTenant?.theme?.primaryColor || 'var(--color-primary)';
+  const secondaryColor = normalizedTenant?.theme?.secondaryColor || 'var(--color-secondary)';
 
   const navItems = [
     { id: 'hero', label: t.home },
@@ -238,11 +240,13 @@ export function Header({ tenant }: HeaderProps) {
             onMouseDown={(e) => {
               e.stopPropagation();
             }}
-            className={`relative z-50 flex items-center gap-2 rounded-full px-3 sm:px-4 py-2 min-h-[44px] font-semibold text-white transition-colors shadow-lg touch-manipulation ${
-              isDarkTheme
-                ? 'bg-gradient-to-r from-[#ff5e00] via-[#ff0066] to-[#ff2d55] hover:brightness-110 active:brightness-90'
-                : 'bg-red-600 hover:bg-red-700 active:bg-red-800'
-            }`}
+            className="relative z-50 flex items-center gap-2 rounded-full px-3 sm:px-4 py-2 min-h-[44px] font-semibold text-white shadow-lg touch-manipulation transition-all"
+            style={{
+              backgroundImage: `linear-gradient(135deg, ${primaryColor}, ${secondaryColor})`,
+              boxShadow: isDarkTheme
+                ? '0 15px 35px rgba(0,0,0,0.45)'
+                : '0 12px 30px rgba(0,0,0,0.20)',
+            }}
             aria-label={t.cart}
           >
             <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -255,9 +259,12 @@ export function Header({ tenant }: HeaderProps) {
             </svg>
             <span className="hidden sm:inline">{t.cart}</span>
             {itemCount > 0 && (
-              <span className={`absolute -top-2 -right-2 flex h-5 w-5 items-center justify-center rounded-full text-xs font-bold text-white ${
-                isDarkTheme ? 'bg-white/20 border border-white/40 backdrop-blur' : 'bg-red-600'
-              }`}>
+              <span
+                className="absolute -top-2 -right-2 flex h-5 w-5 items-center justify-center rounded-full text-xs font-bold text-white border border-white/40 backdrop-blur"
+                style={{
+                  backgroundColor: secondaryColor,
+                }}
+              >
                 {itemCount}
               </span>
             )}
