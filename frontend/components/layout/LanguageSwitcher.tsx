@@ -9,16 +9,19 @@ export default function LanguageSwitcher() {
   const { language, setLanguage } = useLanguage();
   const { tenant } = useTenant();
   const isDark = isDarkTheme(tenant);
+  const primary = tenant?.theme?.primaryColor || 'var(--color-primary)';
+  const secondary = tenant?.theme?.secondaryColor || 'var(--color-secondary)';
 
   const activeClass = isDark
-    ? 'bg-gradient-to-r from-[#ff5e00] via-[#ff0066] to-[#ff2d55] text-white shadow-lg'
-    : 'bg-[var(--color-primary)] text-white shadow';
+    ? `bg-gradient-to-r from-[${primary}] to-[${secondary}] text-white shadow-lg`
+    : `bg-gradient-to-r from-[${primary}] to-[${secondary}] text-white shadow`;
 
   return (
     <div 
       className={`flex items-center gap-1 rounded-full p-1 border ${
-        isDark ? 'bg-white/5 border-white/15' : 'bg-white border-gray-200'
+        isDark ? 'bg-white/5 border-white/15' : 'bg-white'
       }`}
+      style={{ borderColor: isDark ? undefined : secondary }}
     >
       <button
         onClick={() => setLanguage('sk')}
