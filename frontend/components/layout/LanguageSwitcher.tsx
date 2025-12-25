@@ -10,7 +10,7 @@ export default function LanguageSwitcher() {
   const { tenant } = useTenant();
   const isDark = isDarkTheme(tenant);
   const primary = tenant?.theme?.primaryColor || 'var(--color-primary)';
-  const secondary = tenant?.theme?.secondaryColor || 'var(--color-secondary)';
+  const secondary = primary; // language switcher now purely primary
 
   const activeClass = isDark
     ? `bg-gradient-to-r from-[${primary}] to-[${secondary}] text-white shadow-lg`

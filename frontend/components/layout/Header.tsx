@@ -242,7 +242,7 @@ export function Header({ tenant }: HeaderProps) {
             }}
             className="relative z-50 flex items-center gap-2 rounded-full px-3 sm:px-4 py-2 min-h-[44px] font-semibold text-white shadow-lg touch-manipulation transition-all"
             style={{
-              backgroundImage: `linear-gradient(135deg, ${primaryColor}, ${secondaryColor})`,
+              backgroundImage: `linear-gradient(135deg, ${secondaryColor}, ${secondaryColor})`,
               boxShadow: isDarkTheme
                 ? '0 15px 35px rgba(0,0,0,0.45)'
                 : '0 12px 30px rgba(0,0,0,0.20)',

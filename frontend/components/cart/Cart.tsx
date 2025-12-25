@@ -160,18 +160,19 @@ export function Cart({ tenant = null, isDark: isDarkOverride }: CartProps) {
   
   return (
     <div
-      style={{
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        zIndex: 9999,
-        pointerEvents: 'auto',
-      }}
-    >
-      {/* Backdrop */}
-      <div
+        style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          zIndex: 9999,
+          pointerEvents: 'auto',
+          backgroundColor: secondaryColor,
+        }}
+      >
+        {/* Backdrop */}
+        <div
         onClick={(e) => {
           e.preventDefault();
           e.stopPropagation();
@@ -184,9 +185,10 @@ export function Cart({ tenant = null, isDark: isDarkOverride }: CartProps) {
           left: 0,
           right: 0,
           bottom: 0,
-          backgroundColor: isDark ? 'rgba(0, 0, 0, 0.8)' : 'rgba(0, 0, 0, 0.5)',
+          backgroundColor: `${secondaryColor}dd`,
           zIndex: 10000,
           pointerEvents: 'auto',
+          mixBlendMode: 'multiply',
         }}
       />
 
@@ -202,7 +204,8 @@ export function Cart({ tenant = null, isDark: isDarkOverride }: CartProps) {
         }}
         className="fixed right-0 top-0 h-screen w-full sm:max-w-[28rem] p-4 sm:p-6 flex flex-col z-[10001]"
         style={{
-          backgroundColor: isDark ? 'var(--cart-dark-bg, #1a1a1a)' : '#ffffff',
+          backgroundColor: secondaryColor,
+          color: '#fff',
           boxShadow: '-4px 0 20px rgba(0, 0, 0, 0.3)',
           pointerEvents: 'auto',
           overflow: 'hidden',
@@ -214,22 +217,22 @@ export function Cart({ tenant = null, isDark: isDarkOverride }: CartProps) {
           <div>
             <p
               className="text-xs uppercase tracking-[0.4em] mb-2"
-              style={{ color: isDark ? secondaryColor : secondaryColor }}
+              style={{ color: '#fff' }}
             >
               {t.cartBadge}
             </p>
-            <h2 className="text-3xl font-black tracking-tight">{t.yourCart}</h2>
-            <p className={`${isDark ? 'text-gray-300' : 'text-gray-600'}`}>{t.cartSubtitle}</p>
+            <h2 className="text-3xl font-black tracking-tight text-white">{t.yourCart}</h2>
+            <p className="text-gray-200">{t.cartSubtitle}</p>
           </div>
           <button
             onClick={closeCart}
-              className="rounded-full w-10 h-10 flex items-center justify-center transition-colors text-white"
-              style={{
-                background: `linear-gradient(135deg, ${primaryColor}, ${secondaryColor})`,
-                boxShadow: isDark ? '0 10px 25px rgba(0,0,0,0.35)' : '0 8px 18px rgba(0,0,0,0.15)',
-              }}
-              aria-label="Zavrieť košík"
-            >
+            className="rounded-full w-10 h-10 flex items-center justify-center transition-colors text-white"
+            style={{
+              background: `linear-gradient(135deg, ${primaryColor}, ${secondaryColor})`,
+              boxShadow: isDark ? '0 10px 25px rgba(0,0,0,0.35)' : '0 8px 18px rgba(0,0,0,0.15)',
+            }}
+            aria-label="Zavrieť košík"
+          >
               &times;
             </button>
           </div>
@@ -256,13 +259,11 @@ export function Cart({ tenant = null, isDark: isDarkOverride }: CartProps) {
             </div>
 
             <div className="mt-auto space-y-4 pt-4 border-t border-white/10 pb-4 flex-shrink-0">
-              <div className={`rounded-2xl p-4 flex items-center justify-between ${
-                isDark ? 'bg-white/5 border border-white/10' : 'bg-gray-100'
-              }`}>
-                <div>
-                  <p className="text-sm uppercase tracking-widest">{t.items}</p>
-                  <p className="text-lg font-semibold">{items.reduce((sum, item) => sum + item.quantity, 0)} {t.items}</p>
-                </div>
+            <div className="rounded-2xl p-4 flex items-center justify-between bg-white/10 border border-white/20">
+              <div>
+                <p className="text-sm uppercase tracking-widest">{t.items}</p>
+                <p className="text-lg font-semibold">{items.reduce((sum, item) => sum + item.quantity, 0)} {t.items}</p>
+              </div>
                 <div className="text-right">
                   <p className="text-sm uppercase tracking-widest">{t.total}</p>
                   <p className="text-2xl font-black">€{(total / 100).toFixed(2)}</p>
