@@ -46,6 +46,7 @@ export function Cart({ tenant = null, isDark: isDarkOverride }: CartProps) {
   const textColor = isSecondaryDark ? '#ffffff' : '#0f172a';
   const cardBg = isSecondaryDark ? 'rgba(255,255,255,0.08)' : '#f8fafc';
   const cardBorder = isSecondaryDark ? 'rgba(255,255,255,0.2)' : '#e5e7eb';
+  const backdropColor = 'rgba(0,0,0,0.6)';
 
   // Check maintenance mode (manual or automatic based on opening hours)
   const maintenanceMode = useMemo(() => {
@@ -198,7 +199,7 @@ export function Cart({ tenant = null, isDark: isDarkOverride }: CartProps) {
           left: 0,
           right: 0,
           bottom: 0,
-          backgroundColor: secondaryColor,
+          backgroundColor: backdropColor,
           zIndex: 10000,
           pointerEvents: 'auto',
         }}
@@ -256,8 +257,8 @@ export function Cart({ tenant = null, isDark: isDarkOverride }: CartProps) {
             <p className={`${isSecondaryDark ? 'text-gray-200' : 'text-gray-600'} text-sm`}>{t.cartEmptyCta}</p>
             <button
               onClick={handleContinueShopping}
-              className={`px-5 py-3 rounded-full font-semibold ${getButtonGradientClass(effectiveTenant)}`}
-              style={getButtonStyle(effectiveTenant, isDark)}
+              className="px-5 py-3 rounded-full font-semibold text-white shadow"
+              style={{ backgroundColor: primaryColor }}
             >
               {t.menu}
             </button>
@@ -295,14 +296,9 @@ export function Cart({ tenant = null, isDark: isDarkOverride }: CartProps) {
                 onClick={handleCheckout}
                 disabled={maintenanceMode}
                 className={`w-full py-3 sm:py-4 rounded-full text-base sm:text-lg font-semibold shadow-lg text-white touch-manipulation min-h-[48px] ${
-                  maintenanceMode ? 'opacity-50 cursor-not-allowed' : getButtonGradientClass(effectiveTenant)
+                  maintenanceMode ? 'opacity-50 cursor-not-allowed' : ''
                 }`}
-                style={{
-                  ...(maintenanceMode ? {} : getButtonStyle(effectiveTenant, isDark)),
-                  backgroundColor: maintenanceMode 
-                    ? '#999' 
-                    : (primaryColor),
-                }}
+                style={{ backgroundColor: maintenanceMode ? '#999' : primaryColor }}
               >
                 {maintenanceMode 
                   ? (t.maintenanceModeTitle || (language === 'sk' ? 'Momentálne neprijímame nové objednávky!' : 'We are currently not accepting new orders!'))
