@@ -160,17 +160,16 @@ export function Cart({ tenant = null, isDark: isDarkOverride }: CartProps) {
   
   return (
     <div
-        style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          zIndex: 9999,
-          pointerEvents: 'auto',
-          backgroundColor: secondaryColor,
-        }}
-      >
+      style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        zIndex: 9999,
+        pointerEvents: 'auto',
+      }}
+    >
         {/* Backdrop */}
         <div
         onClick={(e) => {
@@ -185,10 +184,9 @@ export function Cart({ tenant = null, isDark: isDarkOverride }: CartProps) {
           left: 0,
           right: 0,
           bottom: 0,
-          backgroundColor: `${secondaryColor}dd`,
+          backgroundColor: isDark ? 'rgba(0,0,0,0.8)' : 'rgba(0,0,0,0.5)',
           zIndex: 10000,
           pointerEvents: 'auto',
-          mixBlendMode: 'multiply',
         }}
       />
 
@@ -204,7 +202,7 @@ export function Cart({ tenant = null, isDark: isDarkOverride }: CartProps) {
         }}
         className="fixed right-0 top-0 h-screen w-full sm:max-w-[28rem] p-4 sm:p-6 flex flex-col z-[10001]"
         style={{
-          backgroundColor: secondaryColor,
+          backgroundColor: primaryColor,
           color: '#fff',
           boxShadow: '-4px 0 20px rgba(0, 0, 0, 0.3)',
           pointerEvents: 'auto',

@@ -266,6 +266,20 @@ export function HomePageClient({ products, tenant }: HomePageClientProps) {
 
   // Get primary color (use PornoPizza brand pink/red as default)
   const primaryColor = tenant.theme?.primaryColor || '#E91E63';
+  const secondaryColor = tenant.theme?.secondaryColor || '#f8fafc';
+
+  const isHexDark = (hex?: string) => {
+    if (!hex) return false;
+    const value = hex.replace('#', '');
+    const normalized = value.length === 3 ? value.split('').map((c) => c + c).join('') : value;
+    if (normalized.length !== 6) return false;
+    const r = parseInt(normalized.substring(0, 2), 16);
+    const g = parseInt(normalized.substring(2, 4), 16);
+    const b = parseInt(normalized.substring(4, 6), 16);
+    const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+    return luminance < 0.5;
+  };
+  const isSecondaryDark = isHexDark(secondaryColor);
 
   // Check maintenance mode (manual or automatic based on opening hours)
   const manualMaintenanceMode = tenant.theme?.maintenanceMode === true;
@@ -289,7 +303,8 @@ export function HomePageClient({ products, tenant }: HomePageClientProps) {
 
   return (
     <div
-      className={`${backgroundClass} ${isDarkTheme ? 'text-white' : 'text-gray-900'} min-h-screen relative`}
+      className={`${backgroundClass} ${isDarkTheme || isSecondaryDark ? 'text-white' : 'text-gray-900'} min-h-screen relative`}
+      style={{ backgroundColor: secondaryColor }}
     >
       <Header tenant={tenant} />
       

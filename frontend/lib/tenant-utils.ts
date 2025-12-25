@@ -4,6 +4,7 @@
  */
 
 import { Tenant } from '@pizza-ecosystem/shared';
+import type React from 'react';
 
 export interface LayoutConfig {
   headerStyle: 'dark' | 'light';
@@ -57,6 +58,21 @@ export function withTenantThemeDefaults(tenant: Tenant | null): Tenant | null {
   return tenant;
 }
 
+function isColorDark(hexColor?: string): boolean {
+  if (!hexColor) return false;
+  const hex = hexColor.replace('#', '');
+  if (hex.length !== 6 && hex.length !== 3) return false;
+  const normalized =
+    hex.length === 3
+      ? hex.split('').map((c) => c + c).join('')
+      : hex;
+  const r = parseInt(normalized.substring(0, 2), 16);
+  const g = parseInt(normalized.substring(2, 4), 16);
+  const b = parseInt(normalized.substring(4, 6), 16);
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  return luminance < 0.5;
+}
+
 
 /**
  * Get layout configuration from tenant theme
@@ -65,10 +81,18 @@ export function getLayoutConfig(tenant: Tenant | null): LayoutConfig {
   const normalized = withTenantThemeDefaults(tenant);
   const layout = normalized?.theme?.layout || {};
   const slug = normalized?.slug?.toLowerCase();
+  const secondaryColor = normalized?.theme?.secondaryColor;
+  const secondaryIsDark = isColorDark(secondaryColor);
+  const defaultBackgroundStyle: LayoutConfig['backgroundStyle'] =
+    layout.backgroundStyle ||
+    (secondaryIsDark ? 'black' : slug === 'pornopizza' ? 'black' : 'white');
+  const defaultHeaderStyle: LayoutConfig['headerStyle'] =
+    layout.headerStyle ||
+    (secondaryIsDark ? 'dark' : slug === 'pornopizza' ? 'dark' : 'light');
   
   return {
-    headerStyle: (layout.headerStyle as 'dark' | 'light') || (slug === 'pornopizza' ? 'dark' : 'light'),
-    backgroundStyle: (layout.backgroundStyle as 'black' | 'white' | 'gradient') || (slug === 'pornopizza' ? 'black' : 'white'),
+    headerStyle: defaultHeaderStyle,
+    backgroundStyle: defaultBackgroundStyle,
     useCustomLogo: layout.useCustomLogo ?? false, // Always use logo from theme.logo, not custom components
     customLogoComponent: layout.customLogoComponent || undefined, // Always use logo from theme.logo
     useCustomBackground: layout.useCustomBackground ?? (slug === 'pornopizza'),
@@ -96,10 +120,10 @@ export function getBackgroundClass(tenant: Tenant | null): string {
   }
 
   if (config.backgroundStyle === 'black') {
-    return 'bg-black porno-bg';
+    return 'porno-bg';
   }
   
-  return 'bg-gray-50';
+  return '';
 }
 
 export function getBodyBackgroundClass(tenant: Tenant | null): string | null {
