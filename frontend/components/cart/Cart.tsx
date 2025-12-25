@@ -32,7 +32,21 @@ export function Cart({ tenant = null, isDark: isDarkOverride }: CartProps) {
   const isDark = typeof isDarkOverride === 'boolean' ? isDarkOverride : isDarkTheme(effectiveTenant);
   const primaryColor = effectiveTenant?.theme?.primaryColor || 'var(--color-primary)';
   const secondaryColor = effectiveTenant?.theme?.secondaryColor || 'var(--color-secondary)';
-  
+  const isSecondaryDark = useMemo(() => {
+    if (!secondaryColor) return false;
+    const hex = secondaryColor.replace('#', '');
+    if (hex.length !== 6 && hex.length !== 3) return false;
+    const normalized = hex.length === 3 ? hex.split('').map((c) => c + c).join('') : hex;
+    const r = parseInt(normalized.substring(0, 2), 16);
+    const g = parseInt(normalized.substring(2, 4), 16);
+    const b = parseInt(normalized.substring(4, 6), 16);
+    const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+    return luminance < 0.5;
+  }, [secondaryColor]);
+  const textColor = isSecondaryDark ? '#ffffff' : '#0f172a';
+  const cardBg = isSecondaryDark ? 'rgba(255,255,255,0.08)' : '#f8fafc';
+  const cardBorder = isSecondaryDark ? 'rgba(255,255,255,0.2)' : '#e5e7eb';
+
   // Check maintenance mode (manual or automatic based on opening hours)
   const maintenanceMode = useMemo(() => {
     if (!effectiveTenant) return false;
@@ -160,16 +174,16 @@ export function Cart({ tenant = null, isDark: isDarkOverride }: CartProps) {
   
   return (
     <div
-      style={{
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        zIndex: 9999,
-        pointerEvents: 'auto',
-      }}
-    >
+        style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          zIndex: 9999,
+          pointerEvents: 'auto',
+        }}
+      >
         {/* Backdrop */}
         <div
         onClick={(e) => {
@@ -184,7 +198,7 @@ export function Cart({ tenant = null, isDark: isDarkOverride }: CartProps) {
           left: 0,
           right: 0,
           bottom: 0,
-          backgroundColor: isDark ? 'rgba(0,0,0,0.8)' : 'rgba(0,0,0,0.5)',
+          backgroundColor: secondaryColor,
           zIndex: 10000,
           pointerEvents: 'auto',
         }}
@@ -202,8 +216,8 @@ export function Cart({ tenant = null, isDark: isDarkOverride }: CartProps) {
         }}
         className="fixed right-0 top-0 h-screen w-full sm:max-w-[28rem] p-4 sm:p-6 flex flex-col z-[10001]"
         style={{
-          backgroundColor: primaryColor,
-          color: '#fff',
+          backgroundColor: secondaryColor,
+          color: textColor,
           boxShadow: '-4px 0 20px rgba(0, 0, 0, 0.3)',
           pointerEvents: 'auto',
           overflow: 'hidden',
@@ -215,18 +229,18 @@ export function Cart({ tenant = null, isDark: isDarkOverride }: CartProps) {
           <div>
             <p
               className="text-xs uppercase tracking-[0.4em] mb-2"
-              style={{ color: '#fff' }}
+              style={{ color: textColor }}
             >
               {t.cartBadge}
             </p>
-            <h2 className="text-3xl font-black tracking-tight text-white">{t.yourCart}</h2>
-            <p className="text-gray-200">{t.cartSubtitle}</p>
+            <h2 className="text-3xl font-black tracking-tight" style={{ color: textColor }}>{t.yourCart}</h2>
+            <p className={isSecondaryDark ? 'text-gray-200' : 'text-gray-700'}>{t.cartSubtitle}</p>
           </div>
           <button
             onClick={closeCart}
             className="rounded-full w-10 h-10 flex items-center justify-center transition-colors text-white"
             style={{
-              background: `linear-gradient(135deg, ${primaryColor}, ${secondaryColor})`,
+              background: primaryColor,
               boxShadow: isDark ? '0 10px 25px rgba(0,0,0,0.35)' : '0 8px 18px rgba(0,0,0,0.15)',
             }}
             aria-label="Zavrieť košík"
@@ -238,8 +252,8 @@ export function Cart({ tenant = null, isDark: isDarkOverride }: CartProps) {
         {items.length === 0 ? (
           <div className="flex-1 flex flex-col items-center justify-center text-center gap-4">
             <div className="text-5xl">🛒</div>
-            <p className="text-xl font-semibold">{t.emptyCart}</p>
-            <p className={`${isDark ? 'text-gray-400' : 'text-gray-500'} text-sm`}>{t.cartEmptyCta}</p>
+            <p className="text-xl font-semibold" style={{ color: textColor }}>{t.emptyCart}</p>
+            <p className={`${isSecondaryDark ? 'text-gray-200' : 'text-gray-600'} text-sm`}>{t.cartEmptyCta}</p>
             <button
               onClick={handleContinueShopping}
               className={`px-5 py-3 rounded-full font-semibold ${getButtonGradientClass(effectiveTenant)}`}
@@ -257,14 +271,17 @@ export function Cart({ tenant = null, isDark: isDarkOverride }: CartProps) {
             </div>
 
             <div className="mt-auto space-y-4 pt-4 border-t border-white/10 pb-4 flex-shrink-0">
-            <div className="rounded-2xl p-4 flex items-center justify-between bg-white/10 border border-white/20">
+            <div
+              className="rounded-2xl p-4 flex items-center justify-between"
+              style={{ backgroundColor: cardBg, border: `1px solid ${cardBorder}` }}
+            >
               <div>
-                <p className="text-sm uppercase tracking-widest">{t.items}</p>
-                <p className="text-lg font-semibold">{items.reduce((sum, item) => sum + item.quantity, 0)} {t.items}</p>
+                <p className="text-sm uppercase tracking-widest" style={{ color: textColor }}>{t.items}</p>
+                <p className="text-lg font-semibold" style={{ color: textColor }}>{items.reduce((sum, item) => sum + item.quantity, 0)} {t.items}</p>
               </div>
                 <div className="text-right">
-                  <p className="text-sm uppercase tracking-widest">{t.total}</p>
-                  <p className="text-2xl font-black">€{(total / 100).toFixed(2)}</p>
+                  <p className="text-sm uppercase tracking-widest" style={{ color: textColor }}>{t.total}</p>
+                  <p className="text-2xl font-black" style={{ color: textColor }}>€{(total / 100).toFixed(2)}</p>
                 </div>
               </div>
 
