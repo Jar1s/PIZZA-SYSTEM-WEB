@@ -363,9 +363,20 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
   const loginWithGoogle = async (returnUrlOverride?: string) => {
     const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
     
-    // Get tenant and returnUrl from current page
+    // Get tenant from hostname or URL params
     const searchParams = new URLSearchParams(window.location.search);
-    const tenant = searchParams.get('tenant') || 'pornopizza';
+    const hostname = window.location.hostname.toLowerCase();
+    let tenant = 'pornopizza';
+    if (hostname.includes('pizzaparty')) tenant = 'partypizza';
+    else if (hostname.includes('pizzavnudzi')) tenant = 'pizzavnudzi';
+    else if (hostname.includes('pornopizza') || hostname.includes('p0rnopizza')) tenant = 'pornopizza';
+    else if (hostname.includes('localhost') || hostname.includes('127.0.0.1') || hostname.includes('vercel.app')) {
+      tenant = searchParams.get('tenant') || 'pornopizza';
+    } else {
+      tenant = searchParams.get('tenant') || tenant;
+    }
+
+    // Get returnUrl from query or override
     const returnUrlFromQuery = searchParams.get('returnUrl') || undefined;
     
     // Build effectiveReturnUrl from override, query param, or sessionStorage
@@ -533,4 +544,3 @@ export function useCustomerAuth() {
   }
   return context;
 }
-

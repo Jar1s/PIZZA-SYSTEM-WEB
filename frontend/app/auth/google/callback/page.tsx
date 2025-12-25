@@ -18,18 +18,16 @@ export default function GoogleCallbackPage() {
   useEffect(() => {
     const loadTenant = async () => {
       try {
-        const hostname = window.location.hostname;
+        const hostname = window.location.hostname.toLowerCase();
         const params = new URLSearchParams(window.location.search);
         let tenantSlug = 'pornopizza';
-        
-        if (hostname.includes('pornopizza')) {
-          tenantSlug = 'pornopizza';
-        } else if (hostname.includes('pizzavnudzi')) {
-          tenantSlug = 'pizzavnudzi';
-        } else if (hostname.includes('localhost')) {
+        if (hostname.includes('pizzaparty')) tenantSlug = 'partypizza';
+        else if (hostname.includes('pizzavnudzi')) tenantSlug = 'pizzavnudzi';
+        else if (hostname.includes('pornopizza') || hostname.includes('p0rnopizza')) tenantSlug = 'pornopizza';
+        else if (hostname.includes('localhost') || hostname.includes('127.0.0.1') || hostname.includes('vercel.app')) {
           tenantSlug = params.get('tenant') || 'pornopizza';
         } else {
-          tenantSlug = params.get('tenant') || 'pornopizza';
+          tenantSlug = params.get('tenant') || tenantSlug;
         }
         
         const tenantData = await getTenant(tenantSlug);
@@ -208,4 +206,3 @@ export default function GoogleCallbackPage() {
     </div>
   );
 }
-

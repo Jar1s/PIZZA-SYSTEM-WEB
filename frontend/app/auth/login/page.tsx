@@ -29,9 +29,9 @@ export default function CustomerLoginPage() {
   useEffect(() => {
     const loadTenant = async () => {
       try {
-        const hostname = window.location.hostname;
+        const hostname = window.location.hostname.toLowerCase();
         let tenantSlug = 'pornopizza';
-        
+
         // Get tenant and returnUrl from URL params (works for all environments)
         const params = new URLSearchParams(window.location.search);
         const urlParam = params.get('returnUrl');
@@ -53,15 +53,13 @@ export default function CustomerLoginPage() {
           }
         }
         
-        if (hostname.includes('pornopizza')) {
-          tenantSlug = 'pornopizza';
-        } else if (hostname.includes('pizzavnudzi')) {
-          tenantSlug = 'pizzavnudzi';
-        } else if (hostname.includes('localhost')) {
+        if (hostname.includes('pizzaparty')) tenantSlug = 'partypizza';
+        else if (hostname.includes('pizzavnudzi')) tenantSlug = 'pizzavnudzi';
+        else if (hostname.includes('pornopizza') || hostname.includes('p0rnopizza')) tenantSlug = 'pornopizza';
+        else if (hostname.includes('localhost') || hostname.includes('127.0.0.1') || hostname.includes('vercel.app')) {
           tenantSlug = params.get('tenant') || 'pornopizza';
         } else {
-          // For other domains, try to get tenant from URL params
-          tenantSlug = params.get('tenant') || 'pornopizza';
+          tenantSlug = params.get('tenant') || tenantSlug;
         }
         
         const tenantData = await getTenant(tenantSlug);
