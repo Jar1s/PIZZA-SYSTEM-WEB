@@ -12,6 +12,13 @@ async function bootstrap() {
   initSentry();
   
   const logger = new Logger('Bootstrap');
+  // Extra baked-in allowed origins for tenant preview/prod
+  const extraAllowedOrigins = [
+    'https://partypizza.vercel.app',
+    'https://pizzaparty.sk',
+    'https://www.pizzaparty.sk',
+  ];
+
   
   // Validate JWT_SECRET in production
   if (process.env.NODE_ENV === 'production' && !process.env.JWT_SECRET) {
@@ -71,7 +78,12 @@ async function bootstrap() {
           }
         }
         
-        // Only allow .vercel.app domains if explicitly listed in ALLOWED_ORIGINS
+        if (!allowed && extraAllowedOrigins.includes(origin)) {
+          allowed = true;
+        }
+
+
+      // Only allow .vercel.app domains if explicitly listed in ALLOWED_ORIGINS
         if (!allowed && origin.endsWith('.vercel.app')) {
           allowed = false; // Deny by default
         }
@@ -165,6 +177,10 @@ async function bootstrap() {
         }
       }
       
+      if (extraAllowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+
       // Only allow .vercel.app domains if explicitly listed in ALLOWED_ORIGINS
       // This prevents unauthorized access from any Vercel preview URL
       if (origin.endsWith('.vercel.app')) {
