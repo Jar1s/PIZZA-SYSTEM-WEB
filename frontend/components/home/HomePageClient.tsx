@@ -267,17 +267,6 @@ export function HomePageClient({ products, tenant }: HomePageClientProps) {
   // Get primary color (use PornoPizza brand pink/red as default)
   const primaryColor = tenant.theme?.primaryColor || '#E91E63';
   const secondaryColor = tenant.theme?.secondaryColor || '#f8fafc';
-  const subCategoryLabels = (tenant.theme as any)?.subCategoryLabels || {};
-
-  const getSubCategoryLabel = (
-    key: 'foreplay' | 'mainAction' | 'deluxeFetish' | 'premiumSins' | 'stangle' | 'soups' | 'drinks' | 'desserts',
-    type: 'title' | 'desc'
-  ) => {
-    const entry = subCategoryLabels[key] || {};
-    const sk = entry[`${type}Sk`];
-    const en = entry[`${type}En`];
-    return language === 'en' ? (en || undefined) : (sk || undefined);
-  };
 
   const isHexDark = (hex?: string) => {
     if (!hex) return false;
@@ -407,12 +396,11 @@ export function HomePageClient({ products, tenant }: HomePageClientProps) {
                 className="text-center mb-12"
               >
                 <h2 
-                  className="inline-flex items-center gap-2 px-5 py-2 rounded-full text-sm sm:text-base font-black tracking-tight uppercase"
-                  style={{
-                    backgroundColor: primaryColor,
-                    color: '#0b0b0b',
-                    boxShadow: isDarkTheme ? '0 10px 30px rgba(0,0,0,0.45)' : '0 10px 24px rgba(0,0,0,0.18)',
-                    letterSpacing: '0.05em'
+                  className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-3 sm:mb-4"
+                  style={{ 
+                    color: 'var(--color-primary)',
+                    textShadow: 'none',
+                    letterSpacing: '0'
                   }}
                 >
                   {t.bestSellersTitle}
@@ -482,38 +470,27 @@ export function HomePageClient({ products, tenant }: HomePageClientProps) {
             {(Object.keys(categoryCounts) as CategoryFilter[]).map((category) => {
               if (categoryCounts[category] === 0 || category === 'all') return null;
               
-              const isActive = categoryFilter === category;
               const chipClass = isDarkTheme
                 ? `rounded-full font-bold transition-all ${
-                    isActive
+                    categoryFilter === category
                       ? 'category-chip category-chip--active'
                       : 'category-chip hover:border-white/25'
                   }`
                 : `px-6 py-3 rounded-lg font-bold transition-all ${
-                    isActive
+                    categoryFilter === category
                       ? 'text-white shadow-lg scale-105'
                       : 'text-gray-700 hover:bg-gray-100 shadow bg-white'
                   }`;
-
-              const activeStyle: React.CSSProperties = {};
-              if (isActive) {
-                if (isDarkTheme) {
-                  activeStyle.background = `linear-gradient(120deg, ${primaryColor}, ${primaryColor})`;
-                  activeStyle.borderColor = `${primaryColor}80`;
-                  activeStyle.color = '#0b0b0b';
-                  activeStyle.boxShadow = '0 0 24px rgba(0,0,0,0.35)';
-                } else {
-                  activeStyle.backgroundColor = primaryColor;
-                  activeStyle.color = '#ffffff';
-                }
-              }
 
               return (
                 <button
                   key={category}
                   onClick={() => handleCategoryFilter(category)}
                   className={`${chipClass} px-4 sm:px-6 py-2.5 sm:py-3 text-sm sm:text-base touch-manipulation min-h-[44px] whitespace-nowrap flex-shrink-0`}
-                  style={activeStyle}
+                  style={categoryFilter === category && !isDarkTheme 
+                    ? { backgroundColor: tenant.theme.primaryColor }
+                    : {}
+                  }
                 >
                   <span className="mr-1 sm:mr-2">{categoryEmoji[category]}</span>
                   {categoryLabels[category]}
@@ -544,11 +521,9 @@ export function HomePageClient({ products, tenant }: HomePageClientProps) {
                         letterSpacing: '-0.02em'
                       }}
                     >
-                      🔥 {getSubCategoryLabel('foreplay', 'title') || t.foreplay}
+                      🔥 {t.foreplay}
                     </h3>
-                    <p className={`mb-4 text-lg ${isDarkTheme ? 'text-gray-400' : ''}`} style={{ color: isDarkTheme ? '#999' : '#666666' }}>
-                      {getSubCategoryLabel('foreplay', 'desc') || t.foreplayDesc}
-                    </p>
+                    <p className={`mb-4 text-lg ${isDarkTheme ? 'text-gray-400' : ''}`} style={{ color: isDarkTheme ? '#999' : '#666666' }}>{t.foreplayDesc}</p>
                     <div className="h-1 w-32 rounded mx-auto" style={{ backgroundColor: primaryColor }}></div>
                   </motion.div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5 md:gap-6">
@@ -578,11 +553,9 @@ export function HomePageClient({ products, tenant }: HomePageClientProps) {
                         letterSpacing: '-0.02em'
                       }}
                     >
-                      😈 {getSubCategoryLabel('mainAction', 'title') || t.mainAction}
+                      😈 {t.mainAction}
                     </h3>
-                    <p className={`mb-4 text-lg ${isDarkTheme ? 'text-gray-400' : ''}`} style={{ color: isDarkTheme ? '#999' : '#666666' }}>
-                      {getSubCategoryLabel('mainAction', 'desc') || t.mainActionDesc}
-                    </p>
+                    <p className={`mb-4 text-lg ${isDarkTheme ? 'text-gray-400' : ''}`} style={{ color: isDarkTheme ? '#999' : '#666666' }}>{t.mainActionDesc}</p>
                     <div className="h-1 w-32 rounded mx-auto" style={{ backgroundColor: primaryColor }}></div>
                   </motion.div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5 md:gap-6">
@@ -612,11 +585,9 @@ export function HomePageClient({ products, tenant }: HomePageClientProps) {
                         letterSpacing: '-0.02em'
                       }}
                     >
-                      💋 {getSubCategoryLabel('deluxeFetish', 'title') || t.deluxeFetish}
+                      💋 {t.deluxeFetish}
                     </h3>
-                    <p className={`mb-4 text-lg ${isDarkTheme ? 'text-gray-400' : ''}`} style={{ color: isDarkTheme ? '#999' : '#666666' }}>
-                      {getSubCategoryLabel('deluxeFetish', 'desc') || t.deluxeFetishDesc}
-                    </p>
+                    <p className={`mb-4 text-lg ${isDarkTheme ? 'text-gray-400' : ''}`} style={{ color: isDarkTheme ? '#999' : '#666666' }}>{t.deluxeFetishDesc}</p>
                     <div className="h-1 w-32 rounded mx-auto" style={{ backgroundColor: primaryColor }}></div>
                   </motion.div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5 md:gap-6">
@@ -646,11 +617,9 @@ export function HomePageClient({ products, tenant }: HomePageClientProps) {
                         letterSpacing: '-0.02em'
                       }}
                     >
-                      🍑 {getSubCategoryLabel('premiumSins', 'title') || t.premiumSins}
+                      🍑 {t.premiumSins}
                     </h3>
-                    <p className={`mb-4 text-lg ${isDarkTheme ? 'text-gray-400' : ''}`} style={{ color: isDarkTheme ? '#999' : '#666666' }}>
-                      {getSubCategoryLabel('premiumSins', 'desc') || t.premiumSinsDesc}
-                    </p>
+                    <p className={`mb-4 text-lg ${isDarkTheme ? 'text-gray-400' : ''}`} style={{ color: isDarkTheme ? '#999' : '#666666' }}>{t.premiumSinsDesc}</p>
                     <div className="h-1 w-32 rounded mx-auto" style={{ backgroundColor: primaryColor }}></div>
                   </motion.div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5 md:gap-6">
@@ -711,10 +680,10 @@ export function HomePageClient({ products, tenant }: HomePageClientProps) {
                       letterSpacing: '-0.02em'
                     }}
                   >
-                    🥖 {getSubCategoryLabel('stangle', 'title') || t.stangleTitle}
+                    🥖 {t.stangleTitle}
                   </h3>
                   <p className={`mb-2 text-lg ${isDarkTheme ? 'text-gray-400' : ''}`} style={{ color: isDarkTheme ? '#999' : '#666666' }}>
-                    💬 {getSubCategoryLabel('stangle', 'desc') || t.stangleSubtitle}
+                    💬 {t.stangleSubtitle}
                   </p>
                   <div className="h-1 w-32 rounded mx-auto mt-4" style={{ backgroundColor: primaryColor }}></div>
                 </motion.div>
@@ -738,10 +707,10 @@ export function HomePageClient({ products, tenant }: HomePageClientProps) {
                       letterSpacing: '-0.02em'
                     }}
                   >
-                    🥴 {getSubCategoryLabel('soups', 'title') || t.soupsTitle}
+                    🥴 {t.soupsTitle}
                   </h3>
                   <p className={`mb-2 text-lg ${isDarkTheme ? 'text-gray-400' : ''}`} style={{ color: isDarkTheme ? '#999' : '#666666' }}>
-                    {getSubCategoryLabel('soups', 'desc') || t.soupsSubtitle}
+                    {t.soupsSubtitle}
                   </p>
                   <div className="h-1 w-32 rounded mx-auto mt-4" style={{ backgroundColor: primaryColor }}></div>
                 </motion.div>
@@ -765,10 +734,10 @@ export function HomePageClient({ products, tenant }: HomePageClientProps) {
                       letterSpacing: '-0.02em'
                     }}
                   >
-                    {getSubCategoryLabel('desserts', 'title') || t.dessertsTitle}
+                    {t.dessertsTitle}
                   </h3>
                   <p className={`mb-2 text-lg ${isDarkTheme ? 'text-gray-400' : ''}`} style={{ color: isDarkTheme ? '#999' : '#666666' }}>
-                    {getSubCategoryLabel('desserts', 'desc') || t.dessertsSubtitle}
+                    {t.dessertsSubtitle}
                   </p>
                   <div className="h-1 w-32 rounded mx-auto mt-4" style={{ backgroundColor: primaryColor }}></div>
                 </motion.div>

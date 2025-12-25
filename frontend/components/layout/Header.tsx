@@ -38,8 +38,6 @@ export function Header({ tenant }: HeaderProps) {
   const layoutConfig = getLayoutConfig(normalizedTenant);
   const headerStyle = layoutConfig.headerStyle;
   const isDarkTheme = headerStyle === 'dark';
-  const primaryColor = normalizedTenant?.theme?.primaryColor || 'var(--color-primary)';
-  const secondaryColor = normalizedTenant?.theme?.secondaryColor || 'var(--color-secondary)';
 
   const navItems = [
     { id: 'hero', label: t.home },
@@ -183,11 +181,11 @@ export function Header({ tenant }: HeaderProps) {
             <button
               type="button"
               onClick={() => router.push(`/account?tenant=${tenantSlug}`)}
-              className="flex h-10 w-10 items-center justify-center rounded-full transition-colors"
-              style={{
-                backgroundColor: secondaryColor,
-                color: isDarkTheme ? '#fff' : '#0f172a',
-              }}
+              className={`flex h-10 w-10 items-center justify-center rounded-full border transition-colors ${
+                isDarkTheme
+                  ? 'border-[#2c2c2c] text-white hover:bg-[#1c1c1c]'
+                  : 'border-gray-200 text-gray-700 hover:bg-gray-50'
+              }`}
               title={t.myAccount || 'Moje konto'}
               aria-label={t.myAccount || 'Moje konto'}
             >
@@ -210,11 +208,11 @@ export function Header({ tenant }: HeaderProps) {
                 }
                 router.push(`/auth/login?tenant=${tenantSlug}&returnUrl=${encodeURIComponent(returnUrl)}`);
               }}
-              className="flex h-10 w-10 items-center justify-center rounded-full transition-colors"
-              style={{
-                backgroundColor: secondaryColor,
-                color: isDarkTheme ? '#fff' : '#0f172a',
-              }}
+              className={`flex h-10 w-10 items-center justify-center rounded-full border transition-colors ${
+                isDarkTheme
+                  ? 'border-[#2c2c2c] text-white hover:bg-[#1c1c1c]'
+                  : 'border-gray-200 text-gray-700 hover:bg-gray-50'
+              }`}
               title={t.customerLogin || 'Prihlásiť sa'}
               aria-label={t.customerLogin || 'Prihlásiť sa'}
             >
@@ -240,13 +238,8 @@ export function Header({ tenant }: HeaderProps) {
             onMouseDown={(e) => {
               e.stopPropagation();
             }}
-          className="relative z-50 flex items-center gap-2 rounded-full px-3 sm:px-4 py-2 min-h-[44px] font-semibold text-white shadow-lg touch-manipulation transition-all"
-          style={{
-              backgroundColor: primaryColor,
-              boxShadow: isDarkTheme
-                ? '0 15px 35px rgba(0,0,0,0.45)'
-                : '0 12px 30px rgba(0,0,0,0.20)',
-            }}
+            className="relative z-50 flex items-center gap-2 rounded-full px-3 sm:px-4 py-2 min-h-[44px] font-semibold text-white transition-transform shadow-lg touch-manipulation hover:scale-[1.01] active:scale-[0.99]"
+            style={{ backgroundColor: primaryColor }}
             aria-label={t.cart}
           >
             <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -260,10 +253,8 @@ export function Header({ tenant }: HeaderProps) {
             <span className="hidden sm:inline">{t.cart}</span>
             {itemCount > 0 && (
               <span
-                className="absolute -top-2 -right-2 flex h-5 w-5 items-center justify-center rounded-full text-xs font-bold text-white border border-white/40 backdrop-blur"
-                style={{
-                  backgroundColor: secondaryColor,
-                }}
+                className="absolute -top-2 -right-2 flex h-5 w-5 items-center justify-center rounded-full text-xs font-bold text-white border border-white/30"
+                style={{ backgroundColor: primaryColor }}
               >
                 {itemCount}
               </span>
