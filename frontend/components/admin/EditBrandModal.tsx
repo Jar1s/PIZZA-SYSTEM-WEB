@@ -27,6 +27,7 @@ export function EditBrandModal({
     primaryColor: '#E91E63',
     secondaryColor: '#0F141A',
   });
+  const [logoUrl, setLogoUrl] = useState('');
   const [cashEnabled, setCashEnabled] = useState(false);
   const [cardEnabled, setCardEnabled] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -86,6 +87,7 @@ export function EditBrandModal({
         primaryColor: theme.primaryColor || '#E91E63',
         secondaryColor: theme.secondaryColor || '#0F141A',
       });
+      setLogoUrl(theme.logo || '');
       setCashEnabled(paymentConfig.cashOnDeliveryEnabled === true);
       setCardEnabled(paymentConfig.cardOnDeliveryEnabled === true);
       
@@ -206,6 +208,9 @@ export function EditBrandModal({
       const existingTheme = (tenant.theme as any) || {};
       const updatedTheme = {
         ...existingTheme,
+        primaryColor: themeColors.primaryColor,
+        secondaryColor: themeColors.secondaryColor,
+        logo: logoUrl.trim() || existingTheme.logo,
         analyticsConfig: {
           googleAnalytics: analyticsConfig.googleAnalytics.enabled && analyticsConfig.googleAnalytics.measurementId
             ? { measurementId: analyticsConfig.googleAnalytics.measurementId, enabled: true }
@@ -321,33 +326,66 @@ export function EditBrandModal({
                   </div>
                 </div>
 
-                {/* Theme Colors (read-only) */}
+                {/* Theme Colors */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Theme Colors
                   </label>
-                  <div className="flex gap-4">
-                    <div className="flex items-center gap-2">
-                      <div
-                        className="w-10 h-10 rounded border-2 border-gray-200"
-                        style={{ backgroundColor: themeColors.primaryColor }}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="color"
+                        aria-label="Primary color"
+                        value={themeColors.primaryColor}
+                        onChange={(e) => setThemeColors({ ...themeColors, primaryColor: e.target.value })}
+                        className="h-10 w-10 rounded border border-gray-200 cursor-pointer"
                       />
-                      <div>
+                      <div className="flex-1">
                         <div className="text-xs text-gray-500">Primary</div>
-                        <div className="text-sm text-gray-900 font-medium">{themeColors.primaryColor}</div>
+                        <input
+                          type="text"
+                          value={themeColors.primaryColor}
+                          onChange={(e) => setThemeColors({ ...themeColors, primaryColor: e.target.value })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                        />
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <div
-                        className="w-10 h-10 rounded border-2 border-gray-200"
-                        style={{ backgroundColor: themeColors.secondaryColor }}
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="color"
+                        aria-label="Secondary color"
+                        value={themeColors.secondaryColor}
+                        onChange={(e) => setThemeColors({ ...themeColors, secondaryColor: e.target.value })}
+                        className="h-10 w-10 rounded border border-gray-200 cursor-pointer"
                       />
-                      <div>
+                      <div className="flex-1">
                         <div className="text-xs text-gray-500">Secondary</div>
-                        <div className="text-sm text-gray-900 font-medium">{themeColors.secondaryColor}</div>
+                        <input
+                          type="text"
+                          value={themeColors.secondaryColor}
+                          onChange={(e) => setThemeColors({ ...themeColors, secondaryColor: e.target.value })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                        />
                       </div>
                     </div>
                   </div>
+                </div>
+
+                {/* Logo URL */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Logo URL
+                  </label>
+                  <input
+                    type="text"
+                    value={logoUrl}
+                    onChange={(e) => setLogoUrl(e.target.value)}
+                    placeholder="https://your-cdn.com/logo.png"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                  />
+                  <p className="mt-1 text-xs text-gray-500">
+                    Zadaj URL loga (PNG/JPG/SVG). Ak necháš prázdne, ostane pôvodné logo.
+                  </p>
                 </div>
 
                 {/* Active Status */}
@@ -891,4 +929,3 @@ export function EditBrandModal({
     </div>
   );
 }
-

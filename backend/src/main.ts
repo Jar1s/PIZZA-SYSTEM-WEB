@@ -18,7 +18,14 @@ async function bootstrap() {
     'https://pizzaparty.sk',
     'https://www.pizzaparty.sk',
   ];
-
+  // Extra baked-in allowed origins for tenant preview/prod
+  const extraAllowedOrigins = [
+    'https://partypizza.vercel.app',
+    'https://pizzaparty.sk',
+    'https://www.pizzaparty.sk',
+  ];
+  // Temporary baked-in allowlist for new tenant preview domains
+  const extraAllowedOrigins = ['https://partypizza.vercel.app'];
   
   // Validate JWT_SECRET in production
   if (process.env.NODE_ENV === 'production' && !process.env.JWT_SECRET) {
@@ -77,13 +84,18 @@ async function bootstrap() {
             }
           }
         }
-        
+        // Also allow baked-in extra origins
         if (!allowed && extraAllowedOrigins.includes(origin)) {
           allowed = true;
         }
-
-
-      // Only allow .vercel.app domains if explicitly listed in ALLOWED_ORIGINS
+        if (!allowed && extraAllowedOrigins.includes(origin)) {
+          allowed = true;
+        }
+        if (!allowed && extraAllowedOrigins.includes(origin)) {
+          allowed = true;
+        }
+        
+        // Only allow .vercel.app domains if explicitly listed in ALLOWED_ORIGINS
         if (!allowed && origin.endsWith('.vercel.app')) {
           allowed = false; // Deny by default
         }
@@ -100,6 +112,9 @@ async function bootstrap() {
                          origin.startsWith('http://pizzavnudzi.localhost:'))) {
           allowed = true;
         }
+      }
+      if (extraAllowedOrigins.includes(origin)) {
+        return callback(null, true);
       }
       
       if (allowed) {
@@ -176,11 +191,14 @@ async function bootstrap() {
           return callback(null, true);
         }
       }
-      
+      // Also allow baked-in extra origins
       if (extraAllowedOrigins.includes(origin)) {
         return callback(null, true);
       }
-
+      if (extraAllowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+      
       // Only allow .vercel.app domains if explicitly listed in ALLOWED_ORIGINS
       // This prevents unauthorized access from any Vercel preview URL
       if (origin.endsWith('.vercel.app')) {
@@ -257,5 +275,3 @@ async function bootstrap() {
 }
 
 bootstrap();
-
-
