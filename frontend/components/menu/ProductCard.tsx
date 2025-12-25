@@ -318,18 +318,10 @@ export const ProductCard = memo(function ProductCard({ product, index = 0, isBes
               handleAddToCart();
             }}
             disabled={isAdding}
-            className={`relative z-10 flex-shrink-0 px-3 sm:px-4 md:px-5 lg:px-6 py-2 sm:py-2.5 md:py-3 rounded-full font-bold text-[0.7rem] sm:text-xs md:text-sm lg:text-base text-white touch-manipulation min-h-[36px] sm:min-h-[40px] md:min-h-[44px] whitespace-nowrap ${
-              isAdding 
-                ? 'bg-green-500' 
-                : isDark
-                  ? 'bg-gradient-to-r from-[#E91E63] via-[#ff0066] to-[#ff2d55] shadow-lg'
-                  : 'shadow-md'
-            }`}
-            style={!isAdding && !isDark ? { 
+            className="relative z-10 flex-shrink-0 px-3 sm:px-4 md:px-5 lg:px-6 py-2 sm:py-2.5 md:py-3 rounded-full font-bold text-[0.7rem] sm:text-xs md:text-sm lg:text-base text-white touch-manipulation min-h-[36px] sm:min-h-[40px] md:min-h-[44px] whitespace-nowrap shadow-md"
+            style={{
               backgroundColor: 'var(--color-primary)',
-              transition: 'box-shadow 0.2s ease, filter 0.2s ease, opacity 0.2s ease, outline 0.2s ease',
-              outline: 'none',
-            } : {
+              opacity: isAdding ? 0.7 : 1,
               transition: 'box-shadow 0.2s ease, filter 0.2s ease, opacity 0.2s ease, outline 0.2s ease',
               outline: 'none',
             }}
