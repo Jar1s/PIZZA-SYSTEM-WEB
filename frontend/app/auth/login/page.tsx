@@ -431,68 +431,48 @@ export default function CustomerLoginPage() {
       </div>
 
       {/* Right: Benefits */}
-      <div className={`hidden lg:flex w-1/2 items-center justify-center p-12 ${isDark ? 'relative overflow-hidden' : 'bg-gray-50'}`}>
-        {isDark ? (
-          <>
-            <div className="absolute inset-0">
-              <Image src="/images/hero/pizza-hero.jpg" alt="Pizza background" fill className="object-cover" />
-              <div className="absolute inset-0 bg-gradient-to-br from-black/90 via-black/60 to-transparent" />
-            </div>
-            <div className="relative z-10 max-w-md space-y-6 text-gray-200">
-              <h2 className="text-3xl font-black text-white">{t.registrationBenefits}</h2>
+      <div
+        className="hidden lg:flex w-1/2 items-center justify-center p-12"
+        style={{
+          backgroundColor: secondaryColor,
+          color: isSecondaryDark ? '#fff' : '#0f172a',
+        }}
+      >
+        <div className="max-w-md space-y-6">
+          <h2 className="text-3xl font-black mb-4" style={{ color: isSecondaryDark ? '#fff' : '#0f172a' }}>
+            {t.registrationBenefits}
+          </h2>
+          <div className="space-y-6">
+            <div className="flex items-start gap-4">
+              <div className="text-3xl">🎁</div>
               <div>
-                <p className="text-xs uppercase tracking-[0.4em] text-rose-200">{t.loyaltyProgram}</p>
-                <p className="text-lg font-semibold">{t.loyaltyProgramDesc}</p>
-              </div>
-              <div>
-                <p className="text-xs uppercase tracking-[0.4em] text-rose-200">{t.fasterPayment}</p>
-                <p className="text-lg font-semibold">{t.fasterPaymentDesc}</p>
-              </div>
-              <div>
-                <p className="text-xs uppercase tracking-[0.4em] text-rose-200">{t.additionalFeatures}</p>
-                <p className="text-lg font-semibold">{t.additionalFeaturesDesc}</p>
-              </div>
-              <div>
-                <p className="text-xs uppercase tracking-[0.4em] text-rose-200">{t.orderHistory}</p>
-                <p className="text-lg font-semibold">{t.orderHistoryDesc}</p>
+                <h3 className="font-semibold mb-1">{t.loyaltyProgram}</h3>
+                <p className="text-sm" style={{ color: isSecondaryDark ? '#d1d5db' : '#4b5563' }}>{t.loyaltyProgramDesc}</p>
               </div>
             </div>
-          </>
-        ) : (
-          <div className="max-w-md">
-            <h2 className="text-2xl font-bold mb-8">{t.registrationBenefits}</h2>
-            <div className="space-y-6">
-              <div className="flex items-start gap-4">
-                <div className="text-3xl">🎁</div>
-                <div>
-                  <h3 className="font-semibold mb-1">{t.loyaltyProgram}</h3>
-                  <p className="text-gray-600 text-sm">{t.loyaltyProgramDesc}</p>
-                </div>
+            <div className="flex items-start gap-4">
+              <div className="text-3xl">🛍️</div>
+              <div>
+                <h3 className="font-semibold mb-1">{t.fasterPayment}</h3>
+                <p className="text-sm" style={{ color: isSecondaryDark ? '#d1d5db' : '#4b5563' }}>{t.fasterPaymentDesc}</p>
               </div>
-              <div className="flex items-start gap-4">
-                <div className="text-3xl">🛍️</div>
-                <div>
-                  <h3 className="font-semibold mb-1">{t.fasterPayment}</h3>
-                  <p className="text-gray-600 text-sm">{t.fasterPaymentDesc}</p>
-                </div>
+            </div>
+            <div className="flex items-start gap-4">
+              <div className="text-3xl">✨</div>
+              <div>
+                <h3 className="font-semibold mb-1">{t.additionalFeatures}</h3>
+                <p className="text-sm" style={{ color: isSecondaryDark ? '#d1d5db' : '#4b5563' }}>{t.additionalFeaturesDesc}</p>
               </div>
-              <div className="flex items-start gap-4">
-                <div className="text-3xl">✨</div>
-                <div>
-                  <h3 className="font-semibold mb-1">{t.additionalFeatures}</h3>
-                  <p className="text-gray-600 text-sm">{t.additionalFeaturesDesc}</p>
-                </div>
-              </div>
-              <div className="flex items-start gap-4">
-                <div className="text-3xl">🕐</div>
-                <div>
-                  <h3 className="font-semibold mb-1">{t.orderHistory}</h3>
-                  <p className="text-gray-600 text-sm">{t.orderHistoryDesc}</p>
-                </div>
+            </div>
+            <div className="flex items-start gap-4">
+              <div className="text-3xl">🕐</div>
+              <div>
+                <h3 className="font-semibold mb-1">{t.orderHistory}</h3>
+                <p className="text-sm" style={{ color: isSecondaryDark ? '#d1d5db' : '#4b5563' }}>{t.orderHistoryDesc}</p>
               </div>
             </div>
           </div>
-        )}
+        </div>
       </div>
     </div>
   );
