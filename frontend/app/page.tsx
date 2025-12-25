@@ -18,9 +18,15 @@ export default async function HomePage({
 }) {
   // Get tenant slug from headers (server-side) or query params
   const headersList = await headers();
-  // Check x-tenant header first (set by middleware), then query param, then headers
+  const host = headersList.get('host') || '';
+  const allowQueryTenant =
+    host.includes('localhost') ||
+    host.includes('127.0.0.1') ||
+    host.includes('vercel.app');
+
+  // Check x-tenant header first (set by middleware), then query param (only local/preview), then headers
   const tenantFromHeader = headersList.get('x-tenant');
-  const tenantFromQuery = searchParams?.tenant;
+  const tenantFromQuery = allowQueryTenant ? searchParams?.tenant : null;
   const tenantSlug = tenantFromQuery || tenantFromHeader || getTenantSlugFromHeaders(headersList);
 
   // Fetch data on server (for SEO)

@@ -9,18 +9,18 @@ export async function middleware(request: NextRequest) {
   
   // 1. Try environment variable (for preview/dev)
   tenantSlug = process.env.NEXT_PUBLIC_TENANT_SLUG || null;
+
+  // Helper: only allow query override on local/preview
+  const domain = hostname.split(':')[0];
+  const allowQueryTenant =
+    domain.includes('localhost') ||
+    domain.includes('127.0.0.1') ||
+    domain.includes('vercel.app');
   
   // 2. If not set, try to resolve from hostname
   if (!tenantSlug) {
-    // Remove port if present
-    const domain = hostname.split(':')[0];
-    
     // For localhost/dev, use query param
-    if (domain.includes('localhost') || domain.includes('127.0.0.1')) {
-      tenantSlug = url.searchParams.get('tenant') || null;
-    }
-    // For Vercel preview URLs, use query param
-    else if (domain.includes('vercel.app')) {
+    if (allowQueryTenant) {
       tenantSlug = url.searchParams.get('tenant') || null;
     }
     // For production domains, lookup from backend
@@ -62,5 +62,4 @@ export async function middleware(request: NextRequest) {
 export const config = {
   matcher: ['/((?!api|_next/static|_next/image|favicon.ico).*)'],
 };
-
 
