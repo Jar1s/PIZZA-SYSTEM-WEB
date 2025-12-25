@@ -183,11 +183,11 @@ export function Header({ tenant }: HeaderProps) {
             <button
               type="button"
               onClick={() => router.push(`/account?tenant=${tenantSlug}`)}
-              className={`flex h-10 w-10 items-center justify-center rounded-full border transition-colors ${
-                isDarkTheme
-                  ? 'border-[#2c2c2c] text-white hover:bg-[#1c1c1c]'
-                  : 'border-gray-200 text-gray-700 hover:bg-gray-50'
-              }`}
+              className="flex h-10 w-10 items-center justify-center rounded-full transition-colors"
+              style={{
+                backgroundColor: secondaryColor,
+                color: isDarkTheme ? '#fff' : '#0f172a',
+              }}
               title={t.myAccount || 'Moje konto'}
               aria-label={t.myAccount || 'Moje konto'}
             >
@@ -210,11 +210,11 @@ export function Header({ tenant }: HeaderProps) {
                 }
                 router.push(`/auth/login?tenant=${tenantSlug}&returnUrl=${encodeURIComponent(returnUrl)}`);
               }}
-              className={`flex h-10 w-10 items-center justify-center rounded-full border transition-colors ${
-                isDarkTheme
-                  ? 'border-[#2c2c2c] text-white hover:bg-[#1c1c1c]'
-                  : 'border-gray-200 text-gray-700 hover:bg-gray-50'
-              }`}
+              className="flex h-10 w-10 items-center justify-center rounded-full transition-colors"
+              style={{
+                backgroundColor: secondaryColor,
+                color: isDarkTheme ? '#fff' : '#0f172a',
+              }}
               title={t.customerLogin || 'Prihlásiť sa'}
               aria-label={t.customerLogin || 'Prihlásiť sa'}
             >
@@ -240,9 +240,9 @@ export function Header({ tenant }: HeaderProps) {
             onMouseDown={(e) => {
               e.stopPropagation();
             }}
-            className="relative z-50 flex items-center gap-2 rounded-full px-3 sm:px-4 py-2 min-h-[44px] font-semibold text-white shadow-lg touch-manipulation transition-all"
-            style={{
-              backgroundImage: `linear-gradient(135deg, ${secondaryColor}, ${secondaryColor})`,
+          className="relative z-50 flex items-center gap-2 rounded-full px-3 sm:px-4 py-2 min-h-[44px] font-semibold text-white shadow-lg touch-manipulation transition-all"
+          style={{
+              backgroundColor: primaryColor,
               boxShadow: isDarkTheme
                 ? '0 15px 35px rgba(0,0,0,0.45)'
                 : '0 12px 30px rgba(0,0,0,0.20)',

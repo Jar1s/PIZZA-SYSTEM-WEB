@@ -205,6 +205,17 @@ export default function CustomerLoginPage() {
 
   const layout = tenant.theme?.layout || {};
   const isDark = layout.headerStyle === 'dark';
+  const secondaryColor = tenant.theme?.secondaryColor || (isDark ? '#0f172a' : '#f8fafc');
+  const isSecondaryDark = (() => {
+    const hex = secondaryColor.replace('#', '');
+    if (hex.length !== 6 && hex.length !== 3) return false;
+    const normalized = hex.length === 3 ? hex.split('').map((c) => c + c).join('') : hex;
+    const r = parseInt(normalized.substring(0, 2), 16);
+    const g = parseInt(normalized.substring(2, 4), 16);
+    const b = parseInt(normalized.substring(4, 6), 16);
+    const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+    return luminance < 0.5;
+  })();
   
   const inputClasses = isDark
     ? 'w-full rounded-2xl px-4 py-3 bg-white/10 border border-white/10 text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-white/30'
@@ -214,7 +225,8 @@ export default function CustomerLoginPage() {
 
   return (
     <div
-      className={`flex min-h-screen ${isDark ? 'text-white porno-bg relative' : 'bg-white text-gray-900'}`}
+      className="flex min-h-screen"
+      style={{ backgroundColor: secondaryColor, color: isSecondaryDark ? '#fff' : '#0f172a' }}
     >
       {/* Left: Login Form */}
       <div className={`w-full lg:w-1/2 flex items-center justify-center p-8 lg:p-12 ${isDark ? 'relative z-10' : ''}`}>

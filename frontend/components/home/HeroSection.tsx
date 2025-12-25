@@ -81,8 +81,9 @@ export const HeroSection = ({ tenantName, primaryColor, isDark = false }: HeroSe
           <motion.span
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.05, duration: 0.4 }}
-            className={`${isDark ? 'hero-badge mb-4 sm:mb-6 inline-flex' : 'inline-flex items-center gap-1.5 sm:gap-2 rounded-full bg-white/90 sm:bg-white/80 px-3 sm:px-4 py-1.5 sm:py-2 text-[11px] sm:text-xs font-semibold text-black mb-4 sm:mb-6'}`}
+          transition={{ delay: 0.05, duration: 0.4 }}
+            className="inline-flex items-center gap-1.5 sm:gap-2 rounded-full px-3 sm:px-4 py-1.5 sm:py-2 text-[11px] sm:text-xs font-semibold mb-4 sm:mb-6"
+            style={{ backgroundColor: accentColor, color: '#fff' }}
           >
             <span className="text-sm sm:text-base">🌶️</span>
             <span className="whitespace-nowrap">{t.heroBadge}</span>

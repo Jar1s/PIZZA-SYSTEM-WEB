@@ -10,11 +10,7 @@ export default function LanguageSwitcher() {
   const { tenant } = useTenant();
   const isDark = isDarkTheme(tenant);
   const primary = tenant?.theme?.primaryColor || 'var(--color-primary)';
-  const secondary = primary; // language switcher now purely primary
-
-  const activeClass = isDark
-    ? `bg-gradient-to-r from-[${primary}] to-[${secondary}] text-white shadow-lg`
-    : `bg-gradient-to-r from-[${primary}] to-[${secondary}] text-white shadow`;
+  const secondary = tenant?.theme?.secondaryColor || 'transparent';
 
   return (
     <div 
@@ -27,9 +23,10 @@ export default function LanguageSwitcher() {
         onClick={() => setLanguage('sk')}
         className={`px-3 py-1.5 rounded-full text-sm font-bold transition-all ${
           language === 'sk'
-            ? activeClass
+            ? 'text-white shadow'
             : isDark ? 'text-gray-400 hover:text-white' : 'text-gray-700 hover:bg-gray-200'
         }`}
+        style={language === 'sk' ? { backgroundColor: primary } : { backgroundColor: 'transparent' }}
       >
         SK
       </button>
@@ -37,9 +34,10 @@ export default function LanguageSwitcher() {
         onClick={() => setLanguage('en')}
         className={`px-3 py-1.5 rounded-full text-sm font-bold transition-all ${
           language === 'en'
-            ? activeClass
+            ? 'text-white shadow'
             : isDark ? 'text-gray-400 hover:text-white' : 'text-gray-700 hover:bg-gray-200'
         }`}
+        style={language === 'en' ? { backgroundColor: primary } : { backgroundColor: 'transparent' }}
       >
         EN
       </button>
