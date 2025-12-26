@@ -14,11 +14,16 @@ export function MaintenanceBanner() {
   const [autoMaintenanceMode, setAutoMaintenanceMode] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const normalizeSlug = (slug: string) => {
+    if (slug === 'p0rnopizza') return 'pornopizza';
+    if (slug === 'pizzaparty') return 'partypizza';
+    return slug;
+  };
 
   useEffect(() => {
     const loadTenant = async () => {
       try {
-        const tenantSlug = getTenantSlug();
+        const tenantSlug = normalizeSlug(getTenantSlug());
         const tenantData = await getTenant(tenantSlug);
         setTenant(tenantData);
         
@@ -94,7 +99,7 @@ export function MaintenanceBanner() {
       setMaintenanceMode(newMaintenanceMode);
       
       // Reload tenant to get updated data
-      const updatedTenant = await getTenant(tenant.subdomain || tenant.slug || getTenantSlug());
+      const updatedTenant = await getTenant(tenant.subdomain || tenant.slug || normalizeSlug(getTenantSlug()));
       setTenant(updatedTenant);
     } catch (error: any) {
       console.error('Failed to update maintenance mode:', error);

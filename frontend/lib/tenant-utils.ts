@@ -192,6 +192,12 @@ export function getTenantSlug(): string {
   
   const hostname = window.location.hostname.toLowerCase();
   const params = new URLSearchParams(window.location.search);
+  const normalize = (slug: string | null): string => {
+    if (!slug) return 'pornopizza';
+    if (slug === 'p0rnopizza') return 'pornopizza';
+    if (slug === 'pizzaparty') return 'partypizza';
+    return slug;
+  };
   
   // Check for known production domains
   if (hostname.includes('partypizza') || hostname.includes('pizzaparty')) return 'partypizza';
@@ -202,13 +208,13 @@ export function getTenantSlug(): string {
   
   // For localhost or Vercel URLs, check URL params
   if (hostname.includes('localhost') || hostname.includes('127.0.0.1') || hostname.includes('vercel.app')) {
-    return params.get('tenant') || 'pornopizza';
+    return normalize(params.get('tenant'));
   }
   
   // For other domains, try query param first
   const tenantParam = params.get('tenant');
   if (tenantParam) {
-    return tenantParam;
+    return normalize(tenantParam);
   }
   
   // Default fallback
