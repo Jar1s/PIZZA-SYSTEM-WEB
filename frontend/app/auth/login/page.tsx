@@ -214,7 +214,6 @@ export default function CustomerLoginPage() {
     ? 'w-full rounded-2xl px-4 py-3 bg-white/10 border border-white/10 text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-white/30'
     : 'w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-yellow-400';
 
-  const primaryColor = tenant.theme?.primaryColor || '#FFD700';
 
   return (
     <div
