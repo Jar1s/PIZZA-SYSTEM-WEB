@@ -3,15 +3,21 @@ import { withTenantThemeDefaults } from '@/lib/tenant-utils';
 import { TenantSchema, ProductSchema, OrderSchema, safeParse } from '@/lib/schemas/api.schema';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+const normalizeTenantSlug = (slug: string): string => {
+  if (slug === 'p0rnopizza') return 'pornopizza';
+  if (slug === 'pizzaparty') return 'partypizza';
+  return slug;
+};
 
 export async function getTenant(slug: string): Promise<Tenant> {
   try {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+    const normalizedSlug = normalizeTenantSlug(slug);
     
-    console.log(`[getTenant] Fetching tenant: ${API_URL}/api/tenants/${slug}`);
+    console.log(`[getTenant] Fetching tenant: ${API_URL}/api/tenants/${normalizedSlug}`);
     
-    const res = await fetch(`${API_URL}/api/tenants/${slug}`, {
+    const res = await fetch(`${API_URL}/api/tenants/${normalizedSlug}`, {
       signal: controller.signal,
       headers: {
         'Content-Type': 'application/json',
@@ -55,9 +61,10 @@ export async function getTenant(slug: string): Promise<Tenant> {
 }
 
 export async function getProducts(tenantSlug: string): Promise<Product[]> {
+  const normalizedSlug = normalizeTenantSlug(tenantSlug);
   // Add timestamp to prevent browser caching
   const timestamp = Date.now();
-  const res = await fetch(`${API_URL}/api/${tenantSlug}/products?t=${timestamp}`, {
+  const res = await fetch(`${API_URL}/api/${normalizedSlug}/products?t=${timestamp}`, {
     headers: {
       'Content-Type': 'application/json',
       'Cache-Control': 'no-cache, no-store, must-revalidate',
@@ -80,7 +87,8 @@ export async function getProducts(tenantSlug: string): Promise<Product[]> {
 }
 
 export async function getCategories(tenantSlug: string): Promise<string[]> {
-  const res = await fetch(`${API_URL}/api/${tenantSlug}/products/categories`, {
+  const normalizedSlug = normalizeTenantSlug(tenantSlug);
+  const res = await fetch(`${API_URL}/api/${normalizedSlug}/products/categories`, {
     next: { revalidate: 60 },
   });
   
@@ -102,6 +110,7 @@ export async function getProductById(productId: string): Promise<Product> {
 
 export async function updateProduct(tenantSlug: string, productId: string, data: Partial<Product>): Promise<Product> {
   const makeRequest = async (retry = false): Promise<Product> => {
+    const normalizedSlug = normalizeTenantSlug(tenantSlug);
     const token = localStorage.getItem('auth_token');
     
     if (!token && !retry) {
@@ -137,7 +146,7 @@ export async function updateProduct(tenantSlug: string, productId: string, data:
       headers['Authorization'] = `Bearer ${token}`;
     }
     
-    const res = await fetch(`${API_URL}/api/${tenantSlug}/products/${productId}`, {
+    const res = await fetch(`${API_URL}/api/${normalizedSlug}/products/${productId}`, {
       method: 'PATCH',
       headers,
       body: JSON.stringify(data),
@@ -223,6 +232,7 @@ export async function updateProductOverrides(
   targetTenantSlug: string,
   overrides: ProductTenantOverride
 ): Promise<void> {
+  const normalizedSlug = normalizeTenantSlug(tenantSlug);
   const token = localStorage.getItem('auth_token');
   
   if (!token) {
@@ -235,7 +245,7 @@ export async function updateProductOverrides(
   };
   
   const res = await fetch(
-    `${API_URL}/api/${tenantSlug}/products/${productId}/overrides/${targetTenantSlug}`,
+    `${API_URL}/api/${normalizedSlug}/products/${productId}/overrides/${targetTenantSlug}`,
     {
       method: 'PATCH',
       headers,
@@ -379,13 +389,14 @@ export async function getAllTenants(includeInactive: boolean = false): Promise<T
 }
 
 export async function updateTenant(tenantSlug: string, data: Partial<Tenant>): Promise<Tenant> {
+  const normalizedSlug = normalizeTenantSlug(tenantSlug);
   const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
   const headers: HeadersInit = { 'Content-Type': 'application/json' };
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
   }
   
-  const res = await fetch(`${API_URL}/api/tenants/${tenantSlug}`, {
+  const res = await fetch(`${API_URL}/api/tenants/${normalizedSlug}`, {
     method: 'PATCH',
     headers,
     body: JSON.stringify(data),
