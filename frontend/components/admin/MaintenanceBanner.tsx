@@ -124,7 +124,7 @@ export function MaintenanceBanner() {
   const isSecondaryDark = (() => {
     const hex = secondaryColor.replace('#', '');
     if (hex.length !== 6 && hex.length !== 3) return false;
-    const normalized = hex.length === 3 ? hex.split('').map((c) => c + c).join('') : hex;
+    const normalized = hex.length === 3 ? hex.split('').map((c: string) => c + c).join('') : hex;
     const r = parseInt(normalized.substring(0, 2), 16);
     const g = parseInt(normalized.substring(2, 4), 16);
     const b = parseInt(normalized.substring(4, 6), 16);
