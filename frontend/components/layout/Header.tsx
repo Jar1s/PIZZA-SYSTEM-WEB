@@ -38,6 +38,7 @@ export function Header({ tenant }: HeaderProps) {
   const layoutConfig = getLayoutConfig(normalizedTenant);
   const headerStyle = layoutConfig.headerStyle;
   const isDarkTheme = headerStyle === 'dark';
+  const primaryColor = normalizedTenant?.theme?.primaryColor || 'var(--color-primary)';
 
   const navItems = [
     { id: 'hero', label: t.home },
