@@ -95,7 +95,6 @@ export function MaintenanceBanner() {
         tenantSlugsToUpdate.map(slug => 
           updateTenant(normalizeSlug(slug), {
             theme: {
-              ...theme,
               maintenanceMode: newMaintenanceMode,
             },
           })
