@@ -104,6 +104,7 @@ export function EditBrandModal({
         redirectUri: oauthConfig.redirectUri || '',
         enabled: oauthConfig.enabled || false,
       });
+      setSubCategoryLabels(theme.subCategoryLabels || {});
       
       // Load Wolt/Delivery settings
       setWoltApiKey(woltConfig.apiKey || '');
@@ -223,6 +224,7 @@ export function EditBrandModal({
       const updatedTheme: any = {
         ...existingTheme,
         favicon: faviconUrl.trim() || existingTheme.favicon || '/favicon.ico',
+        subCategoryLabels,
         analyticsConfig: {
           googleAnalytics: analyticsConfig.googleAnalytics.enabled && analyticsConfig.googleAnalytics.measurementId
             ? { measurementId: analyticsConfig.googleAnalytics.measurementId, enabled: true }
