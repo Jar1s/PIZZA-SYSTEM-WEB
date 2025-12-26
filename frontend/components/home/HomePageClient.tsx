@@ -270,7 +270,7 @@ export function HomePageClient({ products, tenant }: HomePageClientProps) {
   const subCategoryLabels = (tenant.theme as any)?.subCategoryLabels || {};
 
   const getSubCategoryLabel = (
-    key: 'foreplay' | 'mainAction' | 'deluxeFetish' | 'premiumSins',
+    key: 'foreplay' | 'mainAction' | 'deluxeFetish' | 'premiumSins' | 'stangle' | 'soups' | 'drinks' | 'desserts',
     type: 'title' | 'desc'
   ) => {
     const entry = subCategoryLabels[key] || {};
@@ -711,10 +711,10 @@ export function HomePageClient({ products, tenant }: HomePageClientProps) {
                       letterSpacing: '-0.02em'
                     }}
                   >
-                    🥖 {t.stangleTitle}
+                    🥖 {getSubCategoryLabel('stangle', 'title') || t.stangleTitle}
                   </h3>
                   <p className={`mb-2 text-lg ${isDarkTheme ? 'text-gray-400' : ''}`} style={{ color: isDarkTheme ? '#999' : '#666666' }}>
-                    💬 {t.stangleSubtitle}
+                    💬 {getSubCategoryLabel('stangle', 'desc') || t.stangleSubtitle}
                   </p>
                   <div className="h-1 w-32 rounded mx-auto mt-4" style={{ backgroundColor: primaryColor }}></div>
                 </motion.div>
@@ -738,10 +738,10 @@ export function HomePageClient({ products, tenant }: HomePageClientProps) {
                       letterSpacing: '-0.02em'
                     }}
                   >
-                    🥴 {t.soupsTitle}
+                    🥴 {getSubCategoryLabel('soups', 'title') || t.soupsTitle}
                   </h3>
                   <p className={`mb-2 text-lg ${isDarkTheme ? 'text-gray-400' : ''}`} style={{ color: isDarkTheme ? '#999' : '#666666' }}>
-                    {t.soupsSubtitle}
+                    {getSubCategoryLabel('soups', 'desc') || t.soupsSubtitle}
                   </p>
                   <div className="h-1 w-32 rounded mx-auto mt-4" style={{ backgroundColor: primaryColor }}></div>
                 </motion.div>
@@ -765,10 +765,10 @@ export function HomePageClient({ products, tenant }: HomePageClientProps) {
                       letterSpacing: '-0.02em'
                     }}
                   >
-                    {t.dessertsTitle}
+                    {getSubCategoryLabel('desserts', 'title') || t.dessertsTitle}
                   </h3>
                   <p className={`mb-2 text-lg ${isDarkTheme ? 'text-gray-400' : ''}`} style={{ color: isDarkTheme ? '#999' : '#666666' }}>
-                    {t.dessertsSubtitle}
+                    {getSubCategoryLabel('desserts', 'desc') || t.dessertsSubtitle}
                   </p>
                   <div className="h-1 w-32 rounded mx-auto mt-4" style={{ backgroundColor: primaryColor }}></div>
                 </motion.div>

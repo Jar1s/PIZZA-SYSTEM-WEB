@@ -79,6 +79,10 @@ export function EditBrandModal({
     mainAction: { titleSk: '', titleEn: '', descSk: '', descEn: '' },
     deluxeFetish: { titleSk: '', titleEn: '', descSk: '', descEn: '' },
     premiumSins: { titleSk: '', titleEn: '', descSk: '', descEn: '' },
+    stangle: { titleSk: '', titleEn: '', descSk: '', descEn: '' },
+    soups: { titleSk: '', titleEn: '', descSk: '', descEn: '' },
+    drinks: { titleSk: '', titleEn: '', descSk: '', descEn: '' },
+    desserts: { titleSk: '', titleEn: '', descSk: '', descEn: '' },
   });
 
   useEffect(() => {
@@ -153,6 +157,30 @@ export function EditBrandModal({
           titleEn: subLabels.premiumSins?.titleEn || '',
           descSk: subLabels.premiumSins?.descSk || '',
           descEn: subLabels.premiumSins?.descEn || '',
+        },
+        stangle: {
+          titleSk: subLabels.stangle?.titleSk || '',
+          titleEn: subLabels.stangle?.titleEn || '',
+          descSk: subLabels.stangle?.descSk || '',
+          descEn: subLabels.stangle?.descEn || '',
+        },
+        soups: {
+          titleSk: subLabels.soups?.titleSk || '',
+          titleEn: subLabels.soups?.titleEn || '',
+          descSk: subLabels.soups?.descSk || '',
+          descEn: subLabels.soups?.descEn || '',
+        },
+        drinks: {
+          titleSk: subLabels.drinks?.titleSk || '',
+          titleEn: subLabels.drinks?.titleEn || '',
+          descSk: subLabels.drinks?.descSk || '',
+          descEn: subLabels.drinks?.descEn || '',
+        },
+        desserts: {
+          titleSk: subLabels.desserts?.titleSk || '',
+          titleEn: subLabels.desserts?.titleEn || '',
+          descSk: subLabels.desserts?.descSk || '',
+          descEn: subLabels.desserts?.descEn || '',
         },
       });
       
@@ -363,6 +391,30 @@ export function EditBrandModal({
           ...(subCategoryLabels.premiumSins.titleEn ? { titleEn: subCategoryLabels.premiumSins.titleEn } : {}),
           ...(subCategoryLabels.premiumSins.descSk ? { descSk: subCategoryLabels.premiumSins.descSk } : {}),
           ...(subCategoryLabels.premiumSins.descEn ? { descEn: subCategoryLabels.premiumSins.descEn } : {}),
+        },
+        stangle: {
+          ...(subCategoryLabels.stangle.titleSk ? { titleSk: subCategoryLabels.stangle.titleSk } : {}),
+          ...(subCategoryLabels.stangle.titleEn ? { titleEn: subCategoryLabels.stangle.titleEn } : {}),
+          ...(subCategoryLabels.stangle.descSk ? { descSk: subCategoryLabels.stangle.descSk } : {}),
+          ...(subCategoryLabels.stangle.descEn ? { descEn: subCategoryLabels.stangle.descEn } : {}),
+        },
+        soups: {
+          ...(subCategoryLabels.soups.titleSk ? { titleSk: subCategoryLabels.soups.titleSk } : {}),
+          ...(subCategoryLabels.soups.titleEn ? { titleEn: subCategoryLabels.soups.titleEn } : {}),
+          ...(subCategoryLabels.soups.descSk ? { descSk: subCategoryLabels.soups.descSk } : {}),
+          ...(subCategoryLabels.soups.descEn ? { descEn: subCategoryLabels.soups.descEn } : {}),
+        },
+        drinks: {
+          ...(subCategoryLabels.drinks.titleSk ? { titleSk: subCategoryLabels.drinks.titleSk } : {}),
+          ...(subCategoryLabels.drinks.titleEn ? { titleEn: subCategoryLabels.drinks.titleEn } : {}),
+          ...(subCategoryLabels.drinks.descSk ? { descSk: subCategoryLabels.drinks.descSk } : {}),
+          ...(subCategoryLabels.drinks.descEn ? { descEn: subCategoryLabels.drinks.descEn } : {}),
+        },
+        desserts: {
+          ...(subCategoryLabels.desserts.titleSk ? { titleSk: subCategoryLabels.desserts.titleSk } : {}),
+          ...(subCategoryLabels.desserts.titleEn ? { titleEn: subCategoryLabels.desserts.titleEn } : {}),
+          ...(subCategoryLabels.desserts.descSk ? { descSk: subCategoryLabels.desserts.descSk } : {}),
+          ...(subCategoryLabels.desserts.descEn ? { descEn: subCategoryLabels.desserts.descEn } : {}),
         },
       };
       
@@ -1207,6 +1259,68 @@ export function EditBrandModal({
                     { key: 'mainAction', label: 'Hlavná akcia' },
                     { key: 'deluxeFetish', label: 'Deluxe Fetish' },
                     { key: 'premiumSins', label: 'Premium Sins' },
+                  ] as const).map(({ key, label }) => (
+                    <div key={key} className="mb-4 p-3 border border-gray-200 rounded-md space-y-2">
+                      <div className="text-sm font-semibold text-gray-800">{label}</div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <input
+                          type="text"
+                          placeholder="Názov (SK)"
+                          value={(subCategoryLabels as any)[key].titleSk}
+                          onChange={(e) => setSubCategoryLabels({
+                            ...subCategoryLabels,
+                            [key]: { ...(subCategoryLabels as any)[key], titleSk: e.target.value },
+                          })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500"
+                        />
+                        <input
+                          type="text"
+                          placeholder="Name (EN)"
+                          value={(subCategoryLabels as any)[key].titleEn}
+                          onChange={(e) => setSubCategoryLabels({
+                            ...subCategoryLabels,
+                            [key]: { ...(subCategoryLabels as any)[key], titleEn: e.target.value },
+                          })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500"
+                        />
+                        <input
+                          type="text"
+                          placeholder="Popis (SK)"
+                          value={(subCategoryLabels as any)[key].descSk}
+                          onChange={(e) => setSubCategoryLabels({
+                            ...subCategoryLabels,
+                            [key]: { ...(subCategoryLabels as any)[key], descSk: e.target.value },
+                          })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500 sm:col-span-2"
+                        />
+                        <input
+                          type="text"
+                          placeholder="Description (EN)"
+                          value={(subCategoryLabels as any)[key].descEn}
+                          onChange={(e) => setSubCategoryLabels({
+                            ...subCategoryLabels,
+                            [key]: { ...(subCategoryLabels as any)[key], descEn: e.target.value },
+                          })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500 sm:col-span-2"
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Ostatné kategórie */}
+                <div className="border-t pt-4 mt-4">
+                  <h4 className="text-md font-semibold mb-3 text-gray-900">
+                    📂 Názvy sekcií ostatných kategórií
+                  </h4>
+                  <p className="text-sm text-gray-600 mb-4">
+                    Uprav názvy a popisy pre Štangle, Polievky, Nápoje a Dezerty pre tento tenant.
+                  </p>
+                  {([
+                    { key: 'stangle', label: 'Štangle & Posúch' },
+                    { key: 'soups', label: 'Polievky' },
+                    { key: 'drinks', label: 'Nápoje' },
+                    { key: 'desserts', label: 'Dezerty' },
                   ] as const).map(({ key, label }) => (
                     <div key={key} className="mb-4 p-3 border border-gray-200 rounded-md space-y-2">
                       <div className="text-sm font-semibold text-gray-800">{label}</div>
