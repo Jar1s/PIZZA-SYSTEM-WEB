@@ -193,9 +193,12 @@ export default function CustomerLoginPage() {
     );
   }
 
-  const layout = tenant.theme?.layout || {};
+  const normalizedTenant = withTenantThemeDefaults(tenant);
+  const layout = normalizedTenant.theme?.layout || {};
   const isDark = layout.headerStyle === 'dark';
-  const secondaryColor = tenant.theme?.secondaryColor || (isDark ? '#0f172a' : '#f8fafc');
+  const secondaryColor = normalizedTenant.theme?.secondaryColor || (isDark ? '#0f172a' : '#f8fafc');
+  const primaryColor = normalizedTenant.theme?.primaryColor || '#FF6B00';
+  const heroImage = normalizedTenant.theme?.heroImage;
   const isSecondaryDark = (() => {
     const hex = secondaryColor.replace('#', '');
     if (hex.length !== 6 && hex.length !== 3) return false;
@@ -216,7 +219,13 @@ export default function CustomerLoginPage() {
   return (
     <div
       className="flex min-h-screen"
-      style={{ backgroundColor: secondaryColor, color: isSecondaryDark ? '#fff' : '#0f172a' }}
+      style={{
+        backgroundColor: secondaryColor,
+        color: isSecondaryDark ? '#fff' : '#0f172a',
+        backgroundImage: heroImage ? `linear-gradient(180deg, ${secondaryColor}ee, ${secondaryColor}dd), url(${heroImage})` : undefined,
+        backgroundSize: heroImage ? 'cover' : undefined,
+        backgroundPosition: heroImage ? 'center' : undefined,
+      }}
     >
       {/* Left: Login Form */}
       <div className={`w-full lg:w-1/2 flex items-center justify-center p-8 lg:p-12 ${isDark ? 'relative z-10' : ''}`}>
@@ -316,9 +325,9 @@ export default function CustomerLoginPage() {
                 type="submit"
                 disabled={loading}
                 className={`w-full font-semibold py-3 rounded-2xl disabled:opacity-50 transition-colors ${
-                  isDark ? 'bg-gradient-to-r from-[#ff5e00] via-[#ff0066] to-[#ff2d55] text-white' : 'text-black'
+                  isDark ? 'text-white' : 'text-black'
                 }`}
-                style={!isDark ? { backgroundColor: primaryColor } : undefined}
+                style={{ backgroundColor: primaryColor, color: '#fff' }}
               >
                 {loading ? t.checking : t.next}
               </button>
@@ -345,9 +354,9 @@ export default function CustomerLoginPage() {
                 type="submit"
                 disabled={loading}
                 className={`w-full font-semibold py-3 rounded-2xl disabled:opacity-50 transition-colors mb-2 ${
-                  isDark ? 'bg-gradient-to-r from-[#ff5e00] via-[#ff0066] to-[#ff2d55] text-white' : 'text-black'
+                  isDark ? 'text-white' : 'text-black'
                 }`}
-                style={!isDark ? { backgroundColor: primaryColor } : undefined}
+                style={{ backgroundColor: primaryColor, color: '#fff' }}
               >
                 {loading ? t.loggingIn : t.login}
               </button>
@@ -394,9 +403,9 @@ export default function CustomerLoginPage() {
                 type="submit"
                 disabled={loading}
                 className={`w-full font-semibold py-3 rounded-2xl disabled:opacity-50 transition-colors mb-2 ${
-                  isDark ? 'bg-gradient-to-r from-[#ff5e00] via-[#ff0066] to-[#ff2d55] text-white' : 'text-black'
+                  isDark ? 'text-white' : 'text-black'
                 }`}
-                style={!isDark ? { backgroundColor: primaryColor } : undefined}
+                style={{ backgroundColor: primaryColor, color: '#fff' }}
               >
                 {loading ? t.registering : t.register}
               </button>
