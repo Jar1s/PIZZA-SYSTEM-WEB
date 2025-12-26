@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import { Tenant } from '@pizza-ecosystem/shared';
-import type { CustomizationLabels } from '@pizza-ecosystem/shared';
 import { updateTenant } from '@/lib/api';
 
 interface EditBrandModalProps {
@@ -28,7 +27,6 @@ export function EditBrandModal({
     primaryColor: '#E91E63',
     secondaryColor: '#0F141A',
   });
-  const [logoUrl, setLogoUrl] = useState('');
   const [cashEnabled, setCashEnabled] = useState(false);
   const [cardEnabled, setCardEnabled] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -59,31 +57,6 @@ export function EditBrandModal({
     tiktokPixel: { pixelId: '', enabled: false },
     linkedinInsight: { partnerId: '', enabled: false },
   });
-  const [faviconUrl, setFaviconUrl] = useState('');
-  const [googleOAuthConfig, setGoogleOAuthConfig] = useState({
-    clientId: '',
-    clientSecret: '',
-    redirectUri: '',
-    enabled: false,
-  });
-  const [categoryLabels, setCategoryLabels] = useState<Record<string, { sk: string; en: string }>>({
-    dough: { sk: '', en: '' },
-    cheese: { sk: '', en: '' },
-    sauce: { sk: '', en: '' },
-    edge: { sk: '', en: '' },
-    toppings: { sk: '', en: '' },
-  });
-  const [optionsJson, setOptionsJson] = useState('');
-  const [subCategoryLabels, setSubCategoryLabels] = useState({
-    foreplay: { titleSk: '', titleEn: '', descSk: '', descEn: '' },
-    mainAction: { titleSk: '', titleEn: '', descSk: '', descEn: '' },
-    deluxeFetish: { titleSk: '', titleEn: '', descSk: '', descEn: '' },
-    premiumSins: { titleSk: '', titleEn: '', descSk: '', descEn: '' },
-    stangle: { titleSk: '', titleEn: '', descSk: '', descEn: '' },
-    soups: { titleSk: '', titleEn: '', descSk: '', descEn: '' },
-    drinks: { titleSk: '', titleEn: '', descSk: '', descEn: '' },
-    desserts: { titleSk: '', titleEn: '', descSk: '', descEn: '' },
-  });
 
   useEffect(() => {
     if (tenant) {
@@ -113,75 +86,15 @@ export function EditBrandModal({
         primaryColor: theme.primaryColor || '#E91E63',
         secondaryColor: theme.secondaryColor || '#0F141A',
       });
-      setLogoUrl(theme.logo || '');
       setFaviconUrl(theme.favicon || '');
       setCashEnabled(paymentConfig.cashOnDeliveryEnabled === true);
       setCardEnabled(paymentConfig.cardOnDeliveryEnabled === true);
+      const oauthConfig = theme.googleOAuthConfig || {};
       setGoogleOAuthConfig({
-        clientId: theme.googleOAuthConfig?.clientId || '',
-        clientSecret: theme.googleOAuthConfig?.clientSecret || '',
-        redirectUri: theme.googleOAuthConfig?.redirectUri || '',
-        enabled: theme.googleOAuthConfig?.enabled || false,
-      });
-      const labels = (theme.customizationLabels as CustomizationLabels) || {};
-      setCategoryLabels({
-        dough: { sk: labels.categories?.dough?.sk || '', en: labels.categories?.dough?.en || '' },
-        cheese: { sk: labels.categories?.cheese?.sk || '', en: labels.categories?.cheese?.en || '' },
-        sauce: { sk: labels.categories?.sauce?.sk || '', en: labels.categories?.sauce?.en || '' },
-        edge: { sk: labels.categories?.edge?.sk || '', en: labels.categories?.edge?.en || '' },
-        toppings: { sk: labels.categories?.toppings?.sk || '', en: labels.categories?.toppings?.en || '' },
-      });
-      setOptionsJson(labels.options ? JSON.stringify(labels.options, null, 2) : '');
-      const subLabels = (theme.subCategoryLabels as any) || {};
-      setSubCategoryLabels({
-        foreplay: {
-          titleSk: subLabels.foreplay?.titleSk || '',
-          titleEn: subLabels.foreplay?.titleEn || '',
-          descSk: subLabels.foreplay?.descSk || '',
-          descEn: subLabels.foreplay?.descEn || '',
-        },
-        mainAction: {
-          titleSk: subLabels.mainAction?.titleSk || '',
-          titleEn: subLabels.mainAction?.titleEn || '',
-          descSk: subLabels.mainAction?.descSk || '',
-          descEn: subLabels.mainAction?.descEn || '',
-        },
-        deluxeFetish: {
-          titleSk: subLabels.deluxeFetish?.titleSk || '',
-          titleEn: subLabels.deluxeFetish?.titleEn || '',
-          descSk: subLabels.deluxeFetish?.descSk || '',
-          descEn: subLabels.deluxeFetish?.descEn || '',
-        },
-        premiumSins: {
-          titleSk: subLabels.premiumSins?.titleSk || '',
-          titleEn: subLabels.premiumSins?.titleEn || '',
-          descSk: subLabels.premiumSins?.descSk || '',
-          descEn: subLabels.premiumSins?.descEn || '',
-        },
-        stangle: {
-          titleSk: subLabels.stangle?.titleSk || '',
-          titleEn: subLabels.stangle?.titleEn || '',
-          descSk: subLabels.stangle?.descSk || '',
-          descEn: subLabels.stangle?.descEn || '',
-        },
-        soups: {
-          titleSk: subLabels.soups?.titleSk || '',
-          titleEn: subLabels.soups?.titleEn || '',
-          descSk: subLabels.soups?.descSk || '',
-          descEn: subLabels.soups?.descEn || '',
-        },
-        drinks: {
-          titleSk: subLabels.drinks?.titleSk || '',
-          titleEn: subLabels.drinks?.titleEn || '',
-          descSk: subLabels.drinks?.descSk || '',
-          descEn: subLabels.drinks?.descEn || '',
-        },
-        desserts: {
-          titleSk: subLabels.desserts?.titleSk || '',
-          titleEn: subLabels.desserts?.titleEn || '',
-          descSk: subLabels.desserts?.descSk || '',
-          descEn: subLabels.desserts?.descEn || '',
-        },
+        clientId: oauthConfig.clientId || '',
+        clientSecret: oauthConfig.clientSecret || '',
+        redirectUri: oauthConfig.redirectUri || '',
+        enabled: oauthConfig.enabled || false,
       });
       
       // Load Wolt/Delivery settings
@@ -232,17 +145,6 @@ export function EditBrandModal({
     setError(null);
 
     try {
-      // Parse option overrides JSON if provided
-      let parsedOptions: CustomizationLabels['options'] | undefined;
-      if (optionsJson.trim()) {
-        try {
-          parsedOptions = JSON.parse(optionsJson);
-        } catch (err) {
-          setError('Neplatný JSON pre vlastné názvy možností. Skontroluj formát.');
-          setLoading(false);
-          return;
-        }
-      }
       // Get existing paymentConfig to preserve other properties
       const existingPaymentConfig = (tenant.paymentConfig as any) || {};
       const existingDeliveryConfig = (tenant.deliveryConfig as any) || {};
@@ -310,11 +212,8 @@ export function EditBrandModal({
       
       // Update theme with analytics config
       const existingTheme = (tenant.theme as any) || {};
-      const updatedTheme = {
+      const updatedTheme: any = {
         ...existingTheme,
-        primaryColor: themeColors.primaryColor,
-        secondaryColor: themeColors.secondaryColor,
-        logo: logoUrl.trim() || existingTheme.logo,
         favicon: faviconUrl.trim() || existingTheme.favicon || '/favicon.ico',
         analyticsConfig: {
           googleAnalytics: analyticsConfig.googleAnalytics.enabled && analyticsConfig.googleAnalytics.measurementId
@@ -337,85 +236,10 @@ export function EditBrandModal({
           ? {
               clientId: googleOAuthConfig.clientId.trim(),
               clientSecret: googleOAuthConfig.clientSecret.trim(),
-              redirectUri: googleOAuthConfig.redirectUri?.trim() || existingTheme.googleOAuthConfig?.redirectUri,
+              redirectUri: googleOAuthConfig.redirectUri.trim() || existingTheme.googleOAuthConfig?.redirectUri,
               enabled: true,
             }
           : undefined,
-      };
-      
-      // Collect customization labels (only keep filled values)
-      const customizationLabels: CustomizationLabels = {};
-      const filledCategories = Object.entries(categoryLabels).reduce((acc, [key, value]) => {
-        const sk = value.sk.trim();
-        const en = value.en.trim();
-        if (sk || en) {
-          acc[key as keyof NonNullable<CustomizationLabels['categories']>] = {
-            ...(sk ? { sk } : {}),
-            ...(en ? { en } : {}),
-          };
-        }
-        return acc;
-      }, {} as NonNullable<CustomizationLabels['categories']>);
-      if (Object.keys(filledCategories).length > 0) {
-        customizationLabels.categories = filledCategories;
-      }
-      if (parsedOptions && Object.keys(parsedOptions).length > 0) {
-        customizationLabels.options = parsedOptions;
-      }
-      if (Object.keys(customizationLabels).length > 0) {
-        (updatedTheme as any).customizationLabels = customizationLabels;
-      }
-
-      // Sub-category labels for pizzas
-      (updatedTheme as any).subCategoryLabels = {
-        foreplay: {
-          ...(subCategoryLabels.foreplay.titleSk ? { titleSk: subCategoryLabels.foreplay.titleSk } : {}),
-          ...(subCategoryLabels.foreplay.titleEn ? { titleEn: subCategoryLabels.foreplay.titleEn } : {}),
-          ...(subCategoryLabels.foreplay.descSk ? { descSk: subCategoryLabels.foreplay.descSk } : {}),
-          ...(subCategoryLabels.foreplay.descEn ? { descEn: subCategoryLabels.foreplay.descEn } : {}),
-        },
-        mainAction: {
-          ...(subCategoryLabels.mainAction.titleSk ? { titleSk: subCategoryLabels.mainAction.titleSk } : {}),
-          ...(subCategoryLabels.mainAction.titleEn ? { titleEn: subCategoryLabels.mainAction.titleEn } : {}),
-          ...(subCategoryLabels.mainAction.descSk ? { descSk: subCategoryLabels.mainAction.descSk } : {}),
-          ...(subCategoryLabels.mainAction.descEn ? { descEn: subCategoryLabels.mainAction.descEn } : {}),
-        },
-        deluxeFetish: {
-          ...(subCategoryLabels.deluxeFetish.titleSk ? { titleSk: subCategoryLabels.deluxeFetish.titleSk } : {}),
-          ...(subCategoryLabels.deluxeFetish.titleEn ? { titleEn: subCategoryLabels.deluxeFetish.titleEn } : {}),
-          ...(subCategoryLabels.deluxeFetish.descSk ? { descSk: subCategoryLabels.deluxeFetish.descSk } : {}),
-          ...(subCategoryLabels.deluxeFetish.descEn ? { descEn: subCategoryLabels.deluxeFetish.descEn } : {}),
-        },
-        premiumSins: {
-          ...(subCategoryLabels.premiumSins.titleSk ? { titleSk: subCategoryLabels.premiumSins.titleSk } : {}),
-          ...(subCategoryLabels.premiumSins.titleEn ? { titleEn: subCategoryLabels.premiumSins.titleEn } : {}),
-          ...(subCategoryLabels.premiumSins.descSk ? { descSk: subCategoryLabels.premiumSins.descSk } : {}),
-          ...(subCategoryLabels.premiumSins.descEn ? { descEn: subCategoryLabels.premiumSins.descEn } : {}),
-        },
-        stangle: {
-          ...(subCategoryLabels.stangle.titleSk ? { titleSk: subCategoryLabels.stangle.titleSk } : {}),
-          ...(subCategoryLabels.stangle.titleEn ? { titleEn: subCategoryLabels.stangle.titleEn } : {}),
-          ...(subCategoryLabels.stangle.descSk ? { descSk: subCategoryLabels.stangle.descSk } : {}),
-          ...(subCategoryLabels.stangle.descEn ? { descEn: subCategoryLabels.stangle.descEn } : {}),
-        },
-        soups: {
-          ...(subCategoryLabels.soups.titleSk ? { titleSk: subCategoryLabels.soups.titleSk } : {}),
-          ...(subCategoryLabels.soups.titleEn ? { titleEn: subCategoryLabels.soups.titleEn } : {}),
-          ...(subCategoryLabels.soups.descSk ? { descSk: subCategoryLabels.soups.descSk } : {}),
-          ...(subCategoryLabels.soups.descEn ? { descEn: subCategoryLabels.soups.descEn } : {}),
-        },
-        drinks: {
-          ...(subCategoryLabels.drinks.titleSk ? { titleSk: subCategoryLabels.drinks.titleSk } : {}),
-          ...(subCategoryLabels.drinks.titleEn ? { titleEn: subCategoryLabels.drinks.titleEn } : {}),
-          ...(subCategoryLabels.drinks.descSk ? { descSk: subCategoryLabels.drinks.descSk } : {}),
-          ...(subCategoryLabels.drinks.descEn ? { descEn: subCategoryLabels.drinks.descEn } : {}),
-        },
-        desserts: {
-          ...(subCategoryLabels.desserts.titleSk ? { titleSk: subCategoryLabels.desserts.titleSk } : {}),
-          ...(subCategoryLabels.desserts.titleEn ? { titleEn: subCategoryLabels.desserts.titleEn } : {}),
-          ...(subCategoryLabels.desserts.descSk ? { descSk: subCategoryLabels.desserts.descSk } : {}),
-          ...(subCategoryLabels.desserts.descEn ? { descEn: subCategoryLabels.desserts.descEn } : {}),
-        },
       };
       
       // Remove undefined values
@@ -425,7 +249,7 @@ export function EditBrandModal({
         }
       });
       if (!updatedTheme.googleOAuthConfig) {
-        delete (updatedTheme as any).googleOAuthConfig;
+        delete updatedTheme.googleOAuthConfig;
       }
       
       updateData.theme = updatedTheme;
@@ -517,144 +341,32 @@ export function EditBrandModal({
                   </div>
                 </div>
 
-                {/* Theme Colors */}
+                {/* Theme Colors (read-only) */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Theme Colors
                   </label>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="flex items-center gap-3">
-                      <input
-                        type="color"
-                        aria-label="Primary color"
-                        value={themeColors.primaryColor}
-                        onChange={(e) => setThemeColors({ ...themeColors, primaryColor: e.target.value })}
-                        className="h-10 w-10 rounded border border-gray-200 cursor-pointer"
+                  <div className="flex gap-4">
+                    <div className="flex items-center gap-2">
+                      <div
+                        className="w-10 h-10 rounded border-2 border-gray-200"
+                        style={{ backgroundColor: themeColors.primaryColor }}
                       />
-                      <div className="flex-1">
+                      <div>
                         <div className="text-xs text-gray-500">Primary</div>
-                        <input
-                          type="text"
-                          value={themeColors.primaryColor}
-                          onChange={(e) => setThemeColors({ ...themeColors, primaryColor: e.target.value })}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                        />
+                        <div className="text-sm text-gray-900 font-medium">{themeColors.primaryColor}</div>
                       </div>
                     </div>
-                    <div className="flex items-center gap-3">
-                      <input
-                        type="color"
-                        aria-label="Secondary color"
-                        value={themeColors.secondaryColor}
-                        onChange={(e) => setThemeColors({ ...themeColors, secondaryColor: e.target.value })}
-                        className="h-10 w-10 rounded border border-gray-200 cursor-pointer"
+                    <div className="flex items-center gap-2">
+                      <div
+                        className="w-10 h-10 rounded border-2 border-gray-200"
+                        style={{ backgroundColor: themeColors.secondaryColor }}
                       />
-                      <div className="flex-1">
+                      <div>
                         <div className="text-xs text-gray-500">Secondary</div>
-                        <input
-                          type="text"
-                          value={themeColors.secondaryColor}
-                          onChange={(e) => setThemeColors({ ...themeColors, secondaryColor: e.target.value })}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                        />
+                        <div className="text-sm text-gray-900 font-medium">{themeColors.secondaryColor}</div>
                       </div>
                     </div>
-                  </div>
-                </div>
-
-                {/* Logo URL */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Logo URL
-                  </label>
-                  <input
-                    type="text"
-                    value={logoUrl}
-                    onChange={(e) => setLogoUrl(e.target.value)}
-                    placeholder="https://your-cdn.com/logo.png"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                  />
-                  <p className="mt-1 text-xs text-gray-500">
-                    Zadaj URL loga (PNG/JPG/SVG). Ak necháš prázdne, ostane pôvodné logo.
-                  </p>
-                </div>
-
-                {/* Favicon URL */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Favicon URL
-                  </label>
-                  <input
-                    type="text"
-                    value={faviconUrl}
-                    onChange={(e) => setFaviconUrl(e.target.value)}
-                    placeholder="https://your-cdn.com/favicon.ico"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                  />
-                  <p className="mt-1 text-xs text-gray-500">
-                    Zadaj URL pre favicon (ICO/PNG). Ak necháš prázdne, použije sa predvolená ikonka.
-                  </p>
-                </div>
-
-                {/* Customization Labels */}
-                <div className="border-t pt-4 mt-4">
-                  <h4 className="text-md font-semibold mb-3 text-gray-900">
-                    🧩 Customizačné labely
-                  </h4>
-                  <p className="text-sm text-gray-600 mb-4">
-                    Prepíš názvy kategórií a možností pre pizzové modifikátory. Ak pole necháš prázdne, použije sa pôvodný text.
-                  </p>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {(['dough', 'cheese', 'sauce', 'edge', 'toppings'] as const).map((key) => (
-                      <div key={key} className="p-3 border border-gray-200 rounded-md">
-                        <div className="text-xs uppercase tracking-wide text-gray-500 mb-2">
-                          {key === 'dough' && 'Cesto'}
-                          {key === 'cheese' && 'Syr'}
-                          {key === 'sauce' && 'Základ'}
-                          {key === 'edge' && 'Okraj'}
-                          {key === 'toppings' && 'Extra'}
-                        </div>
-                        <div className="space-y-2">
-                          <input
-                            type="text"
-                            value={categoryLabels[key].sk}
-                            onChange={(e) => setCategoryLabels({
-                              ...categoryLabels,
-                              [key]: { ...categoryLabels[key], sk: e.target.value },
-                            })}
-                            placeholder="SK názov"
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500"
-                          />
-                          <input
-                            type="text"
-                            value={categoryLabels[key].en}
-                            onChange={(e) => setCategoryLabels({
-                              ...categoryLabels,
-                              [key]: { ...categoryLabels[key], en: e.target.value },
-                            })}
-                            placeholder="EN name"
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500"
-                          />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-
-                  <div className="mt-4">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Option overrides (JSON)
-                    </label>
-                    <textarea
-                      value={optionsJson}
-                      onChange={(e) => setOptionsJson(e.target.value)}
-                      rows={4}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm font-mono focus:ring-blue-500 focus:border-blue-500"
-                      placeholder='{"cheesy-edge":{"sk":"Syrový okraj","en":"Cheesy edge"}}'
-                    />
-                    <p className="mt-1 text-xs text-gray-500">
-                      Mapuj ID možnosti na vlastný názov (SK/EN). Nechaj prázdne, ak nepotrebuješ prepísať.
-                    </p>
                   </div>
                 </div>
 
@@ -1172,203 +884,6 @@ export function EditBrandModal({
                     </div>
                   </div>
                 </div>
-
-                {/* Google OAuth Settings */}
-                <div className="border-t pt-4 mt-4">
-                  <h4 className="text-md font-semibold mb-3 text-gray-900">
-                    🔐 Google OAuth
-                  </h4>
-                  <p className="text-sm text-gray-600 mb-4">
-                    Nastav Google prihlásenie pre tento brand. Každý tenant môže mať vlastné OAuth credentials.
-                  </p>
-
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium text-gray-700">Enable Google Login</span>
-                      <button
-                        type="button"
-                        onClick={() => setGoogleOAuthConfig({ ...googleOAuthConfig, enabled: !googleOAuthConfig.enabled })}
-                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                          googleOAuthConfig.enabled ? 'bg-green-600' : 'bg-gray-300'
-                        }`}
-                      >
-                        <span
-                          className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                            googleOAuthConfig.enabled ? 'translate-x-6' : 'translate-x-1'
-                          }`}
-                        />
-                      </button>
-                    </div>
-
-                    {googleOAuthConfig.enabled && (
-                      <div className="space-y-3">
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Google Client ID
-                          </label>
-                          <input
-                            type="text"
-                            value={googleOAuthConfig.clientId}
-                            onChange={(e) => setGoogleOAuthConfig({ ...googleOAuthConfig, clientId: e.target.value })}
-                            placeholder="your-client-id.apps.googleusercontent.com"
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Google Client Secret
-                          </label>
-                          <input
-                            type="password"
-                            value={googleOAuthConfig.clientSecret}
-                            onChange={(e) => setGoogleOAuthConfig({ ...googleOAuthConfig, clientSecret: e.target.value })}
-                            placeholder="Client secret"
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Redirect URI (optional)
-                          </label>
-                          <input
-                            type="text"
-                            value={googleOAuthConfig.redirectUri}
-                            onChange={(e) => setGoogleOAuthConfig({ ...googleOAuthConfig, redirectUri: e.target.value })}
-                            placeholder="https://your-frontend.sk/auth/google/callback"
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm"
-                          />
-                          <p className="text-xs text-gray-500 mt-1">
-                            Ak necháš prázdne, použije sa predvolená hodnota z frontend ENV.
-                          </p>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Pizza Sub-category Labels */}
-                <div className="border-t pt-4 mt-4">
-                  <h4 className="text-md font-semibold mb-3 text-gray-900">
-                    🍕 Názvy sekcií pizze
-                  </h4>
-                  <p className="text-sm text-gray-600 mb-4">
-                    Uprav názvy a popisy podkategórií (Predohra, Hlavná akcia, Deluxe Fetish, Premium Sins) pre tento tenant. Nechané prázdne = použije sa predvolený preklad.
-                  </p>
-                  {([
-                    { key: 'foreplay', label: 'Predohra' },
-                    { key: 'mainAction', label: 'Hlavná akcia' },
-                    { key: 'deluxeFetish', label: 'Deluxe Fetish' },
-                    { key: 'premiumSins', label: 'Premium Sins' },
-                  ] as const).map(({ key, label }) => (
-                    <div key={key} className="mb-4 p-3 border border-gray-200 rounded-md space-y-2">
-                      <div className="text-sm font-semibold text-gray-800">{label}</div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                        <input
-                          type="text"
-                          placeholder="Názov (SK)"
-                          value={(subCategoryLabels as any)[key].titleSk}
-                          onChange={(e) => setSubCategoryLabels({
-                            ...subCategoryLabels,
-                            [key]: { ...(subCategoryLabels as any)[key], titleSk: e.target.value },
-                          })}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500"
-                        />
-                        <input
-                          type="text"
-                          placeholder="Name (EN)"
-                          value={(subCategoryLabels as any)[key].titleEn}
-                          onChange={(e) => setSubCategoryLabels({
-                            ...subCategoryLabels,
-                            [key]: { ...(subCategoryLabels as any)[key], titleEn: e.target.value },
-                          })}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500"
-                        />
-                        <input
-                          type="text"
-                          placeholder="Popis (SK)"
-                          value={(subCategoryLabels as any)[key].descSk}
-                          onChange={(e) => setSubCategoryLabels({
-                            ...subCategoryLabels,
-                            [key]: { ...(subCategoryLabels as any)[key], descSk: e.target.value },
-                          })}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500 sm:col-span-2"
-                        />
-                        <input
-                          type="text"
-                          placeholder="Description (EN)"
-                          value={(subCategoryLabels as any)[key].descEn}
-                          onChange={(e) => setSubCategoryLabels({
-                            ...subCategoryLabels,
-                            [key]: { ...(subCategoryLabels as any)[key], descEn: e.target.value },
-                          })}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500 sm:col-span-2"
-                        />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Ostatné kategórie */}
-                <div className="border-t pt-4 mt-4">
-                  <h4 className="text-md font-semibold mb-3 text-gray-900">
-                    📂 Názvy sekcií ostatných kategórií
-                  </h4>
-                  <p className="text-sm text-gray-600 mb-4">
-                    Uprav názvy a popisy pre Štangle, Polievky, Nápoje a Dezerty pre tento tenant.
-                  </p>
-                  {([
-                    { key: 'stangle', label: 'Štangle & Posúch' },
-                    { key: 'soups', label: 'Polievky' },
-                    { key: 'drinks', label: 'Nápoje' },
-                    { key: 'desserts', label: 'Dezerty' },
-                  ] as const).map(({ key, label }) => (
-                    <div key={key} className="mb-4 p-3 border border-gray-200 rounded-md space-y-2">
-                      <div className="text-sm font-semibold text-gray-800">{label}</div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                        <input
-                          type="text"
-                          placeholder="Názov (SK)"
-                          value={(subCategoryLabels as any)[key].titleSk}
-                          onChange={(e) => setSubCategoryLabels({
-                            ...subCategoryLabels,
-                            [key]: { ...(subCategoryLabels as any)[key], titleSk: e.target.value },
-                          })}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500"
-                        />
-                        <input
-                          type="text"
-                          placeholder="Name (EN)"
-                          value={(subCategoryLabels as any)[key].titleEn}
-                          onChange={(e) => setSubCategoryLabels({
-                            ...subCategoryLabels,
-                            [key]: { ...(subCategoryLabels as any)[key], titleEn: e.target.value },
-                          })}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500"
-                        />
-                        <input
-                          type="text"
-                          placeholder="Popis (SK)"
-                          value={(subCategoryLabels as any)[key].descSk}
-                          onChange={(e) => setSubCategoryLabels({
-                            ...subCategoryLabels,
-                            [key]: { ...(subCategoryLabels as any)[key], descSk: e.target.value },
-                          })}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500 sm:col-span-2"
-                        />
-                        <input
-                          type="text"
-                          placeholder="Description (EN)"
-                          value={(subCategoryLabels as any)[key].descEn}
-                          onChange={(e) => setSubCategoryLabels({
-                            ...subCategoryLabels,
-                            [key]: { ...(subCategoryLabels as any)[key], descEn: e.target.value },
-                          })}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500 sm:col-span-2"
-                        />
-                      </div>
-                    </div>
-                  ))}
-                </div>
               </div>
             </div>
 
@@ -1396,3 +911,4 @@ export function EditBrandModal({
     </div>
   );
 }
+

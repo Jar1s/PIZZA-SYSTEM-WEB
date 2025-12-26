@@ -1,22 +1,20 @@
 'use client';
 
 import { Order, OrderStatus } from '@pizza-ecosystem/shared';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { formatModifiers } from '@/lib/format-modifiers';
-import { syncOrderToStoryous, createWoltDelivery, checkWoltAvailability, getTenant } from '@/lib/api';
+import { syncOrderToStoryous, createWoltDelivery, checkWoltAvailability } from '@/lib/api';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { calculateOrderItemPrice } from '@/lib/calculate-order-item-price';
 import { getTranslations } from '@/lib/translations';
 import { getProductDisplayName } from '@/lib/product-translations';
 import { useToastContext } from '@/contexts/ToastContext';
-import type { CustomizationLabels } from '@pizza-ecosystem/shared';
 
 interface OrderCardProps {
   order: Order;
   onStatusUpdate: (orderId: string, status: OrderStatus) => void;
   isExpanded?: boolean;
   onToggleExpand?: (orderId: string) => void;
-  tenantSlug?: string;
 }
 
 const STATUS_COLORS: Record<OrderStatus, string> = {
@@ -41,7 +39,7 @@ const NEXT_STATUS: Record<OrderStatus, OrderStatus | null> = {
   CANCELED: null,
 };
 
-export function OrderCard({ order, onStatusUpdate, isExpanded = false, onToggleExpand, tenantSlug }: OrderCardProps) {
+export function OrderCard({ order, onStatusUpdate, isExpanded = false, onToggleExpand }: OrderCardProps) {
   const { language } = useLanguage();
   const t = getTranslations(language);
   // Use prop if provided, otherwise fall back to local state for backward compatibility
@@ -66,20 +64,6 @@ export function OrderCard({ order, onStatusUpdate, isExpanded = false, onToggleE
   } | null>(null);
   const [woltError, setWoltError] = useState<string | null>(null);
   const { success: toastSuccess, error: toastError } = useToastContext();
-  const [customizationLabels, setCustomizationLabels] = useState<CustomizationLabels | undefined>();
-
-  useEffect(() => {
-    const loadLabels = async () => {
-      if (!tenantSlug) return;
-      try {
-        const tenant = await getTenant(tenantSlug);
-        setCustomizationLabels((tenant.theme as any)?.customizationLabels);
-      } catch (err) {
-        console.warn('[OrderCard] Failed to load tenant for customization labels', err);
-      }
-    };
-    loadLabels();
-  }, [tenantSlug]);
   
   const customer = order.customer;
   const address = order.address;
@@ -87,6 +71,7 @@ export function OrderCard({ order, onStatusUpdate, isExpanded = false, onToggleE
   const isStoryousSynced = !!order.storyousOrderId;
   const hasWoltDelivery = !!order.deliveryId || !!order.delivery;
   const woltDelivery = order.delivery;
+  const customizationLabels = (order as any)?.tenant?.theme?.customizationLabels;
   
   // Show Storyous/Wolt buttons only while in PAID/PREPARING and not yet created
   const canSyncToStoryous = !isStoryousSynced && (
@@ -561,12 +546,7 @@ export function OrderCard({ order, onStatusUpdate, isExpanded = false, onToggleE
           <div className="col-span-2">
             <div className="font-semibold mb-2">Items</div>
             {order.items.map((item, i) => {
-              const modifiers = formatModifiers(
-                item.modifiers,
-                true,
-                language,
-                customizationLabels
-              ); // Use defaults for admin
+              const modifiers = formatModifiers(item.modifiers, true, language, customizationLabels); // Use defaults for admin
               // Calculate correct price (handles both old and new orders)
               const itemTotal = calculateOrderItemPrice(item, 'PIZZA');
               // In admin, show the database product name (internal name), not the web display name

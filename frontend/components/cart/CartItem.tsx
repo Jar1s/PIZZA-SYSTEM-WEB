@@ -2,6 +2,7 @@
 
 import { useCart } from '@/hooks/useCart';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useTenant } from '@/contexts/TenantContext';
 import { getProductTranslation, getProductDisplayName } from '@/lib/product-translations';
 import { getProductDisplayImage } from '@/lib/product-images';
 import Image from 'next/image';
@@ -9,7 +10,6 @@ import { motion } from 'framer-motion';
 import { formatModifiers } from '@/lib/format-modifiers';
 import { useMemo } from 'react';
 import { calculateModifierPrice } from '@/lib/calculate-modifier-price';
-import { useTenant } from '@/contexts/TenantContext';
 
 interface CartItemProps {
   item: {
@@ -31,6 +31,7 @@ export function CartItem({ item, variant = 'light' }: CartItemProps) {
   const { updateQuantity, removeItem } = useCart();
   const { t, language } = useLanguage();
   const { tenant } = useTenant();
+  const customizationLabels = tenant?.theme?.customizationLabels;
   const modifierPrice = useMemo(() => 
     calculateModifierPrice(item.modifiers, item.product.category), 
     [item.modifiers, item.product.category]
@@ -87,12 +88,7 @@ export function CartItem({ item, variant = 'light' }: CartItemProps) {
         {/* Customizations/Modifiers */}
         {(() => {
           if (!item.modifiers) return null;
-          const modifiers = formatModifiers(
-            item.modifiers,
-            false,
-            language,
-            tenant?.theme?.customizationLabels
-          );
+          const modifiers = formatModifiers(item.modifiers, false, language, customizationLabels);
           if (modifiers.length === 0) return null;
           return (
             <div className={`text-xs mt-1 space-y-0.5 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
@@ -141,3 +137,4 @@ export function CartItem({ item, variant = 'light' }: CartItemProps) {
     </motion.div>
   );
 }
+

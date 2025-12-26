@@ -201,6 +201,7 @@ export default function OrderTrackingPage() {
 
   // Get tenant theme - Force dark theme for tracking page
   const normalizedTenant = withTenantThemeDefaults(tenant);
+  const customizationLabels = normalizedTenant?.theme?.customizationLabels;
   const isDark = true; // Always dark theme for tracking page
   const backgroundClass = 'bg-black'; // Always black background
   const sectionShellClass = 'bg-gray-900 rounded-3xl px-6 py-10 lg:px-16 shadow-xl border border-gray-800'; // Dark cards
@@ -350,12 +351,7 @@ export default function OrderTrackingPage() {
               });
               const displayName = item.displayName || getProductDisplayName(item.productName, language);
               
-              const modifiers = formatModifiers(
-                item.modifiers,
-                false,
-                language,
-                tenant?.theme?.customizationLabels
-              );
+              const modifiers = formatModifiers(item.modifiers, false, language, customizationLabels);
               
               return (
                 <div key={item.id} className="flex justify-between items-center">
