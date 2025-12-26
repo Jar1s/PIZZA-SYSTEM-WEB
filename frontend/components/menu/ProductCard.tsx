@@ -9,6 +9,7 @@ import { getProductFallbackImage, getProductDisplayImage } from '@/lib/product-i
 import Image from 'next/image';
 import { motion } from 'framer-motion';
 import { useState, useMemo, useCallback, memo, useEffect } from 'react';
+import { useTenant } from '@/contexts/TenantContext';
 import CustomizationModal from './CustomizationModal';
 
 interface ProductCardProps {
@@ -22,12 +23,14 @@ export const ProductCard = memo(function ProductCard({ product, index = 0, isBes
   const { addItem } = useCart();
   const { t, language } = useLanguage();
   const toast = useToastContext();
+  const { tenant } = useTenant();
   const [isAdding, setIsAdding] = useState(false);
   const [showCustomization, setShowCustomization] = useState(false);
   const [imageError, setImageError] = useState(false);
   const [imageLoading, setImageLoading] = useState(true);
   const [retryCount, setRetryCount] = useState(0);
   const isPremium = useMemo(() => product.priceCents >= 1100, [product.priceCents]);
+  const primaryColor = tenant?.theme?.primaryColor || 'var(--color-primary)';
   
   // Reset image state when product changes
   useEffect(() => {
@@ -214,7 +217,10 @@ export const ProductCard = memo(function ProductCard({ product, index = 0, isBes
         {(isBestSeller || isPremium) && (
           <div className="absolute inset-x-0 top-2 sm:top-3 md:top-4 px-2 sm:px-3 md:px-4 flex justify-between items-start gap-1 sm:gap-2 z-10">
             {isBestSeller && (
-              <span className={`${isDark ? 'hero-badge text-[0.5rem] sm:text-[0.6rem]' : 'rounded-full bg-red-600 text-white text-[0.6rem] sm:text-xs font-semibold px-2 sm:px-3 py-0.5 sm:py-1 shadow'} whitespace-nowrap flex-shrink-0`}>
+              <span
+                className={`${isDark ? 'hero-badge text-[0.5rem] sm:text-[0.6rem]' : 'rounded-full text-white text-[0.6rem] sm:text-xs font-semibold px-2 sm:px-3 py-0.5 sm:py-1 shadow'} whitespace-nowrap flex-shrink-0`}
+                style={{ background: primaryColor, border: isDark ? `1px solid ${primaryColor}80` : undefined }}
+              >
                 🔥 <span className="hidden sm:inline">{t.bestSellersTitle}</span>
               </span>
             )}
