@@ -89,15 +89,12 @@ export function MaintenanceBanner() {
         : {};
       
       const newMaintenanceMode = !maintenanceMode;
+      const maintenancePayload = { theme: { maintenanceMode: newMaintenanceMode } as any };
       
       // Update all tenants to keep maintenance in sync across brands
       await Promise.allSettled(
         tenantSlugsToUpdate.map(slug => 
-          updateTenant(normalizeSlug(slug), {
-            theme: {
-              maintenanceMode: newMaintenanceMode,
-            } as Partial<Tenant['theme']>,
-          })
+          updateTenant(normalizeSlug(slug), maintenancePayload)
         )
       );
       
