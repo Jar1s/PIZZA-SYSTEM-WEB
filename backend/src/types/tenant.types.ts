@@ -32,6 +32,7 @@ export interface TenantTheme {
   };
   analyticsConfig?: Record<string, any>;
   customizationLabels?: CustomizationLabels;
+  subCategoryLabels?: SubCategoryLabels;
 }
 
 export interface CustomizationLabels {
@@ -45,6 +46,13 @@ export interface CustomizationLabels {
   options?: {
     [optionId: string]: { sk?: string; en?: string };
   };
+}
+
+export interface SubCategoryLabels {
+  foreplay?: { titleSk?: string; titleEn?: string; descSk?: string; descEn?: string };
+  mainAction?: { titleSk?: string; titleEn?: string; descSk?: string; descEn?: string };
+  deluxeFetish?: { titleSk?: string; titleEn?: string; descSk?: string; descEn?: string };
+  premiumSins?: { titleSk?: string; titleEn?: string; descSk?: string; descEn?: string };
 }
 
 export interface PaymentConfig {

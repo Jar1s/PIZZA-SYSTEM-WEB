@@ -267,6 +267,17 @@ export function HomePageClient({ products, tenant }: HomePageClientProps) {
   // Get primary color (use PornoPizza brand pink/red as default)
   const primaryColor = tenant.theme?.primaryColor || '#E91E63';
   const secondaryColor = tenant.theme?.secondaryColor || '#f8fafc';
+  const subCategoryLabels = (tenant.theme as any)?.subCategoryLabels || {};
+
+  const getSubCategoryLabel = (
+    key: 'foreplay' | 'mainAction' | 'deluxeFetish' | 'premiumSins',
+    type: 'title' | 'desc'
+  ) => {
+    const entry = subCategoryLabels[key] || {};
+    const sk = entry[`${type}Sk`];
+    const en = entry[`${type}En`];
+    return language === 'en' ? (en || undefined) : (sk || undefined);
+  };
 
   const isHexDark = (hex?: string) => {
     if (!hex) return false;
@@ -533,9 +544,11 @@ export function HomePageClient({ products, tenant }: HomePageClientProps) {
                         letterSpacing: '-0.02em'
                       }}
                     >
-                      🔥 {t.foreplay}
+                      🔥 {getSubCategoryLabel('foreplay', 'title') || t.foreplay}
                     </h3>
-                    <p className={`mb-4 text-lg ${isDarkTheme ? 'text-gray-400' : ''}`} style={{ color: isDarkTheme ? '#999' : '#666666' }}>{t.foreplayDesc}</p>
+                    <p className={`mb-4 text-lg ${isDarkTheme ? 'text-gray-400' : ''}`} style={{ color: isDarkTheme ? '#999' : '#666666' }}>
+                      {getSubCategoryLabel('foreplay', 'desc') || t.foreplayDesc}
+                    </p>
                     <div className="h-1 w-32 rounded mx-auto" style={{ backgroundColor: primaryColor }}></div>
                   </motion.div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5 md:gap-6">
@@ -565,9 +578,11 @@ export function HomePageClient({ products, tenant }: HomePageClientProps) {
                         letterSpacing: '-0.02em'
                       }}
                     >
-                      😈 {t.mainAction}
+                      😈 {getSubCategoryLabel('mainAction', 'title') || t.mainAction}
                     </h3>
-                    <p className={`mb-4 text-lg ${isDarkTheme ? 'text-gray-400' : ''}`} style={{ color: isDarkTheme ? '#999' : '#666666' }}>{t.mainActionDesc}</p>
+                    <p className={`mb-4 text-lg ${isDarkTheme ? 'text-gray-400' : ''}`} style={{ color: isDarkTheme ? '#999' : '#666666' }}>
+                      {getSubCategoryLabel('mainAction', 'desc') || t.mainActionDesc}
+                    </p>
                     <div className="h-1 w-32 rounded mx-auto" style={{ backgroundColor: primaryColor }}></div>
                   </motion.div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5 md:gap-6">
@@ -597,9 +612,11 @@ export function HomePageClient({ products, tenant }: HomePageClientProps) {
                         letterSpacing: '-0.02em'
                       }}
                     >
-                      💋 {t.deluxeFetish}
+                      💋 {getSubCategoryLabel('deluxeFetish', 'title') || t.deluxeFetish}
                     </h3>
-                    <p className={`mb-4 text-lg ${isDarkTheme ? 'text-gray-400' : ''}`} style={{ color: isDarkTheme ? '#999' : '#666666' }}>{t.deluxeFetishDesc}</p>
+                    <p className={`mb-4 text-lg ${isDarkTheme ? 'text-gray-400' : ''}`} style={{ color: isDarkTheme ? '#999' : '#666666' }}>
+                      {getSubCategoryLabel('deluxeFetish', 'desc') || t.deluxeFetishDesc}
+                    </p>
                     <div className="h-1 w-32 rounded mx-auto" style={{ backgroundColor: primaryColor }}></div>
                   </motion.div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5 md:gap-6">
@@ -629,9 +646,11 @@ export function HomePageClient({ products, tenant }: HomePageClientProps) {
                         letterSpacing: '-0.02em'
                       }}
                     >
-                      🍑 {t.premiumSins}
+                      🍑 {getSubCategoryLabel('premiumSins', 'title') || t.premiumSins}
                     </h3>
-                    <p className={`mb-4 text-lg ${isDarkTheme ? 'text-gray-400' : ''}`} style={{ color: isDarkTheme ? '#999' : '#666666' }}>{t.premiumSinsDesc}</p>
+                    <p className={`mb-4 text-lg ${isDarkTheme ? 'text-gray-400' : ''}`} style={{ color: isDarkTheme ? '#999' : '#666666' }}>
+                      {getSubCategoryLabel('premiumSins', 'desc') || t.premiumSinsDesc}
+                    </p>
                     <div className="h-1 w-32 rounded mx-auto" style={{ backgroundColor: primaryColor }}></div>
                   </motion.div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5 md:gap-6">

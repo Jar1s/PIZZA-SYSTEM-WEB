@@ -74,6 +74,12 @@ export function EditBrandModal({
     toppings: { sk: '', en: '' },
   });
   const [optionsJson, setOptionsJson] = useState('');
+  const [subCategoryLabels, setSubCategoryLabels] = useState({
+    foreplay: { titleSk: '', titleEn: '', descSk: '', descEn: '' },
+    mainAction: { titleSk: '', titleEn: '', descSk: '', descEn: '' },
+    deluxeFetish: { titleSk: '', titleEn: '', descSk: '', descEn: '' },
+    premiumSins: { titleSk: '', titleEn: '', descSk: '', descEn: '' },
+  });
 
   useEffect(() => {
     if (tenant) {
@@ -122,6 +128,33 @@ export function EditBrandModal({
         toppings: { sk: labels.categories?.toppings?.sk || '', en: labels.categories?.toppings?.en || '' },
       });
       setOptionsJson(labels.options ? JSON.stringify(labels.options, null, 2) : '');
+      const subLabels = (theme.subCategoryLabels as any) || {};
+      setSubCategoryLabels({
+        foreplay: {
+          titleSk: subLabels.foreplay?.titleSk || '',
+          titleEn: subLabels.foreplay?.titleEn || '',
+          descSk: subLabels.foreplay?.descSk || '',
+          descEn: subLabels.foreplay?.descEn || '',
+        },
+        mainAction: {
+          titleSk: subLabels.mainAction?.titleSk || '',
+          titleEn: subLabels.mainAction?.titleEn || '',
+          descSk: subLabels.mainAction?.descSk || '',
+          descEn: subLabels.mainAction?.descEn || '',
+        },
+        deluxeFetish: {
+          titleSk: subLabels.deluxeFetish?.titleSk || '',
+          titleEn: subLabels.deluxeFetish?.titleEn || '',
+          descSk: subLabels.deluxeFetish?.descSk || '',
+          descEn: subLabels.deluxeFetish?.descEn || '',
+        },
+        premiumSins: {
+          titleSk: subLabels.premiumSins?.titleSk || '',
+          titleEn: subLabels.premiumSins?.titleEn || '',
+          descSk: subLabels.premiumSins?.descSk || '',
+          descEn: subLabels.premiumSins?.descEn || '',
+        },
+      });
       
       // Load Wolt/Delivery settings
       setWoltApiKey(woltConfig.apiKey || '');
@@ -304,6 +337,34 @@ export function EditBrandModal({
       if (Object.keys(customizationLabels).length > 0) {
         (updatedTheme as any).customizationLabels = customizationLabels;
       }
+
+      // Sub-category labels for pizzas
+      (updatedTheme as any).subCategoryLabels = {
+        foreplay: {
+          ...(subCategoryLabels.foreplay.titleSk ? { titleSk: subCategoryLabels.foreplay.titleSk } : {}),
+          ...(subCategoryLabels.foreplay.titleEn ? { titleEn: subCategoryLabels.foreplay.titleEn } : {}),
+          ...(subCategoryLabels.foreplay.descSk ? { descSk: subCategoryLabels.foreplay.descSk } : {}),
+          ...(subCategoryLabels.foreplay.descEn ? { descEn: subCategoryLabels.foreplay.descEn } : {}),
+        },
+        mainAction: {
+          ...(subCategoryLabels.mainAction.titleSk ? { titleSk: subCategoryLabels.mainAction.titleSk } : {}),
+          ...(subCategoryLabels.mainAction.titleEn ? { titleEn: subCategoryLabels.mainAction.titleEn } : {}),
+          ...(subCategoryLabels.mainAction.descSk ? { descSk: subCategoryLabels.mainAction.descSk } : {}),
+          ...(subCategoryLabels.mainAction.descEn ? { descEn: subCategoryLabels.mainAction.descEn } : {}),
+        },
+        deluxeFetish: {
+          ...(subCategoryLabels.deluxeFetish.titleSk ? { titleSk: subCategoryLabels.deluxeFetish.titleSk } : {}),
+          ...(subCategoryLabels.deluxeFetish.titleEn ? { titleEn: subCategoryLabels.deluxeFetish.titleEn } : {}),
+          ...(subCategoryLabels.deluxeFetish.descSk ? { descSk: subCategoryLabels.deluxeFetish.descSk } : {}),
+          ...(subCategoryLabels.deluxeFetish.descEn ? { descEn: subCategoryLabels.deluxeFetish.descEn } : {}),
+        },
+        premiumSins: {
+          ...(subCategoryLabels.premiumSins.titleSk ? { titleSk: subCategoryLabels.premiumSins.titleSk } : {}),
+          ...(subCategoryLabels.premiumSins.titleEn ? { titleEn: subCategoryLabels.premiumSins.titleEn } : {}),
+          ...(subCategoryLabels.premiumSins.descSk ? { descSk: subCategoryLabels.premiumSins.descSk } : {}),
+          ...(subCategoryLabels.premiumSins.descEn ? { descEn: subCategoryLabels.premiumSins.descEn } : {}),
+        },
+      };
       
       // Remove undefined values
       Object.keys(updatedTheme.analyticsConfig).forEach(key => {
@@ -1131,6 +1192,68 @@ export function EditBrandModal({
                       </div>
                     )}
                   </div>
+                </div>
+
+                {/* Pizza Sub-category Labels */}
+                <div className="border-t pt-4 mt-4">
+                  <h4 className="text-md font-semibold mb-3 text-gray-900">
+                    🍕 Názvy sekcií pizze
+                  </h4>
+                  <p className="text-sm text-gray-600 mb-4">
+                    Uprav názvy a popisy podkategórií (Predohra, Hlavná akcia, Deluxe Fetish, Premium Sins) pre tento tenant. Nechané prázdne = použije sa predvolený preklad.
+                  </p>
+                  {([
+                    { key: 'foreplay', label: 'Predohra' },
+                    { key: 'mainAction', label: 'Hlavná akcia' },
+                    { key: 'deluxeFetish', label: 'Deluxe Fetish' },
+                    { key: 'premiumSins', label: 'Premium Sins' },
+                  ] as const).map(({ key, label }) => (
+                    <div key={key} className="mb-4 p-3 border border-gray-200 rounded-md space-y-2">
+                      <div className="text-sm font-semibold text-gray-800">{label}</div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <input
+                          type="text"
+                          placeholder="Názov (SK)"
+                          value={(subCategoryLabels as any)[key].titleSk}
+                          onChange={(e) => setSubCategoryLabels({
+                            ...subCategoryLabels,
+                            [key]: { ...(subCategoryLabels as any)[key], titleSk: e.target.value },
+                          })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500"
+                        />
+                        <input
+                          type="text"
+                          placeholder="Name (EN)"
+                          value={(subCategoryLabels as any)[key].titleEn}
+                          onChange={(e) => setSubCategoryLabels({
+                            ...subCategoryLabels,
+                            [key]: { ...(subCategoryLabels as any)[key], titleEn: e.target.value },
+                          })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500"
+                        />
+                        <input
+                          type="text"
+                          placeholder="Popis (SK)"
+                          value={(subCategoryLabels as any)[key].descSk}
+                          onChange={(e) => setSubCategoryLabels({
+                            ...subCategoryLabels,
+                            [key]: { ...(subCategoryLabels as any)[key], descSk: e.target.value },
+                          })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500 sm:col-span-2"
+                        />
+                        <input
+                          type="text"
+                          placeholder="Description (EN)"
+                          value={(subCategoryLabels as any)[key].descEn}
+                          onChange={(e) => setSubCategoryLabels({
+                            ...subCategoryLabels,
+                            [key]: { ...(subCategoryLabels as any)[key], descEn: e.target.value },
+                          })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500 sm:col-span-2"
+                        />
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>

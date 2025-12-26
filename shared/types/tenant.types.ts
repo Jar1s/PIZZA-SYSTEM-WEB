@@ -66,6 +66,7 @@ export interface TenantTheme {
   };
   analyticsConfig?: AnalyticsConfig;  // Per-tenant analytics tracking configuration
   customizationLabels?: CustomizationLabels;
+  subCategoryLabels?: SubCategoryLabels;
 }
 
 export interface EmailConfig {
@@ -118,4 +119,11 @@ export interface CustomizationLabels {
   options?: {
     [optionId: string]: { sk?: string; en?: string };
   };
+}
+
+export interface SubCategoryLabels {
+  foreplay?: { titleSk?: string; titleEn?: string; descSk?: string; descEn?: string };
+  mainAction?: { titleSk?: string; titleEn?: string; descSk?: string; descEn?: string };
+  deluxeFetish?: { titleSk?: string; titleEn?: string; descSk?: string; descEn?: string };
+  premiumSins?: { titleSk?: string; titleEn?: string; descSk?: string; descEn?: string };
 }
