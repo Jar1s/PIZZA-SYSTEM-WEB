@@ -470,27 +470,38 @@ export function HomePageClient({ products, tenant }: HomePageClientProps) {
             {(Object.keys(categoryCounts) as CategoryFilter[]).map((category) => {
               if (categoryCounts[category] === 0 || category === 'all') return null;
               
+              const isActive = categoryFilter === category;
               const chipClass = isDarkTheme
                 ? `rounded-full font-bold transition-all ${
-                    categoryFilter === category
+                    isActive
                       ? 'category-chip category-chip--active'
                       : 'category-chip hover:border-white/25'
                   }`
                 : `px-6 py-3 rounded-lg font-bold transition-all ${
-                    categoryFilter === category
+                    isActive
                       ? 'text-white shadow-lg scale-105'
                       : 'text-gray-700 hover:bg-gray-100 shadow bg-white'
                   }`;
+
+              const activeStyle: React.CSSProperties = {};
+              if (isActive) {
+                if (isDarkTheme) {
+                  activeStyle.background = `linear-gradient(120deg, ${primaryColor}, ${primaryColor})`;
+                  activeStyle.borderColor = `${primaryColor}80`;
+                  activeStyle.color = '#0b0b0b';
+                  activeStyle.boxShadow = '0 0 24px rgba(0,0,0,0.35)';
+                } else {
+                  activeStyle.backgroundColor = primaryColor;
+                  activeStyle.color = '#ffffff';
+                }
+              }
 
               return (
                 <button
                   key={category}
                   onClick={() => handleCategoryFilter(category)}
                   className={`${chipClass} px-4 sm:px-6 py-2.5 sm:py-3 text-sm sm:text-base touch-manipulation min-h-[44px] whitespace-nowrap flex-shrink-0`}
-                  style={categoryFilter === category && !isDarkTheme 
-                    ? { backgroundColor: tenant.theme.primaryColor }
-                    : {}
-                  }
+                  style={activeStyle}
                 >
                   <span className="mr-1 sm:mr-2">{categoryEmoji[category]}</span>
                   {categoryLabels[category]}
