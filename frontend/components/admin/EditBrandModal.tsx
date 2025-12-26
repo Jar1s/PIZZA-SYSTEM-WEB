@@ -32,6 +32,14 @@ export function EditBrandModal({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
+  const [faviconUrl, setFaviconUrl] = useState('');
+  const [googleOAuthConfig, setGoogleOAuthConfig] = useState({
+    clientId: '',
+    clientSecret: '',
+    redirectUri: '',
+    enabled: false,
+  });
+  
   // GoPay settings
   const [gopayClientId, setGopayClientId] = useState('');
   const [gopayClientSecret, setGopayClientSecret] = useState('');
