@@ -24,6 +24,34 @@ const CATEGORIES = [
   'SOUPS',
 ];
 
+const normalizeOverrideFieldForInput = (value?: string | null) => {
+  if (!value) return '';
+  try {
+    const parsed = JSON.parse(value);
+    if (parsed && typeof parsed === 'object') {
+      return JSON.stringify(parsed);
+    }
+  } catch {
+    // ignore, fall through
+  }
+  return value;
+};
+
+const normalizeOverrideFieldForSave = (value?: string | null) => {
+  if (!value) return undefined;
+  const trimmed = value.trim();
+  if (!trimmed) return undefined;
+  try {
+    const parsed = JSON.parse(trimmed);
+    if (parsed && typeof parsed === 'object') {
+      return JSON.stringify(parsed);
+    }
+  } catch {
+    // ignore and wrap below
+  }
+  return JSON.stringify({ sk: trimmed, en: trimmed });
+};
+
 export function EditProductModal({ 
   product, 
   tenantSlug, 
@@ -52,7 +80,7 @@ export function EditProductModal({
   const [loadingMappings, setLoadingMappings] = useState(false);
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [selectedBrand, setSelectedBrand] = useState<string>('master'); // 'master' or tenant slug
-  const [overrideData, setOverrideData] = useState<ProductTenantOverride | null>(null);
+  const [overrideData, setOverrideData] = useState<ProductTenantOverride>({});
   const [loadingOverrides, setLoadingOverrides] = useState(false);
   const [isTenantSpecific, setIsTenantSpecific] = useState(false);
 
@@ -87,18 +115,26 @@ export function EditProductModal({
   // Load overrides when brand is selected
   useEffect(() => {
     const loadOverrides = async () => {
-      if (!product || selectedBrand === 'master') {
-        setOverrideData(null);
+      if (!product || selectedBrand === 'master' || (product as any)?.tenantId) {
+        setOverrideData({});
         return;
       }
 
       setLoadingOverrides(true);
       try {
         const overrides = await getProductOverrides(tenantSlug, product.id, selectedBrand);
-        setOverrideData(overrides);
+        if (overrides) {
+          setOverrideData({
+            ...overrides,
+            description: normalizeOverrideFieldForInput(overrides.description),
+            subHeader: normalizeOverrideFieldForInput(overrides.subHeader),
+          });
+        } else {
+          setOverrideData({});
+        }
       } catch (error) {
         console.error('Failed to load product overrides:', error);
-        setOverrideData(null);
+        setOverrideData({});
       } finally {
         setLoadingOverrides(false);
       }
@@ -113,6 +149,11 @@ export function EditProductModal({
       setIsTenantSpecific((product as any).tenantId !== null && (product as any).tenantId !== undefined);
     }
   }, [product]);
+  useEffect(() => {
+    if (isTenantSpecific && selectedBrand !== 'master') {
+      setSelectedBrand('master');
+    }
+  }, [isTenantSpecific, selectedBrand]);
 
   useEffect(() => {
     if (product) {
@@ -242,30 +283,33 @@ export function EditProductModal({
     try {
       // If editing overrides for a brand
       if (selectedBrand !== 'master' && product) {
-        // Save overrides
-        const normalizedOverrides: ProductTenantOverride = { ...(overrideData || {}) };
-        // Normalize description override: allow plain text input
-        if (overrideData?.description) {
-          try {
-            JSON.parse(overrideData.description);
-          } catch {
-            normalizedOverrides.description = JSON.stringify({ sk: overrideData.description, en: overrideData.description });
-          }
+        if ((product as any)?.tenantId) {
+          setError('Overrides cannot be set on tenant-specific products. Edit the product directly instead.');
+          setLoading(false);
+          return;
         }
-        // Normalize subHeader override: allow plain text input
-        if (overrideData?.subHeader) {
-          try {
-            JSON.parse(overrideData.subHeader);
-          } catch {
-            normalizedOverrides.subHeader = JSON.stringify({ sk: overrideData.subHeader, en: overrideData.subHeader });
-          }
+
+        const payload: ProductTenantOverride = {};
+        if (overrideData.displayName?.trim()) {
+          payload.displayName = overrideData.displayName.trim();
+        }
+        const normalizedDescription = normalizeOverrideFieldForSave(overrideData.description);
+        if (normalizedDescription) {
+          payload.description = normalizedDescription;
+        }
+        const normalizedSubHeader = normalizeOverrideFieldForSave(overrideData.subHeader);
+        if (normalizedSubHeader) {
+          payload.subHeader = normalizedSubHeader;
+        }
+        if (overrideData.image?.trim()) {
+          payload.image = overrideData.image.trim();
         }
 
         await updateProductOverrides(
           tenantSlug,
           product.id,
           selectedBrand,
-          normalizedOverrides
+          payload
         );
         onUpdate();
         onClose();
@@ -358,7 +402,11 @@ export function EditProductModal({
                 >
                   <option value="master">Master (Shared Product)</option>
                   {tenants.map((tenant) => (
-                    <option key={tenant.id} value={tenant.slug}>
+                    <option 
+                      key={tenant.id} 
+                      value={tenant.slug}
+                      disabled={isTenantSpecific}
+                    >
                       {tenant.name}
                     </option>
                   ))}
@@ -366,7 +414,9 @@ export function EditProductModal({
                 <p className="text-xs text-gray-500 mt-1">
                   {selectedBrand === 'master' 
                     ? 'Editing master product data (visible to all brands)' 
-                    : `Editing override for ${tenants.find(t => t.slug === selectedBrand)?.name || selectedBrand}`}
+                    : isTenantSpecific
+                      ? 'Overrides are disabled for tenant-specific products'
+                      : `Editing override for ${tenants.find(t => t.slug === selectedBrand)?.name || selectedBrand}`}
                 </p>
               </div>
 
@@ -595,8 +645,13 @@ export function EditProductModal({
                       Override for {tenants.find(t => t.slug === selectedBrand)?.name || selectedBrand}
                     </h4>
                     <p className="text-xs text-gray-600 mb-4">
-                      These values will override the master product for this brand only. Leave empty to use master values.
+                      These values will override the master product for this brand only. Leave empty to use master values. Plain text is OK – we will convert it to the required JSON format automatically.
                     </p>
+                    {isTenantSpecific && (
+                      <div className="mb-3 text-xs text-red-700 bg-red-50 border border-red-200 rounded-md p-2">
+                        Overrides are not available for tenant-specific products. Switch back to <strong>Master</strong> to edit this item.
+                      </div>
+                    )}
                     
                     {loadingOverrides ? (
                       <div className="text-sm text-gray-500">Loading overrides...</div>
@@ -609,7 +664,7 @@ export function EditProductModal({
                           </label>
                           <input
                             type="text"
-                            value={overrideData?.displayName || ''}
+                            value={overrideData.displayName || ''}
                             onChange={(e) => setOverrideData({ ...overrideData, displayName: e.target.value } as ProductTenantOverride)}
                             placeholder={formData.displayName || 'Master display name'}
                             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm"
@@ -619,10 +674,10 @@ export function EditProductModal({
                         {/* Override Description */}
                         <div>
                           <label className="block text-xs font-medium text-gray-700 mb-1">
-                            Description Override (JSON: {`{sk: "...", en: "..."}`})
+                            Description Override (plain text allowed)
                           </label>
                           <textarea
-                            value={overrideData?.description || ''}
+                            value={overrideData.description || ''}
                             onChange={(e) => setOverrideData({ ...overrideData, description: e.target.value } as ProductTenantOverride)}
                             placeholder={formData.descriptionSk || 'Master description'}
                             rows={3}
@@ -633,10 +688,10 @@ export function EditProductModal({
                         {/* Override Sub Header */}
                         <div>
                           <label className="block text-xs font-medium text-gray-700 mb-1">
-                            Sub Header Override (JSON: {`{sk: "...", en: "..."}`})
+                            Sub Header Override (plain text allowed)
                           </label>
                           <textarea
-                            value={overrideData?.subHeader || ''}
+                            value={overrideData.subHeader || ''}
                             onChange={(e) => setOverrideData({ ...overrideData, subHeader: e.target.value } as ProductTenantOverride)}
                             placeholder={formData.subHeaderSk || 'Master sub header'}
                             rows={2}
@@ -651,7 +706,7 @@ export function EditProductModal({
                           </label>
                           <input
                             type="text"
-                            value={overrideData?.image || ''}
+                            value={overrideData.image || ''}
                             onChange={(e) => setOverrideData({ ...overrideData, image: e.target.value } as ProductTenantOverride)}
                             placeholder={formData.image || 'Master image URL'}
                             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm"

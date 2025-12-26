@@ -216,14 +216,25 @@ export async function getProductOverrides(
     { headers }
   );
   
+  const text = await res.text();
+  
   if (!res.ok) {
     if (res.status === 404) {
       return null; // No overrides found
     }
-    throw new Error('Failed to fetch product overrides');
+    throw new Error(text || 'Failed to fetch product overrides');
   }
   
-  return res.json();
+  if (!text) {
+    return null;
+  }
+  
+  try {
+    return JSON.parse(text);
+  } catch {
+    // If response is not valid JSON, return null to avoid crashing the UI
+    return null;
+  }
 }
 
 export async function updateProductOverrides(
@@ -254,8 +265,17 @@ export async function updateProductOverrides(
   );
   
   if (!res.ok) {
-    const error = await res.json().catch(() => ({ message: 'Failed to update product overrides' }));
-    throw new Error(error.message || 'Failed to update product overrides');
+    const text = await res.text().catch(() => '');
+    let message = 'Failed to update product overrides';
+    if (text) {
+      try {
+        const parsed = JSON.parse(text);
+        message = parsed.message || message;
+      } catch {
+        message = text;
+      }
+    }
+    throw new Error(message);
   }
 }
 
