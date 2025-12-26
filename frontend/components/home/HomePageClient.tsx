@@ -396,11 +396,12 @@ export function HomePageClient({ products, tenant }: HomePageClientProps) {
                 className="text-center mb-12"
               >
                 <h2 
-                  className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-3 sm:mb-4"
-                  style={{ 
-                    color: 'var(--color-primary)',
-                    textShadow: 'none',
-                    letterSpacing: '0'
+                  className="inline-flex items-center gap-2 px-5 py-2 rounded-full text-sm sm:text-base font-black tracking-tight uppercase"
+                  style={{
+                    backgroundColor: primaryColor,
+                    color: '#0b0b0b',
+                    boxShadow: isDarkTheme ? '0 10px 30px rgba(0,0,0,0.45)' : '0 10px 24px rgba(0,0,0,0.18)',
+                    letterSpacing: '0.05em'
                   }}
                 >
                   {t.bestSellersTitle}
