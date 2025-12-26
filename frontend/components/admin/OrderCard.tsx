@@ -15,6 +15,7 @@ interface OrderCardProps {
   onStatusUpdate: (orderId: string, status: OrderStatus) => void;
   isExpanded?: boolean;
   onToggleExpand?: (orderId: string) => void;
+  tenantSlug?: string;
 }
 
 const STATUS_COLORS: Record<OrderStatus, string> = {
