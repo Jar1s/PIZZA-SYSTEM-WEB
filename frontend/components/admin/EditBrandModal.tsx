@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Tenant } from '@pizza-ecosystem/shared';
-import type { CustomizationLabels } from '@pizza-ecosystem/shared/types/tenant.types';
+import type { CustomizationLabels } from '@pizza-ecosystem/shared';
 import { updateTenant } from '@/lib/api';
 
 interface EditBrandModalProps {

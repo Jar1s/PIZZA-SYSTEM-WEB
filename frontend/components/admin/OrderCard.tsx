@@ -9,7 +9,7 @@ import { calculateOrderItemPrice } from '@/lib/calculate-order-item-price';
 import { getTranslations } from '@/lib/translations';
 import { getProductDisplayName } from '@/lib/product-translations';
 import { useToastContext } from '@/contexts/ToastContext';
-import type { CustomizationLabels } from '@pizza-ecosystem/shared/types/tenant.types';
+import type { CustomizationLabels } from '@pizza-ecosystem/shared';
 
 interface OrderCardProps {
   order: Order;
