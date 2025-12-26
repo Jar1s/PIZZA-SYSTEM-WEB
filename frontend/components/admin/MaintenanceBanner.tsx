@@ -96,7 +96,7 @@ export function MaintenanceBanner() {
           updateTenant(normalizeSlug(slug), {
             theme: {
               maintenanceMode: newMaintenanceMode,
-            },
+            } as Partial<Tenant['theme']>,
           })
         )
       );
