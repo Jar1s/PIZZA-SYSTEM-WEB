@@ -40,6 +40,7 @@ export function OrderFilters({ filters, onChange }: OrderFiltersProps) {
         <option value="all">All Brands</option>
         <option value="pornopizza">PornoPizza</option>
         <option value="pizzavnudzi">Pizza v Núdzi</option>
+        <option value="partypizza">Party Pizza</option>
       </select>
       
       <select
@@ -74,7 +75,6 @@ export function OrderFilters({ filters, onChange }: OrderFiltersProps) {
     </div>
   );
 }
-
 
 
 

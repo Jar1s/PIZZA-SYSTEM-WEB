@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { CustomerAuthController } from './customer-auth.controller';
 import { CustomerAuthService } from './customer-auth.service';
 import { SmsService } from './sms.service';
+import { TenantsService } from '../tenants/tenants.service';
 
 describe('CustomerAuthController', () => {
   let controller: CustomerAuthController;
@@ -18,6 +19,15 @@ describe('CustomerAuthController', () => {
   const mockSmsService = {
     sendVerificationCode: jest.fn(),
   };
+  const mockTenantsService = {
+    getTenantBySlug: jest.fn().mockResolvedValue({
+      slug: 'pornopizza',
+      theme: {},
+      subdomain: 'pornopizza',
+      domain: 'pornopizza.sk',
+    }),
+    findTenantByDomain: jest.fn().mockResolvedValue(null),
+  };
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -30,6 +40,10 @@ describe('CustomerAuthController', () => {
         {
           provide: SmsService,
           useValue: mockSmsService,
+        },
+        {
+          provide: TenantsService,
+          useValue: mockTenantsService,
         },
       ],
     }).compile();
@@ -186,4 +200,3 @@ describe('CustomerAuthController', () => {
     });
   });
 });
-

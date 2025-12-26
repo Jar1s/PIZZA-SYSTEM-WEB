@@ -70,7 +70,7 @@ export function OrderList({ todayOnly = false, selectedTenant }: OrderListProps 
     const headers: HeadersInit = token ? { 'Authorization': `Bearer ${token}` } : {};
     // Determine which tenants to fetch based on current filter
     const tenantsToFetch = filters.tenantSlug === 'all' 
-      ? ['pornopizza', 'pizzavnudzi']
+      ? ['pornopizza', 'pizzavnudzi', 'partypizza']
       : [filters.tenantSlug];
     
     const mapping: Record<string, string> = {};
@@ -119,7 +119,7 @@ export function OrderList({ todayOnly = false, selectedTenant }: OrderListProps 
       
       // Determine which tenants to fetch from based on filter
       const tenantsToFetch = filters.tenantSlug === 'all' 
-        ? ['pornopizza', 'pizzavnudzi']
+        ? ['pornopizza', 'pizzavnudzi', 'partypizza']
         : [filters.tenantSlug];
       
       // If todayOnly, always use today's date
@@ -342,6 +342,7 @@ export function OrderList({ todayOnly = false, selectedTenant }: OrderListProps 
                   return next;
                 });
               }}
+              tenantSlug={tenantIdToSlug[order.tenantId] || filters.tenantSlug}
             />
           ))}
           

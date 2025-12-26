@@ -350,7 +350,12 @@ export default function OrderTrackingPage() {
               });
               const displayName = item.displayName || getProductDisplayName(item.productName, language);
               
-              const modifiers = formatModifiers(item.modifiers, false, language);
+              const modifiers = formatModifiers(
+                item.modifiers,
+                false,
+                language,
+                tenant?.theme?.customizationLabels
+              );
               
               return (
                 <div key={item.id} className="flex justify-between items-center">

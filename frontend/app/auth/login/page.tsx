@@ -8,7 +8,7 @@ import { getTenant, checkEmailExists } from '@/lib/api';
 import { Tenant } from '@pizza-ecosystem/shared';
 import Image from 'next/image';
 import { validateReturnUrl } from '@/lib/validate-return-url';
-import { withTenantThemeDefaults } from '@/lib/tenant-utils';
+import { withTenantThemeDefaults, getTenantSlug } from '@/lib/tenant-utils';
 
 type Step = 'email' | 'password' | 'register';
 
@@ -29,8 +29,7 @@ export default function CustomerLoginPage() {
   useEffect(() => {
     const loadTenant = async () => {
       try {
-        const hostname = window.location.hostname.toLowerCase();
-        let tenantSlug = 'pornopizza';
+        const tenantSlug = getTenantSlug();
 
         // Get tenant and returnUrl from URL params (works for all environments)
         const params = new URLSearchParams(window.location.search);
@@ -52,16 +51,7 @@ export default function CustomerLoginPage() {
             }
           }
         }
-        
-        if (hostname.includes('pizzaparty')) tenantSlug = 'partypizza';
-        else if (hostname.includes('pizzavnudzi')) tenantSlug = 'pizzavnudzi';
-        else if (hostname.includes('pornopizza') || hostname.includes('p0rnopizza')) tenantSlug = 'pornopizza';
-        else if (hostname.includes('localhost') || hostname.includes('127.0.0.1') || hostname.includes('vercel.app')) {
-          tenantSlug = params.get('tenant') || 'pornopizza';
-        } else {
-          tenantSlug = params.get('tenant') || tenantSlug;
-        }
-        
+
         const tenantData = await getTenant(tenantSlug);
         setTenant(tenantData);
       } catch (error) {

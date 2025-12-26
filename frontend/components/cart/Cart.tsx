@@ -4,12 +4,12 @@ import { useCart, useCartTotal } from '@/hooks/useCart';
 import { CartItem } from './CartItem';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { useEffect, useCallback, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useCustomerAuth } from '@/contexts/CustomerAuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useTenant } from '@/contexts/TenantContext';
 import { Tenant } from '@pizza-ecosystem/shared';
-import { isDarkTheme, getButtonGradientClass, getButtonStyle } from '@/lib/tenant-utils';
+import { isDarkTheme, getButtonGradientClass, getButtonStyle, getTenantSlug } from '@/lib/tenant-utils';
 import { isCurrentlyOpen } from '@/lib/opening-hours';
 import { useToastContext } from '@/contexts/ToastContext';
 
@@ -99,18 +99,6 @@ export function Cart({ tenant = null, isDark: isDarkOverride }: CartProps) {
     }
   }, [isOpen]);
   
-  const getTenantSlug = useCallback(() => {
-    if (typeof window === 'undefined') return 'pornopizza';
-    const hostname = window.location.hostname;
-    if (hostname.includes('pornopizza')) return 'pornopizza';
-    if (hostname.includes('pizzavnudzi')) return 'pizzavnudzi';
-    if (hostname.includes('localhost')) {
-      const params = new URLSearchParams(window.location.search);
-      return params.get('tenant') || 'pornopizza';
-    }
-    return 'pornopizza';
-  }, []);
-
   const handleCheckout = (e?: React.MouseEvent) => {
     if (e) {
       e.preventDefault();

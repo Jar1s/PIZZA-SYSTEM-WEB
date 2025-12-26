@@ -3,7 +3,7 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { Tenant } from '@pizza-ecosystem/shared';
 import { getTenant } from '@/lib/api';
-import { withTenantThemeDefaults } from '@/lib/tenant-utils';
+import { withTenantThemeDefaults, getTenantSlug } from '@/lib/tenant-utils';
 import { applyTheme } from '@/lib/theme';
 
 interface TenantContextType {
@@ -31,29 +31,7 @@ export function TenantProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      const hostname = window.location.hostname;
-      const params = new URLSearchParams(window.location.search);
-      let tenantSlug = 'pornopizza'; // default
-      
-      // Check for known production domains
-      if (hostname.includes('pornopizza.sk') || hostname.includes('p0rnopizza.sk')) {
-        tenantSlug = 'pornopizza';
-      } else if (hostname.includes('pizzavnudzi.sk')) {
-        tenantSlug = 'pizzavnudzi';
-      } else if (hostname.includes('pornopizza') || hostname.includes('p0rnopizza')) {
-        tenantSlug = 'pornopizza';
-      } else if (hostname.includes('pizzavnudzi')) {
-        tenantSlug = 'pizzavnudzi';
-      } else if (hostname.includes('localhost') || hostname.includes('127.0.0.1')) {
-        // Development: use query param or default
-        tenantSlug = params.get('tenant') || 'pornopizza';
-      } else if (hostname.includes('vercel.app')) {
-        // Vercel preview/production URLs: use query param or default
-        tenantSlug = params.get('tenant') || 'pornopizza';
-      } else {
-        // For other domains, try query param first, then default
-        tenantSlug = params.get('tenant') || 'pornopizza';
-      }
+      const tenantSlug = getTenantSlug();
       
       const tenantData = await getTenant(tenantSlug);
       const normalizedTenant = withTenantThemeDefaults(tenantData);

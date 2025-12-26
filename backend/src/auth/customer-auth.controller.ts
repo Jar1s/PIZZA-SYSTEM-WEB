@@ -1,9 +1,10 @@
-import { Controller, Post, Get, Body, Query, Res, BadRequestException } from '@nestjs/common';
+import { Controller, Post, Get, Body, Query, Res, BadRequestException, Req } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
-import { Response } from 'express';
+import { Request, Response } from 'express';
 import { CustomerAuthService, RegisterDto, LoginDto } from './customer-auth.service';
 import { SmsService } from './sms.service';
 import { Public } from './decorators/public.decorator';
+import { TenantsService } from '../tenants/tenants.service';
 
 function getOAuthCookieOptions(frontendUrl: string) {
   let domain = process.env.OAUTH_COOKIE_DOMAIN;
@@ -55,12 +56,48 @@ function getOAuthCookieOptions(frontendUrl: string) {
   return options;
 }
 
+function decodeState(state?: string): { returnUrl?: string; tenant?: string } {
+  if (!state) return {};
+  try {
+    return JSON.parse(Buffer.from(state, 'base64').toString());
+  } catch (e) {
+    return {};
+  }
+}
+
 @Controller('auth/customer')
 export class CustomerAuthController {
   constructor(
     private customerAuthService: CustomerAuthService,
     private smsService: SmsService,
+    private tenantsService: TenantsService,
   ) {}
+
+  private async resolveTenant(req: Request, options: { stateTenant?: string; queryTenant?: string } = {}) {
+    const headerTenant = (req.headers['x-tenant'] as string | undefined)?.toString();
+    const candidateSlug = options.stateTenant || options.queryTenant || headerTenant;
+    const host = (req.headers['host'] || '').toString().split(':')[0];
+    const hostTenant = host ? await this.tenantsService.findTenantByDomain(host) : null;
+
+    if (candidateSlug) {
+      try {
+        const tenant = await this.tenantsService.getTenantBySlug(candidateSlug);
+        // If host maps to a different tenant, prefer host-based routing to avoid cross-tenant login
+        if (hostTenant && hostTenant.slug !== tenant.slug) {
+          return hostTenant;
+        }
+        return tenant;
+      } catch (e) {
+        // fallthrough to domain
+      }
+    }
+
+    if (hostTenant) {
+      return hostTenant;
+    }
+
+    return await this.tenantsService.getTenantBySlug('pornopizza');
+  }
 
   /**
    * Check if email exists
@@ -174,23 +211,30 @@ export class CustomerAuthController {
   @Public()
   @Get('google')
   async googleRedirect(
+    @Req() req: Request,
     @Res() res: Response, 
     @Query('returnUrl') returnUrl?: string,
+    @Query('tenant') queryTenant?: string,
     @Query('state') state?: string,
   ) {
-    const clientId = process.env.GOOGLE_CLIENT_ID;
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3001';
-    // Use frontend URL as redirect URI (Google will redirect to frontend, not backend)
-    const redirectUri = process.env.GOOGLE_REDIRECT_URI || 
-      `${frontendUrl}/auth/google/callback`;
+    const stateData = decodeState(state);
+    const tenantData = await this.resolveTenant(req, { stateTenant: stateData.tenant, queryTenant });
+    const theme: any = tenantData?.theme || {};
+    const googleCfg = theme.googleOAuthConfig;
+    const tenantFrontend = tenantData?.domain ? `https://${tenantData.domain}` : frontendUrl;
 
-    if (!clientId) {
+    if (!googleCfg?.enabled || !googleCfg.clientId || !googleCfg.clientSecret) {
       return res.status(400).json({
-        message: 'Google OAuth is not configured. Please set GOOGLE_CLIENT_ID in environment variables.',
+        message: 'Google OAuth is not configured for this tenant.',
         error: 'Not Configured',
         statusCode: 400,
       });
     }
+
+    const clientId = googleCfg.clientId;
+    // Use frontend URL as redirect URI (Google will redirect to frontend, not backend)
+    const redirectUri = googleCfg.redirectUri || `${tenantFrontend}/auth/google/callback`;
 
     if (!redirectUri) {
       console.error('Google OAuth redirect URI not configured. BACKEND_URL or GOOGLE_REDIRECT_URI must be set.');
@@ -222,8 +266,11 @@ export class CustomerAuthController {
 
     // Use state from query if provided, otherwise generate from returnUrl
     let stateParam = state;
-    if (!stateParam && returnUrl) {
-      stateParam = Buffer.from(JSON.stringify({ returnUrl })).toString('base64');
+    if (!stateParam) {
+      const payload: any = {};
+      if (returnUrl || stateData.returnUrl) payload.returnUrl = returnUrl || stateData.returnUrl;
+      payload.tenant = tenantData.slug;
+      stateParam = Buffer.from(JSON.stringify(payload)).toString('base64');
     }
 
     const scopes = ['openid', 'email', 'profile'];
@@ -247,6 +294,7 @@ export class CustomerAuthController {
   @Public()
   @Post('google/exchange')
   async googleExchange(
+    @Req() req: Request,
     @Body() body: { code: string; state?: string },
     @Res() res: Response,
   ) {
@@ -261,19 +309,29 @@ export class CustomerAuthController {
     }
 
     try {
+      const stateData = decodeState(state);
+      const tenantData = await this.resolveTenant(req, { stateTenant: stateData.tenant });
+      const theme: any = tenantData?.theme || {};
+      const googleCfg = theme.googleOAuthConfig;
+      if (!googleCfg?.enabled || !googleCfg.clientId || !googleCfg.clientSecret) {
+        return res.status(400).json({
+          message: 'Google OAuth is not configured for this tenant',
+          error: 'Not Configured',
+          statusCode: 400,
+        });
+      }
+
       const { OAuth2Client } = require('google-auth-library');
-      const clientId = process.env.GOOGLE_CLIENT_ID;
-      const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
       const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3001';
+      const tenantFrontend = tenantData?.domain ? `https://${tenantData.domain}` : frontendUrl;
       
       // Use the SAME redirect URI as in googleRedirect method
       // This must match exactly what was sent to Google in the initial redirect
-      const redirectUri = process.env.GOOGLE_REDIRECT_URI || 
-        `${frontendUrl}/auth/google/callback`;
+      const redirectUri = googleCfg.redirectUri || `${tenantFrontend}/auth/google/callback`;
 
       console.log('🔐 Google OAuth exchange - using redirect URI:', redirectUri);
 
-      if (!clientId || !clientSecret) {
+      if (!googleCfg.clientId || !googleCfg.clientSecret) {
         return res.status(500).json({
           message: 'Google OAuth is not configured',
           error: 'Not Configured',
@@ -281,7 +339,7 @@ export class CustomerAuthController {
         });
       }
 
-      const client = new OAuth2Client(clientId, clientSecret, redirectUri);
+      const client = new OAuth2Client(googleCfg.clientId, googleCfg.clientSecret, redirectUri);
 
       // Exchange code for tokens
       const { tokens: googleTokens } = await client.getToken(code);
@@ -296,7 +354,7 @@ export class CustomerAuthController {
       }
 
       // Login with Google (reuse existing service method)
-      const result = await this.customerAuthService.loginWithGoogle(idToken);
+      const result = await this.customerAuthService.loginWithGoogle(idToken, googleCfg.clientId);
 
       // Return tokens to frontend
       return res.json({
@@ -321,6 +379,7 @@ export class CustomerAuthController {
   @Public()
   @Get('google/callback')
   async googleCallback(
+    @Req() req: Request,
     @Query('code') code: string,
     @Query('state') state: string,
     @Res() res: Response,
@@ -330,16 +389,22 @@ export class CustomerAuthController {
     }
 
     try {
-      const { OAuth2Client } = require('google-auth-library');
-      const clientId = process.env.GOOGLE_CLIENT_ID;
-      const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
-      const backendUrl = process.env.BACKEND_URL || process.env.API_URL;
-      const redirectUri = process.env.GOOGLE_REDIRECT_URI || 
-        (backendUrl ? `${backendUrl}/api/auth/customer/google/callback` : undefined);
+      const stateData = decodeState(state);
+      const tenantData = await this.resolveTenant(req, { stateTenant: stateData.tenant });
+      const theme: any = tenantData?.theme || {};
+      const googleCfg = theme.googleOAuthConfig;
 
-      if (!clientId || !clientSecret) {
+      if (!googleCfg?.enabled || !googleCfg.clientId || !googleCfg.clientSecret) {
         return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3001'}/auth/login?error=not_configured`);
       }
+
+      const { OAuth2Client } = require('google-auth-library');
+      const protocol = (req.headers['x-forwarded-proto'] as string) || req.protocol || 'https';
+      const hostHeader = (req.headers['x-forwarded-host'] as string) || (req.headers['host'] as string);
+      const hostUrl = hostHeader ? `${protocol}://${hostHeader}` : undefined;
+      const backendUrl = process.env.BACKEND_URL || process.env.API_URL || hostUrl;
+      const redirectUri = googleCfg.redirectUri || 
+        (backendUrl ? `${backendUrl}/api/auth/customer/google/callback` : undefined);
 
       if (!redirectUri) {
         console.error('Google OAuth callback: redirect URI not configured. BACKEND_URL or GOOGLE_REDIRECT_URI must be set.');
@@ -358,7 +423,7 @@ export class CustomerAuthController {
         });
       }
 
-      const client = new OAuth2Client(clientId, clientSecret, redirectUri);
+      const client = new OAuth2Client(googleCfg.clientId, googleCfg.clientSecret, redirectUri);
 
       // Exchange code for tokens
       const { tokens: googleTokens } = await client.getToken(code);
@@ -369,7 +434,7 @@ export class CustomerAuthController {
       }
 
       // Login with Google
-      const result = await this.customerAuthService.loginWithGoogle(idToken);
+      const result = await this.customerAuthService.loginWithGoogle(idToken, googleCfg.clientId);
 
       // Set HttpOnly cookies in production
       if (process.env.NODE_ENV === 'production') {

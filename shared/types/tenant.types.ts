@@ -37,7 +37,7 @@ export interface TenantTheme {
   primaryColor: string;      // '#FF6B00'
   secondaryColor: string;
   logo: string;              // URL
-  favicon: string;
+  favicon?: string;
   fontFamily: string;
   heroImage?: string;
   maintenanceMode?: boolean; // Manual maintenance mode (overrides automatic)
@@ -58,7 +58,14 @@ export interface TenantTheme {
     merchantId: string;
     placeId: string;
   };
+  googleOAuthConfig?: {
+    clientId: string;
+    clientSecret: string;
+    redirectUri?: string;
+    enabled: boolean;
+  };
   analyticsConfig?: AnalyticsConfig;  // Per-tenant analytics tracking configuration
+  customizationLabels?: CustomizationLabels;
 }
 
 export interface EmailConfig {
@@ -97,5 +104,18 @@ export interface AnalyticsConfig {
   linkedinInsight?: {
     partnerId: string;
     enabled: boolean;
+  };
+}
+
+export interface CustomizationLabels {
+  categories?: {
+    dough?: { sk?: string; en?: string };
+    cheese?: { sk?: string; en?: string };
+    sauce?: { sk?: string; en?: string };
+    edge?: { sk?: string; en?: string };
+    toppings?: { sk?: string; en?: string };
+  };
+  options?: {
+    [optionId: string]: { sk?: string; en?: string };
   };
 }

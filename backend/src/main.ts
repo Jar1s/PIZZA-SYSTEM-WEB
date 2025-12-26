@@ -4,7 +4,6 @@ import helmet from 'helmet';
 import { ValidationPipe, Logger } from '@nestjs/common';
 import { Request, Response, NextFunction } from 'express';
 import { json } from 'express';
-import { appConfig } from './config/app.config';
 import { initSentry } from './config/sentry.config';
 
 async function bootstrap() {
@@ -12,20 +11,12 @@ async function bootstrap() {
   initSentry();
   
   const logger = new Logger('Bootstrap');
-  // Extra baked-in allowed origins for tenant preview/prod
+  // Baked-in allowlist for known tenant preview/prod domains
   const extraAllowedOrigins = [
     'https://partypizza.vercel.app',
     'https://pizzaparty.sk',
     'https://www.pizzaparty.sk',
   ];
-  // Extra baked-in allowed origins for tenant preview/prod
-  const extraAllowedOrigins = [
-    'https://partypizza.vercel.app',
-    'https://pizzaparty.sk',
-    'https://www.pizzaparty.sk',
-  ];
-  // Temporary baked-in allowlist for new tenant preview domains
-  const extraAllowedOrigins = ['https://partypizza.vercel.app'];
   
   // Validate JWT_SECRET in production
   if (process.env.NODE_ENV === 'production' && !process.env.JWT_SECRET) {
@@ -88,12 +79,6 @@ async function bootstrap() {
         if (!allowed && extraAllowedOrigins.includes(origin)) {
           allowed = true;
         }
-        if (!allowed && extraAllowedOrigins.includes(origin)) {
-          allowed = true;
-        }
-        if (!allowed && extraAllowedOrigins.includes(origin)) {
-          allowed = true;
-        }
         
         // Only allow .vercel.app domains if explicitly listed in ALLOWED_ORIGINS
         if (!allowed && origin.endsWith('.vercel.app')) {
@@ -113,10 +98,6 @@ async function bootstrap() {
           allowed = true;
         }
       }
-      if (extraAllowedOrigins.includes(origin)) {
-        return callback(null, true);
-      }
-      
       if (allowed) {
         res.header('Access-Control-Allow-Origin', origin || '*');
         res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
@@ -192,9 +173,6 @@ async function bootstrap() {
         }
       }
       // Also allow baked-in extra origins
-      if (extraAllowedOrigins.includes(origin)) {
-        return callback(null, true);
-      }
       if (extraAllowedOrigins.includes(origin)) {
         return callback(null, true);
       }

@@ -190,10 +190,11 @@ export function getButtonStyle(tenant: Tenant | null, isDark: boolean): React.CS
 export function getTenantSlug(): string {
   if (typeof window === 'undefined') return 'pornopizza';
   
-  const hostname = window.location.hostname;
+  const hostname = window.location.hostname.toLowerCase();
   const params = new URLSearchParams(window.location.search);
   
   // Check for known production domains
+  if (hostname.includes('partypizza') || hostname.includes('pizzaparty')) return 'partypizza';
   if (hostname.includes('pornopizza.sk') || hostname.includes('p0rnopizza.sk')) return 'pornopizza';
   if (hostname.includes('pizzavnudzi.sk')) return 'pizzavnudzi';
   if (hostname.includes('pornopizza') || hostname.includes('p0rnopizza')) return 'pornopizza';

@@ -5,6 +5,7 @@ import { getTenant, updateTenant } from '@/lib/api';
 import { Tenant } from '@pizza-ecosystem/shared';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { isCurrentlyOpen, getNextOpeningTime } from '@/lib/opening-hours';
+import { getTenantSlug } from '@/lib/tenant-utils';
 
 export function MaintenanceBanner() {
   const { t } = useLanguage();
@@ -17,8 +18,8 @@ export function MaintenanceBanner() {
   useEffect(() => {
     const loadTenant = async () => {
       try {
-        // Load pornopizza tenant
-        const tenantData = await getTenant('pornopizza');
+        const tenantSlug = getTenantSlug();
+        const tenantData = await getTenant(tenantSlug);
         setTenant(tenantData);
         
         // Get maintenance mode from theme
@@ -93,7 +94,7 @@ export function MaintenanceBanner() {
       setMaintenanceMode(newMaintenanceMode);
       
       // Reload tenant to get updated data
-      const updatedTenant = await getTenant('pornopizza');
+      const updatedTenant = await getTenant(tenant.subdomain || tenant.slug || getTenantSlug());
       setTenant(updatedTenant);
     } catch (error: any) {
       console.error('Failed to update maintenance mode:', error);
@@ -118,15 +119,32 @@ export function MaintenanceBanner() {
   const openingHours = theme.openingHours;
   const effectiveMaintenanceMode = maintenanceMode || autoMaintenanceMode;
   const nextOpening = getNextOpeningTime(openingHours);
+  const primaryColor = theme.primaryColor || 'var(--color-primary)';
+  const secondaryColor = theme.secondaryColor || '#fefaf5';
+  const isSecondaryDark = (() => {
+    const hex = secondaryColor.replace('#', '');
+    if (hex.length !== 6 && hex.length !== 3) return false;
+    const normalized = hex.length === 3 ? hex.split('').map((c) => c + c).join('') : hex;
+    const r = parseInt(normalized.substring(0, 2), 16);
+    const g = parseInt(normalized.substring(2, 4), 16);
+    const b = parseInt(normalized.substring(4, 6), 16);
+    const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+    return luminance < 0.5;
+  })();
+  const textColor = isSecondaryDark ? '#f8fafc' : '#111827';
+  const mutedText = isSecondaryDark ? '#e5e7eb' : '#4b5563';
 
   return (
-    <div className="bg-[#fefaf5] rounded-lg p-3 border border-orange-200" style={{ backgroundColor: '#fefaf5', borderColor: '#fed7aa' }}>
+    <div
+      className="rounded-lg p-3 border"
+      style={{ backgroundColor: secondaryColor, borderColor: primaryColor }}
+    >
       <div className="flex items-center justify-between">
         <div className="flex-1 min-w-0">
-          <h2 className="text-sm font-bold text-[#f97316] mb-1 truncate" style={{ color: '#f97316' }}>
+          <h2 className="text-sm font-bold mb-1 truncate" style={{ color: primaryColor }}>
             {t.maintenanceModeTitle}
           </h2>
-          <div className="flex items-center gap-1.5 text-gray-600" style={{ color: '#4b5563' }}>
+          <div className="flex items-center gap-1.5" style={{ color: mutedText }}>
             <svg
               className="w-3.5 h-3.5 flex-shrink-0"
               fill="none"
@@ -141,7 +159,7 @@ export function MaintenanceBanner() {
                 d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
               />
             </svg>
-            <span className="text-xs truncate" style={{ color: '#4b5563' }}>{t.maintenanceModeSubtitle}</span>
+            <span className="text-xs truncate" style={{ color: mutedText }}>{t.maintenanceModeSubtitle}</span>
           </div>
           {openingHours?.enabled && (
             <div className="mt-1.5 flex items-center gap-1.5">
@@ -149,22 +167,27 @@ export function MaintenanceBanner() {
                 {autoMaintenanceMode ? 'Zatvorené' : 'Otvorené'}
               </span>
               {autoMaintenanceMode && nextOpening && (
-                <span className="text-xs text-gray-500 truncate" style={{ color: '#6b7280' }}>{nextOpening}</span>
+                <span className="text-xs truncate" style={{ color: mutedText }}>{nextOpening}</span>
               )}
             </div>
           )}
         </div>
         
         <div className="ml-3 flex items-center gap-2 flex-shrink-0">
-          <span className={`text-xs font-medium ${maintenanceMode ? 'text-orange-600' : 'text-gray-500'}`} style={{ color: maintenanceMode ? '#ea580c' : '#6b7280' }}>
+          <span className="text-xs font-medium" style={{ color: maintenanceMode ? primaryColor : mutedText }}>
             {maintenanceMode ? 'Zap.' : 'Vyp.'}
           </span>
           <button
             onClick={handleToggle}
             disabled={saving}
-            className={`relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-1 ${
-              maintenanceMode ? 'bg-orange-600' : 'bg-gray-200'
-            } ${saving ? 'opacity-50 cursor-not-allowed' : ''}`}
+            className={`relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-1 ${
+              saving ? 'opacity-50 cursor-not-allowed' : ''
+            }`}
+            style={{
+              backgroundColor: maintenanceMode ? primaryColor : '#d1d5db',
+              boxShadow: maintenanceMode ? `0 0 0 1px ${primaryColor}` : undefined,
+              color: textColor,
+            }}
           >
             <span
               className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
@@ -177,4 +200,3 @@ export function MaintenanceBanner() {
     </div>
   );
 }
-

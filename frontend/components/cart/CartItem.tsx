@@ -9,6 +9,7 @@ import { motion } from 'framer-motion';
 import { formatModifiers } from '@/lib/format-modifiers';
 import { useMemo } from 'react';
 import { calculateModifierPrice } from '@/lib/calculate-modifier-price';
+import { useTenant } from '@/contexts/TenantContext';
 
 interface CartItemProps {
   item: {
@@ -29,6 +30,7 @@ interface CartItemProps {
 export function CartItem({ item, variant = 'light' }: CartItemProps) {
   const { updateQuantity, removeItem } = useCart();
   const { t, language } = useLanguage();
+  const { tenant } = useTenant();
   const modifierPrice = useMemo(() => 
     calculateModifierPrice(item.modifiers, item.product.category), 
     [item.modifiers, item.product.category]
@@ -85,7 +87,12 @@ export function CartItem({ item, variant = 'light' }: CartItemProps) {
         {/* Customizations/Modifiers */}
         {(() => {
           if (!item.modifiers) return null;
-          const modifiers = formatModifiers(item.modifiers, false, language);
+          const modifiers = formatModifiers(
+            item.modifiers,
+            false,
+            language,
+            tenant?.theme?.customizationLabels
+          );
           if (modifiers.length === 0) return null;
           return (
             <div className={`text-xs mt-1 space-y-0.5 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
@@ -134,4 +141,3 @@ export function CartItem({ item, variant = 'light' }: CartItemProps) {
     </motion.div>
   );
 }
-

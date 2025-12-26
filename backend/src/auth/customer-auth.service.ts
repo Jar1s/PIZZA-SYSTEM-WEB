@@ -259,15 +259,21 @@ export class CustomerAuthService {
   /**
    * Login or register with Google OAuth
    */
-  async loginWithGoogle(idToken: string): Promise<CustomerAuthResult> {
+  async loginWithGoogle(idToken: string, clientId?: string): Promise<CustomerAuthResult> {
     try {
       const { OAuth2Client } = require('google-auth-library');
-      const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+      const audience = clientId;
+
+      if (!audience) {
+        throw new BadRequestException('Google OAuth is not configured for this tenant');
+      }
+
+      const client = new OAuth2Client(audience);
 
       // Verify the token
       const ticket = await client.verifyIdToken({
         idToken,
-        audience: process.env.GOOGLE_CLIENT_ID,
+        audience,
       });
 
       const payload = ticket.getPayload();
@@ -681,4 +687,3 @@ export class CustomerAuthService {
     };
   }
 }
-

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Tenant } from '@pizza-ecosystem/shared';
+import type { CustomizationLabels } from '@pizza-ecosystem/shared/types/tenant.types';
 import { updateTenant } from '@/lib/api';
 
 interface EditBrandModalProps {
@@ -58,6 +59,21 @@ export function EditBrandModal({
     tiktokPixel: { pixelId: '', enabled: false },
     linkedinInsight: { partnerId: '', enabled: false },
   });
+  const [faviconUrl, setFaviconUrl] = useState('');
+  const [googleOAuthConfig, setGoogleOAuthConfig] = useState({
+    clientId: '',
+    clientSecret: '',
+    redirectUri: '',
+    enabled: false,
+  });
+  const [categoryLabels, setCategoryLabels] = useState<Record<string, { sk: string; en: string }>>({
+    dough: { sk: '', en: '' },
+    cheese: { sk: '', en: '' },
+    sauce: { sk: '', en: '' },
+    edge: { sk: '', en: '' },
+    toppings: { sk: '', en: '' },
+  });
+  const [optionsJson, setOptionsJson] = useState('');
 
   useEffect(() => {
     if (tenant) {
@@ -88,8 +104,24 @@ export function EditBrandModal({
         secondaryColor: theme.secondaryColor || '#0F141A',
       });
       setLogoUrl(theme.logo || '');
+      setFaviconUrl(theme.favicon || '');
       setCashEnabled(paymentConfig.cashOnDeliveryEnabled === true);
       setCardEnabled(paymentConfig.cardOnDeliveryEnabled === true);
+      setGoogleOAuthConfig({
+        clientId: theme.googleOAuthConfig?.clientId || '',
+        clientSecret: theme.googleOAuthConfig?.clientSecret || '',
+        redirectUri: theme.googleOAuthConfig?.redirectUri || '',
+        enabled: theme.googleOAuthConfig?.enabled || false,
+      });
+      const labels = (theme.customizationLabels as CustomizationLabels) || {};
+      setCategoryLabels({
+        dough: { sk: labels.categories?.dough?.sk || '', en: labels.categories?.dough?.en || '' },
+        cheese: { sk: labels.categories?.cheese?.sk || '', en: labels.categories?.cheese?.en || '' },
+        sauce: { sk: labels.categories?.sauce?.sk || '', en: labels.categories?.sauce?.en || '' },
+        edge: { sk: labels.categories?.edge?.sk || '', en: labels.categories?.edge?.en || '' },
+        toppings: { sk: labels.categories?.toppings?.sk || '', en: labels.categories?.toppings?.en || '' },
+      });
+      setOptionsJson(labels.options ? JSON.stringify(labels.options, null, 2) : '');
       
       // Load Wolt/Delivery settings
       setWoltApiKey(woltConfig.apiKey || '');
@@ -139,6 +171,17 @@ export function EditBrandModal({
     setError(null);
 
     try {
+      // Parse option overrides JSON if provided
+      let parsedOptions: CustomizationLabels['options'] | undefined;
+      if (optionsJson.trim()) {
+        try {
+          parsedOptions = JSON.parse(optionsJson);
+        } catch (err) {
+          setError('Neplatný JSON pre vlastné názvy možností. Skontroluj formát.');
+          setLoading(false);
+          return;
+        }
+      }
       // Get existing paymentConfig to preserve other properties
       const existingPaymentConfig = (tenant.paymentConfig as any) || {};
       const existingDeliveryConfig = (tenant.deliveryConfig as any) || {};
@@ -211,6 +254,7 @@ export function EditBrandModal({
         primaryColor: themeColors.primaryColor,
         secondaryColor: themeColors.secondaryColor,
         logo: logoUrl.trim() || existingTheme.logo,
+        favicon: faviconUrl.trim() || existingTheme.favicon || '/favicon.ico',
         analyticsConfig: {
           googleAnalytics: analyticsConfig.googleAnalytics.enabled && analyticsConfig.googleAnalytics.measurementId
             ? { measurementId: analyticsConfig.googleAnalytics.measurementId, enabled: true }
@@ -228,7 +272,38 @@ export function EditBrandModal({
             ? { partnerId: analyticsConfig.linkedinInsight.partnerId, enabled: true }
             : undefined,
         },
+        googleOAuthConfig: googleOAuthConfig.enabled && googleOAuthConfig.clientId && googleOAuthConfig.clientSecret
+          ? {
+              clientId: googleOAuthConfig.clientId.trim(),
+              clientSecret: googleOAuthConfig.clientSecret.trim(),
+              redirectUri: googleOAuthConfig.redirectUri?.trim() || existingTheme.googleOAuthConfig?.redirectUri,
+              enabled: true,
+            }
+          : undefined,
       };
+      
+      // Collect customization labels (only keep filled values)
+      const customizationLabels: CustomizationLabels = {};
+      const filledCategories = Object.entries(categoryLabels).reduce((acc, [key, value]) => {
+        const sk = value.sk.trim();
+        const en = value.en.trim();
+        if (sk || en) {
+          acc[key as keyof NonNullable<CustomizationLabels['categories']>] = {
+            ...(sk ? { sk } : {}),
+            ...(en ? { en } : {}),
+          };
+        }
+        return acc;
+      }, {} as NonNullable<CustomizationLabels['categories']>);
+      if (Object.keys(filledCategories).length > 0) {
+        customizationLabels.categories = filledCategories;
+      }
+      if (parsedOptions && Object.keys(parsedOptions).length > 0) {
+        customizationLabels.options = parsedOptions;
+      }
+      if (Object.keys(customizationLabels).length > 0) {
+        (updatedTheme as any).customizationLabels = customizationLabels;
+      }
       
       // Remove undefined values
       Object.keys(updatedTheme.analyticsConfig).forEach(key => {
@@ -236,6 +311,9 @@ export function EditBrandModal({
           delete updatedTheme.analyticsConfig[key];
         }
       });
+      if (!updatedTheme.googleOAuthConfig) {
+        delete (updatedTheme as any).googleOAuthConfig;
+      }
       
       updateData.theme = updatedTheme;
       
@@ -386,6 +464,85 @@ export function EditBrandModal({
                   <p className="mt-1 text-xs text-gray-500">
                     Zadaj URL loga (PNG/JPG/SVG). Ak necháš prázdne, ostane pôvodné logo.
                   </p>
+                </div>
+
+                {/* Favicon URL */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Favicon URL
+                  </label>
+                  <input
+                    type="text"
+                    value={faviconUrl}
+                    onChange={(e) => setFaviconUrl(e.target.value)}
+                    placeholder="https://your-cdn.com/favicon.ico"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                  />
+                  <p className="mt-1 text-xs text-gray-500">
+                    Zadaj URL pre favicon (ICO/PNG). Ak necháš prázdne, použije sa predvolená ikonka.
+                  </p>
+                </div>
+
+                {/* Customization Labels */}
+                <div className="border-t pt-4 mt-4">
+                  <h4 className="text-md font-semibold mb-3 text-gray-900">
+                    🧩 Customizačné labely
+                  </h4>
+                  <p className="text-sm text-gray-600 mb-4">
+                    Prepíš názvy kategórií a možností pre pizzové modifikátory. Ak pole necháš prázdne, použije sa pôvodný text.
+                  </p>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {(['dough', 'cheese', 'sauce', 'edge', 'toppings'] as const).map((key) => (
+                      <div key={key} className="p-3 border border-gray-200 rounded-md">
+                        <div className="text-xs uppercase tracking-wide text-gray-500 mb-2">
+                          {key === 'dough' && 'Cesto'}
+                          {key === 'cheese' && 'Syr'}
+                          {key === 'sauce' && 'Základ'}
+                          {key === 'edge' && 'Okraj'}
+                          {key === 'toppings' && 'Extra'}
+                        </div>
+                        <div className="space-y-2">
+                          <input
+                            type="text"
+                            value={categoryLabels[key].sk}
+                            onChange={(e) => setCategoryLabels({
+                              ...categoryLabels,
+                              [key]: { ...categoryLabels[key], sk: e.target.value },
+                            })}
+                            placeholder="SK názov"
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500"
+                          />
+                          <input
+                            type="text"
+                            value={categoryLabels[key].en}
+                            onChange={(e) => setCategoryLabels({
+                              ...categoryLabels,
+                              [key]: { ...categoryLabels[key], en: e.target.value },
+                            })}
+                            placeholder="EN name"
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500"
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="mt-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Option overrides (JSON)
+                    </label>
+                    <textarea
+                      value={optionsJson}
+                      onChange={(e) => setOptionsJson(e.target.value)}
+                      rows={4}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm font-mono focus:ring-blue-500 focus:border-blue-500"
+                      placeholder='{"cheesy-edge":{"sk":"Syrový okraj","en":"Cheesy edge"}}'
+                    />
+                    <p className="mt-1 text-xs text-gray-500">
+                      Mapuj ID možnosti na vlastný názov (SK/EN). Nechaj prázdne, ak nepotrebuješ prepísať.
+                    </p>
+                  </div>
                 </div>
 
                 {/* Active Status */}
@@ -900,6 +1057,79 @@ export function EditBrandModal({
                         Partner ID from LinkedIn Campaign Manager
                       </p>
                     </div>
+                  </div>
+                </div>
+
+                {/* Google OAuth Settings */}
+                <div className="border-t pt-4 mt-4">
+                  <h4 className="text-md font-semibold mb-3 text-gray-900">
+                    🔐 Google OAuth
+                  </h4>
+                  <p className="text-sm text-gray-600 mb-4">
+                    Nastav Google prihlásenie pre tento brand. Každý tenant môže mať vlastné OAuth credentials.
+                  </p>
+
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-gray-700">Enable Google Login</span>
+                      <button
+                        type="button"
+                        onClick={() => setGoogleOAuthConfig({ ...googleOAuthConfig, enabled: !googleOAuthConfig.enabled })}
+                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                          googleOAuthConfig.enabled ? 'bg-green-600' : 'bg-gray-300'
+                        }`}
+                      >
+                        <span
+                          className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                            googleOAuthConfig.enabled ? 'translate-x-6' : 'translate-x-1'
+                          }`}
+                        />
+                      </button>
+                    </div>
+
+                    {googleOAuthConfig.enabled && (
+                      <div className="space-y-3">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Google Client ID
+                          </label>
+                          <input
+                            type="text"
+                            value={googleOAuthConfig.clientId}
+                            onChange={(e) => setGoogleOAuthConfig({ ...googleOAuthConfig, clientId: e.target.value })}
+                            placeholder="your-client-id.apps.googleusercontent.com"
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Google Client Secret
+                          </label>
+                          <input
+                            type="password"
+                            value={googleOAuthConfig.clientSecret}
+                            onChange={(e) => setGoogleOAuthConfig({ ...googleOAuthConfig, clientSecret: e.target.value })}
+                            placeholder="Client secret"
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Redirect URI (optional)
+                          </label>
+                          <input
+                            type="text"
+                            value={googleOAuthConfig.redirectUri}
+                            onChange={(e) => setGoogleOAuthConfig({ ...googleOAuthConfig, redirectUri: e.target.value })}
+                            placeholder="https://your-frontend.sk/auth/google/callback"
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm"
+                          />
+                          <p className="text-xs text-gray-500 mt-1">
+                            Ak necháš prázdne, použije sa predvolená hodnota z frontend ENV.
+                          </p>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>

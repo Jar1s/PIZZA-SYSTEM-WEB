@@ -5,6 +5,7 @@ import { formatModifiers } from '@/lib/format-modifiers';
 import { getProductTranslation, getProductDisplayName } from '@/lib/product-translations';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { calculateOrderItemPrice } from '@/lib/calculate-order-item-price';
+import { useTenant } from '@/contexts/TenantContext';
 
 interface OrderDetailsProps {
   order: Order;
@@ -12,6 +13,7 @@ interface OrderDetailsProps {
 
 export function OrderDetails({ order }: OrderDetailsProps) {
   const { language } = useLanguage();
+  const { tenant } = useTenant();
   const customer = order.customer as any;
   const address = order.address as any;
 
@@ -33,7 +35,12 @@ export function OrderDetails({ order }: OrderDetailsProps) {
             });
             const displayName = item.displayName || getProductDisplayName(item.productName, language);
             
-            const modifiers = formatModifiers(item.modifiers, false, language);
+            const modifiers = formatModifiers(
+              item.modifiers,
+              false,
+              language,
+              tenant?.theme?.customizationLabels
+            );
             
             return (
               <div key={i} className="flex justify-between items-start">
@@ -93,4 +100,3 @@ export function OrderDetails({ order }: OrderDetailsProps) {
     </div>
   );
 }
-

@@ -13,7 +13,7 @@ import { calculateModifierPrice } from '@/lib/calculate-modifier-price';
 import { validateReturnUrl } from '@/lib/validate-return-url';
 import { getTenant } from '@/lib/api';
 import { geocodeAddress, validateBratislavaAddressSimple } from '@/lib/geocoding';
-import { isDarkTheme, getBackgroundClass, getButtonGradientClass, getButtonStyle, withTenantThemeDefaults } from '@/lib/tenant-utils';
+import { isDarkTheme, getBackgroundClass, getButtonGradientClass, getButtonStyle, withTenantThemeDefaults, getTenantSlug } from '@/lib/tenant-utils';
 import { isCurrentlyOpen } from '@/lib/opening-hours';
 import { getProductDisplayName } from '@/lib/product-translations';
 import AddressAutocomplete from '@/components/account/AddressAutocomplete';
@@ -315,9 +315,8 @@ export default function CheckoutPage() {
       sessionStorage.removeItem('oauth_redirect');
     }
     
-    // Initialize tenant slug from URL
-    const params = new URLSearchParams(window.location.search);
-    setTenantSlug(params.get('tenant') || 'pornopizza');
+    // Initialize tenant slug from URL/hostname
+    setTenantSlug(getTenantSlug());
   }, []); // Empty deps - only run once on mount
 
   // Handle cart validation (only when items change)
@@ -1399,7 +1398,12 @@ export default function CheckoutPage() {
           <div className="mb-8 pb-8 border-b">
             <h2 className="text-xl font-semibold mb-4">{t.orderSummary}</h2>
             {items.map(item => {
-              const modifiers = formatModifiers(item.modifiers, false, language);
+              const modifiers = formatModifiers(
+                item.modifiers,
+                false,
+                language,
+                tenantData?.theme?.customizationLabels
+              );
               const modifierPrice = calculateModifierPrice(item.modifiers, item.product.category);
               const itemPrice = item.product.priceCents + modifierPrice;
               const itemTotal = itemPrice * item.quantity;

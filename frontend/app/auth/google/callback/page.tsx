@@ -5,7 +5,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { validateReturnUrl } from '@/lib/validate-return-url';
 import { getTenant } from '@/lib/api';
 import { Tenant } from '@pizza-ecosystem/shared';
-import { withTenantThemeDefaults, getBackgroundClass, isDarkTheme } from '@/lib/tenant-utils';
+import { withTenantThemeDefaults, getBackgroundClass, isDarkTheme, getTenantSlug } from '@/lib/tenant-utils';
 
 export default function GoogleCallbackPage() {
   const searchParams = useSearchParams();
@@ -18,18 +18,7 @@ export default function GoogleCallbackPage() {
   useEffect(() => {
     const loadTenant = async () => {
       try {
-        const hostname = window.location.hostname.toLowerCase();
-        const params = new URLSearchParams(window.location.search);
-        let tenantSlug = 'pornopizza';
-        if (hostname.includes('pizzaparty')) tenantSlug = 'partypizza';
-        else if (hostname.includes('pizzavnudzi')) tenantSlug = 'pizzavnudzi';
-        else if (hostname.includes('pornopizza') || hostname.includes('p0rnopizza')) tenantSlug = 'pornopizza';
-        else if (hostname.includes('localhost') || hostname.includes('127.0.0.1') || hostname.includes('vercel.app')) {
-          tenantSlug = params.get('tenant') || 'pornopizza';
-        } else {
-          tenantSlug = params.get('tenant') || tenantSlug;
-        }
-        
+        const tenantSlug = getTenantSlug();
         const tenantData = await getTenant(tenantSlug);
         const normalizedTenant = withTenantThemeDefaults(tenantData);
         setTenant(normalizedTenant);
@@ -107,7 +96,7 @@ export default function GoogleCallbackPage() {
         }
 
         // Parse state for returnUrl
-        let returnUrl = '/account?tenant=pornopizza';
+        let returnUrl = `/account?tenant=${getTenantSlug()}`;
         if (state) {
           try {
             const stateData = JSON.parse(atob(state));
