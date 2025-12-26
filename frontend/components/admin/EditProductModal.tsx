@@ -243,11 +243,29 @@ export function EditProductModal({
       // If editing overrides for a brand
       if (selectedBrand !== 'master' && product) {
         // Save overrides
+        const normalizedOverrides: ProductTenantOverride = { ...(overrideData || {}) };
+        // Normalize description override: allow plain text input
+        if (overrideData?.description) {
+          try {
+            JSON.parse(overrideData.description);
+          } catch {
+            normalizedOverrides.description = JSON.stringify({ sk: overrideData.description, en: overrideData.description });
+          }
+        }
+        // Normalize subHeader override: allow plain text input
+        if (overrideData?.subHeader) {
+          try {
+            JSON.parse(overrideData.subHeader);
+          } catch {
+            normalizedOverrides.subHeader = JSON.stringify({ sk: overrideData.subHeader, en: overrideData.subHeader });
+          }
+        }
+
         await updateProductOverrides(
           tenantSlug,
           product.id,
           selectedBrand,
-          overrideData || {}
+          normalizedOverrides
         );
         onUpdate();
         onClose();
@@ -712,4 +730,3 @@ export function EditProductModal({
     </div>
   );
 }
-
