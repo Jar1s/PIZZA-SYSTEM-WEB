@@ -473,7 +473,7 @@ export function HomePageClient({ products, tenant }: HomePageClientProps) {
               const chipClass = isDarkTheme
                 ? `rounded-full font-bold transition-all ${
                     categoryFilter === category
-                      ? 'category-chip category-chip--active'
+                      ? 'category-chip'
                       : 'category-chip hover:border-white/25'
                   }`
                 : `px-6 py-3 rounded-lg font-bold transition-all ${
@@ -482,15 +482,20 @@ export function HomePageClient({ products, tenant }: HomePageClientProps) {
                       : 'text-gray-700 hover:bg-gray-100 shadow bg-white'
                   }`;
 
+              const activeStyle = categoryFilter === category
+                ? {
+                    backgroundColor: primaryColor,
+                    color: '#fff',
+                    borderColor: primaryColor,
+                  }
+                : undefined;
+
               return (
                 <button
                   key={category}
                   onClick={() => handleCategoryFilter(category)}
                   className={`${chipClass} px-4 sm:px-6 py-2.5 sm:py-3 text-sm sm:text-base touch-manipulation min-h-[44px] whitespace-nowrap flex-shrink-0`}
-                  style={categoryFilter === category && !isDarkTheme 
-                    ? { backgroundColor: tenant.theme.primaryColor }
-                    : {}
-                  }
+                  style={activeStyle}
                 >
                   <span className="mr-1 sm:mr-2">{categoryEmoji[category]}</span>
                   {categoryLabels[category]}
