@@ -19,6 +19,7 @@ export function MaintenanceBanner() {
     if (slug === 'pizzaparty') return 'partypizza';
     return slug;
   };
+  const tenantSlugsToUpdate = ['pornopizza', 'partypizza', 'pizzavnudzi'];
 
   useEffect(() => {
     const loadTenant = async () => {
@@ -89,12 +90,17 @@ export function MaintenanceBanner() {
       
       const newMaintenanceMode = !maintenanceMode;
       
-      await updateTenant(tenant.subdomain || tenant.slug, {
-        theme: {
-          ...theme,
-          maintenanceMode: newMaintenanceMode,
-        },
-      });
+      // Update all tenants to keep maintenance in sync across brands
+      await Promise.allSettled(
+        tenantSlugsToUpdate.map(slug => 
+          updateTenant(normalizeSlug(slug), {
+            theme: {
+              ...theme,
+              maintenanceMode: newMaintenanceMode,
+            },
+          })
+        )
+      );
       
       setMaintenanceMode(newMaintenanceMode);
       
