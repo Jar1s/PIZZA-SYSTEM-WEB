@@ -39,6 +39,16 @@ export function EditBrandModal({
     redirectUri: '',
     enabled: false,
   });
+  const [subCategoryLabels, setSubCategoryLabels] = useState({
+    foreplay: { titleSk: '', titleEn: '', descSk: '', descEn: '' },
+    mainAction: { titleSk: '', titleEn: '', descSk: '', descEn: '' },
+    deluxeFetish: { titleSk: '', titleEn: '', descSk: '', descEn: '' },
+    premiumSins: { titleSk: '', titleEn: '', descSk: '', descEn: '' },
+    stangle: { titleSk: '', titleEn: '', descSk: '', descEn: '' },
+    soups: { titleSk: '', titleEn: '', descSk: '', descEn: '' },
+    drinks: { titleSk: '', titleEn: '', descSk: '', descEn: '' },
+    desserts: { titleSk: '', titleEn: '', descSk: '', descEn: '' },
+  });
   
   // GoPay settings
   const [gopayClientId, setGopayClientId] = useState('');
@@ -104,7 +114,57 @@ export function EditBrandModal({
         redirectUri: oauthConfig.redirectUri || '',
         enabled: oauthConfig.enabled || false,
       });
-      setSubCategoryLabels(theme.subCategoryLabels || {});
+      const subLabels = theme.subCategoryLabels || {};
+      setSubCategoryLabels({
+        foreplay: {
+          titleSk: subLabels.foreplay?.titleSk || '',
+          titleEn: subLabels.foreplay?.titleEn || '',
+          descSk: subLabels.foreplay?.descSk || '',
+          descEn: subLabels.foreplay?.descEn || '',
+        },
+        mainAction: {
+          titleSk: subLabels.mainAction?.titleSk || '',
+          titleEn: subLabels.mainAction?.titleEn || '',
+          descSk: subLabels.mainAction?.descSk || '',
+          descEn: subLabels.mainAction?.descEn || '',
+        },
+        deluxeFetish: {
+          titleSk: subLabels.deluxeFetish?.titleSk || '',
+          titleEn: subLabels.deluxeFetish?.titleEn || '',
+          descSk: subLabels.deluxeFetish?.descSk || '',
+          descEn: subLabels.deluxeFetish?.descEn || '',
+        },
+        premiumSins: {
+          titleSk: subLabels.premiumSins?.titleSk || '',
+          titleEn: subLabels.premiumSins?.titleEn || '',
+          descSk: subLabels.premiumSins?.descSk || '',
+          descEn: subLabels.premiumSins?.descEn || '',
+        },
+        stangle: {
+          titleSk: subLabels.stangle?.titleSk || '',
+          titleEn: subLabels.stangle?.titleEn || '',
+          descSk: subLabels.stangle?.descSk || '',
+          descEn: subLabels.stangle?.descEn || '',
+        },
+        soups: {
+          titleSk: subLabels.soups?.titleSk || '',
+          titleEn: subLabels.soups?.titleEn || '',
+          descSk: subLabels.soups?.descSk || '',
+          descEn: subLabels.soups?.descEn || '',
+        },
+        drinks: {
+          titleSk: subLabels.drinks?.titleSk || '',
+          titleEn: subLabels.drinks?.titleEn || '',
+          descSk: subLabels.drinks?.descSk || '',
+          descEn: subLabels.drinks?.descEn || '',
+        },
+        desserts: {
+          titleSk: subLabels.desserts?.titleSk || '',
+          titleEn: subLabels.desserts?.titleEn || '',
+          descSk: subLabels.desserts?.descSk || '',
+          descEn: subLabels.desserts?.descEn || '',
+        },
+      });
       
       // Load Wolt/Delivery settings
       setWoltApiKey(woltConfig.apiKey || '');
@@ -378,6 +438,130 @@ export function EditBrandModal({
                       </div>
                     </div>
                   </div>
+                </div>
+
+                {/* Pizza Sub-category Labels */}
+                <div className="border-t pt-4 mt-4">
+                  <h4 className="text-md font-semibold mb-3 text-gray-900">
+                    🍕 Názvy sekcií pizze
+                  </h4>
+                  <p className="text-sm text-gray-600 mb-4">
+                    Uprav názvy a popisy podkategórií (Predohra, Hlavná akcia, Deluxe Fetish, Premium Sins) pre tento tenant. Nechané prázdne = použije sa predvolený preklad.
+                  </p>
+                  {([
+                    { key: 'foreplay', label: 'Predohra' },
+                    { key: 'mainAction', label: 'Hlavná akcia' },
+                    { key: 'deluxeFetish', label: 'Deluxe Fetish' },
+                    { key: 'premiumSins', label: 'Premium Sins' },
+                  ] as const).map(({ key, label }) => (
+                    <div key={key} className="mb-4 p-3 border border-gray-200 rounded-md space-y-2">
+                      <div className="text-sm font-semibold text-gray-800">{label}</div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <input
+                          type="text"
+                          placeholder="Názov (SK)"
+                          value={subCategoryLabels[key].titleSk}
+                          onChange={(e) => setSubCategoryLabels({
+                            ...subCategoryLabels,
+                            [key]: { ...subCategoryLabels[key], titleSk: e.target.value },
+                          })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500"
+                        />
+                        <input
+                          type="text"
+                          placeholder="Name (EN)"
+                          value={subCategoryLabels[key].titleEn}
+                          onChange={(e) => setSubCategoryLabels({
+                            ...subCategoryLabels,
+                            [key]: { ...subCategoryLabels[key], titleEn: e.target.value },
+                          })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500"
+                        />
+                        <input
+                          type="text"
+                          placeholder="Popis (SK)"
+                          value={subCategoryLabels[key].descSk}
+                          onChange={(e) => setSubCategoryLabels({
+                            ...subCategoryLabels,
+                            [key]: { ...subCategoryLabels[key], descSk: e.target.value },
+                          })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500 sm:col-span-2"
+                        />
+                        <input
+                          type="text"
+                          placeholder="Description (EN)"
+                          value={subCategoryLabels[key].descEn}
+                          onChange={(e) => setSubCategoryLabels({
+                            ...subCategoryLabels,
+                            [key]: { ...subCategoryLabels[key], descEn: e.target.value },
+                          })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500 sm:col-span-2"
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Other Category Labels */}
+                <div className="border-t pt-4 mt-4">
+                  <h4 className="text-md font-semibold mb-3 text-gray-900">
+                    📂 Názvy sekcií ostatných kategórií
+                  </h4>
+                  <p className="text-sm text-gray-600 mb-4">
+                    Uprav názvy a popisy pre Štangle, Polievky, Nápoje a Dezerty pre tento tenant.
+                  </p>
+                  {([
+                    { key: 'stangle', label: 'Štangle & Posúch' },
+                    { key: 'soups', label: 'Polievky' },
+                    { key: 'drinks', label: 'Nápoje' },
+                    { key: 'desserts', label: 'Dezerty' },
+                  ] as const).map(({ key, label }) => (
+                    <div key={key} className="mb-4 p-3 border border-gray-200 rounded-md space-y-2">
+                      <div className="text-sm font-semibold text-gray-800">{label}</div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <input
+                          type="text"
+                          placeholder="Názov (SK)"
+                          value={subCategoryLabels[key].titleSk}
+                          onChange={(e) => setSubCategoryLabels({
+                            ...subCategoryLabels,
+                            [key]: { ...subCategoryLabels[key], titleSk: e.target.value },
+                          })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500"
+                        />
+                        <input
+                          type="text"
+                          placeholder="Name (EN)"
+                          value={subCategoryLabels[key].titleEn}
+                          onChange={(e) => setSubCategoryLabels({
+                            ...subCategoryLabels,
+                            [key]: { ...subCategoryLabels[key], titleEn: e.target.value },
+                          })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500"
+                        />
+                        <input
+                          type="text"
+                          placeholder="Popis (SK)"
+                          value={subCategoryLabels[key].descSk}
+                          onChange={(e) => setSubCategoryLabels({
+                            ...subCategoryLabels,
+                            [key]: { ...subCategoryLabels[key], descSk: e.target.value },
+                          })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500 sm:col-span-2"
+                        />
+                        <input
+                          type="text"
+                          placeholder="Description (EN)"
+                          value={subCategoryLabels[key].descEn}
+                          onChange={(e) => setSubCategoryLabels({
+                            ...subCategoryLabels,
+                            [key]: { ...subCategoryLabels[key], descEn: e.target.value },
+                          })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500 sm:col-span-2"
+                        />
+                      </div>
+                    </div>
+                  ))}
                 </div>
 
                 {/* Active Status */}
@@ -921,4 +1105,3 @@ export function EditBrandModal({
     </div>
   );
 }
-
