@@ -564,6 +564,74 @@ export function EditBrandModal({
                   ))}
                 </div>
 
+                {/* Google OAuth Settings */}
+                <div className="border-t pt-4 mt-4">
+                  <h4 className="text-md font-semibold mb-3 text-gray-900 flex items-center gap-2">
+                    <span role="img" aria-label="lock">🔐</span> Google OAuth
+                  </h4>
+                  <p className="text-sm text-gray-600 mb-4">
+                    Nastav prihlásenie cez Google pre tento tenant. Každý tenant môže mať vlastné Client ID / Secret / Redirect URI.
+                  </p>
+                  <div className="p-3 border border-gray-200 rounded-md space-y-3">
+                    <div className="flex items-center justify-between">
+                      <label className="text-sm font-medium text-gray-700">
+                        Google OAuth povolené
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => setGoogleOAuthConfig({ ...googleOAuthConfig, enabled: !googleOAuthConfig.enabled })}
+                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                          googleOAuthConfig.enabled ? 'bg-green-600' : 'bg-gray-300'
+                        }`}
+                      >
+                        <span
+                          className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                            googleOAuthConfig.enabled ? 'translate-x-6' : 'translate-x-1'
+                          }`}
+                        />
+                      </button>
+                    </div>
+
+                    {googleOAuthConfig.enabled && (
+                      <div className="space-y-3">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Client ID</label>
+                          <input
+                            type="text"
+                            value={googleOAuthConfig.clientId}
+                            onChange={(e) => setGoogleOAuthConfig({ ...googleOAuthConfig, clientId: e.target.value })}
+                            placeholder="Google OAuth Client ID"
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Client Secret</label>
+                          <input
+                            type="password"
+                            value={googleOAuthConfig.clientSecret}
+                            onChange={(e) => setGoogleOAuthConfig({ ...googleOAuthConfig, clientSecret: e.target.value })}
+                            placeholder="Google OAuth Client Secret"
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Redirect URI</label>
+                          <input
+                            type="text"
+                            value={googleOAuthConfig.redirectUri}
+                            onChange={(e) => setGoogleOAuthConfig({ ...googleOAuthConfig, redirectUri: e.target.value })}
+                            placeholder="https://your-domain.com/api/auth/google/callback"
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm"
+                          />
+                          <p className="text-xs text-gray-500 mt-1">
+                            Zadaj rovnakú URL aj v Google Cloud Console pre tento tenant.
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
                 {/* Active Status */}
                 <div className="flex items-center pt-2">
                   <input
