@@ -283,6 +283,8 @@ export function EditBrandModal({
       const existingTheme = (tenant.theme as any) || {};
       const updatedTheme: any = {
         ...existingTheme,
+        primaryColor: themeColors.primaryColor.trim() || existingTheme.primaryColor,
+        secondaryColor: themeColors.secondaryColor.trim() || existingTheme.secondaryColor,
         favicon: faviconUrl.trim() || existingTheme.favicon || '/favicon.ico',
         subCategoryLabels,
         analyticsConfig: {
@@ -411,31 +413,43 @@ export function EditBrandModal({
                   </div>
                 </div>
 
-                {/* Theme Colors (read-only) */}
+                {/* Theme Colors */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Theme Colors
                   </label>
-                  <div className="flex gap-4">
-                    <div className="flex items-center gap-2">
-                      <div
-                        className="w-10 h-10 rounded border-2 border-gray-200"
-                        style={{ backgroundColor: themeColors.primaryColor }}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="color"
+                        value={themeColors.primaryColor}
+                        onChange={(e) => setThemeColors({ ...themeColors, primaryColor: e.target.value })}
+                        className="h-10 w-12 rounded border border-gray-200"
+                        aria-label="Primary color"
                       />
-                      <div>
-                        <div className="text-xs text-gray-500">Primary</div>
-                        <div className="text-sm text-gray-900 font-medium">{themeColors.primaryColor}</div>
-                      </div>
+                      <input
+                        type="text"
+                        value={themeColors.primaryColor}
+                        onChange={(e) => setThemeColors({ ...themeColors, primaryColor: e.target.value })}
+                        className="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="#E91E63"
+                      />
                     </div>
-                    <div className="flex items-center gap-2">
-                      <div
-                        className="w-10 h-10 rounded border-2 border-gray-200"
-                        style={{ backgroundColor: themeColors.secondaryColor }}
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="color"
+                        value={themeColors.secondaryColor}
+                        onChange={(e) => setThemeColors({ ...themeColors, secondaryColor: e.target.value })}
+                        className="h-10 w-12 rounded border border-gray-200"
+                        aria-label="Secondary color"
                       />
-                      <div>
-                        <div className="text-xs text-gray-500">Secondary</div>
-                        <div className="text-sm text-gray-900 font-medium">{themeColors.secondaryColor}</div>
-                      </div>
+                      <input
+                        type="text"
+                        value={themeColors.secondaryColor}
+                        onChange={(e) => setThemeColors({ ...themeColors, secondaryColor: e.target.value })}
+                        className="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="#0F141A"
+                      />
                     </div>
                   </div>
                 </div>
