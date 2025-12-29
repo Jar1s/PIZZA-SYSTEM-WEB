@@ -323,7 +323,7 @@ export class AuthService {
 
     return {
       message: 'Phone number verified successfully',
-      user,
+      user: updatedUser,
     };
   }
 }

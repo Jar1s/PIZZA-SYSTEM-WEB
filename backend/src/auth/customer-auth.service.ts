@@ -46,6 +46,29 @@ export class CustomerAuthService {
   ) {}
 
   /**
+   * Send welcome email asynchronously; log errors but don't throw.
+   */
+  private async sendWelcomeEmailAsync(user: any, tenantId: string): Promise<void> {
+    try {
+      const tenant = await this.tenantsService.findById(tenantId);
+      if (!tenant) {
+        this.logger.warn(`Tenant ${tenantId} not found while sending welcome email`);
+        return;
+      }
+      await this.emailService.sendWelcomeEmail(
+        { email: user.email, name: user.name },
+        tenant.name,
+        tenant.domain || `${tenant.subdomain}.pizzaparty.sk`,
+        tenant.theme,
+        tenant.slug,
+        tenant.emailConfig,
+      );
+    } catch (error) {
+      this.logger.error(`Failed to send welcome email to ${user.email}:`, error);
+    }
+  }
+
+  /**
    * Register new customer with email and password
    */
   async registerWithEmail(dto: RegisterDto, tenantId: string): Promise<CustomerAuthResult> {
