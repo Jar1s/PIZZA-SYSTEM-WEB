@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useCustomerAuth } from '@/contexts/CustomerAuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { sendCustomerSmsCode } from '@/lib/api';
+import { getTenantSlug } from '@/lib/tenant-utils';
 
 interface PersonalDataProps {
   tenant: string;
@@ -27,6 +28,7 @@ export default function PersonalData({ tenant, isDark = false }: PersonalDataPro
     try {
       const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
       const token = localStorage.getItem('customer_auth_token');
+      const tenantSlug = tenant || getTenantSlug();
       
       if (!token || !user) {
         return;
@@ -36,6 +38,7 @@ export default function PersonalData({ tenant, isDark = false }: PersonalDataPro
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
+          'x-tenant': tenantSlug,
         },
       });
 
@@ -89,7 +92,7 @@ export default function PersonalData({ tenant, isDark = false }: PersonalDataPro
     } catch (error) {
       console.error('Failed to fetch personal data:', error);
     }
-  }, [user, setUser]);
+  }, [user, setUser, tenant]);
 
   useEffect(() => {
     // Wait for auth to load and user to be available before fetching profile
@@ -104,6 +107,7 @@ export default function PersonalData({ tenant, isDark = false }: PersonalDataPro
     try {
       const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
       const token = localStorage.getItem('customer_auth_token');
+      const tenantSlug = tenant || getTenantSlug();
       
       if (!token) {
         alert('Nie ste prihlásený');
@@ -120,6 +124,7 @@ export default function PersonalData({ tenant, isDark = false }: PersonalDataPro
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
+          'x-tenant': tenantSlug,
         },
         body: JSON.stringify({ [field]: valueToSend }),
       });

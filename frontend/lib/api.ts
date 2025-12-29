@@ -1,5 +1,5 @@
 import { Tenant, Product, Order, OrderStatus, ProductTenantOverride } from '@pizza-ecosystem/shared';
-import { withTenantThemeDefaults } from '@/lib/tenant-utils';
+import { withTenantThemeDefaults, getTenantSlug } from '@/lib/tenant-utils';
 import { TenantSchema, ProductSchema, OrderSchema, safeParse } from '@/lib/schemas/api.schema';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
@@ -493,9 +493,10 @@ export async function verifySmsCode(phoneNumber: string, code: string, userId: s
 
 // Customer Authentication API functions
 export async function checkEmailExists(email: string): Promise<boolean> {
+  const tenant = getTenantSlug();
   const res = await fetch(`${API_URL}/api/auth/customer/check-email`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', 'x-tenant': tenant },
     body: JSON.stringify({ email }),
   });
   
@@ -508,9 +509,10 @@ export async function checkEmailExists(email: string): Promise<boolean> {
 }
 
 export async function registerCustomer(email: string, password: string, name: string): Promise<any> {
+  const tenant = getTenantSlug();
   const res = await fetch(`${API_URL}/api/auth/customer/register`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', 'x-tenant': tenant },
     credentials: 'include',
     body: JSON.stringify({ email, password, name }),
   });
@@ -524,9 +526,10 @@ export async function registerCustomer(email: string, password: string, name: st
 }
 
 export async function loginCustomer(email: string, password: string): Promise<any> {
+  const tenant = getTenantSlug();
   const res = await fetch(`${API_URL}/api/auth/customer/login`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', 'x-tenant': tenant },
     credentials: 'include',
     body: JSON.stringify({ email, password }),
   });

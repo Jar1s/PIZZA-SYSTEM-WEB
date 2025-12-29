@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useCustomerAuth } from '@/contexts/CustomerAuthContext';
 import AddressAutocomplete from './AddressAutocomplete';
+import { getTenantSlug } from '@/lib/tenant-utils';
 
 interface Address {
   id: string;
@@ -40,6 +41,7 @@ export default function MyAddress({ tenant, isDark = false }: MyAddressProps) {
     try {
       const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
       const token = localStorage.getItem('customer_auth_token');
+      const tenantSlug = tenant || getTenantSlug();
       
       if (!token || !user) {
         setLoading(false);
@@ -50,6 +52,7 @@ export default function MyAddress({ tenant, isDark = false }: MyAddressProps) {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
+          'x-tenant': tenantSlug,
         },
       });
 
@@ -69,7 +72,7 @@ export default function MyAddress({ tenant, isDark = false }: MyAddressProps) {
     } finally {
       setLoading(false);
     }
-  }, [user]);
+  }, [user, tenant]);
 
   useEffect(() => {
     if (authLoading || !user) {
@@ -100,6 +103,7 @@ export default function MyAddress({ tenant, isDark = false }: MyAddressProps) {
     try {
       const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
       const token = localStorage.getItem('customer_auth_token');
+      const tenantSlug = tenant || getTenantSlug();
       
       if (!token) {
         alert('Nie ste prihlásený');
@@ -122,6 +126,7 @@ export default function MyAddress({ tenant, isDark = false }: MyAddressProps) {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
+          'x-tenant': tenantSlug,
         },
         body: JSON.stringify(formData),
       });
@@ -165,6 +170,7 @@ export default function MyAddress({ tenant, isDark = false }: MyAddressProps) {
     try {
       const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
       const token = localStorage.getItem('customer_auth_token');
+      const tenantSlug = tenant || getTenantSlug();
       
       if (!token) {
         alert('Nie ste prihlásený');
@@ -176,6 +182,7 @@ export default function MyAddress({ tenant, isDark = false }: MyAddressProps) {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
+          'x-tenant': tenantSlug,
         },
       });
 

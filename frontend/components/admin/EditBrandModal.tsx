@@ -39,16 +39,6 @@ export function EditBrandModal({
     redirectUri: '',
     enabled: false,
   });
-  const [subCategoryLabels, setSubCategoryLabels] = useState({
-    foreplay: { titleSk: '', titleEn: '', descSk: '', descEn: '' },
-    mainAction: { titleSk: '', titleEn: '', descSk: '', descEn: '' },
-    deluxeFetish: { titleSk: '', titleEn: '', descSk: '', descEn: '' },
-    premiumSins: { titleSk: '', titleEn: '', descSk: '', descEn: '' },
-    stangle: { titleSk: '', titleEn: '', descSk: '', descEn: '' },
-    soups: { titleSk: '', titleEn: '', descSk: '', descEn: '' },
-    drinks: { titleSk: '', titleEn: '', descSk: '', descEn: '' },
-    desserts: { titleSk: '', titleEn: '', descSk: '', descEn: '' },
-  });
   
   // GoPay settings
   const [gopayClientId, setGopayClientId] = useState('');
@@ -114,57 +104,7 @@ export function EditBrandModal({
         redirectUri: oauthConfig.redirectUri || '',
         enabled: oauthConfig.enabled || false,
       });
-      const subLabels = theme.subCategoryLabels || {};
-      setSubCategoryLabels({
-        foreplay: {
-          titleSk: subLabels.foreplay?.titleSk || '',
-          titleEn: subLabels.foreplay?.titleEn || '',
-          descSk: subLabels.foreplay?.descSk || '',
-          descEn: subLabels.foreplay?.descEn || '',
-        },
-        mainAction: {
-          titleSk: subLabels.mainAction?.titleSk || '',
-          titleEn: subLabels.mainAction?.titleEn || '',
-          descSk: subLabels.mainAction?.descSk || '',
-          descEn: subLabels.mainAction?.descEn || '',
-        },
-        deluxeFetish: {
-          titleSk: subLabels.deluxeFetish?.titleSk || '',
-          titleEn: subLabels.deluxeFetish?.titleEn || '',
-          descSk: subLabels.deluxeFetish?.descSk || '',
-          descEn: subLabels.deluxeFetish?.descEn || '',
-        },
-        premiumSins: {
-          titleSk: subLabels.premiumSins?.titleSk || '',
-          titleEn: subLabels.premiumSins?.titleEn || '',
-          descSk: subLabels.premiumSins?.descSk || '',
-          descEn: subLabels.premiumSins?.descEn || '',
-        },
-        stangle: {
-          titleSk: subLabels.stangle?.titleSk || '',
-          titleEn: subLabels.stangle?.titleEn || '',
-          descSk: subLabels.stangle?.descSk || '',
-          descEn: subLabels.stangle?.descEn || '',
-        },
-        soups: {
-          titleSk: subLabels.soups?.titleSk || '',
-          titleEn: subLabels.soups?.titleEn || '',
-          descSk: subLabels.soups?.descSk || '',
-          descEn: subLabels.soups?.descEn || '',
-        },
-        drinks: {
-          titleSk: subLabels.drinks?.titleSk || '',
-          titleEn: subLabels.drinks?.titleEn || '',
-          descSk: subLabels.drinks?.descSk || '',
-          descEn: subLabels.drinks?.descEn || '',
-        },
-        desserts: {
-          titleSk: subLabels.desserts?.titleSk || '',
-          titleEn: subLabels.desserts?.titleEn || '',
-          descSk: subLabels.desserts?.descSk || '',
-          descEn: subLabels.desserts?.descEn || '',
-        },
-      });
+      setSubCategoryLabels(theme.subCategoryLabels || {});
       
       // Load Wolt/Delivery settings
       setWoltApiKey(woltConfig.apiKey || '');
@@ -283,8 +223,6 @@ export function EditBrandModal({
       const existingTheme = (tenant.theme as any) || {};
       const updatedTheme: any = {
         ...existingTheme,
-        primaryColor: themeColors.primaryColor.trim() || existingTheme.primaryColor,
-        secondaryColor: themeColors.secondaryColor.trim() || existingTheme.secondaryColor,
         favicon: faviconUrl.trim() || existingTheme.favicon || '/favicon.ico',
         subCategoryLabels,
         analyticsConfig: {
@@ -413,236 +351,32 @@ export function EditBrandModal({
                   </div>
                 </div>
 
-                {/* Theme Colors */}
+                {/* Theme Colors (read-only) */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Theme Colors
                   </label>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="flex items-center gap-3">
-                      <input
-                        type="color"
-                        value={themeColors.primaryColor}
-                        onChange={(e) => setThemeColors({ ...themeColors, primaryColor: e.target.value })}
-                        className="h-10 w-12 rounded border border-gray-200"
-                        aria-label="Primary color"
+                  <div className="flex gap-4">
+                    <div className="flex items-center gap-2">
+                      <div
+                        className="w-10 h-10 rounded border-2 border-gray-200"
+                        style={{ backgroundColor: themeColors.primaryColor }}
                       />
-                      <input
-                        type="text"
-                        value={themeColors.primaryColor}
-                        onChange={(e) => setThemeColors({ ...themeColors, primaryColor: e.target.value })}
-                        className="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500"
-                        placeholder="#E91E63"
-                      />
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <input
-                        type="color"
-                        value={themeColors.secondaryColor}
-                        onChange={(e) => setThemeColors({ ...themeColors, secondaryColor: e.target.value })}
-                        className="h-10 w-12 rounded border border-gray-200"
-                        aria-label="Secondary color"
-                      />
-                      <input
-                        type="text"
-                        value={themeColors.secondaryColor}
-                        onChange={(e) => setThemeColors({ ...themeColors, secondaryColor: e.target.value })}
-                        className="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500"
-                        placeholder="#0F141A"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Pizza Sub-category Labels */}
-                <div className="border-t pt-4 mt-4">
-                  <h4 className="text-md font-semibold mb-3 text-gray-900">
-                    🍕 Názvy sekcií pizze
-                  </h4>
-                  <p className="text-sm text-gray-600 mb-4">
-                    Uprav názvy a popisy podkategórií (Predohra, Hlavná akcia, Deluxe Fetish, Premium Sins) pre tento tenant. Nechané prázdne = použije sa predvolený preklad.
-                  </p>
-                  {([
-                    { key: 'foreplay', label: 'Predohra' },
-                    { key: 'mainAction', label: 'Hlavná akcia' },
-                    { key: 'deluxeFetish', label: 'Deluxe Fetish' },
-                    { key: 'premiumSins', label: 'Premium Sins' },
-                  ] as const).map(({ key, label }) => (
-                    <div key={key} className="mb-4 p-3 border border-gray-200 rounded-md space-y-2">
-                      <div className="text-sm font-semibold text-gray-800">{label}</div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                        <input
-                          type="text"
-                          placeholder="Názov (SK)"
-                          value={subCategoryLabels[key].titleSk}
-                          onChange={(e) => setSubCategoryLabels({
-                            ...subCategoryLabels,
-                            [key]: { ...subCategoryLabels[key], titleSk: e.target.value },
-                          })}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500"
-                        />
-                        <input
-                          type="text"
-                          placeholder="Name (EN)"
-                          value={subCategoryLabels[key].titleEn}
-                          onChange={(e) => setSubCategoryLabels({
-                            ...subCategoryLabels,
-                            [key]: { ...subCategoryLabels[key], titleEn: e.target.value },
-                          })}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500"
-                        />
-                        <input
-                          type="text"
-                          placeholder="Popis (SK)"
-                          value={subCategoryLabels[key].descSk}
-                          onChange={(e) => setSubCategoryLabels({
-                            ...subCategoryLabels,
-                            [key]: { ...subCategoryLabels[key], descSk: e.target.value },
-                          })}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500 sm:col-span-2"
-                        />
-                        <input
-                          type="text"
-                          placeholder="Description (EN)"
-                          value={subCategoryLabels[key].descEn}
-                          onChange={(e) => setSubCategoryLabels({
-                            ...subCategoryLabels,
-                            [key]: { ...subCategoryLabels[key], descEn: e.target.value },
-                          })}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500 sm:col-span-2"
-                        />
+                      <div>
+                        <div className="text-xs text-gray-500">Primary</div>
+                        <div className="text-sm text-gray-900 font-medium">{themeColors.primaryColor}</div>
                       </div>
                     </div>
-                  ))}
-                </div>
-
-                {/* Other Category Labels */}
-                <div className="border-t pt-4 mt-4">
-                  <h4 className="text-md font-semibold mb-3 text-gray-900">
-                    📂 Názvy sekcií ostatných kategórií
-                  </h4>
-                  <p className="text-sm text-gray-600 mb-4">
-                    Uprav názvy a popisy pre Štangle, Polievky, Nápoje a Dezerty pre tento tenant.
-                  </p>
-                  {([
-                    { key: 'stangle', label: 'Štangle & Posúch' },
-                    { key: 'soups', label: 'Polievky' },
-                    { key: 'drinks', label: 'Nápoje' },
-                    { key: 'desserts', label: 'Dezerty' },
-                  ] as const).map(({ key, label }) => (
-                    <div key={key} className="mb-4 p-3 border border-gray-200 rounded-md space-y-2">
-                      <div className="text-sm font-semibold text-gray-800">{label}</div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                        <input
-                          type="text"
-                          placeholder="Názov (SK)"
-                          value={subCategoryLabels[key].titleSk}
-                          onChange={(e) => setSubCategoryLabels({
-                            ...subCategoryLabels,
-                            [key]: { ...subCategoryLabels[key], titleSk: e.target.value },
-                          })}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500"
-                        />
-                        <input
-                          type="text"
-                          placeholder="Name (EN)"
-                          value={subCategoryLabels[key].titleEn}
-                          onChange={(e) => setSubCategoryLabels({
-                            ...subCategoryLabels,
-                            [key]: { ...subCategoryLabels[key], titleEn: e.target.value },
-                          })}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500"
-                        />
-                        <input
-                          type="text"
-                          placeholder="Popis (SK)"
-                          value={subCategoryLabels[key].descSk}
-                          onChange={(e) => setSubCategoryLabels({
-                            ...subCategoryLabels,
-                            [key]: { ...subCategoryLabels[key], descSk: e.target.value },
-                          })}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500 sm:col-span-2"
-                        />
-                        <input
-                          type="text"
-                          placeholder="Description (EN)"
-                          value={subCategoryLabels[key].descEn}
-                          onChange={(e) => setSubCategoryLabels({
-                            ...subCategoryLabels,
-                            [key]: { ...subCategoryLabels[key], descEn: e.target.value },
-                          })}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500 sm:col-span-2"
-                        />
+                    <div className="flex items-center gap-2">
+                      <div
+                        className="w-10 h-10 rounded border-2 border-gray-200"
+                        style={{ backgroundColor: themeColors.secondaryColor }}
+                      />
+                      <div>
+                        <div className="text-xs text-gray-500">Secondary</div>
+                        <div className="text-sm text-gray-900 font-medium">{themeColors.secondaryColor}</div>
                       </div>
                     </div>
-                  ))}
-                </div>
-
-                {/* Google OAuth Settings */}
-                <div className="border-t pt-4 mt-4">
-                  <h4 className="text-md font-semibold mb-3 text-gray-900 flex items-center gap-2">
-                    <span role="img" aria-label="lock">🔐</span> Google OAuth
-                  </h4>
-                  <p className="text-sm text-gray-600 mb-4">
-                    Nastav prihlásenie cez Google pre tento tenant. Každý tenant môže mať vlastné Client ID / Secret / Redirect URI.
-                  </p>
-                  <div className="p-3 border border-gray-200 rounded-md space-y-3">
-                    <div className="flex items-center justify-between">
-                      <label className="text-sm font-medium text-gray-700">
-                        Google OAuth povolené
-                      </label>
-                      <button
-                        type="button"
-                        onClick={() => setGoogleOAuthConfig({ ...googleOAuthConfig, enabled: !googleOAuthConfig.enabled })}
-                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                          googleOAuthConfig.enabled ? 'bg-green-600' : 'bg-gray-300'
-                        }`}
-                      >
-                        <span
-                          className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                            googleOAuthConfig.enabled ? 'translate-x-6' : 'translate-x-1'
-                          }`}
-                        />
-                      </button>
-                    </div>
-
-                    {googleOAuthConfig.enabled && (
-                      <div className="space-y-3">
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Client ID</label>
-                          <input
-                            type="text"
-                            value={googleOAuthConfig.clientId}
-                            onChange={(e) => setGoogleOAuthConfig({ ...googleOAuthConfig, clientId: e.target.value })}
-                            placeholder="Google OAuth Client ID"
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Client Secret</label>
-                          <input
-                            type="password"
-                            value={googleOAuthConfig.clientSecret}
-                            onChange={(e) => setGoogleOAuthConfig({ ...googleOAuthConfig, clientSecret: e.target.value })}
-                            placeholder="Google OAuth Client Secret"
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Redirect URI</label>
-                          <input
-                            type="text"
-                            value={googleOAuthConfig.redirectUri}
-                            onChange={(e) => setGoogleOAuthConfig({ ...googleOAuthConfig, redirectUri: e.target.value })}
-                            placeholder="https://your-domain.com/api/auth/google/callback"
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm"
-                          />
-                          <p className="text-xs text-gray-500 mt-1">
-                            Zadaj rovnakú URL aj v Google Cloud Console pre tento tenant.
-                          </p>
-                        </div>
-                      </div>
-                    )}
                   </div>
                 </div>
 
@@ -1187,3 +921,4 @@ export function EditBrandModal({
     </div>
   );
 }
+

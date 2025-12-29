@@ -546,6 +546,7 @@ export default function CheckoutPage() {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
+          'x-tenant': tenantSlug,
         },
       });
 
@@ -562,6 +563,7 @@ export default function CheckoutPage() {
               headers: {
                 'Authorization': `Bearer ${newToken}`,
                 'Content-Type': 'application/json',
+                'x-tenant': tenantSlug,
               },
             });
             
@@ -613,7 +615,7 @@ export default function CheckoutPage() {
     } catch (error) {
       console.error('Failed to fetch user profile:', error);
     }
-  }, [user, setUser, tryRefreshToken]);
+  }, [user, setUser, tryRefreshToken, tenantSlug]);
 
   const fetchAddresses = useCallback(async () => {
     try {
@@ -631,6 +633,7 @@ export default function CheckoutPage() {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
+          'x-tenant': tenantSlug,
         },
       });
 
@@ -647,6 +650,7 @@ export default function CheckoutPage() {
               headers: {
                 'Authorization': `Bearer ${newToken}`,
                 'Content-Type': 'application/json',
+                'x-tenant': tenantSlug,
               },
             });
             
@@ -728,7 +732,7 @@ export default function CheckoutPage() {
     } finally {
       setLoadingAddresses(false);
     }
-  }, [tryRefreshToken]);
+  }, [tryRefreshToken, tenantSlug]);
 
   // Fetch addresses and update user profile when user is loaded
   useEffect(() => {
@@ -951,6 +955,7 @@ export default function CheckoutPage() {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
+          'x-tenant': tenantSlug,
         },
         body: JSON.stringify({
           street: addressFormData.street,
@@ -1025,6 +1030,7 @@ export default function CheckoutPage() {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
+          'x-tenant': tenantSlug,
         },
         body: JSON.stringify({ phone: fullPhone }),
       });
