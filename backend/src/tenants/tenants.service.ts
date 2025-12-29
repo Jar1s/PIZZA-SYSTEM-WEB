@@ -9,6 +9,13 @@ export class TenantsService {
 
   constructor(private prisma: PrismaService) {}
 
+  /**
+   * Backward-compatible helper to fetch tenant by id.
+   */
+  async findById(id: string): Promise<Tenant> {
+    return this.getTenantById(id);
+  }
+
   async getTenantById(id: string): Promise<Tenant> {
     const tenant = await this.prisma.tenant.findUnique({
       where: { id },
