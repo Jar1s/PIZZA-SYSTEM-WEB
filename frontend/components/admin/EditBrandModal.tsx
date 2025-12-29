@@ -451,6 +451,70 @@ export function EditBrandModal({
                   )}
                 </div>
 
+                {/* Texty podkategórií */}
+                <div className="border border-gray-200 rounded-md p-4 space-y-3">
+                  <h4 className="text-md font-semibold text-gray-900">Texty podkategórií</h4>
+                  <p className="text-xs text-gray-500">
+                    Uprav názvy a popisy sekcií pre každý tenant (SK/EN).
+                  </p>
+                  {[
+                    { key: 'foreplay', label: '🔥 Predohra' },
+                    { key: 'mainAction', label: '😈 Hlavné číslo' },
+                    { key: 'deluxeFetish', label: '💎 Deluxe / Fetish' },
+                    { key: 'premiumSins', label: '⭐ Premium hriechy' },
+                    { key: 'stangle', label: '🥖 Štangle & Posúch' },
+                    { key: 'soups', label: '🍲 Polievky' },
+                    { key: 'drinks', label: '🥤 Nápoje' },
+                    { key: 'desserts', label: '🍰 Dezerty' },
+                  ].map((item) => {
+                    const current = subCategoryLabels[item.key as keyof typeof subCategoryLabels] || {};
+                    return (
+                      <div
+                        key={item.key}
+                        className="grid grid-cols-1 sm:grid-cols-2 gap-3 border border-gray-100 rounded-md p-3"
+                      >
+                        <div className="sm:col-span-2 text-sm font-medium text-gray-800">{item.label}</div>
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-600 mb-1">Názov (SK)</label>
+                          <input
+                            type="text"
+                            value={current.titleSk || ''}
+                            onChange={(e) => updateSubCategoryField(item.key as any, 'titleSk', e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-600 mb-1">Názov (EN)</label>
+                          <input
+                            type="text"
+                            value={current.titleEn || ''}
+                            onChange={(e) => updateSubCategoryField(item.key as any, 'titleEn', e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-600 mb-1">Popis (SK)</label>
+                          <textarea
+                            rows={2}
+                            value={current.descSk || ''}
+                            onChange={(e) => updateSubCategoryField(item.key as any, 'descSk', e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-600 mb-1">Popis (EN)</label>
+                          <textarea
+                            rows={2}
+                            value={current.descEn || ''}
+                            onChange={(e) => updateSubCategoryField(item.key as any, 'descEn', e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm"
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
                 {/* Active Status */}
                 <div className="flex items-center pt-2">
                   <input
