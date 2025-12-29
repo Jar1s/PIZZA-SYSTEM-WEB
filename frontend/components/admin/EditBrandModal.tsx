@@ -149,6 +149,20 @@ export function EditBrandModal({
 
   if (!isOpen || !tenant) return null;
 
+  const updateSubCategoryField = (
+    key: keyof SubCategoryLabels,
+    field: 'titleSk' | 'titleEn' | 'descSk' | 'descEn',
+    value: string,
+  ) => {
+    setSubCategoryLabels((prev) => ({
+      ...prev,
+      [key]: {
+        ...(prev[key] || {}),
+        [field]: value,
+      },
+    }));
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
