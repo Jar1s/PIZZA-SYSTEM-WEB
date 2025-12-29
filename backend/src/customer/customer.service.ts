@@ -7,19 +7,23 @@ export class CustomerService {
   constructor(private prisma: PrismaService) {}
 
   /**
-   * Get customer orders by email
+   * Get customer orders by user and tenant
    */
-  async getCustomerOrders(customerEmail: string): Promise<Order[]> {
-    if (!customerEmail) {
+  async getCustomerOrders(userId: string, tenantId: string, customerEmail?: string): Promise<Order[]> {
+    if (!userId || !tenantId) {
       return [];
     }
 
-    // Normalize email for comparison (lowercase, trim)
-    const normalizedEmail = customerEmail.toLowerCase().trim();
+    const normalizedEmail = customerEmail ? customerEmail.toLowerCase().trim() : null;
 
-    // Prisma doesn't support JSON field queries directly, so we fetch all and filter
-    // In production, consider adding a customerId field to Order model
-    const allOrders = await this.prisma.order.findMany({
+    const tenantOrders = await this.prisma.order.findMany({
+      where: {
+        tenantId,
+        OR: [
+          { userId },
+          { userId: null },
+        ],
+      },
       include: {
         items: true, // OrderItem already has productName snapshot, no need to include product relation
       },
@@ -28,23 +32,20 @@ export class CustomerService {
       },
     });
 
-    // Filter orders by customer email in JSON field
-    // Normalize email comparison to handle case sensitivity and whitespace
-    console.log('[CustomerService] Total orders in DB:', allOrders.length);
-    console.log('[CustomerService] Looking for email:', normalizedEmail);
-    const orders = allOrders.filter((order) => {
+    const orders = tenantOrders.filter((order) => {
+      if (order.userId === userId) {
+        return true;
+      }
+      if (!normalizedEmail) {
+        return false;
+      }
       const customer = order.customer as any;
       if (!customer || !customer.email) {
         return false;
       }
       const orderEmail = String(customer.email).toLowerCase().trim();
-      const matches = orderEmail === normalizedEmail;
-      if (matches) {
-        console.log('[CustomerService] Found matching order:', order.id, 'with email:', orderEmail);
-      }
-      return matches;
+      return orderEmail === normalizedEmail;
     });
-    console.log('[CustomerService] Filtered orders:', orders.length);
 
     return orders.map((order) => ({
       id: order.id,
@@ -106,7 +107,7 @@ export class CustomerService {
   /**
    * Update customer profile
    */
-  async updateCustomerProfile(userId: string, data: { name?: string; email?: string; phone?: string }) {
+  async updateCustomerProfile(userId: string, tenantId: string, data: { name?: string; email?: string; phone?: string }) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
     });
@@ -122,8 +123,8 @@ export class CustomerService {
         throw new BadRequestException('Email cannot be changed for Google accounts');
       }
       // Check if new email is already taken
-      const existingUser = await this.prisma.user.findUnique({
-        where: { email: data.email.toLowerCase().trim() },
+      const existingUser = await this.prisma.user.findFirst({
+        where: { email: data.email.toLowerCase().trim(), tenantId },
       });
       if (existingUser && existingUser.id !== userId) {
         throw new BadRequestException('Email is already taken');
@@ -150,8 +151,8 @@ export class CustomerService {
     
     if (phoneChanged && normalizedPhone) {
       try {
-      const existingUser = (await this.prisma.user.findUnique({
-          where: { phone: normalizedPhone } as any,
+      const existingUser = (await this.prisma.user.findFirst({
+        where: { phone: normalizedPhone, tenantId } as any,
         select: {
           id: true,
           phoneVerified: true,

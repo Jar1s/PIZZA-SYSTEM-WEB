@@ -204,6 +204,7 @@ export class AuthService {
       where: { id: userId },
       select: {
         id: true,
+        tenantId: true,
         username: true,
         name: true,
         email: true,
@@ -264,9 +265,18 @@ export class AuthService {
 
     const formattedPhone = formatPhoneNumber(phone);
 
-    // Check if phone is already used by another user
-    const existingUser = await this.prisma.user.findUnique({
-      where: { phone: formattedPhone },
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, tenantId: true },
+    });
+
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+
+    // Check if phone is already used by another user in the same tenant
+    const existingUser = await this.prisma.user.findFirst({
+      where: { phone: formattedPhone, tenantId: user.tenantId },
     });
 
     if (existingUser && existingUser.id !== userId) {
@@ -274,7 +284,7 @@ export class AuthService {
     }
 
     // Update user phone and mark as unverified
-    const user = await this.prisma.user.update({
+    const updatedUser = await this.prisma.user.update({
       where: { id: userId },
       data: {
         phone: formattedPhone,
@@ -291,7 +301,7 @@ export class AuthService {
 
     return {
       message: 'Phone number updated successfully. Please verify it.',
-      user,
+      user: updatedUser,
     };
   }
 
@@ -299,7 +309,7 @@ export class AuthService {
    * Mark phone as verified
    */
   async markPhoneAsVerified(userId: string) {
-    const user = await this.prisma.user.update({
+    const updatedUser = await this.prisma.user.update({
       where: { id: userId },
       data: { phoneVerified: true },
       select: {

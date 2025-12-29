@@ -48,10 +48,11 @@ export class CustomerAuthService {
   /**
    * Register new customer with email and password
    */
-  async registerWithEmail(dto: RegisterDto): Promise<CustomerAuthResult> {
-    // Check if email already exists
-    const existing = await this.prisma.user.findUnique({
-      where: { email: dto.email } as any,
+  async registerWithEmail(dto: RegisterDto, tenantId: string): Promise<CustomerAuthResult> {
+    const normalizedEmail = dto.email.toLowerCase().trim();
+    // Check if email already exists for this tenant
+    const existing = await this.prisma.user.findFirst({
+      where: { email: normalizedEmail, tenantId },
     });
 
     if (existing) {
@@ -64,11 +65,11 @@ export class CustomerAuthService {
     // Create customer user
     const customer = await this.prisma.user.create({
       data: {
-        email: dto.email,
+        tenantId,
+        email: normalizedEmail,
         password: hashedPassword,
         name: dto.name,
         role: 'CUSTOMER' as any,
-        username: dto.email, // Use email as username for compatibility
         phoneVerified: false,
         isActive: true,
       } as any,
@@ -106,7 +107,7 @@ export class CustomerAuthService {
     });
 
     // Send welcome email (async, don't wait for it)
-    this.sendWelcomeEmailAsync(customer).catch((error) => {
+    this.sendWelcomeEmailAsync(customer, tenantId).catch((error) => {
       this.logger.error(`Failed to send welcome email to ${customer.email}:`, error);
       // Don't throw - email failure shouldn't break registration
     });
@@ -125,47 +126,13 @@ export class CustomerAuthService {
     };
   }
 
-  private async sendWelcomeEmailAsync(customer: { email: string | null; name: string }): Promise<void> {
-    if (!customer.email) {
-      return;
-    }
-
-    try {
-      // Get default tenant (pornopizza) or first active tenant
-      const tenants = await this.tenantsService.getAllTenants(true);
-      const defaultTenant = tenants.find(t => t.slug === 'pornopizza') || tenants.find(t => t.isActive) || tenants[0];
-
-      if (!defaultTenant) {
-        this.logger.warn('No tenant found for welcome email');
-        return;
-      }
-
-      const tenantDomain = defaultTenant.domain || `${defaultTenant.subdomain}.localhost:3001`;
-      const emailConfig = (defaultTenant as any).emailConfig || {};
-
-      await this.emailService.sendWelcomeEmail(
-        {
-          email: customer.email,
-          name: customer.name,
-        },
-        defaultTenant.name,
-        tenantDomain,
-        defaultTenant.theme,
-        defaultTenant.slug,
-        emailConfig,
-      );
-    } catch (error) {
-      this.logger.error(`Error sending welcome email:`, error);
-      // Don't throw - email failure shouldn't break registration
-    }
-  }
-
   /**
    * Login customer with email and password
    */
-  async loginWithEmail(dto: LoginDto): Promise<CustomerAuthResult> {
-    const user = await this.prisma.user.findUnique({
-      where: { email: dto.email } as any,
+  async loginWithEmail(dto: LoginDto, tenantId: string): Promise<CustomerAuthResult> {
+    const normalizedEmail = dto.email.toLowerCase().trim();
+    const user = await this.prisma.user.findFirst({
+      where: { email: normalizedEmail, tenantId, role: 'CUSTOMER' as any },
       select: {
         id: true,
         email: true,
@@ -238,14 +205,15 @@ export class CustomerAuthService {
   /**
    * Check if email exists
    */
-  async checkEmailExists(email: string): Promise<boolean> {
+  async checkEmailExists(email: string, tenantId: string): Promise<boolean> {
     try {
       if (!email) {
         return false;
       }
+      const normalizedEmail = email.toLowerCase().trim();
       // Use findFirst instead of findUnique because email is optional field
       const user = await this.prisma.user.findFirst({
-        where: { email: email.toLowerCase().trim() },
+        where: { email: normalizedEmail, tenantId },
       });
       return !!user;
     } catch (error: unknown) {
@@ -259,7 +227,7 @@ export class CustomerAuthService {
   /**
    * Login or register with Google OAuth
    */
-  async loginWithGoogle(idToken: string, clientId?: string): Promise<CustomerAuthResult> {
+  async loginWithGoogle(idToken: string, clientId: string | undefined, tenantId: string): Promise<CustomerAuthResult> {
     try {
       const { OAuth2Client } = require('google-auth-library');
       const audience = clientId;
@@ -304,6 +272,7 @@ export class CustomerAuthService {
         email,
         name,
         googleId,
+        tenantId,
       });
 
       return await this.generateAuthResult(customer);
@@ -321,7 +290,7 @@ export class CustomerAuthService {
    * @param idToken - Apple ID token
    * @param userInfo - User info from Apple (only provided on first login): { name?: { firstName?: string; lastName?: string }; email?: string }
    */
-  async loginWithApple(idToken: string, userInfo?: { name?: { firstName?: string; lastName?: string }; email?: string } | null): Promise<CustomerAuthResult> {
+  async loginWithApple(idToken: string, tenantId: string, userInfo?: { name?: { firstName?: string; lastName?: string }; email?: string } | null): Promise<CustomerAuthResult> {
     try {
       // Verify the token with Apple's public keys
       // For production, you should fetch Apple's public keys and verify the token
@@ -396,6 +365,7 @@ export class CustomerAuthService {
         email: email || `${appleId}@privaterelay.appleid.com`, // Use private relay email if email hidden
         name,
         appleId,
+        tenantId,
       });
 
       return await this.generateAuthResult(customer);
@@ -415,11 +385,14 @@ export class CustomerAuthService {
     name: string;
     googleId?: string;
     appleId?: string;
+    tenantId: string;
   }): Promise<any> {
     // Try to find existing customer by email or OAuth ID
     // Explicitly select only fields that exist to avoid schema mismatch errors
     let customer = await this.prisma.user.findFirst({
       where: {
+        tenantId: data.tenantId,
+        role: 'CUSTOMER' as any,
         OR: [
           { email: data.email } as any,
           ...(data.googleId ? [{ googleId: data.googleId } as any] : []),
@@ -463,19 +436,19 @@ export class CustomerAuthService {
     // Create new customer
     customer = await this.prisma.user.create({
       data: {
+        tenantId: data.tenantId,
         email: data.email,
         name: data.name,
         googleId: data.googleId,
         appleId: data.appleId,
         role: 'CUSTOMER' as any,
-        username: data.email, // Use email as username
         phoneVerified: false,
         isActive: true,
       } as any,
     });
 
     // Send welcome email for new OAuth customers (async, don't wait for it)
-    this.sendWelcomeEmailAsync(customer).catch((error) => {
+    this.sendWelcomeEmailAsync(customer, data.tenantId).catch((error) => {
       this.logger.error(`Failed to send welcome email to ${customer.email}:`, error);
       // Don't throw - email failure shouldn't break OAuth login
     });

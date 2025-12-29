@@ -95,9 +95,9 @@ export class OrdersService {
     if (data.paymentMethod || (data.saveAccount && !userId)) {
       const normalizedEmail = data.customer.email.toLowerCase().trim();
       
-      // Find existing user by email
-      let user = await this.prisma.user.findUnique({
-        where: { email: normalizedEmail },
+      // Find existing user by email scoped to tenant
+      let user = await this.prisma.user.findFirst({
+        where: { email: normalizedEmail, tenantId, role: UserRole.CUSTOMER },
       });
 
       if (!user) {
@@ -109,13 +109,13 @@ export class OrdersService {
         // Create new user (without password - user will set it later)
         user = await this.prisma.user.create({
           data: {
+            tenantId,
             name: data.customer.name,
             email: normalizedEmail,
             phone: data.customer.phone || null,
             phoneVerified: false, // SMS verification disabled
             role: UserRole.CUSTOMER,
             password: null, // User will set password later
-            username: normalizedEmail,
             isActive: true,
             passwordResetToken: passwordResetToken,
             passwordResetExpires: passwordResetExpires,

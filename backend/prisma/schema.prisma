@@ -30,6 +30,7 @@ model Tenant {
   orders          Order[]
   productMappings ProductMapping[]
   products        Product[]
+  users           User[]
 
   @@map("tenants")
 }
@@ -129,6 +130,7 @@ model Delivery {
 
 model User {
   id                   String                @id @default(cuid())
+  tenantId             String
   password             String?
   name                 String
   role                 UserRole              @default(OPERATOR)
@@ -136,11 +138,11 @@ model User {
   createdAt            DateTime              @default(now())
   updatedAt            DateTime              @updatedAt
   username             String?               @unique
-  phone                String?               @unique
+  phone                String?
   phoneVerified        Boolean               @default(false)
-  appleId              String?               @unique
-  email                String?               @unique
-  googleId             String?               @unique
+  appleId              String?
+  email                String?
+  googleId             String?
   passwordResetExpires DateTime?
   passwordResetToken   String?               @unique
   addresses            Address[]
@@ -148,9 +150,17 @@ model User {
   refreshTokens        RefreshToken[]
   smsVerificationCodes SmsVerificationCode[]
 
+  tenant               Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  @@unique([tenantId, email])
+  @@unique([tenantId, phone])
+  @@unique([tenantId, googleId])
+  @@unique([tenantId, appleId])
+  @@index([tenantId])
+  @@index([tenantId, email])
+  @@index([tenantId, phone])
+  @@index([tenantId, googleId])
+  @@index([tenantId, appleId])
   @@index([username])
-  @@index([email])
-  @@index([phone])
   @@index([passwordResetToken])
   @@map("users")
 }
