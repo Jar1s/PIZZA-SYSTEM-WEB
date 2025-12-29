@@ -224,6 +224,8 @@ export function EditBrandModal({
       const existingTheme = (tenant.theme as any) || {};
       const updatedTheme: any = {
         ...existingTheme,
+        primaryColor: themeColors.primaryColor,
+        secondaryColor: themeColors.secondaryColor,
         favicon: faviconUrl.trim() || existingTheme.favicon || '/favicon.ico',
         subCategoryLabels,
         analyticsConfig: {
@@ -352,33 +354,101 @@ export function EditBrandModal({
                   </div>
                 </div>
 
-                {/* Theme Colors (read-only) */}
+                {/* Theme Colors */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Theme Colors
                   </label>
-                  <div className="flex gap-4">
-                    <div className="flex items-center gap-2">
-                      <div
-                        className="w-10 h-10 rounded border-2 border-gray-200"
-                        style={{ backgroundColor: themeColors.primaryColor }}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="flex items-center gap-3 border border-gray-200 rounded-md p-3">
+                      <input
+                        type="color"
+                        value={themeColors.primaryColor}
+                        onChange={(e) => setThemeColors({ ...themeColors, primaryColor: e.target.value })}
+                        className="w-12 h-12 rounded-md border border-gray-300 cursor-pointer"
+                        aria-label="Primary color"
                       />
-                      <div>
+                      <div className="flex-1">
                         <div className="text-xs text-gray-500">Primary</div>
-                        <div className="text-sm text-gray-900 font-medium">{themeColors.primaryColor}</div>
+                        <input
+                          type="text"
+                          value={themeColors.primaryColor}
+                          onChange={(e) => setThemeColors({ ...themeColors, primaryColor: e.target.value })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm"
+                        />
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <div
-                        className="w-10 h-10 rounded border-2 border-gray-200"
-                        style={{ backgroundColor: themeColors.secondaryColor }}
+                    <div className="flex items-center gap-3 border border-gray-200 rounded-md p-3">
+                      <input
+                        type="color"
+                        value={themeColors.secondaryColor}
+                        onChange={(e) => setThemeColors({ ...themeColors, secondaryColor: e.target.value })}
+                        className="w-12 h-12 rounded-md border border-gray-300 cursor-pointer"
+                        aria-label="Secondary color"
                       />
-                      <div>
+                      <div className="flex-1">
                         <div className="text-xs text-gray-500">Secondary</div>
-                        <div className="text-sm text-gray-900 font-medium">{themeColors.secondaryColor}</div>
+                        <input
+                          type="text"
+                          value={themeColors.secondaryColor}
+                          onChange={(e) => setThemeColors({ ...themeColors, secondaryColor: e.target.value })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm"
+                        />
                       </div>
                     </div>
                   </div>
+                </div>
+
+                {/* Google OAuth */}
+                <div className="border border-gray-200 rounded-md p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <div>
+                      <h4 className="text-sm font-semibold text-gray-900">Google OAuth</h4>
+                      <p className="text-xs text-gray-500">Nastav pre každý tenant vlastné OAuth credentials.</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setGoogleOAuthConfig({ ...googleOAuthConfig, enabled: !googleOAuthConfig.enabled })}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${googleOAuthConfig.enabled ? 'bg-green-600' : 'bg-gray-300'}`}
+                    >
+                      <span
+                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${googleOAuthConfig.enabled ? 'translate-x-6' : 'translate-x-1'}`}
+                      />
+                    </button>
+                  </div>
+                  {googleOAuthConfig.enabled && (
+                    <div className="space-y-3">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Client ID</label>
+                        <input
+                          type="text"
+                          value={googleOAuthConfig.clientId}
+                          onChange={(e) => setGoogleOAuthConfig({ ...googleOAuthConfig, clientId: e.target.value })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Client Secret</label>
+                        <input
+                          type="password"
+                          value={googleOAuthConfig.clientSecret}
+                          onChange={(e) => setGoogleOAuthConfig({ ...googleOAuthConfig, clientSecret: e.target.value })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Redirect URI</label>
+                        <input
+                          type="text"
+                          value={googleOAuthConfig.redirectUri}
+                          onChange={(e) => setGoogleOAuthConfig({ ...googleOAuthConfig, redirectUri: e.target.value })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                          placeholder="https://your-domain.sk/api/auth/google/callback"
+                        />
+                        <p className="text-xs text-gray-500 mt-1">Použi doménu konkrétneho tenanta.</p>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Active Status */}
