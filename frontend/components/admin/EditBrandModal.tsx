@@ -1,7 +1,7 @@
 'use client';
-
 import { useState, useEffect } from 'react';
 import { Tenant } from '@pizza-ecosystem/shared';
+import type { SubCategoryLabels } from '@pizza-ecosystem/shared/types/tenant.types';
 import { updateTenant } from '@/lib/api';
 
 interface EditBrandModalProps {
@@ -27,6 +27,7 @@ export function EditBrandModal({
     primaryColor: '#E91E63',
     secondaryColor: '#0F141A',
   });
+  const [subCategoryLabels, setSubCategoryLabels] = useState<SubCategoryLabels>({});
   const [cashEnabled, setCashEnabled] = useState(false);
   const [cardEnabled, setCardEnabled] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -921,4 +922,3 @@ export function EditBrandModal({
     </div>
   );
 }
-
