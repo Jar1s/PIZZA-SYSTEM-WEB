@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { Tenant } from '@pizza-ecosystem/shared';
-import type { SubCategoryLabels } from '@pizza-ecosystem/shared/types/tenant.types';
+import type { SubCategoryLabels } from '@/shared/types/tenant.types';
 import { updateTenant } from '@/lib/api';
 
 interface EditBrandModalProps {
