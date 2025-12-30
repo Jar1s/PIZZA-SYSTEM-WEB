@@ -75,7 +75,7 @@ export default function CustomersPage() {
       });
 
       if (selectedTenant && selectedTenant !== 'all') {
-        params.append('tenantSlug', selectedTenant);
+        params.append('tenantSlug', normalizeTenant(selectedTenant));
       }
 
       if (search) {
@@ -197,6 +197,12 @@ export default function CustomersPage() {
 
   const handleDeleteCancel = () => {
     setDeleteConfirm({ show: false, customer: null });
+  };
+
+  const normalizeTenant = (slug: string) => {
+    if (slug === 'p0rnopizza') return 'pornopizza';
+    if (slug === 'pizzaparty') return 'partypizza';
+    return slug;
   };
 
   // Show loading while checking user role
