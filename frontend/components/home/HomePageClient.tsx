@@ -284,8 +284,8 @@ export function HomePageClient({ products, tenant }: HomePageClientProps) {
   // Check maintenance mode (manual or automatic based on opening hours)
   const manualMaintenanceMode = tenant.theme?.maintenanceMode === true;
   const openingHours = (tenant.theme as any)?.openingHours;
-  // Only apply automatic maintenance mode if opening hours are enabled
-  const autoMaintenanceMode = (openingHours?.enabled === true) ? !isCurrentlyOpen(openingHours) : false;
+  // Apply automatic maintenance mode whenever opening hours are present
+  const autoMaintenanceMode = openingHours ? !isCurrentlyOpen(openingHours) : false;
   const maintenanceMode = manualMaintenanceMode || autoMaintenanceMode;
 
   // Apply background class to body

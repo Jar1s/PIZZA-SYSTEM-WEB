@@ -45,8 +45,12 @@ function getCurrentTimeMinutes(timezone?: string): number {
  * Check if the restaurant is currently open based on opening hours
  */
 export function isCurrentlyOpen(openingHours: OpeningHours | null | undefined): boolean {
-  if (!openingHours || !openingHours.enabled) {
-    return true; // If not configured, assume always open
+  if (!openingHours) {
+    return true; // No config means we can't decide -> stay open
+  }
+
+  if (openingHours.enabled === false) {
+    return false; // Explicitly disabled => closed
   }
 
   const currentDay = getCurrentDayName();
@@ -138,4 +142,3 @@ export function getDefaultOpeningHours(): OpeningHours {
     days: defaultDays,
   };
 }
-
