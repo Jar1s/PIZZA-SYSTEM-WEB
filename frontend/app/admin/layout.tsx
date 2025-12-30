@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { Sidebar } from '@/components/admin/Sidebar';
 import { Header } from '@/components/admin/Header';
-import { getTenantSlug } from '@/lib/tenant-utils';
 import { AdminContextProvider } from '@/app/admin/admin-context';
 
 export default function AdminLayout({
@@ -85,11 +84,7 @@ export default function AdminLayout({
         </aside>
         
         <div className="flex-1 flex flex-col overflow-hidden lg:ml-0">
-          <Header 
-            selectedTenant={selectedTenant} 
-            onTenantChange={setSelectedTenant}
-            onMenuClick={() => setSidebarOpen(!sidebarOpen)}
-          />
+          <Header onMenuClick={() => setSidebarOpen(!sidebarOpen)} />
           <main className="flex-1 overflow-y-auto p-4 lg:p-6 bg-gray-50 text-gray-900" style={{ backgroundColor: '#f9fafb', color: '#111827' }}>
             {children}
           </main>
@@ -98,4 +93,3 @@ export default function AdminLayout({
     </AdminContextProvider>
   );
 }
-
