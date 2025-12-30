@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { getTenant, updateTenant } from '@/lib/api';
+import { getTenant, updateTenant, getAllTenants } from '@/lib/api';
 import { Tenant } from '@pizza-ecosystem/shared';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { isCurrentlyOpen, getNextOpeningTime } from '@/lib/opening-hours';
@@ -19,8 +19,8 @@ export function MaintenanceBanner() {
     if (slug === 'pizzaparty') return 'partypizza';
     return slug;
   };
-  const tenantSlugsToUpdate = Array.from(
-    new Set(['pornopizza', 'p0rnopizza', 'partypizza', 'pizzaparty', 'pizzavnudzi'].map(normalizeSlug))
+  const [tenantSlugsToUpdate, setTenantSlugsToUpdate] = useState<string[]>(
+    Array.from(new Set(['pornopizza', 'p0rnopizza', 'partypizza', 'pizzaparty', 'pizzavnudzi'].map(normalizeSlug)))
   );
 
   useEffect(() => {
@@ -52,7 +52,21 @@ export function MaintenanceBanner() {
       }
     };
 
+    const loadAllTenants = async () => {
+      try {
+        const all = await getAllTenants(true);
+        const slugs = all.flatMap((t: any) => [
+          normalizeSlug(t.slug),
+          normalizeSlug(t.subdomain || t.slug),
+        ]);
+        setTenantSlugsToUpdate(Array.from(new Set(slugs)));
+      } catch (error) {
+        console.error('Failed to load tenants for maintenance toggle:', error);
+      }
+    };
+
     loadTenant();
+    loadAllTenants();
   }, []);
 
   // Check opening hours every minute
