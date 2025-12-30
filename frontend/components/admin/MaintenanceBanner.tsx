@@ -19,7 +19,9 @@ export function MaintenanceBanner() {
     if (slug === 'pizzaparty') return 'partypizza';
     return slug;
   };
-  const tenantSlugsToUpdate = ['pornopizza', 'partypizza', 'pizzavnudzi'];
+  const tenantSlugsToUpdate = Array.from(
+    new Set(['pornopizza', 'p0rnopizza', 'partypizza', 'pizzaparty', 'pizzavnudzi'].map(normalizeSlug))
+  );
 
   useEffect(() => {
     const loadTenant = async () => {
