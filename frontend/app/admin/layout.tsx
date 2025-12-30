@@ -14,7 +14,7 @@ export default function AdminLayout({
 }) {
   const { user, loading } = useAuth();
   const router = useRouter();
-  const [selectedTenant, setSelectedTenant] = useState<'all' | string>(() => getTenantSlug());
+  const selectedTenant: 'all' | string = 'all';
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
