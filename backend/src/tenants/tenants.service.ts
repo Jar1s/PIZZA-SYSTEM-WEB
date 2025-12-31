@@ -41,24 +41,25 @@ export class TenantsService {
   }
 
   async getTenantBySlug(slug: string): Promise<Tenant> {
+    const normalizedSlug = this.normalizeTenantSlug(slug);
     try {
-      this.logger.log(`[getTenantBySlug] Looking for tenant with slug: ${slug}`);
+      this.logger.log(`[getTenantBySlug] Looking for tenant with slug: ${normalizedSlug}`);
       
       const tenant = await this.prisma.tenant.findUnique({
-        where: { slug },
+        where: { slug: normalizedSlug },
       });
       
       if (!tenant) {
-        this.logger.warn(`[getTenantBySlug] Tenant ${slug} not found in database`);
-        throw new NotFoundException(`Tenant ${slug} not found`);
+        this.logger.warn(`[getTenantBySlug] Tenant ${normalizedSlug} not found in database`);
+        throw new NotFoundException(`Tenant ${normalizedSlug} not found`);
       }
       
       this.logger.log(`[getTenantBySlug] Tenant found: ${tenant.name} (id: ${tenant.id}, isActive: ${tenant.isActive})`);
       
       // Check if tenant is active
       if (!tenant.isActive) {
-        this.logger.warn(`[getTenantBySlug] Tenant ${slug} is not active`);
-        throw new NotFoundException(`Tenant ${slug} is not active`);
+        this.logger.warn(`[getTenantBySlug] Tenant ${normalizedSlug} is not active`);
+        throw new NotFoundException(`Tenant ${normalizedSlug} is not active`);
       }
       
       // Validate response with Zod
@@ -140,6 +141,7 @@ export class TenantsService {
   }
   
   async updateTenant(slug: string, data: any): Promise<Tenant> {
+    const normalizedSlug = this.normalizeTenantSlug(slug);
     // IMPORTANT: This method only UPDATES existing tenants, it never DELETES them
     // When isActive is set to false, the tenant is just disabled, not removed
     // All tenant data (products, orders, etc.) remains intact
@@ -148,8 +150,8 @@ export class TenantsService {
     const existingTenant = await this.prisma.tenant.findFirst({
       where: {
         OR: [
-          { slug },
-          { subdomain: slug },
+          { slug: normalizedSlug },
+          { subdomain: normalizedSlug },
         ],
       },
       select: { id: true, slug: true, subdomain: true, theme: true, paymentConfig: true, deliveryConfig: true },
@@ -171,7 +173,7 @@ export class TenantsService {
             ...data.theme,
             openingHours: data.theme.openingHours, // Replace entirely, don't merge
           };
-          this.logger.log(`[updateTenant] Updating openingHours for ${slug}:`, {
+          this.logger.log(`[updateTenant] Updating openingHours for ${normalizedSlug}:`, {
             enabled: data.theme.openingHours?.enabled,
             hasDays: !!data.theme.openingHours?.days,
           });
@@ -216,13 +218,13 @@ export class TenantsService {
     // Log openingHours state after update for debugging
     const updatedTheme = tenant.theme as any;
     if (updatedTheme?.openingHours) {
-      this.logger.log(`[updateTenant] OpeningHours after update for ${slug}:`, {
+      this.logger.log(`[updateTenant] OpeningHours after update for ${normalizedSlug}:`, {
         enabled: updatedTheme.openingHours.enabled,
         timezone: updatedTheme.openingHours.timezone,
       });
     }
     
-    this.logger.log(`Tenant ${slug} updated. isActive: ${tenant.isActive}`);
+    this.logger.log(`Tenant ${normalizedSlug} updated. isActive: ${tenant.isActive}`);
     return tenant as any as Tenant;
   }
 
