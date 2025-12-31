@@ -44,6 +44,25 @@ export function OpeningHoursSettings() {
     { key: 'sunday', label: 'Nedeľa' },
   ];
 
+  const mergeWithDefaults = (oh?: OpeningHours): OpeningHours => {
+    const defaults = getDefaultOpeningHours();
+
+    if (!oh) {
+      return defaults;
+    }
+
+    return {
+      ...defaults,
+      ...oh,
+      enabled: oh.enabled ?? defaults.enabled,
+      timezone: oh.timezone || defaults.timezone,
+      days: {
+        ...defaults.days,
+        ...(oh.days || {}),
+      },
+    };
+  };
+
   useEffect(() => {
     const loadTenant = async () => {
       try {
@@ -54,10 +73,8 @@ export function OpeningHoursSettings() {
         const theme = typeof tenantData.theme === 'object' && tenantData.theme !== null 
           ? tenantData.theme as any
           : {};
-        
-        if (theme.openingHours) {
-          setOpeningHours(theme.openingHours);
-        }
+
+        setOpeningHours(mergeWithDefaults(theme.openingHours as OpeningHours | undefined));
       } catch (error) {
         console.error('Failed to load tenant:', error);
       } finally {
@@ -78,16 +95,18 @@ export function OpeningHoursSettings() {
         : {};
       
       const slugToUse = resolveTenantSlug(getTenantSlug(), tenant);
+      const openingHoursToSave = mergeWithDefaults(openingHours);
       await updateTenant(slugToUse, {
         theme: {
           ...theme,
-          openingHours,
+          openingHours: openingHoursToSave,
         },
       });
       
       // Reload tenant
       const updatedTenant = await getTenant(slugToUse);
       setTenant(updatedTenant);
+      setOpeningHours(mergeWithDefaults((updatedTenant.theme as any)?.openingHours));
       
       alert('Otváracie hodiny uložené!');
     } catch (error: any) {
@@ -115,10 +134,10 @@ export function OpeningHoursSettings() {
     if (!tenant) return;
     
     const newEnabled = !openingHours.enabled;
-    const updatedOpeningHours = {
+    const updatedOpeningHours = mergeWithDefaults({
       ...openingHours,
       enabled: newEnabled,
-    };
+    });
     
     // Update local state immediately for better UX
     setOpeningHours(updatedOpeningHours);
@@ -141,12 +160,10 @@ export function OpeningHoursSettings() {
       setTenant(updatedTenant);
       
       // Update opening hours from the server response to ensure consistency
-      const updatedTheme = typeof updatedTenant.theme === 'object' && updatedTenant.theme !== null 
-        ? updatedTenant.theme as any
+      const updatedTheme = typeof updatedTenant.theme === 'object' && updatedTenant.theme !== null
+        ? (updatedTenant.theme as any)
         : {};
-      if (updatedTheme.openingHours) {
-        setOpeningHours(updatedTheme.openingHours);
-      }
+      setOpeningHours(mergeWithDefaults(updatedTheme.openingHours as OpeningHours | undefined));
     } catch (error: any) {
       console.error('Failed to toggle opening hours:', error);
       alert('Nepodarilo sa prepnúť otváracie hodiny: ' + (error.message || 'Unknown error'));
@@ -277,4 +294,3 @@ export function OpeningHoursSettings() {
     </div>
   );
 }
-
