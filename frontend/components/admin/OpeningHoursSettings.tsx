@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { getTenant, updateTenant } from '@/lib/api';
+import { getTenantSlug } from '@/lib/tenant-utils';
 import { Tenant } from '@pizza-ecosystem/shared';
 
 // OpeningHours type - defined locally since it's not exported from shared
@@ -17,6 +18,14 @@ interface OpeningHours {
   };
 }
 import { getDefaultOpeningHours } from '@/lib/opening-hours';
+
+const resolveTenantSlug = (tenantSlug?: string, tenant?: Tenant | null) => {
+  const raw = (tenantSlug || tenant?.slug || tenant?.subdomain || '').toLowerCase();
+  if (raw === 'pizzaparty' || raw === 'partypizza') return 'partypizza';
+  if (raw === 'p0rnopizza') return 'pornopizza';
+  if (raw) return raw;
+  return 'pornopizza';
+};
 
 export function OpeningHoursSettings() {
   const [tenant, setTenant] = useState<Tenant | null>(null);
@@ -38,7 +47,8 @@ export function OpeningHoursSettings() {
   useEffect(() => {
     const loadTenant = async () => {
       try {
-        const tenantData = await getTenant('pornopizza');
+        const slugToUse = resolveTenantSlug(getTenantSlug());
+        const tenantData = await getTenant(slugToUse);
         setTenant(tenantData);
         
         const theme = typeof tenantData.theme === 'object' && tenantData.theme !== null 
@@ -67,7 +77,8 @@ export function OpeningHoursSettings() {
         ? tenant.theme as any
         : {};
       
-      await updateTenant(tenant.subdomain || tenant.slug, {
+      const slugToUse = resolveTenantSlug(getTenantSlug(), tenant);
+      await updateTenant(slugToUse, {
         theme: {
           ...theme,
           openingHours,
@@ -75,7 +86,7 @@ export function OpeningHoursSettings() {
       });
       
       // Reload tenant
-      const updatedTenant = await getTenant('pornopizza');
+      const updatedTenant = await getTenant(slugToUse);
       setTenant(updatedTenant);
       
       alert('Otváracie hodiny uložené!');
@@ -117,7 +128,8 @@ export function OpeningHoursSettings() {
         ? tenant.theme as any
         : {};
       
-      await updateTenant(tenant.subdomain || tenant.slug, {
+      const slugToUse = resolveTenantSlug(getTenantSlug(), tenant);
+      await updateTenant(slugToUse, {
         theme: {
           ...theme,
           openingHours: updatedOpeningHours,
@@ -125,7 +137,7 @@ export function OpeningHoursSettings() {
       });
       
       // Reload tenant to get updated data
-      const updatedTenant = await getTenant('pornopizza');
+      const updatedTenant = await getTenant(slugToUse);
       setTenant(updatedTenant);
       
       // Update opening hours from the server response to ensure consistency
