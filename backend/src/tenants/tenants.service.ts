@@ -10,6 +10,17 @@ export class TenantsService {
   constructor(private prisma: PrismaService) {}
 
   /**
+   * Normalize tenant slugs to handle legacy/domain variants.
+   */
+  private normalizeTenantSlug(slug: string): string {
+    const raw = (slug || '').toLowerCase();
+    if (raw === 'pizzaparty' || raw === 'partypizza') return 'partypizza';
+    if (raw === 'p0rnopizza' || raw === 'pornopizza') return 'pornopizza';
+    if (raw === 'pizzavnudzi') return 'pizzavnudzi';
+    return raw;
+  }
+
+  /**
    * Backward-compatible helper to fetch tenant by id.
    */
   async findById(id: string): Promise<Tenant> {
