@@ -184,53 +184,55 @@ export function OpeningHoursSettings() {
 
   return (
     <div className="bg-white rounded-lg p-3 border border-gray-200" style={{ backgroundColor: '#ffffff', borderColor: '#e5e7eb' }}>
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex-1 min-w-0">
-          <h2 className="text-sm font-bold text-gray-900 mb-1" style={{ color: '#111827' }}>
-            Otváracie hodiny
-          </h2>
-          <p className="text-xs text-gray-600 truncate" style={{ color: '#4b5563' }}>
-            Automatické zap./vyp. maintenance mode
-          </p>
+      <div className="flex flex-col gap-2">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex-1 min-w-0">
+            <h2 className="text-sm font-bold text-gray-900" style={{ color: '#111827' }}>
+              Otváracie hodiny
+            </h2>
+            <p className="text-xs text-gray-600 truncate" style={{ color: '#4b5563' }}>
+              Automatické zap./vyp. maintenance mode
+            </p>
+          </div>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <span className={`text-xs font-medium ${openingHours.enabled ? 'text-green-600' : 'text-gray-500'}`} style={{ color: openingHours.enabled ? '#16a34a' : '#6b7280' }}>
+              {openingHours.enabled ? 'Zap.' : 'Vyp.'}
+            </span>
+            <button
+              onClick={handleToggleEnabled}
+              className={`relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-1 ${
+                openingHours.enabled ? 'bg-green-600' : 'bg-gray-200'
+              }`}
+            >
+              <span
+                className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                  openingHours.enabled ? 'translate-x-4' : 'translate-x-0'
+                }`}
+              />
+            </button>
+            {openingHours.enabled && (
+              <button
+                onClick={() => setIsExpanded(!isExpanded)}
+                className="ml-1 text-xs text-blue-600 hover:text-blue-700 font-medium"
+                style={{ color: '#2563eb' }}
+              >
+                {isExpanded ? '▼' : '▶'}
+              </button>
+            )}
+          </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex">
           <select
             value={selectedTenantSlug}
             onChange={(e) => {
               setLoading(true);
               setSelectedTenantSlug(resolveTenantSlug(e.target.value));
             }}
-            className="text-xs border border-gray-300 rounded px-2 py-1 bg-white"
+            className="text-xs border border-gray-300 rounded px-2 py-1 bg-white w-full"
           >
             <option value="pornopizza">PornoPizza</option>
             <option value="partypizza">PartyPizza</option>
           </select>
-        </div>
-        <div className="ml-3 flex items-center gap-2 flex-shrink-0">
-          <span className={`text-xs font-medium ${openingHours.enabled ? 'text-green-600' : 'text-gray-500'}`} style={{ color: openingHours.enabled ? '#16a34a' : '#6b7280' }}>
-            {openingHours.enabled ? 'Zap.' : 'Vyp.'}
-          </span>
-          <button
-            onClick={handleToggleEnabled}
-            className={`relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-1 ${
-              openingHours.enabled ? 'bg-green-600' : 'bg-gray-200'
-            }`}
-          >
-            <span
-              className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                openingHours.enabled ? 'translate-x-4' : 'translate-x-0'
-              }`}
-            />
-          </button>
-          {openingHours.enabled && (
-            <button
-              onClick={() => setIsExpanded(!isExpanded)}
-              className="ml-1 text-xs text-blue-600 hover:text-blue-700 font-medium"
-              style={{ color: '#2563eb' }}
-            >
-              {isExpanded ? '▼' : '▶'}
-            </button>
-          )}
         </div>
       </div>
 
