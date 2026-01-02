@@ -292,10 +292,12 @@ export class EmailService {
       ? order.orderNumber.toString().padStart(4, '0')
       : order.id.slice(0, 8).toUpperCase(); // Fallback for old orders without orderNumber
 
+    const transporter = this.getTenantTransporter(emailConfig);
+
     try {
-      if (process.env.SMTP_HOST && this.transporter) {
+      if (transporter) {
         // Production: Actually send the email
-        const info = await this.transporter.sendMail({
+        const info = await transporter.sendMail({
           from: this.getEmailFrom(tenantName, tenantDomain, emailConfig),
           to: customer.email,
           subject: `🍕 Objednávka prijatá #${orderNumber} - ${tenantName}`,
@@ -359,10 +361,12 @@ export class EmailService {
       tenantTheme,
     );
 
+    const transporter = this.getTenantTransporter(emailConfig);
+
     try {
-      if (process.env.SMTP_HOST && this.transporter) {
+      if (transporter) {
         // Production: Actually send the email
-        const info = await this.transporter.sendMail({
+        const info = await transporter.sendMail({
           from: this.getEmailFrom(tenantName, tenantDomain, emailConfig),
           to: user.email,
           subject: `Nastavte si heslo pre váš účet - ${tenantName}`,
@@ -1051,10 +1055,12 @@ export class EmailService {
       tenantDomain,
     );
 
+    const transporter = this.getTenantTransporter(emailConfig);
+
     try {
-      if (process.env.SMTP_HOST && this.transporter) {
+      if (transporter) {
         // Production: Actually send the email
-        const info = await this.transporter.sendMail({
+        const info = await transporter.sendMail({
           from: this.getEmailFrom(tenantName, tenantDomain, emailConfig),
           to: customer.email,
           subject: notification.subject,
@@ -1090,12 +1096,13 @@ export class EmailService {
     const emailHtml = this.buildWelcomeEmail(user, tenantName, tenantDomain, tenantTheme, tenantSlug);
     const emailFrom = this.getEmailFrom(tenantName, tenantDomain, emailConfig);
     const emailSubject = `🎉 Vitajte v ${tenantName}!`;
+    const transporter = this.getTenantTransporter(emailConfig);
 
     try {
-      if (process.env.SMTP_HOST && this.transporter) {
+      if (transporter) {
         // Verify SMTP connection before sending
         try {
-          await this.transporter.verify();
+          await transporter.verify();
           this.logger.log(`✅ SMTP connection verified before sending welcome email`);
         } catch (verifyError) {
           this.logger.error(`❌ SMTP verification failed before sending welcome email:`, this.formatSMTPError(verifyError));
@@ -1109,7 +1116,7 @@ export class EmailService {
         this.logger.log(`   Subject: ${emailSubject}`);
 
         // Production: Actually send the email
-        const info = await this.transporter.sendMail({
+        const info = await transporter.sendMail({
           from: emailFrom,
           to: user.email,
           subject: emailSubject,

@@ -165,7 +165,7 @@ export class TenantsService {
           { subdomain: normalizedSlug },
         ],
       },
-      select: { id: true, slug: true, subdomain: true, theme: true, paymentConfig: true, deliveryConfig: true },
+      select: { id: true, slug: true, subdomain: true, theme: true, paymentConfig: true, deliveryConfig: true, emailConfig: true },
     });
     
     if (!existingTenant) {
@@ -227,6 +227,17 @@ export class TenantsService {
         data.deliveryConfig = {
           ...existingDeliveryConfig,
           ...data.deliveryConfig,
+        };
+      }
+    }
+    
+    // If emailConfig is being updated, merge it with existing emailConfig
+    if (data.emailConfig && typeof data.emailConfig === 'object') {
+      if (existingTenant.emailConfig) {
+        const existingEmailConfig = existingTenant.emailConfig as any;
+        data.emailConfig = {
+          ...existingEmailConfig,
+          ...data.emailConfig,
         };
       }
     }
