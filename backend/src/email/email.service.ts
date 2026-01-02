@@ -131,6 +131,31 @@ export class EmailService {
     return this.transporter;
   }
 
+
+  /**
+   * Load tenant emailConfig from DB if not provided.
+   */
+  private async resolveEmailConfig(emailConfig?: any, tenantId?: string): Promise<any> {
+    if ((emailConfig && Object.keys(emailConfig).length > 0) || !tenantId) {
+      return emailConfig;
+    }
+
+    try {
+      const tenant = await this.prisma.tenant.findUnique({
+        where: { id: tenantId },
+        select: { emailConfig: true },
+      });
+      if (tenant?.emailConfig) {
+        this.logger.log(`📧 Loaded tenant emailConfig from DB for tenantId ${tenantId}`);
+        return tenant.emailConfig;
+      }
+    } catch (err) {
+      this.logger.warn(`⚠️ Could not load tenant emailConfig for tenantId ${tenantId}: ${err}`);
+    }
+
+    return emailConfig;
+  }
+
   /**
    * Get properly formatted email FROM address
    * Supports tenant-specific email configuration
