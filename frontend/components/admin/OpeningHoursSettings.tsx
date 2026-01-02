@@ -33,6 +33,7 @@ export function OpeningHoursSettings() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
+  const [selectedTenantSlug, setSelectedTenantSlug] = useState<string>(resolveTenantSlug(getTenantSlug()));
 
   const days = [
     { key: 'monday', label: 'Pondelok' },
@@ -66,7 +67,7 @@ export function OpeningHoursSettings() {
   useEffect(() => {
     const loadTenant = async () => {
       try {
-        const slugToUse = resolveTenantSlug(getTenantSlug());
+        const slugToUse = resolveTenantSlug(selectedTenantSlug);
         const tenantData = await getTenant(slugToUse);
         setTenant(tenantData);
         
@@ -83,7 +84,7 @@ export function OpeningHoursSettings() {
     };
 
     loadTenant();
-  }, []);
+  }, [selectedTenantSlug]);
 
   const handleSave = async () => {
     if (!tenant) return;
@@ -94,7 +95,7 @@ export function OpeningHoursSettings() {
         ? tenant.theme as any
         : {};
       
-      const slugToUse = resolveTenantSlug(getTenantSlug(), tenant);
+      const slugToUse = resolveTenantSlug(selectedTenantSlug, tenant);
       const openingHoursToSave = mergeWithDefaults(openingHours);
       await updateTenant(slugToUse, {
         theme: {
@@ -147,7 +148,7 @@ export function OpeningHoursSettings() {
         ? tenant.theme as any
         : {};
       
-      const slugToUse = resolveTenantSlug(getTenantSlug(), tenant);
+      const slugToUse = resolveTenantSlug(selectedTenantSlug, tenant);
       await updateTenant(slugToUse, {
         theme: {
           ...theme,
@@ -183,7 +184,7 @@ export function OpeningHoursSettings() {
 
   return (
     <div className="bg-white rounded-lg p-3 border border-gray-200" style={{ backgroundColor: '#ffffff', borderColor: '#e5e7eb' }}>
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-3">
         <div className="flex-1 min-w-0">
           <h2 className="text-sm font-bold text-gray-900 mb-1" style={{ color: '#111827' }}>
             Otváracie hodiny
@@ -191,6 +192,19 @@ export function OpeningHoursSettings() {
           <p className="text-xs text-gray-600 truncate" style={{ color: '#4b5563' }}>
             Automatické zap./vyp. maintenance mode
           </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <select
+            value={selectedTenantSlug}
+            onChange={(e) => {
+              setLoading(true);
+              setSelectedTenantSlug(resolveTenantSlug(e.target.value));
+            }}
+            className="text-xs border border-gray-300 rounded px-2 py-1 bg-white"
+          >
+            <option value="pornopizza">PornoPizza</option>
+            <option value="partypizza">PartyPizza</option>
+          </select>
         </div>
         <div className="ml-3 flex items-center gap-2 flex-shrink-0">
           <span className={`text-xs font-medium ${openingHours.enabled ? 'text-green-600' : 'text-gray-500'}`} style={{ color: openingHours.enabled ? '#16a34a' : '#6b7280' }}>
