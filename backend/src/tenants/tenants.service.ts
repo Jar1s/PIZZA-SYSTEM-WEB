@@ -177,16 +177,27 @@ export class TenantsService {
       if (existingTenant.theme) {
         const existingTheme = existingTenant.theme as any;
         
-        // Special handling for openingHours - if it's provided, replace it entirely (don't deep merge)
+        // Special handling for openingHours - merge with existing to avoid losing days/timezone on partial payloads
         if (data.theme.openingHours !== undefined) {
+          const existingOpeningHours = (existingTheme as any).openingHours || {};
+          const incomingOpeningHours = data.theme.openingHours || {};
+
+          const mergedOpeningHours = {
+            ...existingOpeningHours,
+            ...incomingOpeningHours,
+            days: incomingOpeningHours.days ?? existingOpeningHours.days,
+            timezone: incomingOpeningHours.timezone ?? existingOpeningHours.timezone,
+          };
+
           data.theme = {
             ...existingTheme,
             ...data.theme,
-            openingHours: data.theme.openingHours, // Replace entirely, don't merge
+            openingHours: mergedOpeningHours,
           };
+
           this.logger.log(`[updateTenant] Updating openingHours for ${normalizedSlug}:`, {
-            enabled: data.theme.openingHours?.enabled,
-            hasDays: !!data.theme.openingHours?.days,
+            enabled: mergedOpeningHours?.enabled,
+            hasDays: !!mergedOpeningHours?.days,
           });
         } else {
           // Normal merge for other theme properties
