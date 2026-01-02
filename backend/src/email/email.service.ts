@@ -250,6 +250,7 @@ export class EmailService {
     tenantTheme?: any,
     emailConfig?: any,
   ): Promise<void> {
+    const resolvedEmailConfig = await this.resolveEmailConfig(emailConfig, (order as any).tenantId);
     const customer = order.customer as any;
     const address = order.address as any;
     
@@ -333,13 +334,13 @@ export class EmailService {
       ? order.orderNumber.toString().padStart(4, '0')
       : order.id.slice(0, 8).toUpperCase(); // Fallback for old orders without orderNumber
 
-    const transporter = this.getTenantTransporter(emailConfig);
+    const transporter = this.getTenantTransporter(resolvedEmailConfig);
 
     try {
       if (transporter) {
         // Production: Actually send the email
         const info = await transporter.sendMail({
-          from: this.getEmailFrom(tenantName, tenantDomain, emailConfig),
+          from: this.getEmailFrom(tenantName, tenantDomain, resolvedEmailConfig),
           to: customer.email,
           subject: `🍕 Objednávka prijatá #${orderNumber} - ${tenantName}`,
           html: emailHtml,
@@ -371,6 +372,7 @@ export class EmailService {
     tenantTheme?: any,
     emailConfig?: any,
   ): Promise<void> {
+    const resolvedEmailConfig = await this.resolveEmailConfig(emailConfig, undefined);
     // Generate frontend URL - use FRONTEND_URL if available, otherwise fix tenantDomain
     let frontendDomain = process.env.FRONTEND_URL || tenantDomain;
     
@@ -402,13 +404,13 @@ export class EmailService {
       tenantTheme,
     );
 
-    const transporter = this.getTenantTransporter(emailConfig);
+    const transporter = this.getTenantTransporter(resolvedEmailConfig);
 
     try {
       if (transporter) {
         // Production: Actually send the email
         const info = await transporter.sendMail({
-          from: this.getEmailFrom(tenantName, tenantDomain, emailConfig),
+          from: this.getEmailFrom(tenantName, tenantDomain, resolvedEmailConfig),
           to: user.email,
           subject: `Nastavte si heslo pre váš účet - ${tenantName}`,
           html: emailHtml,
@@ -1025,6 +1027,7 @@ export class EmailService {
     tenantDomain: string,
     emailConfig?: any,
   ): Promise<void> {
+    const resolvedEmailConfig = await this.resolveEmailConfig(emailConfig, (order as any).tenantId);
     const customer = order.customer as any;
     if (!customer?.email) {
       return; // No email to send to
@@ -1096,13 +1099,13 @@ export class EmailService {
       tenantDomain,
     );
 
-    const transporter = this.getTenantTransporter(emailConfig);
+    const transporter = this.getTenantTransporter(resolvedEmailConfig);
 
     try {
       if (transporter) {
         // Production: Actually send the email
         const info = await transporter.sendMail({
-          from: this.getEmailFrom(tenantName, tenantDomain, emailConfig),
+          from: this.getEmailFrom(tenantName, tenantDomain, resolvedEmailConfig),
           to: customer.email,
           subject: notification.subject,
           html: emailHtml,
@@ -1134,10 +1137,11 @@ export class EmailService {
     tenantSlug?: string,
     emailConfig?: any,
   ): Promise<void> {
+    const resolvedEmailConfig = await this.resolveEmailConfig(emailConfig, undefined);
     const emailHtml = this.buildWelcomeEmail(user, tenantName, tenantDomain, tenantTheme, tenantSlug);
-    const emailFrom = this.getEmailFrom(tenantName, tenantDomain, emailConfig);
+    const emailFrom = this.getEmailFrom(tenantName, tenantDomain, resolvedEmailConfig);
     const emailSubject = `🎉 Vitajte v ${tenantName}!`;
-    const transporter = this.getTenantTransporter(emailConfig);
+    const transporter = this.getTenantTransporter(resolvedEmailConfig);
 
     try {
       if (transporter) {
