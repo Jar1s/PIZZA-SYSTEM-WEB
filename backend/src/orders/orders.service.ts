@@ -552,6 +552,7 @@ export class OrdersService {
             subdomain: true,
             currency: true, // Currency field added to schema
             theme: true, // Include theme for email colors and logo
+            emailConfig: true, // Include tenant-specific SMTP settings
           } as any, // Type assertion needed until Prisma types are fully regenerated
         },
       },
