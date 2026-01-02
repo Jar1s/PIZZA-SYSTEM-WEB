@@ -46,6 +46,10 @@ export class AnalyticsService {
       },
     });
 
+    const revenueOrders = orders.filter(
+      (order) => order.status !== OrderStatus.CANCELED,
+    );
+
     // Get previous period for comparison
     const periodDays = Math.ceil(
       (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24),
@@ -67,21 +71,25 @@ export class AnalyticsService {
       },
     });
 
+    const prevRevenueOrders = prevOrders.filter(
+      (order) => order.status !== OrderStatus.CANCELED,
+    );
+
     // Calculate metrics
-    const totalRevenue = orders.reduce(
+    const totalRevenue = revenueOrders.reduce(
       (sum, order) => sum + (order.totalCents || 0),
       0,
     );
-    const totalOrders = orders.length;
+    const totalOrders = revenueOrders.length;
     const averageOrderValue =
       totalOrders > 0 ? Math.round(totalRevenue / totalOrders) : 0;
 
     // Previous period metrics
-    const prevRevenue = prevOrders.reduce(
+    const prevRevenue = prevRevenueOrders.reduce(
       (sum, order) => sum + (order.totalCents || 0),
       0,
     );
-    const prevOrdersCount = prevOrders.length;
+    const prevOrdersCount = prevRevenueOrders.length;
     const prevAvgOrderValue =
       prevOrdersCount > 0 ? Math.round(prevRevenue / prevOrdersCount) : 0;
 
@@ -110,7 +118,7 @@ export class AnalyticsService {
       { name: string; sales: number; revenue: number }
     >();
 
-    orders.forEach((order) => {
+    revenueOrders.forEach((order) => {
       order.items.forEach((item) => {
         const productId = item.productId;
         const productName = item.productName || 'Unknown';
@@ -138,7 +146,7 @@ export class AnalyticsService {
     // Orders by day
     const ordersByDayMap = new Map<string, { orders: number; revenue: number }>();
 
-    orders.forEach((order) => {
+    revenueOrders.forEach((order) => {
       const date = new Date(order.createdAt).toISOString().split('T')[0];
       const current = ordersByDayMap.get(date) || { orders: 0, revenue: 0 };
       current.orders += 1;
@@ -274,6 +282,7 @@ export class AnalyticsService {
             gte: prevStartDate,
             lt: startDate,
           },
+          status: { not: OrderStatus.CANCELED },
         },
       });
 

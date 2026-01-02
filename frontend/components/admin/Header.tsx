@@ -1,12 +1,15 @@
 'use client';
 
 import { usePathname } from 'next/navigation';
+import { TenantSelector } from '@/components/admin/TenantSelector';
 
 interface HeaderProps {
   onMenuClick?: () => void;
+  selectedTenant: 'all' | string;
+  onTenantChange: (tenant: 'all' | string) => void;
 }
 
-export function Header({ onMenuClick }: HeaderProps) {
+export function Header({ onMenuClick, selectedTenant, onTenantChange }: HeaderProps) {
   const pathname = usePathname();
   
   // Get page title from pathname
@@ -38,6 +41,7 @@ export function Header({ onMenuClick }: HeaderProps) {
           <h2 className="text-base lg:text-lg font-semibold text-gray-900 truncate" style={{ color: '#111827' }}>{getPageTitle()}</h2>
         </div>
         <div className="flex items-center gap-1 sm:gap-2 lg:gap-4 flex-shrink-0">
+          <TenantSelector selectedTenant={selectedTenant} onTenantChange={onTenantChange} />
           <div className="hidden sm:block text-sm text-gray-500 whitespace-nowrap" style={{ color: '#6b7280' }}>
             {new Date().toLocaleDateString('sk-SK', {
               day: 'numeric',

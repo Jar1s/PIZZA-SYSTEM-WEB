@@ -14,6 +14,8 @@ interface Customer {
   phone: string | null;
   phoneVerified: boolean;
   isActive: boolean;
+  tenantSlug: string | null;
+  tenantName: string | null;
   orderCount: number;
   totalSpentCents: number;
   createdAt: string;
