@@ -419,6 +419,7 @@ export async function updateTenant(tenantSlug: string, data: Partial<Tenant>): P
   const res = await fetch(`${API_URL}/api/tenants/${normalizedSlug}`, {
     method: 'PATCH',
     headers,
+    credentials: 'include',
     body: JSON.stringify(data),
   });
   
