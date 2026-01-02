@@ -199,6 +199,13 @@ export function getTenantSlug(): string {
     if (slug === 'pizzaparty') return 'partypizza';
     return slug;
   };
+
+  // Always allow explicit query override (?tenant=partypizza) – needed when
+  // spravovanie partypizza beží na doméne pornopizza.
+  const tenantParam = normalize(params.get('tenant'));
+  if (tenantParam) {
+    return tenantParam;
+  }
   
   // Check for known production domains
   if (hostname.includes('partypizza') || hostname.includes('pizzaparty')) return 'partypizza';
@@ -210,12 +217,6 @@ export function getTenantSlug(): string {
   // For localhost or Vercel URLs, check URL params
   if (hostname.includes('localhost') || hostname.includes('127.0.0.1') || hostname.includes('vercel.app')) {
     return normalize(params.get('tenant'));
-  }
-  
-  // For other domains, try query param first
-  const tenantParam = params.get('tenant');
-  if (tenantParam) {
-    return normalize(tenantParam);
   }
   
   // Default fallback
