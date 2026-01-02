@@ -33,9 +33,6 @@ export class CustomerController {
     if (headerTenant) {
       try {
         const tenant = await this.tenantsService.getTenantBySlug(headerTenant);
-        if (hostTenant && hostTenant.slug !== tenant.slug) {
-          return hostTenant;
-        }
         return tenant;
       } catch (e) {
         // fall back to host

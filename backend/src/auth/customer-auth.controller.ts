@@ -81,12 +81,7 @@ export class CustomerAuthController {
 
     if (candidateSlug) {
       try {
-        const tenant = await this.tenantsService.getTenantBySlug(candidateSlug);
-        // If host maps to a different tenant, prefer host-based routing to avoid cross-tenant login
-        if (hostTenant && hostTenant.slug !== tenant.slug) {
-          return hostTenant;
-        }
-        return tenant;
+        return await this.tenantsService.getTenantBySlug(candidateSlug);
       } catch (e) {
         // fallthrough to domain
       }
