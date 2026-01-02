@@ -36,7 +36,7 @@ export default function CheckoutPage() {
   const { tenant: tenantData } = useTenant();
   const { t, language } = useLanguage();
   const [loading, setLoading] = useState(false);
-  const [tenantSlug, setTenantSlug] = useState('pornopizza');
+  const [tenantSlug, setTenantSlug] = useState(tenantData?.slug || 'pornopizza');
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
   const [loadingAddresses, setLoadingAddresses] = useState(true);
@@ -316,10 +316,12 @@ export default function CheckoutPage() {
       sessionStorage.removeItem('oauth_redirect');
     }
     
-    // Initialize tenant slug from URL
+    // Initialize tenant slug from URL or context
     const params = new URLSearchParams(window.location.search);
-    setTenantSlug(params.get('tenant') || 'pornopizza');
-  }, []); // Empty deps - only run once on mount
+    const slugFromUrl = params.get('tenant');
+    const slug = slugFromUrl || tenantData?.slug || 'pornopizza';
+    setTenantSlug(slug);
+  }, [tenantData?.slug]);
 
   // Handle cart validation (only when items change)
   useEffect(() => {
