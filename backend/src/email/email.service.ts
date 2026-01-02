@@ -9,6 +9,7 @@ import { getProductDisplayName } from '../utils/product-name-mapper';
 export class EmailService {
   private readonly logger = new Logger(EmailService.name);
   private transporter: nodemailer.Transporter | null;
+  private tenantTransporters = new Map<string, nodemailer.Transporter>();
 
   constructor(private prisma: PrismaService) {
     // Configure email transporter
@@ -88,6 +89,46 @@ export class EmailService {
       this.logger.error('❌ SMTP verification failed:', this.formatSMTPError(error));
       throw error;
     }
+  }
+
+  private getTenantTransporter(emailConfig?: any): nodemailer.Transporter | null {
+    if (emailConfig?.smtpHost) {
+      const host = emailConfig.smtpHost;
+      const port = parseInt(emailConfig.smtpPort?.toString() || '587', 10);
+      const secure =
+        emailConfig.smtpSecure === true ||
+        emailConfig.smtpSecure === 'true' ||
+        false;
+      const user = emailConfig.smtpUser;
+      const password = emailConfig.smtpPassword;
+
+      const cacheKey = `${host}:${port}:${user || ''}:${secure}`;
+      const cached = this.tenantTransporters.get(cacheKey);
+      if (cached) {
+        return cached;
+      }
+
+      const config: any = {
+        host,
+        port,
+        secure,
+        auth: user ? { user, pass: password } : undefined,
+      };
+
+      if (port === 587 && !secure) {
+        config.requireTLS = true;
+        config.tls = { rejectUnauthorized: false };
+      }
+
+      const transporter = nodemailer.createTransport(config);
+      this.tenantTransporters.set(cacheKey, transporter);
+      this.logger.log(
+        `📧 Using tenant SMTP (${host}:${port}, secure: ${secure}, user: ${user || 'N/A'})`
+      );
+      return transporter;
+    }
+
+    return this.transporter;
   }
 
   /**
