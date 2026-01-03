@@ -13,7 +13,7 @@ import { calculateModifierPrice } from '@/lib/calculate-modifier-price';
 import { validateReturnUrl } from '@/lib/validate-return-url';
 import { getTenant } from '@/lib/api';
 import { geocodeAddress, validateBratislavaAddressSimple } from '@/lib/geocoding';
-import { isDarkTheme, getBackgroundClass, getButtonGradientClass, getButtonStyle, withTenantThemeDefaults } from '@/lib/tenant-utils';
+import { isDarkTheme, getBackgroundClass, getButtonGradientClass, getButtonStyle, withTenantThemeDefaults, getTenantSlug } from '@/lib/tenant-utils';
 import { isCurrentlyOpen } from '@/lib/opening-hours';
 import { getProductDisplayName } from '@/lib/product-translations';
 import AddressAutocomplete from '@/components/account/AddressAutocomplete';
@@ -36,7 +36,7 @@ export default function CheckoutPage() {
   const { tenant: tenantData } = useTenant();
   const { t, language } = useLanguage();
   const [loading, setLoading] = useState(false);
-  const [tenantSlug, setTenantSlug] = useState(tenantData?.slug || 'pornopizza');
+  const [tenantSlug, setTenantSlug] = useState(getTenantSlug());
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
   const [loadingAddresses, setLoadingAddresses] = useState(true);
