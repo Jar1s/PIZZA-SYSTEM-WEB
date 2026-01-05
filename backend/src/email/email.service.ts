@@ -92,50 +92,84 @@ export class EmailService {
   }
 
   private getTenantTransporter(emailConfig?: any): nodemailer.Transporter | null {
-    if (emailConfig?.smtpHost) {
-      const host = (emailConfig.smtpHost || emailConfig.host || '').toString().trim();
-      const port = parseInt(emailConfig.smtpPort?.toString() || '587', 10);
-      const secure =
-        emailConfig.smtpSecure === true ||
-        emailConfig.smtpSecure === 'true' ||
-        false;
-      const user = (emailConfig.smtpUser || emailConfig.user || '').toString().trim();
-      const password = (emailConfig.smtpPassword || '').toString().trim();
+    const tenantHost = emailConfig?.smtpHost;
+    const tenantUser = emailConfig?.smtpUser;
+    const tenantPassword = emailConfig?.smtpPassword;
+    const tenantPortRaw = emailConfig?.smtpPort ?? emailConfig?.port;
+    const tenantSecureRaw = emailConfig?.smtpSecure ?? emailConfig?.secure;
+    const hasTenantSmtp =
+      tenantHost || tenantUser || tenantPassword || tenantPortRaw || tenantSecureRaw;
 
-      const cacheKey = `${host}:${port}:${user || ''}:${secure}`;
+    if (hasTenantSmtp) {
+      if (!tenantHost || !tenantUser || !tenantPassword) {
+        this.logger.warn('📧 Tenant SMTP config incomplete (host/user/password required). Falling back to default SMTP config.');
+        return this.transporter || null;
+      }
+
+      const cleanedPassword = String(tenantPassword).trim();
+      const cleanedUser = String(tenantUser).trim();
+      const passLength = cleanedPassword.length;
+      const hasLeadingSpace = String(tenantPassword).startsWith(' ');
+      const hasTrailingSpace = String(tenantPassword).endsWith(' ');
+      const userHasAt = cleanedUser.includes('@');
+
+      this.logger.log(`📧 Tenant SMTP password diagnostics: length: ${passLength}, leading space: ${hasLeadingSpace ? '❌ YES (removed)' : '✅ NO'}, trailing space: ${hasTrailingSpace ? '❌ YES (removed)' : '✅ NO'}`);
+      this.logger.log(`📧 Tenant SMTP user format: ${userHasAt ? '✅ Contains @ (full email)' : '❌ Missing @ (should be full email)'}, length: ${cleanedUser.length}`);
+
+      const port = parseInt(String(tenantPortRaw ?? '587'), 10);
+      const secure = tenantSecureRaw === true || tenantSecureRaw === 'true';
+      const cacheKey = `${tenantHost}:${port}:${cleanedUser}:${secure ? 's' : 'ns'}`;
       const cached = this.tenantTransporters.get(cacheKey);
       if (cached) {
         return cached;
-      }      const config: any = {
-        host,
-        port,
-        secure,
-        auth: user ? { user, pass: password } : undefined,
-      };
-
-      if (port === 587 && !secure) {
-        config.requireTLS = true;
-        config.tls = { rejectUnauthorized: false };
       }
 
-      this.logger.log(`📧 Preparing tenant SMTP`, {
-        host,
+      const smtpConfig: any = {
+        host: tenantHost,
         port,
         secure,
-        user,
-        hasPassword: !!password,
-        passwordLength: password ? password.length : 0,
+        auth: {
+          user: cleanedUser,
+          pass: cleanedPassword,
+        },
+      };
+
+      if (port === 465 && secure) {
+        smtpConfig.tls = {
+          rejectUnauthorized: false,
+        };
+      }
+
+      if (port === 587 && !secure) {
+        smtpConfig.requireTLS = true;
+        smtpConfig.tls = { rejectUnauthorized: false };
+      }
+
+      this.logger.log(`📧 Tenant SMTP configured: ${smtpConfig.host}:${smtpConfig.port} (secure: ${smtpConfig.secure}) user: ${smtpConfig.auth.user || 'NOT SET'}`);
+
+      const transporter = nodemailer.createTransport(smtpConfig);
+      this.tenantTransporters.set(cacheKey, transporter);
+
+      transporter.verify().then(() => {
+        this.logger.log(`✅ Tenant SMTP verified for ${smtpConfig.host}:${smtpConfig.port}`);
+      }).catch((error) => {
+        this.logger.warn(`⚠️ Tenant SMTP verification failed for ${smtpConfig.host}:${smtpConfig.port}: ${this.formatSMTPError(error)}`);
+        if (error.message?.includes('authentication failed') || (error as any).code === 'EAUTH') {
+          this.logger.error(`❌ SMTP Authentication Failed Details:`);
+          this.logger.error(`   Host: ${smtpConfig.host}`);
+          this.logger.error(`   Port: ${smtpConfig.port}`);
+          this.logger.error(`   User: ${smtpConfig.auth.user}`);
+          this.logger.error(`   Password length: ${cleanedPassword.length}`);
+          this.logger.error(`   Secure: ${secure}`);
+          this.logger.error(`   ⚠️  Please verify the password in tenant emailConfig is correct`);
+          this.logger.error(`   ⚠️  For Websupport: ensure password matches the email account password exactly`);
+        }
       });
 
-      const transporter = nodemailer.createTransport(config);
-      this.tenantTransporters.set(cacheKey, transporter);
-      this.logger.log(
-        `📧 Using tenant SMTP (${host}:${port}, secure: ${secure}, user: ${user || 'N/A'})`
-      );
       return transporter;
     }
 
-    return this.transporter;
+    return this.transporter || null;
   }
 
 
