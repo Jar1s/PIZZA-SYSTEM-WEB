@@ -93,22 +93,20 @@ export class EmailService {
 
   private getTenantTransporter(emailConfig?: any): nodemailer.Transporter | null {
     if (emailConfig?.smtpHost) {
-      const host = emailConfig.smtpHost;
+      const host = (emailConfig.smtpHost || emailConfig.host || '').toString().trim();
       const port = parseInt(emailConfig.smtpPort?.toString() || '587', 10);
       const secure =
         emailConfig.smtpSecure === true ||
         emailConfig.smtpSecure === 'true' ||
         false;
-      const user = emailConfig.smtpUser;
-      const password = emailConfig.smtpPassword;
+      const user = (emailConfig.smtpUser || emailConfig.user || '').toString().trim();
+      const password = (emailConfig.smtpPassword || '').toString().trim();
 
       const cacheKey = `${host}:${port}:${user || ''}:${secure}`;
       const cached = this.tenantTransporters.get(cacheKey);
       if (cached) {
         return cached;
-      }
-
-      const config: any = {
+      }      const config: any = {
         host,
         port,
         secure,
@@ -119,6 +117,15 @@ export class EmailService {
         config.requireTLS = true;
         config.tls = { rejectUnauthorized: false };
       }
+
+      this.logger.log(`📧 Preparing tenant SMTP`, {
+        host,
+        port,
+        secure,
+        user,
+        hasPassword: !!password,
+        passwordLength: password ? password.length : 0,
+      });
 
       const transporter = nodemailer.createTransport(config);
       this.tenantTransporters.set(cacheKey, transporter);
