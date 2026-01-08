@@ -27,6 +27,9 @@ export function EditBrandModal({
     primaryColor: '#E91E63',
     secondaryColor: '#0F141A',
   });
+  const [logoUrl, setLogoUrl] = useState('');
+  const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const [logoFile, setLogoFile] = useState<File | null>(null);
   const [subCategoryLabels, setSubCategoryLabels] = useState<SubCategoryLabels>({});
   const [cashEnabled, setCashEnabled] = useState(false);
   const [cardEnabled, setCardEnabled] = useState(false);
@@ -104,6 +107,10 @@ export function EditBrandModal({
         primaryColor: theme.primaryColor || '#E91E63',
         secondaryColor: theme.secondaryColor || '#0F141A',
       });
+      const initialLogo = theme.logo || tenant.logo || '';
+      setLogoUrl(initialLogo || '');
+      setLogoPreview(initialLogo || null);
+      setLogoFile(null);
       setFaviconUrl(theme.favicon || '');
       setCashEnabled(paymentConfig.cashOnDeliveryEnabled === true);
       setCardEnabled(paymentConfig.cardOnDeliveryEnabled === true);
@@ -184,12 +191,62 @@ export function EditBrandModal({
     }));
   };
 
+  const handleLogoFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setLogoFile(file);
+    setError(null);
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setLogoPreview(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const uploadLogoImage = async (file: File): Promise<string> => {
+    const formData = new FormData();
+    formData.append('image', file);
+
+    const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
+    const headers: HeadersInit = {};
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+    const res = await fetch(`${API_URL}/api/upload/image`, {
+      method: 'POST',
+      headers,
+      body: formData,
+    });
+
+    if (!res.ok) {
+      if (res.status === 401) {
+        throw new Error('Unauthorized - Please log in again');
+      }
+      const error = await res.json().catch(() => ({ message: 'Failed to upload image' }));
+      throw new Error(error.message || 'Failed to upload image');
+    }
+
+    const data = await res.json();
+    return data.url;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
 
     try {
+      let resolvedLogoUrl = logoUrl.trim();
+
+      // Upload logo if a new file is selected
+      if (logoFile) {
+        resolvedLogoUrl = await uploadLogoImage(logoFile);
+      }
+
       // Get existing paymentConfig to preserve other properties
       const existingPaymentConfig = (tenant.paymentConfig as any) || {};
       const existingDeliveryConfig = (tenant.deliveryConfig as any) || {};
@@ -275,10 +332,12 @@ export function EditBrandModal({
       
       // Update theme with analytics config
       const existingTheme = (tenant.theme as any) || {};
+      const finalLogo = resolvedLogoUrl || existingTheme.logo || tenant.logo;
       const updatedTheme: any = {
         ...existingTheme,
         primaryColor: themeColors.primaryColor,
         secondaryColor: themeColors.secondaryColor,
+        logo: finalLogo,
         favicon: faviconUrl.trim() || existingTheme.favicon || '/favicon.ico',
         subCategoryLabels,
         analyticsConfig: {
@@ -316,6 +375,9 @@ export function EditBrandModal({
       });
       if (!updatedTheme.googleOAuthConfig) {
         delete updatedTheme.googleOAuthConfig;
+      }
+      if (!finalLogo) {
+        delete updatedTheme.logo;
       }
       
       updateData.theme = updatedTheme;
@@ -447,6 +509,85 @@ export function EditBrandModal({
                           onChange={(e) => setThemeColors({ ...themeColors, secondaryColor: e.target.value })}
                           className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm"
                         />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Logo */}
+                <div className="border border-gray-200 rounded-md p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <div>
+                      <h4 className="text-sm font-semibold text-gray-900">Logo</h4>
+                      <p className="text-xs text-gray-500">Nahraj alebo vlož URL loga pre tento brand.</p>
+                    </div>
+                    {logoPreview && (
+                      <div className="h-12 w-28 bg-gray-50 border border-gray-200 rounded-md flex items-center justify-center px-2">
+                        <img
+                          src={logoPreview}
+                          alt={`${formData.name} logo`}
+                          className="max-h-10 w-full object-contain"
+                        />
+                      </div>
+                    )}
+                  </div>
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Logo URL
+                      </label>
+                      <input
+                        type="url"
+                        value={logoUrl}
+                        onChange={(e) => {
+                          setLogoUrl(e.target.value);
+                          if (!logoFile) {
+                            setLogoPreview(e.target.value || null);
+                          }
+                        }}
+                        placeholder="https://example.com/logo.png"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">
+                        Môžeš prilepiť priamy odkaz na PNG/JPG/WEBP.
+                      </p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Alebo nahraj súbor
+                      </label>
+                      <div className="flex flex-wrap items-center gap-3">
+                        <label className="px-4 py-2 bg-white border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 cursor-pointer">
+                          Vybrať súbor
+                          <input
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={handleLogoFileChange}
+                          />
+                        </label>
+                        {logoFile ? (
+                          <span className="text-sm text-gray-700 truncate max-w-[200px]">
+                            {logoFile.name}
+                          </span>
+                        ) : (
+                          <span className="text-xs text-gray-500">
+                            Prilož logo, uloží sa k tenantovi.
+                          </span>
+                        )}
+                        {logoFile && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const fallbackLogo = (tenant.theme as any)?.logo || tenant.logo || null;
+                              setLogoFile(null);
+                              setLogoPreview(logoUrl || fallbackLogo);
+                            }}
+                            className="text-xs text-gray-600 underline"
+                          >
+                            Zrušiť výber
+                          </button>
+                        )}
                       </div>
                     </div>
                   </div>
