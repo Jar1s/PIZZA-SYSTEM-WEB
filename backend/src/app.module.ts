@@ -14,6 +14,7 @@ import { DatabaseErrorInterceptor } from './common/interceptors/database-error.i
 import { HealthModule } from './health/health.module';
 import { SettingsModule } from './settings/settings.module';
 import { CustomerModule } from './customer/customer.module';
+import { UploadModule } from './upload/upload.module';
 
 @Module({
   imports: [
@@ -32,6 +33,7 @@ import { CustomerModule } from './customer/customer.module';
     HealthModule,
     SettingsModule,
     CustomerModule,
+    UploadModule,
   ],
   controllers: [AppController],
   providers: [
