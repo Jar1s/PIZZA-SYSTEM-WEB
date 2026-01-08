@@ -10,8 +10,8 @@ export default function LanguageSwitcher() {
   const { tenant } = useTenant();
   const normalizedTenant = withTenantThemeDefaults(tenant);
   const isDark = isDarkTheme(normalizedTenant);
-
-  const primaryColor = normalizedTenant?.theme?.primaryColor || 'var(--color-primary)';
+  // Use CSS variable so it updates automatically when theme changes
+  const primaryColor = 'var(--color-primary)';
 
   return (
     <div 
