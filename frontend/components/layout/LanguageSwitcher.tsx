@@ -3,14 +3,15 @@
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Language } from '@/lib/translations';
 import { useTenant } from '@/contexts/TenantContext';
-import { isDarkTheme } from '@/lib/tenant-utils';
+import { isDarkTheme, withTenantThemeDefaults } from '@/lib/tenant-utils';
 
 export default function LanguageSwitcher() {
   const { language, setLanguage } = useLanguage();
   const { tenant } = useTenant();
-  const isDark = isDarkTheme(tenant);
+  const normalizedTenant = withTenantThemeDefaults(tenant);
+  const isDark = isDarkTheme(normalizedTenant);
 
-  const primaryColor = tenant?.theme?.primaryColor || 'var(--color-primary)';
+  const primaryColor = normalizedTenant?.theme?.primaryColor || 'var(--color-primary)';
 
   return (
     <div 
