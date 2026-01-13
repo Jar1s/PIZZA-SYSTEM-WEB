@@ -167,6 +167,8 @@ export function HomePageClient({ products, tenant }: HomePageClientProps) {
 
   const getSubCategoryDesc = useCallback((key: SubLabelKey) => {
     const label = subCategoryLabels?.[key];
+    const showDescription = label?.showDescription !== false;
+    if (!showDescription) return '';
     const value = language === 'sk' ? label?.descSk : label?.descEn;
     return (value?.trim() || defaultSubCategoryText[key].desc);
   }, [subCategoryLabels, language, defaultSubCategoryText]);
@@ -555,7 +557,12 @@ export function HomePageClient({ products, tenant }: HomePageClientProps) {
                     >
                       🔥 {getSubCategoryTitle('foreplay')}
                     </h3>
-                    <p className={`mb-4 text-lg ${isDarkTheme ? 'text-gray-400' : ''}`} style={{ color: isDarkTheme ? '#999' : '#666666' }}>{getSubCategoryDesc('foreplay')}</p>
+                    {(() => {
+                      const desc = getSubCategoryDesc('foreplay');
+                      return desc ? (
+                        <p className={`mb-4 text-lg ${isDarkTheme ? 'text-gray-400' : ''}`} style={{ color: isDarkTheme ? '#999' : '#666666' }}>{desc}</p>
+                      ) : null;
+                    })()}
                     <div className="h-1 w-32 rounded mx-auto" style={{ backgroundColor: primaryColor }}></div>
                   </motion.div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5 md:gap-6">
@@ -587,7 +594,12 @@ export function HomePageClient({ products, tenant }: HomePageClientProps) {
                     >
                       😈 {getSubCategoryTitle('mainAction')}
                     </h3>
-                    <p className={`mb-4 text-lg ${isDarkTheme ? 'text-gray-400' : ''}`} style={{ color: isDarkTheme ? '#999' : '#666666' }}>{getSubCategoryDesc('mainAction')}</p>
+                    {(() => {
+                      const desc = getSubCategoryDesc('mainAction');
+                      return desc ? (
+                        <p className={`mb-4 text-lg ${isDarkTheme ? 'text-gray-400' : ''}`} style={{ color: isDarkTheme ? '#999' : '#666666' }}>{desc}</p>
+                      ) : null;
+                    })()}
                     <div className="h-1 w-32 rounded mx-auto" style={{ backgroundColor: primaryColor }}></div>
                   </motion.div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5 md:gap-6">
@@ -619,7 +631,12 @@ export function HomePageClient({ products, tenant }: HomePageClientProps) {
                     >
                       💋 {getSubCategoryTitle('deluxeFetish')}
                     </h3>
-                    <p className={`mb-4 text-lg ${isDarkTheme ? 'text-gray-400' : ''}`} style={{ color: isDarkTheme ? '#999' : '#666666' }}>{getSubCategoryDesc('deluxeFetish')}</p>
+                    {(() => {
+                      const desc = getSubCategoryDesc('deluxeFetish');
+                      return desc ? (
+                        <p className={`mb-4 text-lg ${isDarkTheme ? 'text-gray-400' : ''}`} style={{ color: isDarkTheme ? '#999' : '#666666' }}>{desc}</p>
+                      ) : null;
+                    })()}
                     <div className="h-1 w-32 rounded mx-auto" style={{ backgroundColor: primaryColor }}></div>
                   </motion.div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5 md:gap-6">
@@ -651,7 +668,12 @@ export function HomePageClient({ products, tenant }: HomePageClientProps) {
                     >
                       🍑 {getSubCategoryTitle('premiumSins')}
                     </h3>
-                    <p className={`mb-4 text-lg ${isDarkTheme ? 'text-gray-400' : ''}`} style={{ color: isDarkTheme ? '#999' : '#666666' }}>{getSubCategoryDesc('premiumSins')}</p>
+                    {(() => {
+                      const desc = getSubCategoryDesc('premiumSins');
+                      return desc ? (
+                        <p className={`mb-4 text-lg ${isDarkTheme ? 'text-gray-400' : ''}`} style={{ color: isDarkTheme ? '#999' : '#666666' }}>{desc}</p>
+                      ) : null;
+                    })()}
                     <div className="h-1 w-32 rounded mx-auto" style={{ backgroundColor: primaryColor }}></div>
                   </motion.div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5 md:gap-6">
@@ -684,9 +706,14 @@ export function HomePageClient({ products, tenant }: HomePageClientProps) {
                   >
                     {getSubCategoryTitle('drinks')}
                   </h3>
-                  <p className={`mb-2 text-lg ${isDarkTheme ? 'text-gray-400' : ''}`} style={{ color: isDarkTheme ? '#999' : '#666666' }}>
-                    {getSubCategoryDesc('drinks')}
-                  </p>
+                  {(() => {
+                    const desc = getSubCategoryDesc('drinks');
+                    return desc ? (
+                      <p className={`mb-2 text-lg ${isDarkTheme ? 'text-gray-400' : ''}`} style={{ color: isDarkTheme ? '#999' : '#666666' }}>
+                        {desc}
+                      </p>
+                    ) : null;
+                  })()}
                   <p className={`text-sm ${isDarkTheme ? 'text-gray-500' : 'text-gray-600'}`}>
                     {t.drinksDeposit}
                   </p>
@@ -714,9 +741,14 @@ export function HomePageClient({ products, tenant }: HomePageClientProps) {
                   >
                     🥖 {getSubCategoryTitle('stangle')}
                   </h3>
-                  <p className={`mb-2 text-lg ${isDarkTheme ? 'text-gray-400' : ''}`} style={{ color: isDarkTheme ? '#999' : '#666666' }}>
-                    💬 {getSubCategoryDesc('stangle')}
-                  </p>
+                  {(() => {
+                    const desc = getSubCategoryDesc('stangle');
+                    return desc ? (
+                      <p className={`mb-2 text-lg ${isDarkTheme ? 'text-gray-400' : ''}`} style={{ color: isDarkTheme ? '#999' : '#666666' }}>
+                        💬 {desc}
+                      </p>
+                    ) : null;
+                  })()}
                   <div className="h-1 w-32 rounded mx-auto mt-4" style={{ backgroundColor: primaryColor }}></div>
                 </motion.div>
               )}
@@ -741,9 +773,14 @@ export function HomePageClient({ products, tenant }: HomePageClientProps) {
                   >
                     🥴 {getSubCategoryTitle('soups')}
                   </h3>
-                  <p className={`mb-2 text-lg ${isDarkTheme ? 'text-gray-400' : ''}`} style={{ color: isDarkTheme ? '#999' : '#666666' }}>
-                    {getSubCategoryDesc('soups')}
-                  </p>
+                  {(() => {
+                    const desc = getSubCategoryDesc('soups');
+                    return desc ? (
+                      <p className={`mb-2 text-lg ${isDarkTheme ? 'text-gray-400' : ''}`} style={{ color: isDarkTheme ? '#999' : '#666666' }}>
+                        {desc}
+                      </p>
+                    ) : null;
+                  })()}
                   <div className="h-1 w-32 rounded mx-auto mt-4" style={{ backgroundColor: primaryColor }}></div>
                 </motion.div>
               )}
@@ -768,9 +805,14 @@ export function HomePageClient({ products, tenant }: HomePageClientProps) {
                   >
                     {getSubCategoryTitle('desserts')}
                   </h3>
-                  <p className={`mb-2 text-lg ${isDarkTheme ? 'text-gray-400' : ''}`} style={{ color: isDarkTheme ? '#999' : '#666666' }}>
-                    {getSubCategoryDesc('desserts')}
-                  </p>
+                  {(() => {
+                    const desc = getSubCategoryDesc('desserts');
+                    return desc ? (
+                      <p className={`mb-2 text-lg ${isDarkTheme ? 'text-gray-400' : ''}`} style={{ color: isDarkTheme ? '#999' : '#666666' }}>
+                        {desc}
+                      </p>
+                    ) : null;
+                  })()}
                   <div className="h-1 w-32 rounded mx-auto mt-4" style={{ backgroundColor: primaryColor }}></div>
                 </motion.div>
               )}

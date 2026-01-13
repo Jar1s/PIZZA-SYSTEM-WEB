@@ -179,8 +179,8 @@ export function EditBrandModal({
 
   const updateSubCategoryField = (
     key: keyof SubCategoryLabels,
-    field: 'titleSk' | 'titleEn' | 'descSk' | 'descEn',
-    value: string,
+    field: 'titleSk' | 'titleEn' | 'descSk' | 'descEn' | 'showDescription',
+    value: string | boolean,
   ) => {
     setSubCategoryLabels((prev) => ({
       ...prev,
@@ -703,6 +703,15 @@ export function EditBrandModal({
                             onChange={(e) => updateSubCategoryField(item.key as any, 'descEn', e.target.value)}
                             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm"
                           />
+                        </div>
+                        <div className="sm:col-span-2 flex items-center gap-2 text-sm text-gray-700">
+                          <input
+                            type="checkbox"
+                            checked={current.showDescription !== false}
+                            onChange={(e) => updateSubCategoryField(item.key as any, 'showDescription', e.target.checked)}
+                            className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                          />
+                          <span>Zobraziť popis</span>
                         </div>
                       </div>
                     );
