@@ -9,6 +9,8 @@ import { getProductFallbackImage, getProductDisplayImage } from '@/lib/product-i
 import Image from 'next/image';
 import { motion } from 'framer-motion';
 import { useState, useMemo, useCallback, memo, useEffect } from 'react';
+
+const BLUR_DATA_URL = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzIwIiBoZWlnaHQ9IjE4MCIgdmlld0JveD0iMCAwIDMyMCAxODAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjMyMCIgaGVpZ2h0PSIxODAiIGZpbGw9IiNlMWUxZTEiLz48L3N2Zz4=';
 import { useTenant } from '@/contexts/TenantContext';
 import CustomizationModal from './CustomizationModal';
 
@@ -45,6 +47,10 @@ export const ProductCard = memo(function ProductCard({ product, index = 0, isBes
   
   // Get translated product name, description, weight and allergens
   const translation = useMemo(() => getProductTranslation(product.name, language), [product.name, language]);
+  const isBuildYourOwn = useMemo(() => {
+    const base = `${product.name} ${translation?.name || ''}`.toLowerCase();
+    return base.includes('vyskladaj') || base.includes('build your own');
+  }, [product.name, translation?.name]);
   
   // Use centralized function: DB displayName → translation mapping → original name
   const displayName = useMemo(() => {
@@ -151,10 +157,13 @@ export const ProductCard = memo(function ProductCard({ product, index = 0, isBes
               src={displayImage}
               alt={product.name}
               fill
-              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-              priority={index < 6 || isBestSeller}
-              quality={75}
-              loading={index < 6 ? "eager" : "lazy"}
+              sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+              priority={isBuildYourOwn || isBestSeller || index < 4}
+              fetchPriority={isBuildYourOwn || isBestSeller || index < 4 ? 'high' : 'auto'}
+              quality={60}
+              loading={isBuildYourOwn || isBestSeller || index < 4 ? 'eager' : 'lazy'}
+              placeholder="blur"
+              blurDataURL={BLUR_DATA_URL}
               className={`object-cover group-hover:scale-110 transition-all duration-500 ${
                 imageLoading ? 'opacity-0' : 'opacity-100'
               }`}
@@ -206,8 +215,11 @@ export const ProductCard = memo(function ProductCard({ product, index = 0, isBes
               src={fallbackImage || '/images/placeholder-pizza.jpg'}
               alt={product.name}
               fill
-              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+              sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+              quality={60}
               className="object-cover"
+              placeholder="blur"
+              blurDataURL={BLUR_DATA_URL}
               unoptimized
             />
           </div>
