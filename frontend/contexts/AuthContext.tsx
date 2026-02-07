@@ -1,7 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { useRouter } from 'next/navigation';
+import React, { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react';
 import { useCart } from '@/hooks/useCart';
 
 interface User {
@@ -25,12 +24,56 @@ interface AuthContextType {
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+const TOKEN_REFRESH_INTERVAL_MS = 50 * 60 * 1000;
+const TOKEN_REFRESH_ON_BOOT_THRESHOLD_MS = 5 * 60 * 1000;
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const router = useRouter();
   const { clearCart } = useCart();
+  const refreshIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const clearRefreshInterval = () => {
+    if (refreshIntervalRef.current) {
+      clearInterval(refreshIntervalRef.current);
+      refreshIntervalRef.current = null;
+    }
+  };
+
+  const clearAuthStorage = () => {
+    localStorage.removeItem('auth_token');
+    localStorage.removeItem('refresh_token');
+    localStorage.removeItem('auth_user');
+    setUser(null);
+  };
+
+  const clearSessionAndRedirectToLogin = () => {
+    clearRefreshInterval();
+    clearAuthStorage();
+
+    if (typeof window !== 'undefined' && window.location.pathname.startsWith('/admin')) {
+      window.location.replace('/login');
+    }
+  };
+
+  const getTokenExpirationMs = (token: string): number | null => {
+    try {
+      const [, payload] = token.split('.');
+      if (!payload) return null;
+
+      const normalizedPayload = payload.replace(/-/g, '+').replace(/_/g, '/');
+      const paddedPayload = normalizedPayload.padEnd(Math.ceil(normalizedPayload.length / 4) * 4, '=');
+      const decodedPayload = JSON.parse(atob(paddedPayload));
+
+      if (typeof decodedPayload.exp !== 'number') {
+        return null;
+      }
+
+      return decodedPayload.exp * 1000;
+    } catch {
+      return null;
+    }
+  };
 
   useEffect(() => {
     // DEV MODE: Auto-login with admin user for development
@@ -111,42 +154,52 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    // PRODUCTION: Check for stored token on mount
-    const token = localStorage.getItem('auth_token');
-    const refreshToken = localStorage.getItem('refresh_token');
-    const storedUser = localStorage.getItem('auth_user');
-    
-    if (token && storedUser) {
+    // PRODUCTION: Validate stored auth on mount and always schedule refresh checks
+    const initializeAuth = async () => {
+      const token = localStorage.getItem('auth_token');
+      const storedUser = localStorage.getItem('auth_user');
+
+      if (!token || !storedUser) {
+        setLoading(false);
+        return;
+      }
+
       try {
         setUser(JSON.parse(storedUser));
-        // Set up automatic token refresh
-        if (refreshToken) {
-          setupTokenRefresh(refreshToken);
+        setupTokenRefresh();
+
+        const tokenExpirationMs = getTokenExpirationMs(token);
+        if (tokenExpirationMs && tokenExpirationMs - Date.now() <= TOKEN_REFRESH_ON_BOOT_THRESHOLD_MS) {
+          await refreshAccessToken();
         }
-      } catch (e) {
-        localStorage.removeItem('auth_token');
-        localStorage.removeItem('refresh_token');
-        localStorage.removeItem('auth_user');
+      } catch (error) {
+        console.error('Failed to restore auth session:', error);
+        clearAuthStorage();
+      } finally {
+        setLoading(false);
       }
-    }
-    
-    setLoading(false);
+    };
+
+    initializeAuth();
+
+    return () => {
+      clearRefreshInterval();
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const setupTokenRefresh = (refreshTokenValue: string) => {
+  const setupTokenRefresh = () => {
+    clearRefreshInterval();
+
     // Refresh token every 50 minutes (before 1h expiration)
-    const interval = setInterval(async () => {
+    refreshIntervalRef.current = setInterval(async () => {
       try {
         await refreshAccessToken();
       } catch (error) {
         console.error('Token refresh failed:', error);
-        clearInterval(interval);
-        logout();
+        clearSessionAndRedirectToLogin();
       }
-    }, 50 * 60 * 1000); // 50 minutes
-
-    // Cleanup on unmount
-    return () => clearInterval(interval);
+    }, TOKEN_REFRESH_INTERVAL_MS);
   };
 
   const refreshAccessToken = async () => {
@@ -155,23 +208,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     
     // In production, refresh token is in HttpOnly cookie
     // In development, get it from localStorage
-    const refreshTokenValue = isProduction 
-      ? 'cookie' // Placeholder - actual token is in HttpOnly cookie
+    const refreshTokenValue = isProduction
+      ? null
       : localStorage.getItem('refresh_token');
     
     if (!refreshTokenValue && !isProduction) {
       throw new Error('No refresh token available');
     }
 
+    const requestBody = isProduction ? {} : { refresh_token: refreshTokenValue };
+
     const response = await fetch(`${API_URL}/api/auth/refresh`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include', // Include cookies for HttpOnly tokens
-      body: JSON.stringify({ 
-        refresh_token: isProduction 
-          ? undefined // Don't send in body, it's in cookie
-          : refreshTokenValue 
-      }),
+      body: JSON.stringify(requestBody),
     });
 
     if (!response.ok) {
@@ -179,9 +230,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     const data = await response.json();
+    if (!data.access_token) {
+      throw new Error('Token refresh failed: missing access token');
+    }
     
     // Update access token
     localStorage.setItem('auth_token', data.access_token);
+    if (data.refresh_token && !isProduction) {
+      localStorage.setItem('refresh_token', data.refresh_token);
+    }
     if (data.user) {
       localStorage.setItem('auth_user', JSON.stringify(data.user));
       setUser(data.user);
@@ -245,19 +302,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     
     setUser(data.user);
     
-    // Set up automatic token refresh
-    if (data.refresh_token) {
-      // In production, refresh token is in HttpOnly cookie
-      if (!isProduction) {
-        localStorage.setItem('refresh_token', data.refresh_token);
-      }
-      setupTokenRefresh(data.refresh_token || 'cookie'); // Use 'cookie' as placeholder in production
-    }
+    // Always start refresh schedule (in production refresh token lives in HttpOnly cookie)
+    setupTokenRefresh();
   };
 
   const logout = async () => {
     // Clear cart when logging out
     clearCart();
+    clearRefreshInterval();
     
     const refreshToken = localStorage.getItem('refresh_token');
     
@@ -286,11 +338,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Set flag to prevent auto-login in dev mode
     sessionStorage.setItem('admin_logged_out', 'true');
     
-    // Clear local storage (but keep cookie settings - they are per user and should persist)
-    localStorage.removeItem('auth_token');
-    localStorage.removeItem('refresh_token');
-    localStorage.removeItem('auth_user');
-    setUser(null);
+    clearAuthStorage();
     
     // Redirect to login page immediately (use window.location for hard redirect)
     const currentPath = window.location.pathname;
@@ -382,13 +430,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     
     setUser(data.user);
     
-    // Set up automatic token refresh
-    if (data.refresh_token) {
-      if (!isProduction) {
-        localStorage.setItem('refresh_token', data.refresh_token);
-      }
-      setupTokenRefresh(data.refresh_token || 'cookie');
-    }
+    // Always start refresh schedule (in production refresh token lives in HttpOnly cookie)
+    setupTokenRefresh();
   };
 
   return (
@@ -418,4 +461,3 @@ export function useAuth() {
   }
   return context;
 }
-
