@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException, Inject, forwardRef, Logger } from '@nestjs/common';
+import { Injectable, BadRequestException, InternalServerErrorException, Inject, forwardRef, Logger } from '@nestjs/common';
 import { AdyenService } from './adyen.service';
 import { GopayService } from './gopay.service';
 import { WepayService } from './wepay.service';
@@ -35,28 +35,50 @@ export class PaymentsService {
       throw new BadRequestException('Order already processed');
     }
 
-    let paymentSession;
+    let paymentSession: any;
 
-    switch (tenant.paymentProvider) {
-      case 'adyen':
-        paymentSession = await this.adyenService.createPaymentSession(order, tenant);
-        break;
-      case 'gopay':
-        paymentSession = await this.gopayService.createPayment(order, tenant);
-        break;
-      case 'wepay':
-        paymentSession = await this.wepayService.createPayment(order, tenant);
-        break;
-      default:
-        throw new BadRequestException('Unsupported payment provider');
+    try {
+      switch (tenant.paymentProvider) {
+        case 'adyen':
+          paymentSession = await this.adyenService.createPaymentSession(order, tenant);
+          break;
+        case 'gopay':
+          paymentSession = await this.gopayService.createPayment(order, tenant);
+          break;
+        case 'wepay':
+          paymentSession = await this.wepayService.createPayment(order, tenant);
+          break;
+        default:
+          throw new BadRequestException('Unsupported payment provider');
+      }
+    } catch (error: any) {
+      const errorMessage = (error?.message || 'Unknown payment provider error').toString().replace(/\s+/g, ' ').trim();
+
+      this.logger.error(
+        `Payment session creation failed for order ${orderId} (tenant=${tenant.slug}, provider=${tenant.paymentProvider}): ${errorMessage}`,
+        error?.stack,
+      );
+
+      if (error instanceof BadRequestException) {
+        throw error;
+      }
+
+      // Return provider error to frontend so checkout does not hide the root cause.
+      throw new BadRequestException(`Payment gateway init failed: ${errorMessage}`);
     }
 
     // Store payment reference
-    await this.ordersService.updatePaymentRef(
-      orderId,
-      paymentSession.sessionId || paymentSession.paymentId,
-      'pending'
-    );
+    try {
+      await this.ordersService.updatePaymentRef(
+        orderId,
+        paymentSession.sessionId || paymentSession.paymentId,
+        'pending'
+      );
+    } catch (error: any) {
+      const errorMessage = (error?.message || 'Failed to save payment reference').toString();
+      this.logger.error(`Payment reference save failed for order ${orderId}: ${errorMessage}`, error?.stack);
+      throw new InternalServerErrorException(`Payment created but failed to persist payment reference: ${errorMessage}`);
+    }
 
     return paymentSession;
   }
