@@ -26,18 +26,25 @@ export class PaymentsService {
   ) {}
 
   async createPaymentSession(orderId: string) {
-    const order = await this.ordersService.getOrderById(orderId);
-    
-    // Get tenant by ID (we need to add this method to TenantsService or use existing one)
-    const tenant = await this.tenantsService.getTenantById(order.tenantId);
-
-    if (order.status !== OrderStatus.PENDING) {
-      throw new BadRequestException('Order already processed');
-    }
-
-    let paymentSession: any;
-
+    let tenantSlug = 'unknown';
     try {
+      const normalizedOrderId = (orderId || '').trim();
+      if (!normalizedOrderId) {
+        throw new BadRequestException('Missing orderId');
+      }
+
+      const order = await this.ordersService.getOrderById(normalizedOrderId);
+      
+      // Get tenant by ID (we need to add this method to TenantsService or use existing one)
+      const tenant = await this.tenantsService.getTenantById(order.tenantId);
+      tenantSlug = tenant.slug;
+
+      if (order.status !== OrderStatus.PENDING) {
+        throw new BadRequestException('Order already processed');
+      }
+
+      let paymentSession: any;
+
       switch (tenant.paymentProvider) {
         case 'adyen':
           paymentSession = await this.adyenService.createPaymentSession(order, tenant);
@@ -51,11 +58,18 @@ export class PaymentsService {
         default:
           throw new BadRequestException('Unsupported payment provider');
       }
+      await this.ordersService.updatePaymentRef(
+        normalizedOrderId,
+        paymentSession.sessionId || paymentSession.paymentId,
+        'pending'
+      );
+
+      return paymentSession;
     } catch (error: any) {
       const errorMessage = (error?.message || 'Unknown payment provider error').toString().replace(/\s+/g, ' ').trim();
 
       this.logger.error(
-        `Payment session creation failed for order ${orderId} (tenant=${tenant.slug}, provider=${tenant.paymentProvider}): ${errorMessage}`,
+        `Payment session creation failed for order ${orderId} (tenant=${tenantSlug}): ${errorMessage}`,
         error?.stack,
       );
 
@@ -63,24 +77,18 @@ export class PaymentsService {
         throw error;
       }
 
+      if (error instanceof InternalServerErrorException) {
+        const internalMessage = typeof error.getResponse === 'function' ? error.getResponse() : errorMessage;
+        const normalizedInternalMessage =
+          typeof internalMessage === 'string'
+            ? internalMessage
+            : (internalMessage as any)?.message || errorMessage;
+        throw new BadRequestException(`Payment session failed: ${normalizedInternalMessage}`);
+      }
+
       // Return provider error to frontend so checkout does not hide the root cause.
-      throw new BadRequestException(`Payment gateway init failed: ${errorMessage}`);
+      throw new BadRequestException(`Payment session failed: ${errorMessage}`);
     }
-
-    // Store payment reference
-    try {
-      await this.ordersService.updatePaymentRef(
-        orderId,
-        paymentSession.sessionId || paymentSession.paymentId,
-        'pending'
-      );
-    } catch (error: any) {
-      const errorMessage = (error?.message || 'Failed to save payment reference').toString();
-      this.logger.error(`Payment reference save failed for order ${orderId}: ${errorMessage}`, error?.stack);
-      throw new InternalServerErrorException(`Payment created but failed to persist payment reference: ${errorMessage}`);
-    }
-
-    return paymentSession;
   }
 
   async getGopayClientSecretForOrder(orderId: string): Promise<string | null> {

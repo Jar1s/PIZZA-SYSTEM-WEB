@@ -1,4 +1,4 @@
-import { Controller, Post, Body, HttpCode } from '@nestjs/common';
+import { Controller, Post, Body, HttpCode, BadRequestException } from '@nestjs/common';
 import { PaymentsService } from './payments.service';
 
 @Controller('payments')
@@ -8,10 +8,13 @@ export class PaymentsController {
   @Post('session')
   @HttpCode(200)
   async createSession(@Body() data: { orderId: string }) {
-    return this.paymentsService.createPaymentSession(data.orderId);
+    const orderId = (data?.orderId || '').trim();
+    if (!orderId) {
+      throw new BadRequestException('Missing orderId');
+    }
+    return this.paymentsService.createPaymentSession(orderId);
   }
 }
-
 
 
 
