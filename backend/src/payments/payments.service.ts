@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException, NotFoundException, Inject, forwardRef } from '@nestjs/common';
+import { Injectable, BadRequestException, Inject, forwardRef, Logger } from '@nestjs/common';
 import { AdyenService } from './adyen.service';
 import { GopayService } from './gopay.service';
 import { WepayService } from './wepay.service';
@@ -10,6 +10,8 @@ import { OrderStatus } from '@pizza-ecosystem/shared';
 
 @Injectable()
 export class PaymentsService {
+  private readonly logger = new Logger(PaymentsService.name);
+
   constructor(
     private adyenService: AdyenService,
     private gopayService: GopayService,
@@ -57,6 +59,20 @@ export class PaymentsService {
     );
 
     return paymentSession;
+  }
+
+  async getGopayClientSecretForOrder(orderId: string): Promise<string | null> {
+    try {
+      const order = await this.ordersService.getOrderById(orderId);
+      const tenant = await this.tenantsService.getTenantById(order.tenantId);
+      const paymentConfig = (tenant.paymentConfig || {}) as Record<string, any>;
+      const clientSecret = paymentConfig.clientSecret;
+
+      return typeof clientSecret === 'string' && clientSecret.trim() ? clientSecret : null;
+    } catch (error: any) {
+      this.logger.warn(`Unable to resolve tenant GoPay secret for order ${orderId}: ${error?.message || error}`);
+      return null;
+    }
   }
 
   async handleAdyenWebhook(notification: any, tenantId?: string) {
@@ -176,4 +192,3 @@ export class PaymentsService {
     );
   }
 }
-

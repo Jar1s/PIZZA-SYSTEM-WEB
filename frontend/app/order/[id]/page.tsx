@@ -46,6 +46,7 @@ export default function OrderTrackingPage() {
   const { t, language } = useLanguage();
   const orderId = params.id as string;
   const tenantSlug = searchParams.get('tenant') || 'pornopizza';
+  const paymentInitFailed = searchParams.get('paymentInitFailed') === '1';
   
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
@@ -313,6 +314,20 @@ export default function OrderTrackingPage() {
             )}
           </div>
         </motion.div>
+
+        {paymentInitFailed && (
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-6 rounded-2xl border border-amber-500/50 bg-amber-500/10 p-4"
+          >
+            <p className="text-sm font-semibold text-amber-300">
+              {language === 'sk'
+                ? 'Objednávka je vytvorená, ale nepodarilo sa otvoriť platobnú bránu. Skontroluj payment konfiguráciu tenanta.'
+                : 'Order was created, but payment gateway could not be opened. Check tenant payment configuration.'}
+            </p>
+          </motion.div>
+        )}
 
         {/* Status Timeline */}
         <motion.div

@@ -384,7 +384,21 @@ export async function createPaymentSession(orderId: string) {
     body: JSON.stringify({ orderId }),
   });
   
-  if (!res.ok) throw new Error('Failed to create payment');
+  if (!res.ok) {
+    let message = 'Failed to create payment';
+    const contentType = res.headers.get('content-type') || '';
+
+    if (contentType.includes('application/json')) {
+      const errorData = await res.json().catch(() => null);
+      if (errorData?.message) message = errorData.message;
+      if (errorData?.error) message = `${message}: ${errorData.error}`;
+    } else {
+      const errorText = await res.text().catch(() => '');
+      if (errorText) message = errorText;
+    }
+
+    throw new Error(message);
+  }
   return res.json();
 }
 

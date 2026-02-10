@@ -11,6 +11,15 @@ interface EditBrandModalProps {
   onUpdate: () => void;
 }
 
+type OnlinePaymentProvider = 'adyen' | 'gopay' | 'wepay';
+type SubCategoryLabelEntry = {
+  titleSk?: string;
+  titleEn?: string;
+  descSk?: string;
+  descEn?: string;
+  showDescription?: boolean;
+};
+
 export function EditBrandModal({ 
   tenant, 
   isOpen, 
@@ -49,6 +58,7 @@ export function EditBrandModal({
   const [gopayClientSecret, setGopayClientSecret] = useState('');
   const [gopayGoId, setGopayGoId] = useState('');
   const [gopayEnvironment, setGopayEnvironment] = useState('sandbox');
+  const [paymentProvider, setPaymentProvider] = useState<OnlinePaymentProvider>('gopay');
 
   // Wolt/Delivery settings
   const [woltApiKey, setWoltApiKey] = useState('');
@@ -90,6 +100,7 @@ export function EditBrandModal({
       const woltConfig = deliveryConfig.woltConfig || {};
       const pickupAddress = deliveryConfig.pickupAddress || {};
       const emailConfig = (tenant.emailConfig as any) || {};
+      const initialProvider = (tenant.paymentProvider || 'gopay') as string;
       
       setFormData({
         name: tenant.name || '',
@@ -102,6 +113,11 @@ export function EditBrandModal({
       setGopayClientSecret(paymentConfig.clientSecret || '');
       setGopayGoId(paymentConfig.goId || '');
       setGopayEnvironment(paymentConfig.environment || 'sandbox');
+      setPaymentProvider(
+        initialProvider === 'adyen' || initialProvider === 'wepay' || initialProvider === 'gopay'
+          ? initialProvider
+          : 'gopay'
+      );
 
       setThemeColors({
         primaryColor: theme.primaryColor || '#E91E63',
@@ -304,6 +320,7 @@ export function EditBrandModal({
       
       const updateData: any = {
         isActive: formData.isActive,
+        paymentProvider,
         paymentConfig: paymentConfig,
       };
       const hasEmailConfig =
@@ -661,7 +678,7 @@ export function EditBrandModal({
                     { key: 'drinks', label: '🥤 Nápoje' },
                     { key: 'desserts', label: '🍰 Dezerty' },
                   ].map((item) => {
-                    const current = subCategoryLabels[item.key as keyof typeof subCategoryLabels] || {};
+                    const current: SubCategoryLabelEntry = subCategoryLabels[item.key as keyof typeof subCategoryLabels] || {};
                     return (
                       <div
                         key={item.key}
@@ -804,6 +821,24 @@ export function EditBrandModal({
                   </p>
                   
                   <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Online Payment Provider
+                      </label>
+                      <select
+                        value={paymentProvider}
+                        onChange={(e) => setPaymentProvider(e.target.value as OnlinePaymentProvider)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                      >
+                        <option value="gopay">GoPay</option>
+                        <option value="adyen">Adyen</option>
+                        <option value="wepay">WePay</option>
+                      </select>
+                      <p className="mt-1 text-xs text-gray-500">
+                        Vyber poskytovateľa online platby pre tento brand.
+                      </p>
+                    </div>
+
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
                         GoPay Client ID

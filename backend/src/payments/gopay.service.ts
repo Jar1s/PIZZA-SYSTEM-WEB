@@ -6,6 +6,34 @@ import * as crypto from 'crypto';
 export class GopayService {
   private readonly logger = new Logger(GopayService.name);
 
+  private getTenantFrontendBaseUrl(tenant: Tenant): string {
+    const rawDomain = (tenant.domain || '').trim();
+    if (rawDomain) {
+      if (/^https?:\/\//i.test(rawDomain)) {
+        return rawDomain.replace(/\/+$/, '');
+      }
+      return `https://${rawDomain}`.replace(/\/+$/, '');
+    }
+
+    const rawSubdomain = (tenant.subdomain || '').trim();
+    if (rawSubdomain) {
+      return `http://${rawSubdomain}.localhost:3001`;
+    }
+
+    return 'http://localhost:3001';
+  }
+
+  private getBackendBaseUrl(): string {
+    const rawBackendUrl = (process.env.BACKEND_URL || '').trim();
+    if (!rawBackendUrl) {
+      return 'http://localhost:3000';
+    }
+    if (/^https?:\/\//i.test(rawBackendUrl)) {
+      return rawBackendUrl.replace(/\/+$/, '');
+    }
+    return `https://${rawBackendUrl}`.replace(/\/+$/, '');
+  }
+
   async createPayment(order: Order, tenant: Tenant) {
     // GoPay REST API integration
     // https://doc.gopay.com/
@@ -15,12 +43,11 @@ export class GopayService {
     if (process.env.NODE_ENV === 'development' || !gopayConfig?.clientId) {
       // Development/Mock mode
       this.logger.warn('⚠️  GoPay in DEV mode - using mock redirect URL');
-      
-      const tenantDomain = tenant.domain || `${tenant.subdomain}.localhost:3001`;
+      const tenantBaseUrl = this.getTenantFrontendBaseUrl(tenant);
       
       return {
         paymentId: 'gopay_' + order.id,
-        redirectUrl: `http://${tenantDomain}/checkout/mock-payment?orderId=${order.id}&provider=gopay`,
+        redirectUrl: `${tenantBaseUrl}/checkout/mock-payment?orderId=${order.id}&provider=gopay`,
       };
     }
     
@@ -81,6 +108,9 @@ export class GopayService {
       if (tenantCurrency !== currency) {
         this.logger.warn(`GoPay: Unsupported currency ${tenantCurrency}, using EUR instead`);
       }
+
+      const frontendBaseUrl = this.getTenantFrontendBaseUrl(tenant);
+      const backendBaseUrl = this.getBackendBaseUrl();
       
       const paymentResponse = await fetch(`${apiUrl}/api/payments/payment`, {
         method: 'POST',
@@ -102,8 +132,8 @@ export class GopayService {
             count: item.quantity,
           })),
           callback: {
-            return_url: `${tenant.domain || `http://${tenant.subdomain}.localhost:3001`}/checkout/return?provider=gopay`,
-            notification_url: `${process.env.BACKEND_URL || 'http://localhost:3000'}/api/webhooks/gopay`,
+            return_url: `${frontendBaseUrl}/checkout/return?provider=gopay`,
+            notification_url: `${backendBaseUrl}/api/webhooks/gopay`,
           },
         }),
       });
@@ -332,7 +362,6 @@ export class GopayService {
     }
   }
 }
-
 
 
 
