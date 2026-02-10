@@ -46,6 +46,7 @@ export default function OrderTrackingPage() {
   const { t, language } = useLanguage();
   const orderId = params.id as string;
   const tenantSlug = searchParams.get('tenant') || 'pornopizza';
+  const paymentInitFailed = searchParams.get('paymentInitFailed') === '1';
   
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
@@ -313,6 +314,17 @@ export default function OrderTrackingPage() {
             )}
           </div>
         </motion.div>
+
+        {paymentInitFailed && (
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-6 rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-amber-100"
+          >
+            Platobna brana sa nepodarila otvorit. Objednavka je vytvorena, ale platba neprebehla.
+            Skontroluj nastavenie payment provideru a GoPay credentials v admin paneli.
+          </motion.div>
+        )}
 
         {/* Status Timeline */}
         <motion.div

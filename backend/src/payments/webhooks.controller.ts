@@ -1,4 +1,4 @@
-import { Controller, Post, Body, Headers, Req, Res, HttpCode, UnauthorizedException, Logger } from '@nestjs/common';
+import { Controller, Post, Body, Headers, Req, Res, HttpCode, Logger } from '@nestjs/common';
 import { Request, Response } from 'express';
 import { PaymentsService } from './payments.service';
 import { AdyenService } from './adyen.service';
@@ -6,6 +6,8 @@ import { GopayService } from './gopay.service';
 import { WepayService } from './wepay.service';
 import { appConfig } from '../config/app.config';
 import { Public } from '../auth/decorators/public.decorator';
+import { OrdersService } from '../orders/orders.service';
+import { TenantsService } from '../tenants/tenants.service';
 
 @Controller('webhooks')
 export class WebhooksController {
@@ -16,6 +18,8 @@ export class WebhooksController {
     private adyenService: AdyenService,
     private gopayService: GopayService,
     private wepayService: WepayService,
+    private ordersService: OrdersService,
+    private tenantsService: TenantsService,
   ) {}
 
   @Public()
@@ -95,8 +99,11 @@ export class WebhooksController {
       return res.status(401).send('Missing signature');
     }
     
-    // Get client secret from env (GoPay uses client secret for webhook verification)
-    const clientSecret = process.env.GOPAY_CLIENT_SECRET;
+    const tenantClientSecret = await this.getGopayClientSecretForWebhook(body);
+    const clientSecret = tenantClientSecret || process.env.GOPAY_CLIENT_SECRET;
+    if (!tenantClientSecret && process.env.GOPAY_CLIENT_SECRET) {
+      this.logger.warn('GoPay webhook secret fallback: using global GOPAY_CLIENT_SECRET because tenant secret was not resolved');
+    }
     
     // Use raw body as string for signature verification
     const rawBodyString = rawBody.toString('utf8');
@@ -206,9 +213,49 @@ export class WebhooksController {
     // All other errors are considered fatal (invalid data, validation, etc.)
     return false;
   }
+
+  private async getGopayClientSecretForWebhook(body: any): Promise<string | undefined> {
+    try {
+      const orderId = body?.order_number ? String(body.order_number).trim() : '';
+      if (orderId) {
+        const order = await this.ordersService.getOrderById(orderId);
+        if (order?.tenantId) {
+          const tenant = await this.tenantsService.getTenantById(order.tenantId);
+          const tenantPaymentConfig = (tenant.paymentConfig as any) || {};
+          const tenantClientSecret = typeof tenantPaymentConfig.clientSecret === 'string'
+            ? tenantPaymentConfig.clientSecret.trim()
+            : '';
+          if (tenantClientSecret) {
+            return tenantClientSecret;
+          }
+        }
+      }
+    } catch (error) {
+      this.logger.warn(`GoPay webhook: unable to resolve tenant secret by order_number (${body?.order_number})`);
+    }
+
+    try {
+      const paymentRef = body?.id ? String(body.id).trim() : '';
+      if (paymentRef) {
+        const order = await this.ordersService.getOrderByPaymentRef(paymentRef);
+        if (order?.tenantId) {
+          const tenant = await this.tenantsService.getTenantById(order.tenantId);
+          const tenantPaymentConfig = (tenant.paymentConfig as any) || {};
+          const tenantClientSecret = typeof tenantPaymentConfig.clientSecret === 'string'
+            ? tenantPaymentConfig.clientSecret.trim()
+            : '';
+          if (tenantClientSecret) {
+            return tenantClientSecret;
+          }
+        }
+      }
+    } catch (error) {
+      this.logger.warn(`GoPay webhook: unable to resolve tenant secret by payment id (${body?.id})`);
+    }
+
+    return undefined;
+  }
 }
-
-
 
 
 

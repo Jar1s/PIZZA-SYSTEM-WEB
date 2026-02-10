@@ -1,7 +1,7 @@
 'use client';
-
 import { useState, useEffect } from 'react';
 import { Tenant } from '@pizza-ecosystem/shared';
+import type { SubCategoryLabels } from '@/shared/types/tenant.types';
 import { updateTenant } from '@/lib/api';
 
 interface EditBrandModalProps {
@@ -27,6 +27,10 @@ export function EditBrandModal({
     primaryColor: '#E91E63',
     secondaryColor: '#0F141A',
   });
+  const [logoUrl, setLogoUrl] = useState('');
+  const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [subCategoryLabels, setSubCategoryLabels] = useState<SubCategoryLabels>({});
   const [cashEnabled, setCashEnabled] = useState(false);
   const [cardEnabled, setCardEnabled] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -39,18 +43,9 @@ export function EditBrandModal({
     redirectUri: '',
     enabled: false,
   });
-  const [subCategoryLabels, setSubCategoryLabels] = useState({
-    foreplay: { titleSk: '', titleEn: '', descSk: '', descEn: '' },
-    mainAction: { titleSk: '', titleEn: '', descSk: '', descEn: '' },
-    deluxeFetish: { titleSk: '', titleEn: '', descSk: '', descEn: '' },
-    premiumSins: { titleSk: '', titleEn: '', descSk: '', descEn: '' },
-    stangle: { titleSk: '', titleEn: '', descSk: '', descEn: '' },
-    soups: { titleSk: '', titleEn: '', descSk: '', descEn: '' },
-    drinks: { titleSk: '', titleEn: '', descSk: '', descEn: '' },
-    desserts: { titleSk: '', titleEn: '', descSk: '', descEn: '' },
-  });
   
   // GoPay settings
+  const [paymentProvider, setPaymentProvider] = useState<'adyen' | 'gopay' | 'gpwebpay' | 'wepay'>('adyen');
   const [gopayClientId, setGopayClientId] = useState('');
   const [gopayClientSecret, setGopayClientSecret] = useState('');
   const [gopayGoId, setGopayGoId] = useState('');
@@ -66,6 +61,14 @@ export function EditBrandModal({
   const [pickupLng, setPickupLng] = useState('');
   const [pickupPhone, setPickupPhone] = useState('');
   const [pickupInstructions, setPickupInstructions] = useState('');
+
+  // Email / SMTP settings
+  const [fromEmail, setFromEmail] = useState('');
+  const [smtpHost, setSmtpHost] = useState('');
+  const [smtpPort, setSmtpPort] = useState('587');
+  const [smtpUser, setSmtpUser] = useState('');
+  const [smtpPassword, setSmtpPassword] = useState('');
+  const [smtpSecure, setSmtpSecure] = useState(false);
 
   // Analytics & Tracking settings
   const [analyticsConfig, setAnalyticsConfig] = useState({
@@ -87,6 +90,7 @@ export function EditBrandModal({
       const deliveryConfig = (tenant.deliveryConfig as any) || {};
       const woltConfig = deliveryConfig.woltConfig || {};
       const pickupAddress = deliveryConfig.pickupAddress || {};
+      const emailConfig = (tenant.emailConfig as any) || {};
       
       setFormData({
         name: tenant.name || '',
@@ -94,6 +98,7 @@ export function EditBrandModal({
         domain: tenant.domain || '',
         isActive: tenant.isActive !== undefined ? tenant.isActive : true,
       });
+      setPaymentProvider((tenant.paymentProvider as any) || 'adyen');
       // Load GoPay settings
       setGopayClientId(paymentConfig.clientId || '');
       setGopayClientSecret(paymentConfig.clientSecret || '');
@@ -104,6 +109,10 @@ export function EditBrandModal({
         primaryColor: theme.primaryColor || '#E91E63',
         secondaryColor: theme.secondaryColor || '#0F141A',
       });
+      const initialLogo = theme.logo || tenant.logo || '';
+      setLogoUrl(initialLogo || '');
+      setLogoPreview(initialLogo || null);
+      setLogoFile(null);
       setFaviconUrl(theme.favicon || '');
       setCashEnabled(paymentConfig.cashOnDeliveryEnabled === true);
       setCardEnabled(paymentConfig.cardOnDeliveryEnabled === true);
@@ -114,57 +123,7 @@ export function EditBrandModal({
         redirectUri: oauthConfig.redirectUri || '',
         enabled: oauthConfig.enabled || false,
       });
-      const subLabels = theme.subCategoryLabels || {};
-      setSubCategoryLabels({
-        foreplay: {
-          titleSk: subLabels.foreplay?.titleSk || '',
-          titleEn: subLabels.foreplay?.titleEn || '',
-          descSk: subLabels.foreplay?.descSk || '',
-          descEn: subLabels.foreplay?.descEn || '',
-        },
-        mainAction: {
-          titleSk: subLabels.mainAction?.titleSk || '',
-          titleEn: subLabels.mainAction?.titleEn || '',
-          descSk: subLabels.mainAction?.descSk || '',
-          descEn: subLabels.mainAction?.descEn || '',
-        },
-        deluxeFetish: {
-          titleSk: subLabels.deluxeFetish?.titleSk || '',
-          titleEn: subLabels.deluxeFetish?.titleEn || '',
-          descSk: subLabels.deluxeFetish?.descSk || '',
-          descEn: subLabels.deluxeFetish?.descEn || '',
-        },
-        premiumSins: {
-          titleSk: subLabels.premiumSins?.titleSk || '',
-          titleEn: subLabels.premiumSins?.titleEn || '',
-          descSk: subLabels.premiumSins?.descSk || '',
-          descEn: subLabels.premiumSins?.descEn || '',
-        },
-        stangle: {
-          titleSk: subLabels.stangle?.titleSk || '',
-          titleEn: subLabels.stangle?.titleEn || '',
-          descSk: subLabels.stangle?.descSk || '',
-          descEn: subLabels.stangle?.descEn || '',
-        },
-        soups: {
-          titleSk: subLabels.soups?.titleSk || '',
-          titleEn: subLabels.soups?.titleEn || '',
-          descSk: subLabels.soups?.descSk || '',
-          descEn: subLabels.soups?.descEn || '',
-        },
-        drinks: {
-          titleSk: subLabels.drinks?.titleSk || '',
-          titleEn: subLabels.drinks?.titleEn || '',
-          descSk: subLabels.drinks?.descSk || '',
-          descEn: subLabels.drinks?.descEn || '',
-        },
-        desserts: {
-          titleSk: subLabels.desserts?.titleSk || '',
-          titleEn: subLabels.desserts?.titleEn || '',
-          descSk: subLabels.desserts?.descSk || '',
-          descEn: subLabels.desserts?.descEn || '',
-        },
-      });
+      setSubCategoryLabels(theme.subCategoryLabels || {});
       
       // Load Wolt/Delivery settings
       setWoltApiKey(woltConfig.apiKey || '');
@@ -176,6 +135,18 @@ export function EditBrandModal({
       setPickupLng(pickupAddress.coordinates?.lng?.toString() || '');
       setPickupPhone(pickupAddress.phone || '');
       setPickupInstructions(pickupAddress.instructions || '');
+      // Email / SMTP
+      setFromEmail(emailConfig.fromEmail || '');
+      setSmtpHost(emailConfig.smtpHost || emailConfig.host || '');
+      setSmtpPort(emailConfig.smtpPort?.toString() || emailConfig.port?.toString() || '587');
+      setSmtpUser(emailConfig.smtpUser || emailConfig.user || '');
+      setSmtpPassword(''); // never prefill passwords
+      setSmtpSecure(
+        emailConfig.smtpSecure === true ||
+        emailConfig.smtpSecure === 'true' ||
+        emailConfig.secure === true ||
+        emailConfig.secure === 'true'
+      );
       
       // Load analytics config
       const analytics = theme.analyticsConfig || {};
@@ -208,12 +179,76 @@ export function EditBrandModal({
 
   if (!isOpen || !tenant) return null;
 
+  const updateSubCategoryField = (
+    key: keyof SubCategoryLabels,
+    field: 'titleSk' | 'titleEn' | 'descSk' | 'descEn' | 'showDescription',
+    value: string | boolean,
+  ) => {
+    setSubCategoryLabels((prev) => ({
+      ...prev,
+      [key]: {
+        ...(prev[key] || {}),
+        [field]: value,
+      },
+    }));
+  };
+
+  const handleLogoFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setLogoFile(file);
+    setError(null);
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setLogoPreview(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const uploadLogoImage = async (file: File): Promise<string> => {
+    const formData = new FormData();
+    formData.append('image', file);
+
+    const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
+    const headers: HeadersInit = {};
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+    const res = await fetch(`${API_URL}/api/upload/image`, {
+      method: 'POST',
+      headers,
+      body: formData,
+    });
+
+    if (!res.ok) {
+      if (res.status === 401) {
+        throw new Error('Unauthorized - Please log in again');
+      }
+      const error = await res.json().catch(() => ({ message: 'Failed to upload image' }));
+      throw new Error(error.message || 'Failed to upload image');
+    }
+
+    const data = await res.json();
+    return data.url;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
 
     try {
+      let resolvedLogoUrl = logoUrl.trim();
+
+      // Upload logo if a new file is selected
+      if (logoFile) {
+        resolvedLogoUrl = await uploadLogoImage(logoFile);
+      }
+
       // Get existing paymentConfig to preserve other properties
       const existingPaymentConfig = (tenant.paymentConfig as any) || {};
       const existingDeliveryConfig = (tenant.deliveryConfig as any) || {};
@@ -271,8 +306,27 @@ export function EditBrandModal({
       
       const updateData: any = {
         isActive: formData.isActive,
+        paymentProvider: paymentProvider,
         paymentConfig: paymentConfig,
       };
+      const hasEmailConfig =
+        fromEmail.trim() ||
+        smtpHost.trim() ||
+        smtpPort.trim() ||
+        smtpUser.trim() ||
+        smtpPassword.trim() ||
+        smtpSecure;
+
+      if (hasEmailConfig) {
+        updateData.emailConfig = {
+          fromEmail: fromEmail.trim() || undefined,
+          smtpHost: smtpHost.trim() || undefined,
+          smtpPort: smtpPort.trim() ? parseInt(smtpPort, 10) : undefined,
+          smtpUser: smtpUser.trim() || undefined,
+          smtpPassword: smtpPassword.trim() || undefined,
+          smtpSecure,
+        };
+      }
       
       // Only include deliveryConfig if it has content
       if (Object.keys(deliveryConfig).length > 0 || Object.keys(existingDeliveryConfig).length > 0) {
@@ -281,10 +335,12 @@ export function EditBrandModal({
       
       // Update theme with analytics config
       const existingTheme = (tenant.theme as any) || {};
+      const finalLogo = resolvedLogoUrl || existingTheme.logo || tenant.logo;
       const updatedTheme: any = {
         ...existingTheme,
-        primaryColor: themeColors.primaryColor.trim() || existingTheme.primaryColor,
-        secondaryColor: themeColors.secondaryColor.trim() || existingTheme.secondaryColor,
+        primaryColor: themeColors.primaryColor,
+        secondaryColor: themeColors.secondaryColor,
+        logo: finalLogo,
         favicon: faviconUrl.trim() || existingTheme.favicon || '/favicon.ico',
         subCategoryLabels,
         analyticsConfig: {
@@ -322,6 +378,9 @@ export function EditBrandModal({
       });
       if (!updatedTheme.googleOAuthConfig) {
         delete updatedTheme.googleOAuthConfig;
+      }
+      if (!finalLogo) {
+        delete updatedTheme.logo;
       }
       
       updateData.theme = updatedTheme;
@@ -419,231 +478,247 @@ export function EditBrandModal({
                     Theme Colors
                   </label>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-3 border border-gray-200 rounded-md p-3">
                       <input
                         type="color"
                         value={themeColors.primaryColor}
                         onChange={(e) => setThemeColors({ ...themeColors, primaryColor: e.target.value })}
-                        className="h-10 w-12 rounded border border-gray-200"
+                        className="w-12 h-12 rounded-md border border-gray-300 cursor-pointer"
                         aria-label="Primary color"
                       />
-                      <input
-                        type="text"
-                        value={themeColors.primaryColor}
-                        onChange={(e) => setThemeColors({ ...themeColors, primaryColor: e.target.value })}
-                        className="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500"
-                        placeholder="#E91E63"
-                      />
+                      <div className="flex-1">
+                        <div className="text-xs text-gray-500">Primary</div>
+                        <input
+                          type="text"
+                          value={themeColors.primaryColor}
+                          onChange={(e) => setThemeColors({ ...themeColors, primaryColor: e.target.value })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm"
+                        />
+                      </div>
                     </div>
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-3 border border-gray-200 rounded-md p-3">
                       <input
                         type="color"
                         value={themeColors.secondaryColor}
                         onChange={(e) => setThemeColors({ ...themeColors, secondaryColor: e.target.value })}
-                        className="h-10 w-12 rounded border border-gray-200"
+                        className="w-12 h-12 rounded-md border border-gray-300 cursor-pointer"
                         aria-label="Secondary color"
                       />
-                      <input
-                        type="text"
-                        value={themeColors.secondaryColor}
-                        onChange={(e) => setThemeColors({ ...themeColors, secondaryColor: e.target.value })}
-                        className="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500"
-                        placeholder="#0F141A"
-                      />
+                      <div className="flex-1">
+                        <div className="text-xs text-gray-500">Secondary</div>
+                        <input
+                          type="text"
+                          value={themeColors.secondaryColor}
+                          onChange={(e) => setThemeColors({ ...themeColors, secondaryColor: e.target.value })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm"
+                        />
+                      </div>
                     </div>
                   </div>
                 </div>
 
-                {/* Pizza Sub-category Labels */}
-                <div className="border-t pt-4 mt-4">
-                  <h4 className="text-md font-semibold mb-3 text-gray-900">
-                    🍕 Názvy sekcií pizze
-                  </h4>
-                  <p className="text-sm text-gray-600 mb-4">
-                    Uprav názvy a popisy podkategórií (Predohra, Hlavná akcia, Deluxe Fetish, Premium Sins) pre tento tenant. Nechané prázdne = použije sa predvolený preklad.
-                  </p>
-                  {([
-                    { key: 'foreplay', label: 'Predohra' },
-                    { key: 'mainAction', label: 'Hlavná akcia' },
-                    { key: 'deluxeFetish', label: 'Deluxe Fetish' },
-                    { key: 'premiumSins', label: 'Premium Sins' },
-                  ] as const).map(({ key, label }) => (
-                    <div key={key} className="mb-4 p-3 border border-gray-200 rounded-md space-y-2">
-                      <div className="text-sm font-semibold text-gray-800">{label}</div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                        <input
-                          type="text"
-                          placeholder="Názov (SK)"
-                          value={subCategoryLabels[key].titleSk}
-                          onChange={(e) => setSubCategoryLabels({
-                            ...subCategoryLabels,
-                            [key]: { ...subCategoryLabels[key], titleSk: e.target.value },
-                          })}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500"
-                        />
-                        <input
-                          type="text"
-                          placeholder="Name (EN)"
-                          value={subCategoryLabels[key].titleEn}
-                          onChange={(e) => setSubCategoryLabels({
-                            ...subCategoryLabels,
-                            [key]: { ...subCategoryLabels[key], titleEn: e.target.value },
-                          })}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500"
-                        />
-                        <input
-                          type="text"
-                          placeholder="Popis (SK)"
-                          value={subCategoryLabels[key].descSk}
-                          onChange={(e) => setSubCategoryLabels({
-                            ...subCategoryLabels,
-                            [key]: { ...subCategoryLabels[key], descSk: e.target.value },
-                          })}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500 sm:col-span-2"
-                        />
-                        <input
-                          type="text"
-                          placeholder="Description (EN)"
-                          value={subCategoryLabels[key].descEn}
-                          onChange={(e) => setSubCategoryLabels({
-                            ...subCategoryLabels,
-                            [key]: { ...subCategoryLabels[key], descEn: e.target.value },
-                          })}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500 sm:col-span-2"
-                        />
-                      </div>
+                {/* Logo */}
+                <div className="border border-gray-200 rounded-md p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <div>
+                      <h4 className="text-sm font-semibold text-gray-900">Logo</h4>
+                      <p className="text-xs text-gray-500">Nahraj alebo vlož URL loga pre tento brand.</p>
                     </div>
-                  ))}
-                </div>
-
-                {/* Other Category Labels */}
-                <div className="border-t pt-4 mt-4">
-                  <h4 className="text-md font-semibold mb-3 text-gray-900">
-                    📂 Názvy sekcií ostatných kategórií
-                  </h4>
-                  <p className="text-sm text-gray-600 mb-4">
-                    Uprav názvy a popisy pre Štangle, Polievky, Nápoje a Dezerty pre tento tenant.
-                  </p>
-                  {([
-                    { key: 'stangle', label: 'Štangle & Posúch' },
-                    { key: 'soups', label: 'Polievky' },
-                    { key: 'drinks', label: 'Nápoje' },
-                    { key: 'desserts', label: 'Dezerty' },
-                  ] as const).map(({ key, label }) => (
-                    <div key={key} className="mb-4 p-3 border border-gray-200 rounded-md space-y-2">
-                      <div className="text-sm font-semibold text-gray-800">{label}</div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                        <input
-                          type="text"
-                          placeholder="Názov (SK)"
-                          value={subCategoryLabels[key].titleSk}
-                          onChange={(e) => setSubCategoryLabels({
-                            ...subCategoryLabels,
-                            [key]: { ...subCategoryLabels[key], titleSk: e.target.value },
-                          })}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500"
+                    {logoPreview && (
+                      <div className="h-12 w-28 bg-gray-50 border border-gray-200 rounded-md flex items-center justify-center px-2">
+                        <img
+                          src={logoPreview}
+                          alt={`${formData.name} logo`}
+                          className="max-h-10 w-full object-contain"
                         />
-                        <input
-                          type="text"
-                          placeholder="Name (EN)"
-                          value={subCategoryLabels[key].titleEn}
-                          onChange={(e) => setSubCategoryLabels({
-                            ...subCategoryLabels,
-                            [key]: { ...subCategoryLabels[key], titleEn: e.target.value },
-                          })}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500"
-                        />
-                        <input
-                          type="text"
-                          placeholder="Popis (SK)"
-                          value={subCategoryLabels[key].descSk}
-                          onChange={(e) => setSubCategoryLabels({
-                            ...subCategoryLabels,
-                            [key]: { ...subCategoryLabels[key], descSk: e.target.value },
-                          })}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500 sm:col-span-2"
-                        />
-                        <input
-                          type="text"
-                          placeholder="Description (EN)"
-                          value={subCategoryLabels[key].descEn}
-                          onChange={(e) => setSubCategoryLabels({
-                            ...subCategoryLabels,
-                            [key]: { ...subCategoryLabels[key], descEn: e.target.value },
-                          })}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500 sm:col-span-2"
-                        />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Google OAuth Settings */}
-                <div className="border-t pt-4 mt-4">
-                  <h4 className="text-md font-semibold mb-3 text-gray-900 flex items-center gap-2">
-                    <span role="img" aria-label="lock">🔐</span> Google OAuth
-                  </h4>
-                  <p className="text-sm text-gray-600 mb-4">
-                    Nastav prihlásenie cez Google pre tento tenant. Každý tenant môže mať vlastné Client ID / Secret / Redirect URI.
-                  </p>
-                  <div className="p-3 border border-gray-200 rounded-md space-y-3">
-                    <div className="flex items-center justify-between">
-                      <label className="text-sm font-medium text-gray-700">
-                        Google OAuth povolené
-                      </label>
-                      <button
-                        type="button"
-                        onClick={() => setGoogleOAuthConfig({ ...googleOAuthConfig, enabled: !googleOAuthConfig.enabled })}
-                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                          googleOAuthConfig.enabled ? 'bg-green-600' : 'bg-gray-300'
-                        }`}
-                      >
-                        <span
-                          className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                            googleOAuthConfig.enabled ? 'translate-x-6' : 'translate-x-1'
-                          }`}
-                        />
-                      </button>
-                    </div>
-
-                    {googleOAuthConfig.enabled && (
-                      <div className="space-y-3">
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Client ID</label>
-                          <input
-                            type="text"
-                            value={googleOAuthConfig.clientId}
-                            onChange={(e) => setGoogleOAuthConfig({ ...googleOAuthConfig, clientId: e.target.value })}
-                            placeholder="Google OAuth Client ID"
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Client Secret</label>
-                          <input
-                            type="password"
-                            value={googleOAuthConfig.clientSecret}
-                            onChange={(e) => setGoogleOAuthConfig({ ...googleOAuthConfig, clientSecret: e.target.value })}
-                            placeholder="Google OAuth Client Secret"
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Redirect URI</label>
-                          <input
-                            type="text"
-                            value={googleOAuthConfig.redirectUri}
-                            onChange={(e) => setGoogleOAuthConfig({ ...googleOAuthConfig, redirectUri: e.target.value })}
-                            placeholder="https://your-domain.com/api/auth/google/callback"
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm"
-                          />
-                          <p className="text-xs text-gray-500 mt-1">
-                            Zadaj rovnakú URL aj v Google Cloud Console pre tento tenant.
-                          </p>
-                        </div>
                       </div>
                     )}
                   </div>
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Logo URL
+                      </label>
+                      <input
+                        type="url"
+                        value={logoUrl}
+                        onChange={(e) => {
+                          setLogoUrl(e.target.value);
+                          if (!logoFile) {
+                            setLogoPreview(e.target.value || null);
+                          }
+                        }}
+                        placeholder="https://example.com/logo.png"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">
+                        Môžeš prilepiť priamy odkaz na PNG/JPG/WEBP.
+                      </p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Alebo nahraj súbor
+                      </label>
+                      <div className="flex flex-wrap items-center gap-3">
+                        <label className="px-4 py-2 bg-white border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 cursor-pointer">
+                          Vybrať súbor
+                          <input
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={handleLogoFileChange}
+                          />
+                        </label>
+                        {logoFile ? (
+                          <span className="text-sm text-gray-700 truncate max-w-[200px]">
+                            {logoFile.name}
+                          </span>
+                        ) : (
+                          <span className="text-xs text-gray-500">
+                            Prilož logo, uloží sa k tenantovi.
+                          </span>
+                        )}
+                        {logoFile && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const fallbackLogo = (tenant.theme as any)?.logo || tenant.logo || null;
+                              setLogoFile(null);
+                              setLogoPreview(logoUrl || fallbackLogo);
+                            }}
+                            className="text-xs text-gray-600 underline"
+                          >
+                            Zrušiť výber
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Google OAuth */}
+                <div className="border border-gray-200 rounded-md p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <div>
+                      <h4 className="text-sm font-semibold text-gray-900">Google OAuth</h4>
+                      <p className="text-xs text-gray-500">Nastav pre každý tenant vlastné OAuth credentials.</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setGoogleOAuthConfig({ ...googleOAuthConfig, enabled: !googleOAuthConfig.enabled })}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${googleOAuthConfig.enabled ? 'bg-green-600' : 'bg-gray-300'}`}
+                    >
+                      <span
+                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${googleOAuthConfig.enabled ? 'translate-x-6' : 'translate-x-1'}`}
+                      />
+                    </button>
+                  </div>
+                  {googleOAuthConfig.enabled && (
+                    <div className="space-y-3">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Client ID</label>
+                        <input
+                          type="text"
+                          value={googleOAuthConfig.clientId}
+                          onChange={(e) => setGoogleOAuthConfig({ ...googleOAuthConfig, clientId: e.target.value })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Client Secret</label>
+                        <input
+                          type="password"
+                          value={googleOAuthConfig.clientSecret}
+                          onChange={(e) => setGoogleOAuthConfig({ ...googleOAuthConfig, clientSecret: e.target.value })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Redirect URI</label>
+                        <input
+                          type="text"
+                          value={googleOAuthConfig.redirectUri}
+                          onChange={(e) => setGoogleOAuthConfig({ ...googleOAuthConfig, redirectUri: e.target.value })}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                          placeholder="https://your-domain.sk/api/auth/google/callback"
+                        />
+                        <p className="text-xs text-gray-500 mt-1">Použi doménu konkrétneho tenanta.</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Texty podkategórií */}
+                <div className="border border-gray-200 rounded-md p-4 space-y-3">
+                  <h4 className="text-md font-semibold text-gray-900">Texty podkategórií</h4>
+                  <p className="text-xs text-gray-500">
+                    Uprav názvy a popisy sekcií pre každý tenant (SK/EN).
+                  </p>
+                  {[
+                    { key: 'foreplay', label: '🔥 Predohra' },
+                    { key: 'mainAction', label: '😈 Hlavné číslo' },
+                    { key: 'deluxeFetish', label: '💎 Deluxe / Fetish' },
+                    { key: 'premiumSins', label: '⭐ Premium hriechy' },
+                    { key: 'stangle', label: '🥖 Štangle & Posúch' },
+                    { key: 'soups', label: '🍲 Polievky' },
+                    { key: 'drinks', label: '🥤 Nápoje' },
+                    { key: 'desserts', label: '🍰 Dezerty' },
+                  ].map((item) => {
+                    const current = subCategoryLabels[item.key as keyof typeof subCategoryLabels] || {};
+                    return (
+                      <div
+                        key={item.key}
+                        className="grid grid-cols-1 sm:grid-cols-2 gap-3 border border-gray-100 rounded-md p-3"
+                      >
+                        <div className="sm:col-span-2 text-sm font-medium text-gray-800">{item.label}</div>
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-600 mb-1">Názov (SK)</label>
+                          <input
+                            type="text"
+                            value={current.titleSk || ''}
+                            onChange={(e) => updateSubCategoryField(item.key as any, 'titleSk', e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-600 mb-1">Názov (EN)</label>
+                          <input
+                            type="text"
+                            value={current.titleEn || ''}
+                            onChange={(e) => updateSubCategoryField(item.key as any, 'titleEn', e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-600 mb-1">Popis (SK)</label>
+                          <textarea
+                            rows={2}
+                            value={current.descSk || ''}
+                            onChange={(e) => updateSubCategoryField(item.key as any, 'descSk', e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-600 mb-1">Popis (EN)</label>
+                          <textarea
+                            rows={2}
+                            value={current.descEn || ''}
+                            onChange={(e) => updateSubCategoryField(item.key as any, 'descEn', e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm"
+                          />
+                        </div>
+                        <div className="sm:col-span-2 flex items-center gap-2 text-sm text-gray-700">
+                          <input
+                            type="checkbox"
+                            checked={current.showDescription !== false}
+                            onChange={(e) => updateSubCategoryField(item.key as any, 'showDescription', e.target.checked)}
+                            className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                          />
+                          <span>Zobraziť popis</span>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
 
                 {/* Active Status */}
@@ -732,6 +807,25 @@ export function EditBrandModal({
                   </p>
                   
                   <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Payment Provider
+                      </label>
+                      <select
+                        value={paymentProvider}
+                        onChange={(e) => setPaymentProvider(e.target.value as 'adyen' | 'gopay' | 'gpwebpay' | 'wepay')}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                      >
+                        <option value="adyen">Adyen</option>
+                        <option value="gopay">GoPay</option>
+                        <option value="gpwebpay">GP WebPay</option>
+                        <option value="wepay">WePay</option>
+                      </select>
+                      <p className="mt-1 text-xs text-gray-500">
+                        Pre GoPay údaje nižšie nastavte provider na GoPay.
+                      </p>
+                    </div>
+
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
                         GoPay Client ID
@@ -948,6 +1042,107 @@ export function EditBrandModal({
                     </div>
                   </div>
                 </div>
+
+                {/* Email / SMTP Settings */}
+                <div className="border-t pt-4 mt-4">
+                  <h4 className="text-md font-semibold mb-3 text-gray-900">
+                    📧 Email / SMTP
+                  </h4>
+                  <p className="text-sm text-gray-600 mb-4">
+                    Nastav odosielateľa a SMTP pripojenie pre tento tenant. Ak necháš prázdne, použije sa default z prostredia.
+                  </p>
+
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        From email
+                      </label>
+                      <input
+                        type="email"
+                        value={fromEmail}
+                        onChange={(e) => setFromEmail(e.target.value)}
+                        placeholder="noreply@brand.sk"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                      />
+                      <p className="mt-1 text-xs text-gray-500">
+                        Adresa odosielateľa, ktorú budú vidieť zákazníci.
+                      </p>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          SMTP host
+                        </label>
+                        <input
+                          type="text"
+                          value={smtpHost}
+                          onChange={(e) => setSmtpHost(e.target.value)}
+                          placeholder="smtp.your-provider.com"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          SMTP port
+                        </label>
+                        <input
+                          type="text"
+                          value={smtpPort}
+                          onChange={(e) => setSmtpPort(e.target.value)}
+                          placeholder="587"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          SMTP user
+                        </label>
+                        <input
+                          type="text"
+                          value={smtpUser}
+                          onChange={(e) => setSmtpUser(e.target.value)}
+                          placeholder="user@your-provider.com"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          SMTP password
+                        </label>
+                        <input
+                          type="password"
+                          value={smtpPassword}
+                          onChange={(e) => setSmtpPassword(e.target.value)}
+                          placeholder="********"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                        />
+                        <p className="mt-1 text-xs text-gray-500">
+                          Heslo sa nepredvyplní; ulož znova pri každej zmene.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between border border-gray-200 rounded-md p-3">
+                      <div>
+                        <p className="text-sm font-medium text-gray-800">SMTP secure</p>
+                        <p className="text-xs text-gray-500">
+                          Zapni pre TLS/SSL (typicky port 465). Pre STARTTLS na 587 nechaj vypnuté.
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setSmtpSecure(!smtpSecure)}
+                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${smtpSecure ? 'bg-green-600' : 'bg-gray-300'}`}
+                      >
+                        <span
+                          className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${smtpSecure ? 'translate-x-6' : 'translate-x-1'}`}
+                        />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
 
                 {/* Analytics & Tracking */}
                 <div className="border-t pt-4 mt-4">

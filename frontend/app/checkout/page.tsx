@@ -13,7 +13,7 @@ import { calculateModifierPrice } from '@/lib/calculate-modifier-price';
 import { validateReturnUrl } from '@/lib/validate-return-url';
 import { getTenant } from '@/lib/api';
 import { geocodeAddress, validateBratislavaAddressSimple } from '@/lib/geocoding';
-import { isDarkTheme, getBackgroundClass, getButtonGradientClass, getButtonStyle, withTenantThemeDefaults } from '@/lib/tenant-utils';
+import { isDarkTheme, getBackgroundClass, getButtonGradientClass, getButtonStyle, withTenantThemeDefaults, getTenantSlug } from '@/lib/tenant-utils';
 import { isCurrentlyOpen } from '@/lib/opening-hours';
 import { getProductDisplayName } from '@/lib/product-translations';
 import AddressAutocomplete from '@/components/account/AddressAutocomplete';
@@ -36,7 +36,7 @@ export default function CheckoutPage() {
   const { tenant: tenantData } = useTenant();
   const { t, language } = useLanguage();
   const [loading, setLoading] = useState(false);
-  const [tenantSlug, setTenantSlug] = useState('pornopizza');
+  const [tenantSlug, setTenantSlug] = useState(getTenantSlug());
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
   const [loadingAddresses, setLoadingAddresses] = useState(true);
@@ -316,10 +316,12 @@ export default function CheckoutPage() {
       sessionStorage.removeItem('oauth_redirect');
     }
     
-    // Initialize tenant slug from URL
+    // Initialize tenant slug from URL or context
     const params = new URLSearchParams(window.location.search);
-    setTenantSlug(params.get('tenant') || 'pornopizza');
-  }, []); // Empty deps - only run once on mount
+    const slugFromUrl = params.get('tenant');
+    const slug = slugFromUrl || tenantData?.slug || 'pornopizza';
+    setTenantSlug(slug);
+  }, [tenantData?.slug]);
 
   // Handle cart validation (only when items change)
   useEffect(() => {
@@ -546,6 +548,7 @@ export default function CheckoutPage() {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
+          'x-tenant': tenantSlug,
         },
       });
 
@@ -562,6 +565,7 @@ export default function CheckoutPage() {
               headers: {
                 'Authorization': `Bearer ${newToken}`,
                 'Content-Type': 'application/json',
+                'x-tenant': tenantSlug,
               },
             });
             
@@ -613,7 +617,7 @@ export default function CheckoutPage() {
     } catch (error) {
       console.error('Failed to fetch user profile:', error);
     }
-  }, [user, setUser, tryRefreshToken]);
+  }, [user, setUser, tryRefreshToken, tenantSlug]);
 
   const fetchAddresses = useCallback(async () => {
     try {
@@ -631,6 +635,7 @@ export default function CheckoutPage() {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
+          'x-tenant': tenantSlug,
         },
       });
 
@@ -647,6 +652,7 @@ export default function CheckoutPage() {
               headers: {
                 'Authorization': `Bearer ${newToken}`,
                 'Content-Type': 'application/json',
+                'x-tenant': tenantSlug,
               },
             });
             
@@ -728,7 +734,7 @@ export default function CheckoutPage() {
     } finally {
       setLoadingAddresses(false);
     }
-  }, [tryRefreshToken]);
+  }, [tryRefreshToken, tenantSlug]);
 
   // Fetch addresses and update user profile when user is loaded
   useEffect(() => {
@@ -951,6 +957,7 @@ export default function CheckoutPage() {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
+          'x-tenant': tenantSlug,
         },
         body: JSON.stringify({
           street: addressFormData.street,
@@ -1025,6 +1032,7 @@ export default function CheckoutPage() {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
+          'x-tenant': tenantSlug,
         },
         body: JSON.stringify({ phone: fullPhone }),
       });
@@ -1240,9 +1248,6 @@ export default function CheckoutPage() {
         order = result;
       }
       
-      // Clear cart after successful order creation
-      clearCart();
-      
       // Create payment session (only for online payment)
       if (paymentType === 'online') {
         try {
@@ -1250,15 +1255,29 @@ export default function CheckoutPage() {
           
           if (payment.redirectUrl) {
             // Redirect to payment gateway (Adyen, GoPay, or WePay)
+            clearCart();
             window.location.href = payment.redirectUrl;
             return;
           }
+          throw new Error('Payment gateway did not return redirect URL');
         } catch (paymentError) {
           console.error('Payment session creation failed:', paymentError);
-          // Continue to success page even if payment fails (for testing)
+          const paymentErrorMessage = paymentError instanceof Error
+            ? paymentError.message
+            : 'Unknown payment initialization error';
+          alert(
+            `Objednavka bola vytvorena, ale nepodarilo sa otvorit platobnu branu.\n` +
+            `Dovod: ${paymentErrorMessage}\n` +
+            `Objednavka: #${order.orderNumber ? String(order.orderNumber).padStart(4, '0') : order.id.slice(0, 8).toUpperCase()}`
+          );
+          router.push(`/order/${order.id}?tenant=${tenantSlug}&paymentInitFailed=1`);
+          return;
         }
       }
       
+      // Clear cart after successful order creation
+      clearCart();
+
       // If no redirect URL, go to success page
       console.log('[Checkout] Order created successfully, redirecting to success page:', { orderId: order.id });
       router.push(`/order/success?orderId=${order.id}&tenant=${tenantSlug}`);
