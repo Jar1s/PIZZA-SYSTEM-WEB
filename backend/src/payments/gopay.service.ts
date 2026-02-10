@@ -39,8 +39,14 @@ export class GopayService {
     // https://doc.gopay.com/
     
     const gopayConfig = tenant.paymentConfig as any;
+    const clientId = String(gopayConfig?.clientId || '').trim();
+    const clientSecret = String(gopayConfig?.clientSecret || '').trim();
+    const goId = String(gopayConfig?.goId || '').trim();
+    const environment = String(gopayConfig?.environment || 'sandbox').toLowerCase() === 'production'
+      ? 'production'
+      : 'sandbox';
     
-    if (process.env.NODE_ENV === 'development' || !gopayConfig?.clientId) {
+    if (process.env.NODE_ENV === 'development' && !clientId) {
       // Development/Mock mode
       this.logger.warn('⚠️  GoPay in DEV mode - using mock redirect URL');
       const tenantBaseUrl = this.getTenantFrontendBaseUrl(tenant);
@@ -50,21 +56,19 @@ export class GopayService {
         redirectUrl: `${tenantBaseUrl}/checkout/mock-payment?orderId=${order.id}&provider=gopay`,
       };
     }
+
+    if (!clientId || !clientSecret || !goId) {
+      throw new Error('GoPay configuration is incomplete: required clientId, clientSecret, and goId');
+    }
     
     // Production: Real GoPay API call
     try {
-      const apiUrl = gopayConfig.environment === 'production'
+      const apiUrl = environment === 'production'
         ? 'https://gate.gopay.cz'
         : 'https://gw.sandbox.gopay.com';
       
       // Step 1: Get access token (OAuth2)
       // GoPay requires Basic Authentication with ClientId:ClientSecret
-      const clientId = gopayConfig.clientId;
-      const clientSecret = gopayConfig.clientSecret;
-      
-      if (!clientId || !clientSecret) {
-        throw new Error('GoPay clientId and clientSecret are required');
-      }
       
       // Create Basic Auth header (Base64 encoded ClientId:ClientSecret)
       const credentials = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
@@ -121,7 +125,7 @@ export class GopayService {
         body: JSON.stringify({
           target: {
             type: 'ACCOUNT',
-            goid: gopayConfig.goId,
+            goid: goId,
           },
           amount: order.totalCents, // GoPay uses cents
           currency: currency,
@@ -362,7 +366,6 @@ export class GopayService {
     }
   }
 }
-
 
 
 
