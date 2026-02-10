@@ -11,6 +11,14 @@ interface EditBrandModalProps {
   onUpdate: () => void;
 }
 
+type SubCategoryLabelValue = {
+  titleSk?: string;
+  titleEn?: string;
+  descSk?: string;
+  descEn?: string;
+  showDescription?: boolean;
+};
+
 export function EditBrandModal({ 
   tenant, 
   isOpen, 
@@ -181,7 +189,7 @@ export function EditBrandModal({
 
   const updateSubCategoryField = (
     key: keyof SubCategoryLabels,
-    field: 'titleSk' | 'titleEn' | 'descSk' | 'descEn' | 'showDescription',
+    field: keyof SubCategoryLabelValue,
     value: string | boolean,
   ) => {
     setSubCategoryLabels((prev) => ({
@@ -664,7 +672,8 @@ export function EditBrandModal({
                     { key: 'drinks', label: '🥤 Nápoje' },
                     { key: 'desserts', label: '🍰 Dezerty' },
                   ].map((item) => {
-                    const current = subCategoryLabels[item.key as keyof typeof subCategoryLabels] || {};
+                    const current =
+                      (subCategoryLabels[item.key as keyof SubCategoryLabels] as SubCategoryLabelValue | undefined) || {};
                     return (
                       <div
                         key={item.key}
