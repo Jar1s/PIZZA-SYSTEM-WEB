@@ -1248,9 +1248,6 @@ export default function CheckoutPage() {
         order = result;
       }
       
-      // Clear cart after successful order creation
-      clearCart();
-      
       // Create payment session (only for online payment)
       if (paymentType === 'online') {
         try {
@@ -1258,17 +1255,25 @@ export default function CheckoutPage() {
           
           if (payment.redirectUrl) {
             // Redirect to payment gateway (Adyen, GoPay, or WePay)
+            clearCart();
             window.location.href = payment.redirectUrl;
             return;
           }
+
+          throw new Error('Payment gateway did not return redirect URL');
         } catch (paymentError) {
           console.error('Payment session creation failed:', paymentError);
-          // Continue to success page even if payment fails (for testing)
+          const paymentMessage = paymentError instanceof Error ? paymentError.message : 'Unknown payment error';
+          alert(`Platobnú bránu sa nepodarilo inicializovať: ${paymentMessage}`);
+          clearCart();
+          router.push(`/order/${order.id}?tenant=${tenantSlug}&paymentInitFailed=1`);
+          return;
         }
       }
       
       // If no redirect URL, go to success page
       console.log('[Checkout] Order created successfully, redirecting to success page:', { orderId: order.id });
+      clearCart();
       router.push(`/order/success?orderId=${order.id}&tenant=${tenantSlug}`);
     } catch (error) {
       console.error('Checkout error:', error);
