@@ -109,11 +109,6 @@ export default function OrderTrackingPage() {
       // Use public tracking endpoint
       const response = await fetch(url, {
         cache: 'no-store',
-        headers: {
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          Pragma: 'no-cache',
-          Expires: '0',
-        },
       });
       
       console.log(`[Order Tracking] Response status: ${response.status}`, { orderId, retryCount });
@@ -167,9 +162,20 @@ export default function OrderTrackingPage() {
       console.error('[Order Tracking] Error fetching order:', err);
       setIsRefreshing(false);
       isFetchingRef.current = false;
-      // Only set error if we've exhausted retries
-      if (retryCount >= 3) {
-        setError(err.message || 'Failed to load order');
+
+      // For initial page load, retry transient network/CORS issues a few times,
+      // then fail gracefully instead of spinning forever.
+      if (!isBackgroundRefresh && retryCount < 3) {
+        const waitTime = 1000 * (retryCount + 1);
+        setTimeout(() => {
+          isFetchingRef.current = false;
+          fetchOrder(retryCount + 1, false, true);
+        }, waitTime);
+        return;
+      }
+
+      if (!isBackgroundRefresh) {
+        setError(err?.message || 'Failed to load order');
         setLoading(false);
       }
     }
