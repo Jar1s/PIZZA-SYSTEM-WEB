@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 
 interface AddressAutocompleteProps {
@@ -9,241 +9,150 @@ interface AddressAutocompleteProps {
   onSelectFromMap?: () => void;
 }
 
-declare global {
-  interface Window {
-    google: any;
-    initGoogleMaps: () => void;
-  }
+interface NominatimAddress {
+  road?: string;
+  house_number?: string;
+  city?: string;
+  town?: string;
+  village?: string;
+  municipality?: string;
+  suburb?: string;
+  postcode?: string;
+  country_code?: string;
+}
+
+interface NominatimSuggestion {
+  display_name: string;
+  lat: string;
+  lon: string;
+  address?: NominatimAddress;
+}
+
+function isBratislavaAddress(suggestion: NominatimSuggestion): boolean {
+  const city =
+    suggestion.address?.city ||
+    suggestion.address?.town ||
+    suggestion.address?.village ||
+    suggestion.address?.municipality ||
+    suggestion.address?.suburb ||
+    '';
+
+  return (
+    city.toLowerCase().includes('bratislava') ||
+    suggestion.display_name.toLowerCase().includes('bratislava')
+  );
+}
+
+function toAddressDetails(suggestion: NominatimSuggestion) {
+  const city =
+    suggestion.address?.city ||
+    suggestion.address?.town ||
+    suggestion.address?.village ||
+    suggestion.address?.municipality ||
+    suggestion.address?.suburb ||
+    'Bratislava';
+
+  const streetParts = [suggestion.address?.road, suggestion.address?.house_number].filter(Boolean);
+
+  return {
+    street: streetParts.length > 0 ? streetParts.join(' ') : suggestion.display_name,
+    city,
+    postalCode: suggestion.address?.postcode || '',
+    country: (suggestion.address?.country_code || 'SK').toUpperCase(),
+    formattedAddress: suggestion.display_name,
+    geometry: {
+      location: {
+        lat: Number(suggestion.lat),
+        lng: Number(suggestion.lon),
+      },
+    },
+  };
 }
 
 export default function AddressAutocomplete({ value, onChange, onSelectFromMap }: AddressAutocompleteProps) {
   const { t } = useLanguage();
-  const inputRef = useRef<HTMLInputElement>(null);
-  const autocompleteRef = useRef<any>(null);
-  const [isLoaded, setIsLoaded] = useState(false);
+  const [suggestions, setSuggestions] = useState<NominatimSuggestion[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+
+  const normalizedQuery = useMemo(() => value.trim(), [value]);
 
   useEffect(() => {
-    const initializeAutocomplete = () => {
-    if (!inputRef.current || !window.google?.maps?.places) return;
+    if (normalizedQuery.length < 3) {
+      setSuggestions([]);
+      setIsSearching(false);
+      return;
+    }
 
-    // Bratislava bounds
-    const bratislavaBounds = new window.google.maps.LatLngBounds(
-      new window.google.maps.LatLng(48.05, 16.95), // Southwest
-      new window.google.maps.LatLng(48.25, 17.25)  // Northeast
-    );
+    const controller = new AbortController();
+    const timeout = setTimeout(async () => {
+      try {
+        setIsSearching(true);
 
-    // Note: Autocomplete is deprecated but still works. 
-    // Will migrate to PlaceAutocompleteElement in future update.
-    // See: https://developers.google.com/maps/documentation/javascript/places-migration-overview
-    const autocomplete = new window.google.maps.places.Autocomplete(inputRef.current, {
-      componentRestrictions: { country: ['sk'] },
-      bounds: bratislavaBounds,
-      strictBounds: false,
-      fields: ['formatted_address', 'address_components', 'geometry', 'name', 'place_id', 'formatted_phone_number'],
-      types: ['address'],
-    });
-
-    autocompleteRef.current = autocomplete;
-
-    autocomplete.addListener('place_changed', () => {
-      const place = autocomplete.getPlace();
-      if (place.formatted_address) {
-        // Extract address components
-        const addressComponents = place.address_components || [];
-        let street = '';
-        let city = '';
-        let postalCode = '';
-        let country = 'SK';
-
-        addressComponents.forEach((component: any) => {
-          const types = component.types;
-          if (types.includes('route')) {
-            street = component.long_name;
-          }
-          if (types.includes('street_number')) {
-            street = street ? `${street} ${component.long_name}` : component.long_name;
-          }
-          // Try multiple types for city (locality, administrative_area_level_2, etc.)
-          if (!city && types.includes('locality')) {
-            city = component.long_name;
-          }
-          if (!city && types.includes('administrative_area_level_2')) {
-            city = component.long_name;
-          }
-          if (!city && types.includes('administrative_area_level_1')) {
-            // Only use if it's Bratislava region
-            if (component.long_name.toLowerCase().includes('bratislava')) {
-              city = 'Bratislava';
-            }
-          }
-          // Try multiple types for postal code
-          if (!postalCode && types.includes('postal_code')) {
-            postalCode = component.long_name;
-          }
-          if (!postalCode && types.includes('postal_code_prefix')) {
-            postalCode = component.long_name;
-          }
-          if (types.includes('country')) {
-            country = component.short_name;
-          }
+        const params = new URLSearchParams({
+          format: 'json',
+          addressdetails: '1',
+          countrycodes: 'sk',
+          limit: '6',
+          'accept-language': 'sk,en',
+          q: normalizedQuery,
         });
 
-        // If city is missing, try to extract from formatted address or set default
-        if (!city) {
-          // Try to extract from formatted address
-          const addressParts = place.formatted_address.split(',');
-          for (const part of addressParts) {
-            if (part.toLowerCase().includes('bratislava')) {
-              city = 'Bratislava';
-              break;
-            }
-          }
-          // If still no city, set default for Bratislava addresses
-          if (!city) {
-            city = 'Bratislava';
-          }
+        const response = await fetch(`https://nominatim.openstreetmap.org/search?${params.toString()}`, {
+          signal: controller.signal,
+          headers: {
+            // Nominatim policy requires identifying user agent/contact in production;
+            // browser cannot set custom User-Agent header, so we keep requests modest and debounced.
+            Accept: 'application/json',
+          },
+        });
+
+        if (!response.ok) {
+          setSuggestions([]);
+          return;
         }
 
-        // If postal code is missing, try to extract from formatted address
-        if (!postalCode) {
-          // Try multiple patterns for Slovak postal codes
-          // Format: 851 01 or 85101 or 851-01
-          const patterns = [
-            /\b(\d{3}\s\d{2})\b/,           // 851 01 (with space)
-            /\b(\d{3}-\d{2})\b/,           // 851-01 (with dash)
-            /\b(\d{5})\b/,                  // 85101 (no separator)
-            /PSČ[:\s]*(\d{3}\s?\d{2})/i,    // PSČ: 851 01
-            /(\d{3}\s\d{2})\s*Bratislava/i, // 851 01 Bratislava
-          ];
-
-          for (const pattern of patterns) {
-            const match = place.formatted_address.match(pattern);
-            if (match) {
-              postalCode = match[1].replace(/[\s-]/g, ''); // Remove spaces and dashes
-              break;
-            }
-          }
-        }
-
-        // Helper function to call onChange with address details
-        const updateAddress = (finalPostalCode: string) => {
-          // Check if address is in Bratislava
-          const isBratislava = city.toLowerCase().includes('bratislava') || 
-                              place.formatted_address.toLowerCase().includes('bratislava') ||
-                              addressComponents.some((c: any) => 
-                                (c.types.includes('administrative_area_level_2') || 
-                                 c.types.includes('locality') ||
-                                 c.types.includes('administrative_area_level_1')) && 
-                                c.long_name.toLowerCase().includes('bratislava')
-                              );
-
-          if (!isBratislava) {
-            alert('Adresa musí byť v Bratislave. Prosím, vyberte adresu v Bratislave.');
-            onChange('');
-            if (inputRef.current) inputRef.current.value = '';
-            return;
-          }
-
-          onChange(place.formatted_address, {
-            street: street || place.formatted_address,
-            city: city || 'Bratislava',
-            postalCode: finalPostalCode || '',
-            country,
-            formattedAddress: place.formatted_address,
-            geometry: place.geometry,
-          });
-        };
-
-        // If postal code is still missing, use Geocoding API as fallback
-        if (!postalCode && (place.place_id || place.geometry?.location) && window.google?.maps?.Geocoder) {
-          const geocoder = new window.google.maps.Geocoder();
-          
-          // Use place_id if available, otherwise use coordinates
-          const geocodeRequest = place.place_id 
-            ? { placeId: place.place_id }
-            : { location: place.geometry.location };
-
-          geocoder.geocode(geocodeRequest, (results: any[], status: string) => {
-            if (status === 'OK' && results && results[0]) {
-              const resultComponents = results[0].address_components || [];
-              let foundPostalCode = '';
-              
-              resultComponents.forEach((component: any) => {
-                if (component.types.includes('postal_code') && !foundPostalCode) {
-                  foundPostalCode = component.long_name;
-                }
-              });
-
-              // Update with found postal code
-              updateAddress(foundPostalCode);
-            } else {
-              // If geocoding fails, update without postal code
-              updateAddress('');
-            }
-          });
-        } else {
-          // If we have postal code or can't use geocoding, update immediately
-          updateAddress(postalCode);
-        }
+        const data = (await response.json()) as NominatimSuggestion[];
+        const filtered = (data || []).filter(isBratislavaAddress);
+        setSuggestions(filtered);
+      } catch {
+        setSuggestions([]);
+      } finally {
+        setIsSearching(false);
       }
-    });
+    }, 280);
+
+    return () => {
+      controller.abort();
+      clearTimeout(timeout);
     };
+  }, [normalizedQuery]);
 
-    // Load Google Maps API
-    const loadGoogleMaps = () => {
-      if (window.google && window.google.maps && window.google.maps.places) {
-        setIsLoaded(true);
-        setTimeout(() => initializeAutocomplete(), 100);
-        return;
-      }
+  const handleInputChange = (nextValue: string) => {
+    onChange(nextValue);
+    setShowSuggestions(true);
+  };
 
-      // Check if script already exists
-      const existingScript = document.querySelector('script[src*="maps.googleapis.com"]');
-      if (existingScript) {
-        // Script exists, wait for it to load
-        const checkGoogle = setInterval(() => {
-          if (window.google && window.google.maps && window.google.maps.places) {
-            clearInterval(checkGoogle);
-            setIsLoaded(true);
-            setTimeout(() => initializeAutocomplete(), 100);
-          }
-        }, 100);
-        return;
-      }
-
-      const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
-      if (!apiKey) {
-        console.error('Google Maps API key is not set. Please add NEXT_PUBLIC_GOOGLE_MAPS_API_KEY to .env.local');
-        return;
-      }
-
-      const script = document.createElement('script');
-      script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places&language=sk&loading=async`;
-      script.async = true;
-      script.defer = true;
-      script.onerror = () => {
-        console.error('Failed to load Google Maps API. Check your API key and restrictions.');
-        setIsLoaded(false);
-      };
-      script.onload = () => {
-        setIsLoaded(true);
-        setTimeout(() => initializeAutocomplete(), 100);
-      };
-      document.head.appendChild(script);
-    };
-
-    loadGoogleMaps();
-  }, [onChange]);
+  const handleSuggestionClick = (suggestion: NominatimSuggestion) => {
+    const details = toAddressDetails(suggestion);
+    onChange(suggestion.display_name, details);
+    setShowSuggestions(false);
+  };
 
   return (
     <div className="relative">
       <div className="relative">
         <input
-          ref={inputRef}
           type="text"
           value={value}
-          onChange={(e) => onChange(e.target.value)}
+          onChange={(e) => handleInputChange(e.target.value)}
+          onFocus={() => setShowSuggestions(true)}
+          onBlur={() => {
+            // Delay hides so click on suggestion can register
+            setTimeout(() => setShowSuggestions(false), 150);
+          }}
           placeholder={t.enterAddress}
+          autoComplete="off"
           className="w-full px-4 py-3 pr-24 border-2 rounded-lg focus:outline-none focus:border-orange-500"
           style={{ borderColor: value ? 'var(--color-primary)' : '#e5e7eb' }}
         />
@@ -253,7 +162,7 @@ export default function AddressAutocomplete({ value, onChange, onSelectFromMap }
               type="button"
               onClick={() => {
                 onChange('');
-                if (inputRef.current) inputRef.current.value = '';
+                setSuggestions([]);
               }}
               className="w-5 h-5 rounded-full bg-red-500 flex items-center justify-center"
             >
@@ -276,14 +185,36 @@ export default function AddressAutocomplete({ value, onChange, onSelectFromMap }
         </div>
       </div>
 
-      {/* Powered by Google */}
-      {isLoaded && (
-        <div className="text-xs text-gray-400 mt-1 flex items-center gap-1">
-          <span>Poháňané</span>
-          <span className="font-semibold text-gray-600">Google</span>
+      {showSuggestions && (isSearching || suggestions.length > 0) && (
+        <div className="absolute z-30 mt-1 w-full rounded-lg border border-gray-200 bg-white shadow-lg max-h-72 overflow-y-auto">
+          {isSearching && (
+            <div className="px-4 py-3 text-sm text-gray-500">Hľadám adresu...</div>
+          )}
+
+          {!isSearching && suggestions.length === 0 && normalizedQuery.length >= 3 && (
+            <div className="px-4 py-3 text-sm text-gray-500">
+              Nenašla sa adresa v Bratislave. Skús presnejšiu ulicu a číslo.
+            </div>
+          )}
+
+          {!isSearching &&
+            suggestions.map((suggestion) => (
+              <button
+                key={`${suggestion.lat}:${suggestion.lon}:${suggestion.display_name}`}
+                type="button"
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => handleSuggestionClick(suggestion)}
+                className="w-full px-4 py-3 text-left hover:bg-gray-50 border-b border-gray-100 last:border-b-0"
+              >
+                <div className="text-sm font-medium text-gray-900">{suggestion.display_name}</div>
+              </button>
+            ))}
         </div>
       )}
+
+      <div className="text-xs text-gray-400 mt-1">
+        Autocomplete: OpenStreetMap
+      </div>
     </div>
   );
 }
-
