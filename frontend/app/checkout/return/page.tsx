@@ -53,7 +53,7 @@ export default function PaymentReturnPage() {
   useEffect(() => {
     // GoPay documentation flow: return_url is called with ?id=<payment_id>.
     // Resolve payment ID to order/status via backend and then redirect.
-    if (gopayPaymentId && !resolvedOrderId) {
+    if (gopayPaymentId) {
       let cancelled = false;
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
 
@@ -74,7 +74,9 @@ export default function PaymentReturnPage() {
         }
 
         if (payload.status === 'pending') {
-          router.push(`/order/${payload.orderId}?paymentPending=1${tenantSuffix}`);
+          router.push(
+            `/order/${payload.orderId}?paymentPending=1&paymentId=${encodeURIComponent(gopayPaymentId)}${tenantSuffix}`
+          );
           return;
         }
 
