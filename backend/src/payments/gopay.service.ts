@@ -6,38 +6,69 @@ import * as crypto from 'crypto';
 export class GopayService {
   private readonly logger = new Logger(GopayService.name);
 
+  private getTenantFrontendBaseUrl(tenant: Tenant): string {
+    const rawDomain = (tenant.domain || '').trim();
+    if (rawDomain) {
+      if (/^https?:\/\//i.test(rawDomain)) {
+        return rawDomain.replace(/\/+$/, '');
+      }
+      return `https://${rawDomain}`.replace(/\/+$/, '');
+    }
+
+    const rawSubdomain = (tenant.subdomain || '').trim();
+    if (rawSubdomain) {
+      return `http://${rawSubdomain}.localhost:3001`;
+    }
+
+    return 'http://localhost:3001';
+  }
+
+  private getBackendBaseUrl(): string {
+    const rawBackendUrl = (process.env.BACKEND_URL || '').trim();
+    if (!rawBackendUrl) {
+      return 'http://localhost:3000';
+    }
+    if (/^https?:\/\//i.test(rawBackendUrl)) {
+      return rawBackendUrl.replace(/\/+$/, '');
+    }
+    return `https://${rawBackendUrl}`.replace(/\/+$/, '');
+  }
+
   async createPayment(order: Order, tenant: Tenant) {
     // GoPay REST API integration
     // https://doc.gopay.com/
     
     const gopayConfig = tenant.paymentConfig as any;
+    const clientId = String(gopayConfig?.clientId || '').trim();
+    const clientSecret = String(gopayConfig?.clientSecret || '').trim();
+    const goId = String(gopayConfig?.goId || '').trim();
+    const environment = String(gopayConfig?.environment || 'sandbox').toLowerCase() === 'production'
+      ? 'production'
+      : 'sandbox';
     
-    if (process.env.NODE_ENV === 'development' || !gopayConfig?.clientId) {
+    if (process.env.NODE_ENV === 'development' && !clientId) {
       // Development/Mock mode
       this.logger.warn('⚠️  GoPay in DEV mode - using mock redirect URL');
-      
-      const tenantDomain = tenant.domain || `${tenant.subdomain}.localhost:3001`;
+      const tenantBaseUrl = this.getTenantFrontendBaseUrl(tenant);
       
       return {
         paymentId: 'gopay_' + order.id,
-        redirectUrl: `http://${tenantDomain}/checkout/mock-payment?orderId=${order.id}&provider=gopay`,
+        redirectUrl: `${tenantBaseUrl}/checkout/mock-payment?orderId=${order.id}&provider=gopay`,
       };
+    }
+
+    if (!clientId || !clientSecret || !goId) {
+      throw new Error('GoPay configuration is incomplete: required clientId, clientSecret, and goId');
     }
     
     // Production: Real GoPay API call
     try {
-      const apiUrl = gopayConfig.environment === 'production'
+      const apiUrl = environment === 'production'
         ? 'https://gate.gopay.cz'
         : 'https://gw.sandbox.gopay.com';
       
       // Step 1: Get access token (OAuth2)
       // GoPay requires Basic Authentication with ClientId:ClientSecret
-      const clientId = gopayConfig.clientId;
-      const clientSecret = gopayConfig.clientSecret;
-      
-      if (!clientId || !clientSecret) {
-        throw new Error('GoPay clientId and clientSecret are required');
-      }
       
       // Create Basic Auth header (Base64 encoded ClientId:ClientSecret)
       const credentials = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
@@ -81,6 +112,9 @@ export class GopayService {
       if (tenantCurrency !== currency) {
         this.logger.warn(`GoPay: Unsupported currency ${tenantCurrency}, using EUR instead`);
       }
+
+      const frontendBaseUrl = this.getTenantFrontendBaseUrl(tenant);
+      const backendBaseUrl = this.getBackendBaseUrl();
       
       const paymentResponse = await fetch(`${apiUrl}/api/payments/payment`, {
         method: 'POST',
@@ -91,7 +125,7 @@ export class GopayService {
         body: JSON.stringify({
           target: {
             type: 'ACCOUNT',
-            goid: gopayConfig.goId,
+            goid: goId,
           },
           amount: order.totalCents, // GoPay uses cents
           currency: currency,
@@ -102,8 +136,8 @@ export class GopayService {
             count: item.quantity,
           })),
           callback: {
-            return_url: `${tenant.domain || `http://${tenant.subdomain}.localhost:3001`}/checkout/return?provider=gopay`,
-            notification_url: `${process.env.BACKEND_URL || 'http://localhost:3000'}/api/webhooks/gopay`,
+            return_url: `${frontendBaseUrl}/checkout/return`,
+            notification_url: `${backendBaseUrl}/api/webhooks/gopay`,
           },
         }),
       });
@@ -225,6 +259,64 @@ export class GopayService {
     };
   }
 
+  async getPaymentStatus(paymentId: string, tenant: Tenant) {
+    const gopayConfig = tenant.paymentConfig as any;
+    const clientId = String(gopayConfig?.clientId || '').trim();
+    const clientSecret = String(gopayConfig?.clientSecret || '').trim();
+    const environment = String(gopayConfig?.environment || 'sandbox').toLowerCase() === 'production'
+      ? 'production'
+      : 'sandbox';
+
+    if (!clientId || !clientSecret) {
+      throw new Error('GoPay configuration is incomplete: required clientId and clientSecret');
+    }
+
+    const apiUrl = environment === 'production'
+      ? 'https://gate.gopay.cz'
+      : 'https://gw.sandbox.gopay.com';
+
+    const credentials = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
+
+    // GoPay docs: payment status should be queried with token scope payment-all.
+    const tokenResponse = await fetch(`${apiUrl}/api/oauth2/token`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Basic ${credentials}`,
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Accept': 'application/json',
+      },
+      body: new URLSearchParams({
+        grant_type: 'client_credentials',
+        scope: 'payment-all',
+      }),
+    });
+
+    if (!tokenResponse.ok) {
+      const errorText = await tokenResponse.text().catch(() => '');
+      throw new Error(`GoPay status token request failed: ${tokenResponse.status} ${errorText}`);
+    }
+
+    const tokenData = await tokenResponse.json();
+    if (!tokenData?.access_token) {
+      throw new Error('GoPay status token response missing access_token');
+    }
+
+    const statusResponse = await fetch(`${apiUrl}/api/payments/payment/${encodeURIComponent(paymentId)}`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${tokenData.access_token}`,
+        'Accept': 'application/json',
+      },
+    });
+
+    if (!statusResponse.ok) {
+      const errorText = await statusResponse.text().catch(() => '');
+      throw new Error(`GoPay payment status request failed: ${statusResponse.status} ${errorText}`);
+    }
+
+    return statusResponse.json();
+  }
+
   async refundPayment(paymentId: string, amountCents: number, tenant: Tenant): Promise<void> {
     // GoPay refund API integration
     // https://doc.gopay.com/
@@ -332,9 +424,6 @@ export class GopayService {
     }
   }
 }
-
-
-
 
 
 

@@ -9,7 +9,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { calculateOrderItemPrice } from '@/lib/calculate-order-item-price';
 import { Header } from '@/components/layout/Header';
 import { StatusTimeline } from '@/components/tracking/StatusTimeline';
-import { getTenant } from '@/lib/api';
+import { createPaymentSession, getTenant } from '@/lib/api';
 import { Tenant, OrderStatus, OrderItem } from '@pizza-ecosystem/shared';
 import { withTenantThemeDefaults, getBackgroundClass, isDarkTheme, getSectionShellClass } from '@/lib/tenant-utils';
 
@@ -18,6 +18,7 @@ interface Order {
   orderNumber?: number | null;
   status: string;
   paymentStatus?: string | null;
+  paymentRef?: string | null;
   customer: {
     name: string;
     email: string;
@@ -46,15 +47,19 @@ export default function OrderTrackingPage() {
   const { t, language } = useLanguage();
   const orderId = params.id as string;
   const tenantSlug = searchParams.get('tenant') || 'pornopizza';
+  const paymentInitFailed = searchParams.get('paymentInitFailed') === '1';
+  const paymentPending = searchParams.get('paymentPending') === '1';
+  const paymentId = searchParams.get('paymentId');
   
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [tenant, setTenant] = useState<Tenant | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
-
   const TRACKING_POLL_INTERVAL_MS = 10000;
   const TRACKING_MIN_FETCH_GAP_MS = 2000;
+  const [retryingPayment, setRetryingPayment] = useState(false);
+  const [retryPaymentError, setRetryPaymentError] = useState<string | null>(null);
   
   // Refs to prevent concurrent requests and track polling
   const isFetchingRef = useRef(false);
@@ -233,6 +238,60 @@ export default function OrderTrackingPage() {
     };
   }, [order?.id, order?.status, fetchOrder]);
 
+  // If we were redirected with GoPay paymentId in pending state, keep resolving it in background.
+  useEffect(() => {
+    if (!paymentPending || !paymentId) return;
+
+    let cancelled = false;
+    let attempts = 0;
+    const maxAttempts = 20;
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+
+    const syncGoPayStatus = async () => {
+      if (cancelled) return;
+      attempts += 1;
+
+      try {
+        const response = await fetch(`${apiUrl}/api/payments/gopay/resolve?id=${encodeURIComponent(paymentId)}`);
+        if (!response.ok) {
+          return;
+        }
+
+        const payload = await response.json();
+        if (cancelled) return;
+
+        const resolvedTenant = payload.tenantSlug || tenantSlug;
+        const tenantQuery = `&tenant=${encodeURIComponent(resolvedTenant)}`;
+
+        if (payload.status === 'success') {
+          router.push(`/order/success?orderId=${payload.orderId}${tenantQuery}`);
+          return;
+        }
+
+        if (payload.status === 'failed' || payload.status === 'canceled') {
+          router.push(`/checkout?error=payment_${payload.status}&orderId=${payload.orderId}${tenantQuery}`);
+        }
+      } catch {
+        // Ignore transient resolve errors; tracking page keeps polling order state as fallback.
+      }
+    };
+
+    void syncGoPayStatus();
+
+    const interval = setInterval(() => {
+      if (attempts >= maxAttempts || cancelled) {
+        clearInterval(interval);
+        return;
+      }
+      void syncGoPayStatus();
+    }, 8000);
+
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [paymentPending, paymentId, router, tenantSlug]);
+
   // Get tenant theme - Force dark theme for tracking page
   const normalizedTenant = withTenantThemeDefaults(tenant);
   const customizationLabels = normalizedTenant?.theme?.customizationLabels;
@@ -299,6 +358,30 @@ export default function OrderTrackingPage() {
   });
 
   const orderStatus = order.status as OrderStatus;
+  const canRetryPayment =
+    orderStatus === OrderStatus.PENDING &&
+    order.paymentStatus !== 'success' &&
+    (Boolean(order.paymentRef) || paymentInitFailed || paymentPending);
+
+  const handleRetryPayment = async () => {
+    if (!order || retryingPayment) return;
+
+    setRetryPaymentError(null);
+    setRetryingPayment(true);
+    try {
+      const payment = await createPaymentSession(order.id);
+      if (!payment?.redirectUrl) {
+        throw new Error('Payment gateway did not return redirect URL');
+      }
+      window.location.href = payment.redirectUrl;
+    } catch (err: any) {
+      const message = err?.message || 'Nepodarilo sa obnoviť platbu';
+      setRetryPaymentError(message);
+      alert(`Nepodarilo sa obnoviť platbu: ${message}`);
+    } finally {
+      setRetryingPayment(false);
+    }
+  };
 
   return (
     <div className={`min-h-screen ${backgroundClass}`}>
@@ -347,6 +430,66 @@ export default function OrderTrackingPage() {
             )}
           </div>
         </motion.div>
+
+        {paymentInitFailed && (
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-6 rounded-2xl border border-amber-500/50 bg-amber-500/10 p-4"
+          >
+            <p className="text-sm font-semibold text-amber-300">
+              {language === 'sk'
+                ? 'Objednávka je vytvorená, ale nepodarilo sa otvoriť platobnú bránu. Skontroluj payment konfiguráciu tenanta.'
+                : 'Order was created, but payment gateway could not be opened. Check tenant payment configuration.'}
+            </p>
+          </motion.div>
+        )}
+
+        {paymentPending && (
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-6 rounded-2xl border border-blue-500/50 bg-blue-500/10 p-4"
+          >
+            <p className="text-sm font-semibold text-blue-300">
+              {language === 'sk'
+                ? 'Platba je zatiaľ spracovávaná. Stav sa obnoví automaticky.'
+                : 'Payment is still processing. Status will update automatically.'}
+            </p>
+          </motion.div>
+        )}
+
+        {canRetryPayment && (
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-6 rounded-2xl border border-emerald-500/40 bg-emerald-500/10 p-4"
+          >
+            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+              <p className="text-sm font-semibold text-emerald-200">
+                {language === 'sk'
+                  ? 'Platba nebola dokončená. Klikni na pokračovanie a otvorí sa platobná brána znova.'
+                  : 'Payment was not completed. Continue to reopen the payment gateway.'}
+              </p>
+              <button
+                type="button"
+                onClick={handleRetryPayment}
+                disabled={retryingPayment}
+                className={`rounded-lg px-4 py-2 text-sm font-semibold text-white ${
+                  retryingPayment ? 'cursor-not-allowed opacity-70' : 'hover:opacity-90'
+                }`}
+                style={{ backgroundColor: primaryColor }}
+              >
+                {retryingPayment
+                  ? (language === 'sk' ? 'Otváram platbu...' : 'Opening payment...')
+                  : (language === 'sk' ? 'Pokračovať v platbe' : 'Continue payment')}
+              </button>
+            </div>
+            {retryPaymentError && (
+              <p className="mt-2 text-xs text-rose-200">{retryPaymentError}</p>
+            )}
+          </motion.div>
+        )}
 
         {/* Status Timeline */}
         <motion.div
