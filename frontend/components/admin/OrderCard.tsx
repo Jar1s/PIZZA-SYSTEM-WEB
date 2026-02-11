@@ -16,6 +16,7 @@ interface OrderCardProps {
   isExpanded?: boolean;
   onToggleExpand?: (orderId: string) => void;
   tenantSlug?: string;
+  showToggle?: boolean;
 }
 
 const STATUS_COLORS: Record<OrderStatus, string> = {
@@ -40,7 +41,13 @@ const NEXT_STATUS: Record<OrderStatus, OrderStatus | null> = {
   CANCELED: null,
 };
 
-export function OrderCard({ order, onStatusUpdate, isExpanded = false, onToggleExpand }: OrderCardProps) {
+export function OrderCard({
+  order,
+  onStatusUpdate,
+  isExpanded = false,
+  onToggleExpand,
+  showToggle = true,
+}: OrderCardProps) {
   const { language } = useLanguage();
   const t = getTranslations(language);
   // Use prop if provided, otherwise fall back to local state for backward compatibility
@@ -363,12 +370,14 @@ export function OrderCard({ order, onStatusUpdate, isExpanded = false, onToggleE
               </button>
             )}
           </div>
-          <button
-            onClick={handleToggle}
-            className="w-full px-4 py-2 border border-gray-300 rounded hover:bg-gray-100 text-sm font-semibold"
-          >
-            {expanded ? 'Hide Details' : 'Show Details'}
-          </button>
+          {showToggle && (
+            <button
+              onClick={handleToggle}
+              className="w-full px-4 py-2 border border-gray-300 rounded hover:bg-gray-100 text-sm font-semibold"
+            >
+              {expanded ? 'Hide Details' : 'Show Details'}
+            </button>
+          )}
         </div>
       </div>
 
@@ -490,12 +499,14 @@ export function OrderCard({ order, onStatusUpdate, isExpanded = false, onToggleE
             </button>
           )}
           
-          <button
-            onClick={handleToggle}
-            className="px-4 py-2 border rounded hover:bg-gray-100"
-          >
-            {expanded ? 'Hide' : 'Details'}
-          </button>
+          {showToggle && (
+            <button
+              onClick={handleToggle}
+              className="px-4 py-2 border rounded hover:bg-gray-100"
+            >
+              {expanded ? 'Hide' : 'Details'}
+            </button>
+          )}
         </div>
       </div>
       
