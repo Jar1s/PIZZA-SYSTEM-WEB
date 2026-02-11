@@ -127,13 +127,14 @@ export class OrderStatusService implements OnModuleInit, OnModuleDestroy {
       const tenant = order.tenant as any;
       const paymentProvider = tenant.paymentProvider;
       const paymentRef = (order as any).paymentRef;
-      const paymentStatus = (order as any).paymentStatus;
+      const paymentStatus = String((order as any).paymentStatus || '').toLowerCase();
       
-      // Check if order was paid via GoPay and has payment reference
+      // Auto-refund for paid GoPay orders on admin cancellation/rejection.
+      // We intentionally do not gate by order.status here, because payment webhooks can arrive
+      // slightly before/after manual status actions.
       if (paymentProvider === 'gopay' && 
           paymentRef && 
-          paymentStatus === 'success' &&
-          (order.status === OrderStatus.PAID || order.status === OrderStatus.PREPARING || order.status === OrderStatus.OUT_FOR_DELIVERY)) {
+          paymentStatus === 'success') {
         try {
           await this.paymentsService.refundGopayPayment(orderId);
           this.logger.log(`✅ GoPay refund initiated for order ${orderId}`);
@@ -243,7 +244,6 @@ export class OrderStatusService implements OnModuleInit, OnModuleDestroy {
     }
   }
 }
-
 
 
 
