@@ -15,6 +15,7 @@ describe('CustomerAuthService', () => {
   let smsService: SmsService;
   let emailService: EmailService;
   let tenantsService: TenantsService;
+  const tenantId = 'tenant123';
 
   const mockPrismaService = {
     user: {
@@ -45,6 +46,14 @@ describe('CustomerAuthService', () => {
 
   const mockTenantsService = {
     getTenantBySlug: jest.fn().mockResolvedValue({ id: 'tenant-1', slug: 'tenant-1', isActive: true }),
+    getTenantById: jest.fn().mockResolvedValue({
+      id: 'tenant-1',
+      name: 'Tenant 1',
+      slug: 'tenant-1',
+      subdomain: 'tenant-1',
+      domain: 'tenant-1.local',
+      theme: {},
+    }),
   };
 
   beforeEach(async () => {
@@ -94,7 +103,7 @@ describe('CustomerAuthService', () => {
         name: 'Test User',
       };
 
-      mockPrismaService.user.findUnique.mockResolvedValue(null);
+      mockPrismaService.user.findFirst.mockResolvedValue(null);
       mockPrismaService.user.create.mockResolvedValue({
         id: 'user123',
         email: registerDto.email,
@@ -106,15 +115,15 @@ describe('CustomerAuthService', () => {
       mockJwtService.sign.mockReturnValue('access_token');
       mockPrismaService.refreshToken.create.mockResolvedValue({});
 
-      const result = await service.registerWithEmail(registerDto);
+      const result = await service.registerWithEmail(registerDto, tenantId);
 
       expect(result).toHaveProperty('access_token');
       expect(result).toHaveProperty('refresh_token');
       expect(result).toHaveProperty('user');
       expect(result.user.email).toBe(registerDto.email);
       expect(result.needsSmsVerification).toBe(false); // SMS verification disabled
-      expect(mockPrismaService.user.findUnique).toHaveBeenCalledWith({
-        where: { email: registerDto.email },
+      expect(mockPrismaService.user.findFirst).toHaveBeenCalledWith({
+        where: { email: registerDto.email.toLowerCase().trim(), tenantId },
       });
       expect(mockPrismaService.user.create).toHaveBeenCalled();
     });
@@ -126,12 +135,12 @@ describe('CustomerAuthService', () => {
         name: 'Test User',
       };
 
-      mockPrismaService.user.findUnique.mockResolvedValue({
+      mockPrismaService.user.findFirst.mockResolvedValue({
         id: 'existing123',
         email: registerDto.email,
       });
 
-      await expect(service.registerWithEmail(registerDto)).rejects.toThrow(
+      await expect(service.registerWithEmail(registerDto, tenantId)).rejects.toThrow(
         BadRequestException,
       );
       expect(mockPrismaService.user.create).not.toHaveBeenCalled();
@@ -157,11 +166,11 @@ describe('CustomerAuthService', () => {
         isActive: true,
       };
 
-      mockPrismaService.user.findUnique.mockResolvedValue(mockUser);
+      mockPrismaService.user.findFirst.mockResolvedValue(mockUser);
       mockJwtService.sign.mockReturnValue('access_token');
       mockPrismaService.refreshToken.create.mockResolvedValue({});
 
-      const result = await service.loginWithEmail(loginDto);
+      const result = await service.loginWithEmail(loginDto, tenantId);
 
       expect(result).toHaveProperty('access_token');
       expect(result).toHaveProperty('refresh_token');
@@ -176,9 +185,9 @@ describe('CustomerAuthService', () => {
         password: process.env.TEST_PASSWORD || 'test-password-123',
       };
 
-      mockPrismaService.user.findUnique.mockResolvedValue(null);
+      mockPrismaService.user.findFirst.mockResolvedValue(null);
 
-      await expect(service.loginWithEmail(loginDto)).rejects.toThrow(
+      await expect(service.loginWithEmail(loginDto, tenantId)).rejects.toThrow(
         UnauthorizedException,
       );
     });
@@ -201,9 +210,9 @@ describe('CustomerAuthService', () => {
         isActive: true,
       };
 
-      mockPrismaService.user.findUnique.mockResolvedValue(mockUser);
+      mockPrismaService.user.findFirst.mockResolvedValue(mockUser);
 
-      await expect(service.loginWithEmail(loginDto)).rejects.toThrow(
+      await expect(service.loginWithEmail(loginDto, tenantId)).rejects.toThrow(
         UnauthorizedException,
       );
     });
@@ -216,7 +225,7 @@ describe('CustomerAuthService', () => {
         email: 'test@example.com',
       });
 
-      const result = await service.checkEmailExists('test@example.com');
+      const result = await service.checkEmailExists('test@example.com', tenantId);
 
       expect(result).toBe(true);
     });
@@ -224,7 +233,7 @@ describe('CustomerAuthService', () => {
     it('should return false if email does not exist', async () => {
       mockPrismaService.user.findFirst.mockResolvedValue(null);
 
-      const result = await service.checkEmailExists('nonexistent@example.com');
+      const result = await service.checkEmailExists('nonexistent@example.com', tenantId);
 
       expect(result).toBe(false);
     });
@@ -241,7 +250,7 @@ describe('CustomerAuthService', () => {
         userId,
       });
 
-      mockPrismaService.user.findUnique.mockResolvedValue({
+      mockPrismaService.user.findFirst.mockResolvedValue({
         id: userId,
         email: 'test@example.com',
         name: 'Test User',

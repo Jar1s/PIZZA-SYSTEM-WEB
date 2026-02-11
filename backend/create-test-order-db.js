@@ -34,20 +34,20 @@ async function createTestOrder() {
     // Step 2: Get or create customer user
     console.log('\n2️⃣ Getting or creating customer...');
     const normalizedEmail = CUSTOMER_EMAIL.toLowerCase().trim();
-    let user = await prisma.user.findUnique({
-      where: { email: normalizedEmail },
+    let user = await prisma.user.findFirst({
+      where: { email: normalizedEmail, tenantId: tenant.id, role: UserRole.CUSTOMER },
     });
 
     if (!user) {
       console.log('   Creating new user...');
       user = await prisma.user.create({
         data: {
+          tenantId: tenant.id,
           name: 'Jaroslav Bir',
           email: normalizedEmail,
           phone: '+421900123456',
           phoneVerified: false,
           role: UserRole.CUSTOMER,
-          username: normalizedEmail,
           isActive: true,
         },
       });

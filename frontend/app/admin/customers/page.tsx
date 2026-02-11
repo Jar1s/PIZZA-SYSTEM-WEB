@@ -14,6 +14,8 @@ interface Customer {
   phone: string | null;
   phoneVerified: boolean;
   isActive: boolean;
+  tenantSlug: string | null;
+  tenantName: string | null;
   orderCount: number;
   totalSpentCents: number;
   createdAt: string;
@@ -33,6 +35,7 @@ interface CustomersResponse {
 export default function CustomersPage() {
   const { user } = useAuth();
   const router = useRouter();
+  const { selectedTenant } = useAdminContext();
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -73,6 +76,10 @@ export default function CustomersPage() {
         limit: '50',
       });
 
+      if (selectedTenant && selectedTenant !== 'all') {
+        params.append('tenantSlug', normalizeTenant(selectedTenant));
+      }
+
       if (search) {
         params.append('search', search);
       }
@@ -107,16 +114,22 @@ export default function CustomersPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, search, user]);
+  }, [page, search, selectedTenant, user]);
 
   useEffect(() => {
     if (user && (user.role === 'ADMIN' || user.role === 'OPERATOR')) {
-      console.log('Fetching customers for user:', user.role, user.username);
       fetchCustomers();
-    } else if (user) {
-      console.log('User does not have permission to view customers:', user.role);
     }
   }, [page, user, fetchCustomers]);
+
+  // Refetch on tenant change
+  useEffect(() => {
+    if (user && (user.role === 'ADMIN' || user.role === 'OPERATOR')) {
+      setPage(1);
+      fetchCustomers();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedTenant]);
 
   useEffect(() => {
     if ((user?.role === 'ADMIN' || user?.role === 'OPERATOR') && search !== '') {
@@ -186,6 +199,12 @@ export default function CustomersPage() {
 
   const handleDeleteCancel = () => {
     setDeleteConfirm({ show: false, customer: null });
+  };
+
+  const normalizeTenant = (slug: string) => {
+    if (slug === 'p0rnopizza') return 'pornopizza';
+    if (slug === 'pizzaparty') return 'partypizza';
+    return slug;
   };
 
   // Show loading while checking user role
@@ -539,4 +558,3 @@ export default function CustomersPage() {
     </div>
   );
 }
-

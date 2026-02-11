@@ -65,7 +65,7 @@ export default function AnalyticsPage() {
   const [loading, setLoading] = useState(true);
   const [timeRange, setTimeRange] = useState<'7' | '30' | '90'>('30');
   // Use contextTenant directly - no local state needed
-  const selectedTenant: 'all' | 'pornopizza' | 'pizzavnudzi' = contextTenant === 'all' ? 'all' : contextTenant as 'pornopizza' | 'pizzavnudzi';
+  const selectedTenant: 'all' | string = contextTenant || 'all';
 
   const fetchAnalytics = useCallback(async () => {
     try {

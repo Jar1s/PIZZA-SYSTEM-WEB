@@ -409,7 +409,14 @@ export async function createPaymentSession(orderId: string) {
 }
 
 export async function getOrder(orderId: string): Promise<Order> {
-  const res = await fetch(`${API_URL}/api/track/${orderId}`);
+  const res = await fetch(`${API_URL}/api/track/${orderId}?t=${Date.now()}`, {
+    cache: 'no-store',
+    headers: {
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      Pragma: 'no-cache',
+      Expires: '0',
+    },
+  });
   
   if (!res.ok) throw new Error('Order not found');
   const data = await res.json();

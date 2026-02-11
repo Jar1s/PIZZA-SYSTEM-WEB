@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { getTenant, updateTenant } from '@/lib/api';
+import { getTenant, updateTenant, getAllTenants } from '@/lib/api';
 import { Tenant } from '@pizza-ecosystem/shared';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { isCurrentlyOpen, getNextOpeningTime } from '@/lib/opening-hours';
@@ -19,8 +19,8 @@ export function MaintenanceBanner() {
     if (slug === 'pizzaparty') return 'partypizza';
     return slug;
   };
-  const tenantSlugsToUpdate = Array.from(
-    new Set(['pornopizza', 'p0rnopizza', 'partypizza', 'pizzaparty', 'pizzavnudzi'].map(normalizeSlug)),
+  const [tenantSlugsToUpdate, setTenantSlugsToUpdate] = useState<string[]>(
+    Array.from(new Set(['pornopizza', 'p0rnopizza', 'partypizza', 'pizzaparty', 'pizzavnudzi'].map(normalizeSlug)))
   );
 
   useEffect(() => {
@@ -38,7 +38,8 @@ export function MaintenanceBanner() {
         setMaintenanceMode(theme.maintenanceMode === true);
         
         // Check automatic maintenance mode based on opening hours
-        if (theme.openingHours) {
+        // Only apply if opening hours are enabled
+        if (theme.openingHours?.enabled === true) {
           const isOpen = isCurrentlyOpen(theme.openingHours);
           setAutoMaintenanceMode(!isOpen);
         } else {
@@ -51,7 +52,21 @@ export function MaintenanceBanner() {
       }
     };
 
+    const loadAllTenants = async () => {
+      try {
+        const all = await getAllTenants(true);
+        const slugs = all.flatMap((t: any) => [
+          normalizeSlug(t.slug),
+          normalizeSlug(t.subdomain || t.slug),
+        ]);
+        setTenantSlugsToUpdate(Array.from(new Set(slugs)));
+      } catch (error) {
+        console.error('Failed to load tenants for maintenance toggle:', error);
+      }
+    };
+
     loadTenant();
+    loadAllTenants();
   }, []);
 
   // Check opening hours every minute
@@ -62,7 +77,8 @@ export function MaintenanceBanner() {
       const theme = typeof tenant.theme === 'object' && tenant.theme !== null 
         ? tenant.theme as any
         : {};
-      if (theme.openingHours) {
+      // Only apply automatic maintenance mode if opening hours are enabled
+      if (theme.openingHours?.enabled === true) {
         const isOpen = isCurrentlyOpen(theme.openingHours);
         setAutoMaintenanceMode(!isOpen);
       } else {
@@ -168,7 +184,7 @@ export function MaintenanceBanner() {
             </svg>
             <span className="text-xs truncate" style={{ color: mutedText }}>{t.maintenanceModeSubtitle}</span>
           </div>
-          {openingHours && (
+          {openingHours?.enabled && (
             <div className="mt-1.5 flex items-center gap-1.5">
               <span className={`text-xs px-1.5 py-0.5 rounded ${autoMaintenanceMode ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`} style={autoMaintenanceMode ? { backgroundColor: '#fee2e2', color: '#b91c1c' } : { backgroundColor: '#dcfce7', color: '#15803d' }}>
                 {autoMaintenanceMode ? 'Zatvorené' : 'Otvorené'}

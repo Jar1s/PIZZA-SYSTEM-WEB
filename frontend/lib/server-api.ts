@@ -9,16 +9,26 @@ import { TenantSchema, ProductSchema, safeParse } from '@/lib/schemas/api.schema
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
 
+const normalizeTenantSlug = (slug: string | undefined | null): string => {
+  const raw = (slug || '').toLowerCase();
+  if (raw === 'pizzaparty' || raw === 'partypizza') return 'partypizza';
+  if (raw === 'p0rnopizza') return 'pornopizza';
+  if (raw === 'pizzavnudzi') return 'pizzavnudzi';
+  if (raw === 'pornopizza') return 'pornopizza';
+  return raw || 'pornopizza';
+};
+
 export async function getTenantServer(slug: string): Promise<Tenant | null> {
   const maxRetries = 3;
   const retryDelay = 1000; // 1 second base delay
+  const normalizedSlug = normalizeTenantSlug(slug);
   
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s timeout
       
-      const url = `${API_URL}/api/tenants/${slug}`;
+      const url = `${API_URL}/api/tenants/${normalizedSlug}`;
       if (attempt === 1) {
         console.log(`[getTenantServer] Fetching from: ${url}`);
         console.log(`[getTenantServer] API_URL: ${API_URL}`);
@@ -115,6 +125,7 @@ export async function getTenantServer(slug: string): Promise<Tenant | null> {
 export async function getProductsServer(tenantSlug: string): Promise<Product[]> {
   const maxRetries = 3;
   const retryDelay = 1000; // 1 second base delay
+  const normalizedSlug = normalizeTenantSlug(tenantSlug);
   
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
@@ -123,7 +134,7 @@ export async function getProductsServer(tenantSlug: string): Promise<Product[]> 
       
       // Use no-store and add timestamp to prevent caching
       const timestamp = Date.now();
-      const url = `${API_URL}/api/${tenantSlug}/products?t=${timestamp}`;
+      const url = `${API_URL}/api/${normalizedSlug}/products?t=${timestamp}`;
       
       if (attempt === 1) {
         console.log(`[getProductsServer] Fetching from: ${url}`);
@@ -210,60 +221,53 @@ export async function getProductsServer(tenantSlug: string): Promise<Product[]> 
  * Get tenant slug from headers (for Server Components)
  */
 export function getTenantSlugFromHeaders(headers: Headers): string {
-  const hostname = headers.get('host') || '';
-  const referer = headers.get('referer') || '';
+  const hostname = (headers.get('host') || '').toLowerCase();
+  const referer = (headers.get('referer') || '').toLowerCase();
   const xTenant = headers.get('x-tenant'); // Set by middleware
-  
-  // First check x-tenant header (set by middleware) - highest priority
-  if (xTenant && (xTenant === 'pornopizza' || xTenant === 'pizzavnudzi')) {
-    return xTenant;
+
+  if (xTenant) {
+    return normalizeTenantSlug(xTenant);
   }
-  
-  // For Vercel URLs, NEVER extract from hostname - always use default or query param
+
   if (hostname.includes('vercel.app')) {
-    // Check referer for query param
     try {
       const url = new URL(referer || 'http://localhost:3001');
       const tenantParam = url.searchParams.get('tenant');
-      if (tenantParam && (tenantParam === 'pornopizza' || tenantParam === 'pizzavnudzi')) {
-        return tenantParam;
+      if (tenantParam) {
+        return normalizeTenantSlug(tenantParam);
       }
-    } catch {
-      // Ignore URL parsing errors
-    }
-    // Default for Vercel URLs (don't extract from hostname!)
+    } catch { }
     return 'pornopizza';
   }
-  
-  // Check hostname for known production domains (only for real domains, not Vercel)
-  if (hostname.includes('pornopizza.sk') || hostname.includes('p0rnopizza.sk')) {
+
+  if (hostname.includes('pizzaparty') || hostname.includes('partypizza')) {
+    return 'partypizza';
+  }
+  if (hostname.includes('pornopizza.sk') || hostname.includes('p0rnopizza.sk') || hostname.includes('pornopizza')) {
     return 'pornopizza';
-  } else if (hostname.includes('pizzavnudzi.sk')) {
-    return 'pizzavnudzi';
-  } else if ((hostname.includes('pornopizza') || hostname.includes('p0rnopizza')) && !hostname.includes('vercel.app')) {
-    return 'pornopizza';
-  } else if (hostname.includes('pizzavnudzi') && !hostname.includes('vercel.app')) {
+  }
+  if (hostname.includes('pizzavnudzi.sk') || hostname.includes('pizzavnudzi')) {
     return 'pizzavnudzi';
   }
-  
-  // Check referer as fallback
-  if (referer.includes('pornopizza') && !referer.includes('vercel.app')) {
+
+  if (referer.includes('pizzaparty') || referer.includes('partypizza')) {
+    return 'partypizza';
+  }
+  if (referer.includes('pornopizza') || referer.includes('p0rnopizza')) {
     return 'pornopizza';
-  } else if (referer.includes('pizzavnudzi') && !referer.includes('vercel.app')) {
+  }
+  if (referer.includes('pizzavnudzi')) {
     return 'pizzavnudzi';
   }
-  
-  // Check URL search params from referer
+
   try {
     const url = new URL(referer || 'http://localhost:3001');
     const tenantParam = url.searchParams.get('tenant');
-    if (tenantParam && (tenantParam === 'pornopizza' || tenantParam === 'pizzavnudzi')) {
-      return tenantParam;
+    if (tenantParam) {
+      return normalizeTenantSlug(tenantParam);
     }
-  } catch {
-    // Ignore URL parsing errors
-  }
-  
-  // Default fallback
+  } catch { }
+
   return 'pornopizza';
 }
+

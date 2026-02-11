@@ -5,8 +5,8 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { Sidebar } from '@/components/admin/Sidebar';
 import { Header } from '@/components/admin/Header';
-import { getTenantSlug } from '@/lib/tenant-utils';
 import { AdminContextProvider } from '@/app/admin/admin-context';
+import { getTenantSlug } from '@/lib/tenant-utils';
 
 export default function AdminLayout({
   children,
@@ -15,8 +15,22 @@ export default function AdminLayout({
 }) {
   const { user, loading } = useAuth();
   const router = useRouter();
-  const [selectedTenant, setSelectedTenant] = useState<'all' | string>(() => getTenantSlug());
+  const [selectedTenant, setSelectedTenant] = useState<'all' | string>('all');
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const savedTenant = localStorage.getItem('admin_selected_tenant') as 'all' | string | null;
+    const fallbackTenant = getTenantSlug();
+    setSelectedTenant(savedTenant || fallbackTenant || 'all');
+  }, []);
+
+  const handleTenantChange = (tenant: 'all' | string) => {
+    setSelectedTenant(tenant);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('admin_selected_tenant', tenant);
+    }
+  };
 
   useEffect(() => {
     // Remove dark theme classes from body for admin dashboard
@@ -86,9 +100,9 @@ export default function AdminLayout({
         
         <div className="flex-1 flex flex-col overflow-hidden lg:ml-0">
           <Header 
-            selectedTenant={selectedTenant} 
-            onTenantChange={setSelectedTenant}
-            onMenuClick={() => setSidebarOpen(!sidebarOpen)}
+            onMenuClick={() => setSidebarOpen(!sidebarOpen)} 
+            selectedTenant={selectedTenant}
+            onTenantChange={handleTenantChange}
           />
           <main className="flex-1 overflow-y-auto p-4 lg:p-6 bg-gray-50 text-gray-900" style={{ backgroundColor: '#f9fafb', color: '#111827' }}>
             {children}
@@ -98,4 +112,3 @@ export default function AdminLayout({
     </AdminContextProvider>
   );
 }
-

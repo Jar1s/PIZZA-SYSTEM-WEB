@@ -9,6 +9,24 @@ export class TenantsService {
 
   constructor(private prisma: PrismaService) {}
 
+  /**
+   * Normalize tenant slugs to handle legacy/domain variants.
+   */
+  private normalizeTenantSlug(slug: string): string {
+    const raw = (slug || '').toLowerCase();
+    if (raw === 'pizzaparty' || raw === 'partypizza') return 'partypizza';
+    if (raw === 'p0rnopizza' || raw === 'pornopizza') return 'pornopizza';
+    if (raw === 'pizzavnudzi') return 'pizzavnudzi';
+    return raw;
+  }
+
+  /**
+   * Backward-compatible helper to fetch tenant by id.
+   */
+  async findById(id: string): Promise<Tenant> {
+    return this.getTenantById(id);
+  }
+
   async getTenantById(id: string): Promise<Tenant> {
     const tenant = await this.prisma.tenant.findUnique({
       where: { id },
@@ -34,24 +52,25 @@ export class TenantsService {
   }
 
   async getTenantBySlug(slug: string): Promise<Tenant> {
+    const normalizedSlug = this.normalizeTenantSlug(slug);
     try {
-      this.logger.log(`[getTenantBySlug] Looking for tenant with slug: ${slug}`);
+      this.logger.log(`[getTenantBySlug] Looking for tenant with slug: ${normalizedSlug}`);
       
       const tenant = await this.prisma.tenant.findUnique({
-        where: { slug },
+        where: { slug: normalizedSlug },
       });
       
       if (!tenant) {
-        this.logger.warn(`[getTenantBySlug] Tenant ${slug} not found in database`);
-        throw new NotFoundException(`Tenant ${slug} not found`);
+        this.logger.warn(`[getTenantBySlug] Tenant ${normalizedSlug} not found in database`);
+        throw new NotFoundException(`Tenant ${normalizedSlug} not found`);
       }
       
       this.logger.log(`[getTenantBySlug] Tenant found: ${tenant.name} (id: ${tenant.id}, isActive: ${tenant.isActive})`);
       
       // Check if tenant is active
       if (!tenant.isActive) {
-        this.logger.warn(`[getTenantBySlug] Tenant ${slug} is not active`);
-        throw new NotFoundException(`Tenant ${slug} is not active`);
+        this.logger.warn(`[getTenantBySlug] Tenant ${normalizedSlug} is not active`);
+        throw new NotFoundException(`Tenant ${normalizedSlug} is not active`);
       }
       
       // Validate response with Zod
@@ -133,6 +152,7 @@ export class TenantsService {
   }
   
   async updateTenant(slug: string, data: any): Promise<Tenant> {
+    const normalizedSlug = this.normalizeTenantSlug(slug);
     // IMPORTANT: This method only UPDATES existing tenants, it never DELETES them
     // When isActive is set to false, the tenant is just disabled, not removed
     // All tenant data (products, orders, etc.) remains intact
@@ -141,11 +161,11 @@ export class TenantsService {
     const existingTenant = await this.prisma.tenant.findFirst({
       where: {
         OR: [
-          { slug },
-          { subdomain: slug },
+          { slug: normalizedSlug },
+          { subdomain: normalizedSlug },
         ],
       },
-      select: { id: true, slug: true, subdomain: true, theme: true, paymentConfig: true, deliveryConfig: true },
+      select: { id: true, slug: true, subdomain: true, theme: true, paymentConfig: true, deliveryConfig: true, emailConfig: true },
     });
     
     if (!existingTenant) {
@@ -157,16 +177,27 @@ export class TenantsService {
       if (existingTenant.theme) {
         const existingTheme = existingTenant.theme as any;
         
-        // Special handling for openingHours - if it's provided, replace it entirely (don't deep merge)
+        // Special handling for openingHours - merge with existing to avoid losing days/timezone on partial payloads
         if (data.theme.openingHours !== undefined) {
+          const existingOpeningHours = (existingTheme as any).openingHours || {};
+          const incomingOpeningHours = data.theme.openingHours || {};
+
+          const mergedOpeningHours = {
+            ...existingOpeningHours,
+            ...incomingOpeningHours,
+            days: incomingOpeningHours.days ?? existingOpeningHours.days,
+            timezone: incomingOpeningHours.timezone ?? existingOpeningHours.timezone,
+          };
+
           data.theme = {
             ...existingTheme,
             ...data.theme,
-            openingHours: data.theme.openingHours, // Replace entirely, don't merge
+            openingHours: mergedOpeningHours,
           };
-          this.logger.log(`[updateTenant] Updating openingHours for ${slug}:`, {
-            enabled: data.theme.openingHours?.enabled,
-            hasDays: !!data.theme.openingHours?.days,
+
+          this.logger.log(`[updateTenant] Updating openingHours for ${normalizedSlug}:`, {
+            enabled: mergedOpeningHours?.enabled,
+            hasDays: !!mergedOpeningHours?.days,
           });
         } else {
           // Normal merge for other theme properties
@@ -200,6 +231,17 @@ export class TenantsService {
       }
     }
     
+    // If emailConfig is being updated, merge it with existing emailConfig
+    if (data.emailConfig && typeof data.emailConfig === 'object') {
+      if (existingTenant.emailConfig) {
+        const existingEmailConfig = existingTenant.emailConfig as any;
+        data.emailConfig = {
+          ...existingEmailConfig,
+          ...data.emailConfig,
+        };
+      }
+    }
+    
     // Update tenant - this only modifies the record, never deletes it
     const tenant = await this.prisma.tenant.update({
       where: { id: existingTenant.id },
@@ -209,13 +251,13 @@ export class TenantsService {
     // Log openingHours state after update for debugging
     const updatedTheme = tenant.theme as any;
     if (updatedTheme?.openingHours) {
-      this.logger.log(`[updateTenant] OpeningHours after update for ${slug}:`, {
+      this.logger.log(`[updateTenant] OpeningHours after update for ${normalizedSlug}:`, {
         enabled: updatedTheme.openingHours.enabled,
         timezone: updatedTheme.openingHours.timezone,
       });
     }
     
-    this.logger.log(`Tenant ${slug} updated. isActive: ${tenant.isActive}`);
+    this.logger.log(`Tenant ${normalizedSlug} updated. isActive: ${tenant.isActive}`);
     return tenant as any as Tenant;
   }
 

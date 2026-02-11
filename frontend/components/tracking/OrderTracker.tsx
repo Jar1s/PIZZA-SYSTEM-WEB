@@ -16,9 +16,11 @@ export function OrderTracker({ order: initialOrder }: OrderTrackerProps) {
   const [loading, setLoading] = useState(false);
   const isFetchingRef = useRef(false);
   const lastFetchTimeRef = useRef<number>(0);
+  const POLL_INTERVAL_MS = 10000;
+  const MIN_FETCH_GAP_MS = 2000;
 
   useEffect(() => {
-    // Poll for updates every 45 seconds if order is active (reduced frequency to avoid rate limiting)
+    // Poll for updates every 10 seconds so customer sees admin status changes quickly.
     const isActive = ![OrderStatus.DELIVERED, OrderStatus.CANCELED].includes(order.status);
     
     if (!isActive) return;
@@ -33,7 +35,7 @@ export function OrderTracker({ order: initialOrder }: OrderTrackerProps) {
       // Throttle: don't fetch if last fetch was less than 2 seconds ago
       const now = Date.now();
       const timeSinceLastFetch = now - lastFetchTimeRef.current;
-      if (timeSinceLastFetch < 2000) {
+      if (timeSinceLastFetch < MIN_FETCH_GAP_MS) {
         console.log(`[OrderTracker] Throttling: last fetch was ${timeSinceLastFetch}ms ago`);
         return;
       }
@@ -49,10 +51,10 @@ export function OrderTracker({ order: initialOrder }: OrderTrackerProps) {
       } finally {
         isFetchingRef.current = false;
       }
-    }, 45000); // Poll every 45 seconds to avoid rate limiting
+    }, POLL_INTERVAL_MS);
     
     return () => clearInterval(interval);
-  }, [order.id, order.status]);
+  }, [order.id, order.status, MIN_FETCH_GAP_MS, POLL_INTERVAL_MS]);
 
   const customer = order.customer as any;
   const address = order.address as any;
@@ -102,4 +104,3 @@ export function OrderTracker({ order: initialOrder }: OrderTrackerProps) {
     </div>
   );
 }
-

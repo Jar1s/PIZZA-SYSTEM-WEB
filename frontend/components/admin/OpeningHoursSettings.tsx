@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { getTenant, updateTenant } from '@/lib/api';
+import { getTenantSlug } from '@/lib/tenant-utils';
 import { Tenant } from '@pizza-ecosystem/shared';
 
 // OpeningHours type - defined locally since it's not exported from shared
@@ -18,12 +19,21 @@ interface OpeningHours {
 }
 import { getDefaultOpeningHours } from '@/lib/opening-hours';
 
+const resolveTenantSlug = (tenantSlug?: string, tenant?: Tenant | null) => {
+  const raw = (tenantSlug || tenant?.slug || tenant?.subdomain || '').toLowerCase();
+  if (raw === 'pizzaparty' || raw === 'partypizza') return 'partypizza';
+  if (raw === 'p0rnopizza') return 'pornopizza';
+  if (raw) return raw;
+  return 'pornopizza';
+};
+
 export function OpeningHoursSettings() {
   const [tenant, setTenant] = useState<Tenant | null>(null);
   const [openingHours, setOpeningHours] = useState<OpeningHours>(getDefaultOpeningHours());
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
+  const [selectedTenantSlug, setSelectedTenantSlug] = useState<string>(resolveTenantSlug(getTenantSlug()));
 
   const days = [
     { key: 'monday', label: 'Pondelok' },
@@ -35,19 +45,37 @@ export function OpeningHoursSettings() {
     { key: 'sunday', label: 'Nedeľa' },
   ];
 
+  const mergeWithDefaults = (oh?: OpeningHours): OpeningHours => {
+    const defaults = getDefaultOpeningHours();
+
+    if (!oh) {
+      return defaults;
+    }
+
+    return {
+      ...defaults,
+      ...oh,
+      enabled: oh.enabled ?? defaults.enabled,
+      timezone: oh.timezone || defaults.timezone,
+      days: {
+        ...defaults.days,
+        ...(oh.days || {}),
+      },
+    };
+  };
+
   useEffect(() => {
     const loadTenant = async () => {
       try {
-        const tenantData = await getTenant('pornopizza');
+        const slugToUse = resolveTenantSlug(selectedTenantSlug);
+        const tenantData = await getTenant(slugToUse);
         setTenant(tenantData);
         
         const theme = typeof tenantData.theme === 'object' && tenantData.theme !== null 
           ? tenantData.theme as any
           : {};
-        
-        if (theme.openingHours) {
-          setOpeningHours(theme.openingHours);
-        }
+
+        setOpeningHours(mergeWithDefaults(theme.openingHours as OpeningHours | undefined));
       } catch (error) {
         console.error('Failed to load tenant:', error);
       } finally {
@@ -56,7 +84,7 @@ export function OpeningHoursSettings() {
     };
 
     loadTenant();
-  }, []);
+  }, [selectedTenantSlug]);
 
   const handleSave = async () => {
     if (!tenant) return;
@@ -67,16 +95,19 @@ export function OpeningHoursSettings() {
         ? tenant.theme as any
         : {};
       
-      await updateTenant(tenant.subdomain || tenant.slug, {
+      const slugToUse = resolveTenantSlug(selectedTenantSlug, tenant);
+      const openingHoursToSave = mergeWithDefaults(openingHours);
+      await updateTenant(slugToUse, {
         theme: {
           ...theme,
-          openingHours,
+          openingHours: openingHoursToSave,
         },
       });
       
       // Reload tenant
-      const updatedTenant = await getTenant('pornopizza');
+      const updatedTenant = await getTenant(slugToUse);
       setTenant(updatedTenant);
+      setOpeningHours(mergeWithDefaults((updatedTenant.theme as any)?.openingHours));
       
       alert('Otváracie hodiny uložené!');
     } catch (error: any) {
@@ -104,10 +135,10 @@ export function OpeningHoursSettings() {
     if (!tenant) return;
     
     const newEnabled = !openingHours.enabled;
-    const updatedOpeningHours = {
+    const updatedOpeningHours = mergeWithDefaults({
       ...openingHours,
       enabled: newEnabled,
-    };
+    });
     
     // Update local state immediately for better UX
     setOpeningHours(updatedOpeningHours);
@@ -117,7 +148,8 @@ export function OpeningHoursSettings() {
         ? tenant.theme as any
         : {};
       
-      await updateTenant(tenant.subdomain || tenant.slug, {
+      const slugToUse = resolveTenantSlug(selectedTenantSlug, tenant);
+      await updateTenant(slugToUse, {
         theme: {
           ...theme,
           openingHours: updatedOpeningHours,
@@ -125,16 +157,14 @@ export function OpeningHoursSettings() {
       });
       
       // Reload tenant to get updated data
-      const updatedTenant = await getTenant('pornopizza');
+      const updatedTenant = await getTenant(slugToUse);
       setTenant(updatedTenant);
       
       // Update opening hours from the server response to ensure consistency
-      const updatedTheme = typeof updatedTenant.theme === 'object' && updatedTenant.theme !== null 
-        ? updatedTenant.theme as any
+      const updatedTheme = typeof updatedTenant.theme === 'object' && updatedTenant.theme !== null
+        ? (updatedTenant.theme as any)
         : {};
-      if (updatedTheme.openingHours) {
-        setOpeningHours(updatedTheme.openingHours);
-      }
+      setOpeningHours(mergeWithDefaults(updatedTheme.openingHours as OpeningHours | undefined));
     } catch (error: any) {
       console.error('Failed to toggle opening hours:', error);
       alert('Nepodarilo sa prepnúť otváracie hodiny: ' + (error.message || 'Unknown error'));
@@ -154,40 +184,55 @@ export function OpeningHoursSettings() {
 
   return (
     <div className="bg-white rounded-lg p-3 border border-gray-200" style={{ backgroundColor: '#ffffff', borderColor: '#e5e7eb' }}>
-      <div className="flex items-center justify-between">
-        <div className="flex-1 min-w-0">
-          <h2 className="text-sm font-bold text-gray-900 mb-1" style={{ color: '#111827' }}>
-            Otváracie hodiny
-          </h2>
-          <p className="text-xs text-gray-600 truncate" style={{ color: '#4b5563' }}>
-            Automatické zap./vyp. maintenance mode
-          </p>
-        </div>
-        <div className="ml-3 flex items-center gap-2 flex-shrink-0">
-          <span className={`text-xs font-medium ${openingHours.enabled ? 'text-green-600' : 'text-gray-500'}`} style={{ color: openingHours.enabled ? '#16a34a' : '#6b7280' }}>
-            {openingHours.enabled ? 'Zap.' : 'Vyp.'}
-          </span>
-          <button
-            onClick={handleToggleEnabled}
-            className={`relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-1 ${
-              openingHours.enabled ? 'bg-green-600' : 'bg-gray-200'
-            }`}
-          >
-            <span
-              className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                openingHours.enabled ? 'translate-x-4' : 'translate-x-0'
-              }`}
-            />
-          </button>
-          {openingHours.enabled && (
+      <div className="flex flex-col gap-2">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex-1 min-w-0">
+            <h2 className="text-sm font-bold text-gray-900" style={{ color: '#111827' }}>
+              Otváracie hodiny
+            </h2>
+            <p className="text-xs text-gray-600 truncate" style={{ color: '#4b5563' }}>
+              Automatické zap./vyp. maintenance mode
+            </p>
+          </div>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <span className={`text-xs font-medium ${openingHours.enabled ? 'text-green-600' : 'text-gray-500'}`} style={{ color: openingHours.enabled ? '#16a34a' : '#6b7280' }}>
+              {openingHours.enabled ? 'Zap.' : 'Vyp.'}
+            </span>
             <button
-              onClick={() => setIsExpanded(!isExpanded)}
-              className="ml-1 text-xs text-blue-600 hover:text-blue-700 font-medium"
-              style={{ color: '#2563eb' }}
+              onClick={handleToggleEnabled}
+              className={`relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-1 ${
+                openingHours.enabled ? 'bg-green-600' : 'bg-gray-200'
+              }`}
             >
-              {isExpanded ? '▼' : '▶'}
+              <span
+                className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                  openingHours.enabled ? 'translate-x-4' : 'translate-x-0'
+                }`}
+              />
             </button>
-          )}
+            {openingHours.enabled && (
+              <button
+                onClick={() => setIsExpanded(!isExpanded)}
+                className="ml-1 text-xs text-blue-600 hover:text-blue-700 font-medium"
+                style={{ color: '#2563eb' }}
+              >
+                {isExpanded ? '▼' : '▶'}
+              </button>
+            )}
+          </div>
+        </div>
+        <div className="flex">
+          <select
+            value={selectedTenantSlug}
+            onChange={(e) => {
+              setLoading(true);
+              setSelectedTenantSlug(resolveTenantSlug(e.target.value));
+            }}
+            className="text-xs border border-gray-300 rounded px-2 py-1 bg-white w-full"
+          >
+            <option value="pornopizza">PornoPizza</option>
+            <option value="partypizza">PartyPizza</option>
+          </select>
         </div>
       </div>
 
@@ -265,4 +310,3 @@ export function OpeningHoursSettings() {
     </div>
   );
 }
-

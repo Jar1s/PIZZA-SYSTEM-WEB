@@ -7,29 +7,17 @@ export async function middleware(request: NextRequest) {
   
   let tenantSlug: string | null = null;
   
+  // 1. Try environment variable (for preview/dev)
+  tenantSlug = process.env.NEXT_PUBLIC_TENANT_SLUG || null;
+
+  // Helper: only allow query override on local/preview
   const domain = hostname.split(':')[0];
-  const isLocalOrPreview =
+  const allowQueryTenant =
     domain.includes('localhost') ||
     domain.includes('127.0.0.1') ||
     domain.includes('vercel.app');
-  const allowQueryTenant = isLocalOrPreview;
-  const allowEnvTenant = isLocalOrPreview; // never override production domains with env
   
-  // 1. Prefer known production domains directly to avoid extra fetch + avoid env override
-  if (domain.includes('partypizza') || domain.includes('pizzaparty')) {
-    tenantSlug = 'partypizza';
-  } else if (domain.includes('pornopizza') || domain.includes('p0rnopizza')) {
-    tenantSlug = 'pornopizza';
-  } else if (domain.includes('pizzavnudzi')) {
-    tenantSlug = 'pizzavnudzi';
-  }
-  
-  // 2. Use env override only for local/preview
-  if (!tenantSlug && allowEnvTenant) {
-    tenantSlug = process.env.NEXT_PUBLIC_TENANT_SLUG || null;
-  }
-  
-  // 3. If not set, try to resolve from hostname
+  // 2. If not set, try to resolve from hostname
   if (!tenantSlug) {
     // For localhost/dev, use query param
     if (allowQueryTenant) {
@@ -59,7 +47,7 @@ export async function middleware(request: NextRequest) {
     }
   }
   
-  // 4. If still no tenant, return 404 (no hardcoded fallback)
+  // 3. If still no tenant, return 404 (no hardcoded fallback)
   if (!tenantSlug) {
     return new NextResponse('Tenant not found', { status: 404 });
   }
@@ -74,3 +62,4 @@ export async function middleware(request: NextRequest) {
 export const config = {
   matcher: ['/((?!api|_next/static|_next/image|favicon.ico).*)'],
 };
+

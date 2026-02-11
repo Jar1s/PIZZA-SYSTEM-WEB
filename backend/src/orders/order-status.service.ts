@@ -41,7 +41,16 @@ export class OrderStatusService implements OnModuleInit, OnModuleDestroy {
     const order = await this.prisma.order.findUnique({
       where: { id: orderId },
       include: {
-        tenant: true,
+        tenant: {
+          select: {
+            id: true,
+            name: true,
+            domain: true,
+            subdomain: true,
+            slug: true,
+            emailConfig: true,
+          },
+        },
       },
     });
 
@@ -150,6 +159,7 @@ export class OrderStatusService implements OnModuleInit, OnModuleDestroy {
         newStatus,
         tenant.name,
         tenantDomain,
+        tenant.emailConfig,
       );
     } catch (error) {
       this.logger.error(`Failed to send status notifications for order ${order.id}:`, error);
@@ -197,7 +207,16 @@ export class OrderStatusService implements OnModuleInit, OnModuleDestroy {
           },
         },
         include: {
-          tenant: true,
+          tenant: {
+            select: {
+              id: true,
+              name: true,
+              domain: true,
+              subdomain: true,
+              slug: true,
+              emailConfig: true,
+            },
+          },
         },
       });
 

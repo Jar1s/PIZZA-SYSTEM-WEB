@@ -37,3 +37,6 @@ ON CONFLICT ("id") DO NOTHING;
 -- Verify table was created
 SELECT * FROM "global_settings" WHERE "id" = 'global';
 
+
+
+

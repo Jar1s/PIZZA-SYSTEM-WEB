@@ -128,6 +128,7 @@ describe('OrdersService Integration Tests', () => {
     // Create test user
     const user = await prisma.user.create({
       data: {
+        tenantId: testTenantId,
         username: `test_user_${Date.now()}`,
         password: 'hashed',
         name: 'Test User',

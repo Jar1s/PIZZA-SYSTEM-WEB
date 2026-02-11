@@ -10,6 +10,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { OrderStatus } from '@pizza-ecosystem/shared';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
 @Controller('admin/customers')
@@ -17,12 +18,20 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 export class AdminCustomersController {
   constructor(private prisma: PrismaService) {}
 
+  private normalizeTenantSlug(slug: string): string {
+    const raw = (slug || '').toLowerCase();
+    if (raw === 'pizzaparty') return 'partypizza';
+    if (raw === 'p0rnopizza') return 'pornopizza';
+    return raw;
+  }
+
   /**
    * Get all customers (admin only)
    */
   @Get()
   async getAllCustomers(
     @Request() req: any,
+    @Query('tenantSlug') tenantSlug?: string,
     @Query('search') search?: string,
     @Query('page') page?: string,
     @Query('limit') limit?: string,
@@ -34,6 +43,21 @@ export class AdminCustomersController {
       throw new UnauthorizedException('Only admins can access customer list');
     }
 
+    const normalizedTenantSlug = tenantSlug ? this.normalizeTenantSlug(tenantSlug) : null;
+    let tenantIdFilter: string | null = null;
+
+    if (normalizedTenantSlug && normalizedTenantSlug !== 'all') {
+      const tenant = await this.prisma.tenant.findUnique({
+        where: { slug: normalizedTenantSlug },
+      });
+
+      if (!tenant) {
+        throw new NotFoundException(`Tenant ${normalizedTenantSlug} not found`);
+      }
+
+      tenantIdFilter = tenant.id;
+    }
+
     const pageNum = parseInt(page || '1', 10);
     const limitNum = parseInt(limit || '50', 10);
     const skip = (pageNum - 1) * limitNum;
@@ -41,13 +65,14 @@ export class AdminCustomersController {
     // Build where clause
     const where: any = {
       role: 'CUSTOMER',
+      ...(tenantIdFilter ? { tenantId: tenantIdFilter } : {}),
     };
 
     if (search) {
       const searchLower = search.toLowerCase();
       where.OR = [
-        ...(searchLower ? [{ email: { contains: searchLower } }] : []),
-        ...(searchLower ? [{ name: { contains: searchLower } }] : []),
+        ...(searchLower ? [{ email: { contains: searchLower, mode: 'insensitive' } }] : []),
+        ...(searchLower ? [{ name: { contains: searchLower, mode: 'insensitive' } }] : []),
         ...(search ? [{ phone: { contains: search } }] : []),
       ];
     }
@@ -58,6 +83,7 @@ export class AdminCustomersController {
         where,
         select: {
           id: true,
+          tenantId: true,
           name: true,
           email: true,
           phone: true,
@@ -65,9 +91,10 @@ export class AdminCustomersController {
           isActive: true,
           createdAt: true,
           updatedAt: true,
-          _count: {
+          tenant: {
             select: {
-              orders: true,
+              slug: true,
+              name: true,
             },
           },
         },
@@ -86,14 +113,15 @@ export class AdminCustomersController {
         const orders = await this.prisma.order.findMany({
           where: {
             userId: customer.id,
-            status: { not: 'CANCELED' },
+            tenantId: customer.tenantId,
+            status: { not: OrderStatus.CANCELED },
           },
           select: {
             totalCents: true,
           },
         });
 
-        const totalSpent = orders.reduce((sum, order) => sum + order.totalCents, 0);
+        const totalSpent = orders.reduce((sum, order) => sum + (order.totalCents || 0), 0);
 
         return {
           id: customer.id,
@@ -102,7 +130,9 @@ export class AdminCustomersController {
           phone: customer.phone,
           phoneVerified: customer.phoneVerified,
           isActive: customer.isActive,
-          orderCount: customer._count.orders,
+          tenantSlug: customer.tenant?.slug || null,
+          tenantName: customer.tenant?.name || null,
+          orderCount: orders.length,
           totalSpentCents: totalSpent,
           createdAt: customer.createdAt.toISOString(),
           updatedAt: customer.updatedAt.toISOString(),

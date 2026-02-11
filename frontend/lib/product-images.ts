@@ -64,6 +64,15 @@ const pizzaImageMap: Record<string, string> = {
   'build-your-own': '/images/pizzas/build-your-own.jpg',
 };
 
+function toWebpIfLocal(path: string | undefined): string | undefined {
+  if (!path) return path;
+  if (path.startsWith('/images/')) {
+    return path.replace(/\.(png|jpe?g)$/i, '.webp');
+  }
+  return path;
+}
+
+
 /**
  * Get fallback image for a product based on its name
  * Works regardless of product category - finds images by product name
@@ -92,33 +101,33 @@ export function getProductFallbackImage(
   // Check dessert image map first (works regardless of category - e.g., tiramisu)
   for (const variation of variations) {
     if (variation && dessertImageMap[variation]) {
-      return dessertImageMap[variation];
+      return toWebpIfLocal(dessertImageMap[variation]);
     }
   }
   
   // Check drink image map (works regardless of category)
   for (const variation of variations) {
     if (variation && drinkImageMap[variation]) {
-      return drinkImageMap[variation];
+      return toWebpIfLocal(drinkImageMap[variation]);
     }
   }
   
   // Check soup image map (works regardless of category)
   for (const variation of variations) {
     if (variation && soupImageMap[variation]) {
-      return soupImageMap[variation];
+      return toWebpIfLocal(soupImageMap[variation]);
     }
   }
   
   // Check pizza image map (works regardless of category)
   for (const variation of variations) {
     if (variation && pizzaImageMap[variation]) {
-      return pizzaImageMap[variation];
+      return toWebpIfLocal(pizzaImageMap[variation]);
     }
   }
   
   // Universal fallback for all products
-  return '/images/placeholder-pizza.jpg';
+  return toWebpIfLocal('/images/placeholder-pizza.jpg');
 }
 
 /**
@@ -135,7 +144,7 @@ export function getProductDisplayImage(
 ): string | undefined {
   // Use product image if available and not empty
   if (product.image && product.image.trim() !== '') {
-    return product.image;
+    return toWebpIfLocal(product.image);
   }
   
   // Otherwise use fallback

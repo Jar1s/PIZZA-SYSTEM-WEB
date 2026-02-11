@@ -261,10 +261,11 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
 
   const register = async (email: string, password: string, name: string) => {
     const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+    const tenant = getTenantSlug();
 
     const response = await fetch(`${API_URL}/api/auth/customer/register`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'x-tenant': tenant },
       credentials: 'include',
       body: JSON.stringify({ email, password, name }),
     });
@@ -312,10 +313,11 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
 
   const login = async (email: string, password: string) => {
     const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+    const tenant = getTenantSlug();
 
     const response = await fetch(`${API_URL}/api/auth/customer/login`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'x-tenant': tenant },
       credentials: 'include',
       body: JSON.stringify({ email, password }),
     });

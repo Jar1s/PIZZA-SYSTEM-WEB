@@ -380,7 +380,7 @@ describe('OrdersService', () => {
 
       mockPrismaService.product.findFirst.mockResolvedValue(mockProduct);
       // User already exists (auto-login scenario)
-      mockPrismaService.user.findUnique.mockResolvedValue({
+      mockPrismaService.user.findFirst.mockResolvedValue({
         id: 'user-1',
         email: 'john@example.com',
         name: 'John Doe',
@@ -404,7 +404,7 @@ describe('OrdersService', () => {
 
       const result = await service.createOrder(tenantId, guestOrderDto);
 
-      expect(mockPrismaService.user.findUnique).toHaveBeenCalled();
+      expect(mockPrismaService.user.findFirst).toHaveBeenCalled();
       expect(mockPrismaService.user.create).not.toHaveBeenCalled(); // User exists, no creation
       expect(mockPrismaService.order.create).toHaveBeenCalledWith({
         data: expect.objectContaining({
@@ -438,7 +438,7 @@ describe('OrdersService', () => {
       };
 
       mockPrismaService.product.findFirst.mockResolvedValue(mockProduct);
-      mockPrismaService.user.findUnique.mockResolvedValue({
+      mockPrismaService.user.findFirst.mockResolvedValue({
         id: 'existing-user',
         email: 'john@example.com',
         name: 'John Doe',
@@ -462,8 +462,8 @@ describe('OrdersService', () => {
       const result = await service.createOrder(tenantId, guestOrderDto);
 
       expect(mockPrismaService.user.create).not.toHaveBeenCalled();
-      expect(mockPrismaService.user.findUnique).toHaveBeenCalledWith({
-        where: { email: 'john@example.com' },
+      expect(mockPrismaService.user.findFirst).toHaveBeenCalledWith({
+        where: { email: 'john@example.com', tenantId, role: 'CUSTOMER' },
       });
       expect(result).toHaveProperty('authToken');
       expect(result).toHaveProperty('refreshToken');

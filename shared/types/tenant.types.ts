@@ -122,12 +122,12 @@ export interface CustomizationLabels {
 }
 
 export interface SubCategoryLabels {
-  foreplay?: { titleSk?: string; titleEn?: string; descSk?: string; descEn?: string };
-  mainAction?: { titleSk?: string; titleEn?: string; descSk?: string; descEn?: string };
-  deluxeFetish?: { titleSk?: string; titleEn?: string; descSk?: string; descEn?: string };
-  premiumSins?: { titleSk?: string; titleEn?: string; descSk?: string; descEn?: string };
-  stangle?: { titleSk?: string; titleEn?: string; descSk?: string; descEn?: string };
-  soups?: { titleSk?: string; titleEn?: string; descSk?: string; descEn?: string };
-  drinks?: { titleSk?: string; titleEn?: string; descSk?: string; descEn?: string };
-  desserts?: { titleSk?: string; titleEn?: string; descSk?: string; descEn?: string };
+  foreplay?: { titleSk?: string; titleEn?: string; descSk?: string; descEn?: string; showDescription?: boolean };
+  mainAction?: { titleSk?: string; titleEn?: string; descSk?: string; descEn?: string; showDescription?: boolean };
+  deluxeFetish?: { titleSk?: string; titleEn?: string; descSk?: string; descEn?: string; showDescription?: boolean };
+  premiumSins?: { titleSk?: string; titleEn?: string; descSk?: string; descEn?: string; showDescription?: boolean };
+  stangle?: { titleSk?: string; titleEn?: string; descSk?: string; descEn?: string; showDescription?: boolean };
+  soups?: { titleSk?: string; titleEn?: string; descSk?: string; descEn?: string; showDescription?: boolean };
+  drinks?: { titleSk?: string; titleEn?: string; descSk?: string; descEn?: string; showDescription?: boolean };
+  desserts?: { titleSk?: string; titleEn?: string; descSk?: string; descEn?: string; showDescription?: boolean };
 }

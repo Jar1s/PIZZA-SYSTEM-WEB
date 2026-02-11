@@ -214,6 +214,8 @@ export default function CustomerLoginPage() {
   const inputClasses = isDark
     ? 'w-full rounded-2xl px-4 py-3 bg-white/10 border border-white/10 text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-white/30'
     : 'w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-yellow-400';
+
+
   return (
     <div
       className="flex min-h-screen"
@@ -249,6 +251,7 @@ export default function CustomerLoginPage() {
           {/* Logo */}
           <div className="mb-8">
             {(() => {
+              const normalizedTenant = withTenantThemeDefaults(tenant);
               return normalizedTenant?.theme?.logo ? (
               <div className="mb-6">
                 <Image

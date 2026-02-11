@@ -9,6 +9,7 @@ import { getProductDisplayName } from '../utils/product-name-mapper';
 export class EmailService {
   private readonly logger = new Logger(EmailService.name);
   private transporter: nodemailer.Transporter | null;
+  private tenantTransporters = new Map<string, nodemailer.Transporter>();
 
   constructor(private prisma: PrismaService) {
     // Configure email transporter
@@ -88,6 +89,112 @@ export class EmailService {
       this.logger.error('❌ SMTP verification failed:', this.formatSMTPError(error));
       throw error;
     }
+  }
+
+  private getTenantTransporter(emailConfig?: any): nodemailer.Transporter | null {
+    const tenantHost = emailConfig?.smtpHost;
+    const tenantUser = emailConfig?.smtpUser;
+    const tenantPassword = emailConfig?.smtpPassword;
+    const tenantPortRaw = emailConfig?.smtpPort ?? emailConfig?.port;
+    const tenantSecureRaw = emailConfig?.smtpSecure ?? emailConfig?.secure;
+    const hasTenantSmtp =
+      tenantHost || tenantUser || tenantPassword || tenantPortRaw || tenantSecureRaw;
+
+    if (hasTenantSmtp) {
+      if (!tenantHost || !tenantUser || !tenantPassword) {
+        this.logger.warn('📧 Tenant SMTP config incomplete (host/user/password required). Falling back to default SMTP config.');
+        return this.transporter || null;
+      }
+
+      const cleanedPassword = String(tenantPassword).trim();
+      const cleanedUser = String(tenantUser).trim();
+      const passLength = cleanedPassword.length;
+      const hasLeadingSpace = String(tenantPassword).startsWith(' ');
+      const hasTrailingSpace = String(tenantPassword).endsWith(' ');
+      const userHasAt = cleanedUser.includes('@');
+
+      this.logger.log(`📧 Tenant SMTP password diagnostics: length: ${passLength}, leading space: ${hasLeadingSpace ? '❌ YES (removed)' : '✅ NO'}, trailing space: ${hasTrailingSpace ? '❌ YES (removed)' : '✅ NO'}`);
+      this.logger.log(`📧 Tenant SMTP user format: ${userHasAt ? '✅ Contains @ (full email)' : '❌ Missing @ (should be full email)'}, length: ${cleanedUser.length}`);
+
+      const port = parseInt(String(tenantPortRaw ?? '587'), 10);
+      const secure = tenantSecureRaw === true || tenantSecureRaw === 'true';
+      const cacheKey = `${tenantHost}:${port}:${cleanedUser}:${secure ? 's' : 'ns'}`;
+      const cached = this.tenantTransporters.get(cacheKey);
+      if (cached) {
+        return cached;
+      }
+
+      const smtpConfig: any = {
+        host: tenantHost,
+        port,
+        secure,
+        auth: {
+          user: cleanedUser,
+          pass: cleanedPassword,
+        },
+      };
+
+      if (port === 465 && secure) {
+        smtpConfig.tls = {
+          rejectUnauthorized: false,
+        };
+      }
+
+      if (port === 587 && !secure) {
+        smtpConfig.requireTLS = true;
+        smtpConfig.tls = { rejectUnauthorized: false };
+      }
+
+      this.logger.log(`📧 Tenant SMTP configured: ${smtpConfig.host}:${smtpConfig.port} (secure: ${smtpConfig.secure}) user: ${smtpConfig.auth.user || 'NOT SET'}`);
+
+      const transporter = nodemailer.createTransport(smtpConfig);
+      this.tenantTransporters.set(cacheKey, transporter);
+
+      transporter.verify().then(() => {
+        this.logger.log(`✅ Tenant SMTP verified for ${smtpConfig.host}:${smtpConfig.port}`);
+      }).catch((error) => {
+        this.logger.warn(`⚠️ Tenant SMTP verification failed for ${smtpConfig.host}:${smtpConfig.port}: ${this.formatSMTPError(error)}`);
+        if (error.message?.includes('authentication failed') || (error as any).code === 'EAUTH') {
+          this.logger.error(`❌ SMTP Authentication Failed Details:`);
+          this.logger.error(`   Host: ${smtpConfig.host}`);
+          this.logger.error(`   Port: ${smtpConfig.port}`);
+          this.logger.error(`   User: ${smtpConfig.auth.user}`);
+          this.logger.error(`   Password length: ${cleanedPassword.length}`);
+          this.logger.error(`   Secure: ${secure}`);
+          this.logger.error(`   ⚠️  Please verify the password in tenant emailConfig is correct`);
+          this.logger.error(`   ⚠️  For Websupport: ensure password matches the email account password exactly`);
+        }
+      });
+
+      return transporter;
+    }
+
+    return this.transporter || null;
+  }
+
+
+  /**
+   * Load tenant emailConfig from DB if not provided.
+   */
+  private async resolveEmailConfig(emailConfig?: any, tenantId?: string): Promise<any> {
+    if ((emailConfig && Object.keys(emailConfig).length > 0) || !tenantId) {
+      return emailConfig;
+    }
+
+    try {
+      const tenant = await this.prisma.tenant.findUnique({
+        where: { id: tenantId },
+        select: { emailConfig: true },
+      });
+      if (tenant?.emailConfig) {
+        this.logger.log(`📧 Loaded tenant emailConfig from DB for tenantId ${tenantId}`);
+        return tenant.emailConfig;
+      }
+    } catch (err) {
+      this.logger.warn(`⚠️ Could not load tenant emailConfig for tenantId ${tenantId}: ${err}`);
+    }
+
+    return emailConfig;
   }
 
   /**
@@ -209,6 +316,7 @@ export class EmailService {
     tenantTheme?: any,
     emailConfig?: any,
   ): Promise<void> {
+    const resolvedEmailConfig = await this.resolveEmailConfig(emailConfig, (order as any).tenantId);
     const customer = order.customer as any;
     const address = order.address as any;
     
@@ -292,11 +400,13 @@ export class EmailService {
       ? order.orderNumber.toString().padStart(4, '0')
       : order.id.slice(0, 8).toUpperCase(); // Fallback for old orders without orderNumber
 
+    const transporter = this.getTenantTransporter(resolvedEmailConfig);
+
     try {
-      if (process.env.SMTP_HOST && this.transporter) {
+      if (transporter) {
         // Production: Actually send the email
-        const info = await this.transporter.sendMail({
-          from: this.getEmailFrom(tenantName, tenantDomain, emailConfig),
+        const info = await transporter.sendMail({
+          from: this.getEmailFrom(tenantName, tenantDomain, resolvedEmailConfig),
           to: customer.email,
           subject: `🍕 Objednávka prijatá #${orderNumber} - ${tenantName}`,
           html: emailHtml,
@@ -328,6 +438,7 @@ export class EmailService {
     tenantTheme?: any,
     emailConfig?: any,
   ): Promise<void> {
+    const resolvedEmailConfig = await this.resolveEmailConfig(emailConfig, undefined);
     // Generate frontend URL - use FRONTEND_URL if available, otherwise fix tenantDomain
     let frontendDomain = process.env.FRONTEND_URL || tenantDomain;
     
@@ -359,11 +470,13 @@ export class EmailService {
       tenantTheme,
     );
 
+    const transporter = this.getTenantTransporter(resolvedEmailConfig);
+
     try {
-      if (process.env.SMTP_HOST && this.transporter) {
+      if (transporter) {
         // Production: Actually send the email
-        const info = await this.transporter.sendMail({
-          from: this.getEmailFrom(tenantName, tenantDomain, emailConfig),
+        const info = await transporter.sendMail({
+          from: this.getEmailFrom(tenantName, tenantDomain, resolvedEmailConfig),
           to: user.email,
           subject: `Nastavte si heslo pre váš účet - ${tenantName}`,
           html: emailHtml,
@@ -980,6 +1093,7 @@ export class EmailService {
     tenantDomain: string,
     emailConfig?: any,
   ): Promise<void> {
+    const resolvedEmailConfig = await this.resolveEmailConfig(emailConfig, (order as any).tenantId);
     const customer = order.customer as any;
     if (!customer?.email) {
       return; // No email to send to
@@ -1051,11 +1165,13 @@ export class EmailService {
       tenantDomain,
     );
 
+    const transporter = this.getTenantTransporter(resolvedEmailConfig);
+
     try {
-      if (process.env.SMTP_HOST && this.transporter) {
+      if (transporter) {
         // Production: Actually send the email
-        const info = await this.transporter.sendMail({
-          from: this.getEmailFrom(tenantName, tenantDomain, emailConfig),
+        const info = await transporter.sendMail({
+          from: this.getEmailFrom(tenantName, tenantDomain, resolvedEmailConfig),
           to: customer.email,
           subject: notification.subject,
           html: emailHtml,
@@ -1087,15 +1203,17 @@ export class EmailService {
     tenantSlug?: string,
     emailConfig?: any,
   ): Promise<void> {
+    const resolvedEmailConfig = await this.resolveEmailConfig(emailConfig, undefined);
     const emailHtml = this.buildWelcomeEmail(user, tenantName, tenantDomain, tenantTheme, tenantSlug);
-    const emailFrom = this.getEmailFrom(tenantName, tenantDomain, emailConfig);
+    const emailFrom = this.getEmailFrom(tenantName, tenantDomain, resolvedEmailConfig);
     const emailSubject = `🎉 Vitajte v ${tenantName}!`;
+    const transporter = this.getTenantTransporter(resolvedEmailConfig);
 
     try {
-      if (process.env.SMTP_HOST && this.transporter) {
+      if (transporter) {
         // Verify SMTP connection before sending
         try {
-          await this.transporter.verify();
+          await transporter.verify();
           this.logger.log(`✅ SMTP connection verified before sending welcome email`);
         } catch (verifyError) {
           this.logger.error(`❌ SMTP verification failed before sending welcome email:`, this.formatSMTPError(verifyError));
@@ -1109,7 +1227,7 @@ export class EmailService {
         this.logger.log(`   Subject: ${emailSubject}`);
 
         // Production: Actually send the email
-        const info = await this.transporter.sendMail({
+        const info = await transporter.sendMail({
           from: emailFrom,
           to: user.email,
           subject: emailSubject,
