@@ -112,6 +112,9 @@ export function OrderCard({ order, onStatusUpdate, isExpanded = false, onToggleE
     (order.status === OrderStatus.PAID || order.status === OrderStatus.PREPARING || order.status === OrderStatus.READY);
   // Show cancel for anything except delivered/canceled
   const canShowCancel = order.status !== OrderStatus.DELIVERED && order.status !== OrderStatus.CANCELED;
+  // Desktop already has specialized reject/cancel buttons for some states.
+  // Show this backdoor cancel only where a cancel button is otherwise missing.
+  const showDesktopBackdoorCancel = canShowCancel && !isPendingDelivery && !isPendingOnline && !isPaidOnline;
   
   // Get translated status label
   const getStatusLabel = (status: OrderStatus): string => {
@@ -475,6 +478,15 @@ export function OrderCard({ order, onStatusUpdate, isExpanded = false, onToggleE
               className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
             >
               → {getNextStatusLabel(order.status)}
+            </button>
+          )}
+          {showDesktopBackdoorCancel && (
+            <button
+              onClick={() => onStatusUpdate(order.id, OrderStatus.CANCELED)}
+              className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+              title="Backdoor zrusenie objednavky"
+            >
+              ❌ Zrušiť
             </button>
           )}
           
