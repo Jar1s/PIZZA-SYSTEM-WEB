@@ -9,7 +9,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { calculateOrderItemPrice } from '@/lib/calculate-order-item-price';
 import { Header } from '@/components/layout/Header';
 import { StatusTimeline } from '@/components/tracking/StatusTimeline';
-import { getTenant } from '@/lib/api';
+import { createPaymentSession, getTenant } from '@/lib/api';
 import { Tenant, OrderStatus, OrderItem } from '@pizza-ecosystem/shared';
 import { withTenantThemeDefaults, getBackgroundClass, isDarkTheme, getSectionShellClass } from '@/lib/tenant-utils';
 
@@ -18,6 +18,7 @@ interface Order {
   orderNumber?: number | null;
   status: string;
   paymentStatus?: string | null;
+  paymentRef?: string | null;
   customer: {
     name: string;
     email: string;
@@ -55,6 +56,8 @@ export default function OrderTrackingPage() {
   const [error, setError] = useState<string | null>(null);
   const [tenant, setTenant] = useState<Tenant | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [retryingPayment, setRetryingPayment] = useState(false);
+  const [retryPaymentError, setRetryPaymentError] = useState<string | null>(null);
   
   // Refs to prevent concurrent requests and track polling
   const isFetchingRef = useRef(false);
@@ -322,6 +325,30 @@ export default function OrderTrackingPage() {
   });
 
   const orderStatus = order.status as OrderStatus;
+  const canRetryPayment =
+    orderStatus === OrderStatus.PENDING &&
+    order.paymentStatus !== 'success' &&
+    (Boolean(order.paymentRef) || paymentInitFailed || paymentPending);
+
+  const handleRetryPayment = async () => {
+    if (!order || retryingPayment) return;
+
+    setRetryPaymentError(null);
+    setRetryingPayment(true);
+    try {
+      const payment = await createPaymentSession(order.id);
+      if (!payment?.redirectUrl) {
+        throw new Error('Payment gateway did not return redirect URL');
+      }
+      window.location.href = payment.redirectUrl;
+    } catch (err: any) {
+      const message = err?.message || 'Nepodarilo sa obnoviť platbu';
+      setRetryPaymentError(message);
+      alert(`Nepodarilo sa obnoviť platbu: ${message}`);
+    } finally {
+      setRetryingPayment(false);
+    }
+  };
 
   return (
     <div className={`min-h-screen ${backgroundClass}`}>
@@ -396,6 +423,38 @@ export default function OrderTrackingPage() {
                 ? 'Platba je zatiaľ spracovávaná. Stav sa obnoví automaticky.'
                 : 'Payment is still processing. Status will update automatically.'}
             </p>
+          </motion.div>
+        )}
+
+        {canRetryPayment && (
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-6 rounded-2xl border border-emerald-500/40 bg-emerald-500/10 p-4"
+          >
+            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+              <p className="text-sm font-semibold text-emerald-200">
+                {language === 'sk'
+                  ? 'Platba nebola dokončená. Klikni na pokračovanie a otvorí sa platobná brána znova.'
+                  : 'Payment was not completed. Continue to reopen the payment gateway.'}
+              </p>
+              <button
+                type="button"
+                onClick={handleRetryPayment}
+                disabled={retryingPayment}
+                className={`rounded-lg px-4 py-2 text-sm font-semibold text-white ${
+                  retryingPayment ? 'cursor-not-allowed opacity-70' : 'hover:opacity-90'
+                }`}
+                style={{ backgroundColor: primaryColor }}
+              >
+                {retryingPayment
+                  ? (language === 'sk' ? 'Otváram platbu...' : 'Opening payment...')
+                  : (language === 'sk' ? 'Pokračovať v platbe' : 'Continue payment')}
+              </button>
+            </div>
+            {retryPaymentError && (
+              <p className="mt-2 text-xs text-rose-200">{retryPaymentError}</p>
+            )}
           </motion.div>
         )}
 
