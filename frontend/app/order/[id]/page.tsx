@@ -55,6 +55,8 @@ export default function OrderTrackingPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [tenant, setTenant] = useState<Tenant | null>(null);
+  const [tenantLoading, setTenantLoading] = useState(true);
+  const [tenantLoadError, setTenantLoadError] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const TRACKING_POLL_INTERVAL_MS = 10000;
   const TRACKING_MIN_FETCH_GAP_MS = 2000;
@@ -69,11 +71,16 @@ export default function OrderTrackingPage() {
   // Load tenant
   useEffect(() => {
     const loadTenant = async () => {
+      setTenantLoading(true);
+      setTenantLoadError(null);
       try {
         const tenantData = await getTenant(tenantSlug);
         setTenant(tenantData);
       } catch (error) {
         console.error('Failed to load tenant:', error);
+        setTenantLoadError(error instanceof Error ? error.message : 'Failed to load tenant');
+      } finally {
+        setTenantLoading(false);
       }
     };
     loadTenant();
@@ -306,7 +313,7 @@ export default function OrderTrackingPage() {
   const sectionShellClass = 'bg-gray-900 rounded-3xl px-6 py-10 lg:px-16 shadow-xl border border-gray-800'; // Dark cards
   const primaryColor = normalizedTenant?.theme?.primaryColor || '#E91E63';
 
-  if (loading || !tenant) {
+  if (loading || tenantLoading) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
         <div className="text-center">
@@ -317,10 +324,12 @@ export default function OrderTrackingPage() {
     );
   }
 
-  if (error || !order) {
+  if (error || !order || !tenant) {
+    const fallbackMessage = tenantLoadError || error || t.orderNotFoundMessage;
+
     return (
       <div className="min-h-screen bg-black">
-        <Header tenant={tenant} />
+        {tenant && <Header tenant={tenant} />}
         <div className="flex items-center justify-center min-h-[calc(100vh-80px)] p-4">
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
@@ -332,7 +341,7 @@ export default function OrderTrackingPage() {
               {t.orderNotFound}
             </h1>
             <p className="mb-6 text-center text-gray-300">
-              {error || t.orderNotFoundMessage}
+              {fallbackMessage}
             </p>
             <div className="text-center">
               <button
