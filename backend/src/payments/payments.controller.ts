@@ -1,4 +1,4 @@
-import { Controller, Post, Body, HttpCode, BadRequestException } from '@nestjs/common';
+import { Controller, Get, Post, Query, Body, HttpCode, BadRequestException } from '@nestjs/common';
 import { PaymentsService } from './payments.service';
 import { Public } from '../auth/decorators/public.decorator';
 
@@ -16,8 +16,18 @@ export class PaymentsController {
     }
     return this.paymentsService.createPaymentSession(orderId);
   }
-}
 
+  @Public()
+  @Get('gopay/resolve')
+  @HttpCode(200)
+  async resolveGopayReturn(@Query('id') paymentId: string) {
+    const normalizedPaymentId = (paymentId || '').trim();
+    if (!normalizedPaymentId) {
+      throw new BadRequestException('Missing GoPay payment id');
+    }
+    return this.paymentsService.resolveGopayReturn(normalizedPaymentId);
+  }
+}
 
 
 

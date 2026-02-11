@@ -1,4 +1,4 @@
-import { Controller, Post, Body, Headers, Req, Res, HttpCode, UnauthorizedException, Logger } from '@nestjs/common';
+import { Controller, Post, Get, Query, Body, Headers, Req, Res, HttpCode, NotFoundException, Logger } from '@nestjs/common';
 import { Request, Response } from 'express';
 import { PaymentsService } from './payments.service';
 import { AdyenService } from './adyen.service';
@@ -142,6 +142,41 @@ export class WebhooksController {
   }
 
   @Public()
+  @Get('gopay')
+  @HttpCode(200)
+  async handleGopayNotification(
+    @Query('id') paymentId: string,
+    @Res() res: Response,
+  ) {
+    const normalizedPaymentId = (paymentId || '').trim();
+    if (!normalizedPaymentId) {
+      this.logger.error('GoPay notification missing id query param');
+      return res.status(400).send('Missing id');
+    }
+
+    try {
+      await this.paymentsService.syncGopayPaymentById(normalizedPaymentId);
+      return res.status(200).send('OK');
+    } catch (error) {
+      if (error instanceof NotFoundException) {
+        // Keep retrying if order/payment reference has not been persisted yet.
+        this.logger.warn('GoPay GET notification arrived before payment reference was resolvable, requesting retry');
+        return res.status(500).send('Order not found yet');
+      }
+
+      const isTransientError = this.isTransientError(error);
+      if (isTransientError) {
+        this.logger.error('Transient error processing GoPay GET notification (will retry):', error);
+        return res.status(500).send('Internal server error');
+      }
+
+      // For fatal errors return 200 to prevent endless retries from gateway.
+      this.logger.error('Fatal error processing GoPay GET notification (no retry):', error);
+      return res.status(200).send('OK');
+    }
+  }
+
+  @Public()
   @Post('wepay')
   @HttpCode(200)
   async handleWepayWebhook(
@@ -226,9 +261,6 @@ export class WebhooksController {
     return false;
   }
 }
-
-
-
 
 
 
