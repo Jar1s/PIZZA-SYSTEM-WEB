@@ -136,7 +136,7 @@ export class GopayService {
             count: item.quantity,
           })),
           callback: {
-            return_url: `${frontendBaseUrl}/checkout/return?provider=gopay`,
+            return_url: `${frontendBaseUrl}/checkout/return`,
             notification_url: `${backendBaseUrl}/api/webhooks/gopay`,
           },
         }),
@@ -259,6 +259,64 @@ export class GopayService {
     };
   }
 
+  async getPaymentStatus(paymentId: string, tenant: Tenant) {
+    const gopayConfig = tenant.paymentConfig as any;
+    const clientId = String(gopayConfig?.clientId || '').trim();
+    const clientSecret = String(gopayConfig?.clientSecret || '').trim();
+    const environment = String(gopayConfig?.environment || 'sandbox').toLowerCase() === 'production'
+      ? 'production'
+      : 'sandbox';
+
+    if (!clientId || !clientSecret) {
+      throw new Error('GoPay configuration is incomplete: required clientId and clientSecret');
+    }
+
+    const apiUrl = environment === 'production'
+      ? 'https://gate.gopay.cz'
+      : 'https://gw.sandbox.gopay.com';
+
+    const credentials = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
+
+    // GoPay docs: payment status should be queried with token scope payment-all.
+    const tokenResponse = await fetch(`${apiUrl}/api/oauth2/token`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Basic ${credentials}`,
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Accept': 'application/json',
+      },
+      body: new URLSearchParams({
+        grant_type: 'client_credentials',
+        scope: 'payment-all',
+      }),
+    });
+
+    if (!tokenResponse.ok) {
+      const errorText = await tokenResponse.text().catch(() => '');
+      throw new Error(`GoPay status token request failed: ${tokenResponse.status} ${errorText}`);
+    }
+
+    const tokenData = await tokenResponse.json();
+    if (!tokenData?.access_token) {
+      throw new Error('GoPay status token response missing access_token');
+    }
+
+    const statusResponse = await fetch(`${apiUrl}/api/payments/payment/${encodeURIComponent(paymentId)}`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${tokenData.access_token}`,
+        'Accept': 'application/json',
+      },
+    });
+
+    if (!statusResponse.ok) {
+      const errorText = await statusResponse.text().catch(() => '');
+      throw new Error(`GoPay payment status request failed: ${statusResponse.status} ${errorText}`);
+    }
+
+    return statusResponse.json();
+  }
+
   async refundPayment(paymentId: string, amountCents: number, tenant: Tenant): Promise<void> {
     // GoPay refund API integration
     // https://doc.gopay.com/
@@ -366,7 +424,6 @@ export class GopayService {
     }
   }
 }
-
 
 
 

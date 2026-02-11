@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException, InternalServerErrorException, Inject, forwardRef, Logger } from '@nestjs/common';
+import { Injectable, BadRequestException, InternalServerErrorException, NotFoundException, Inject, forwardRef, Logger } from '@nestjs/common';
 import { AdyenService } from './adyen.service';
 import { GopayService } from './gopay.service';
 import { WepayService } from './wepay.service';
@@ -172,6 +172,64 @@ export class PaymentsService {
       // Other states (CREATED, PAYMENT_METHOD_CHOSEN) - just log, don't change status
       console.log(`GoPay webhook received state ${parsed.eventType} for order ${order.id}, no action taken`);
     }
+  }
+
+  private mapGopayStateToClientStatus(state: string): 'success' | 'canceled' | 'failed' | 'pending' {
+    switch ((state || '').toUpperCase()) {
+      case 'PAID':
+        return 'success';
+      case 'CANCELED':
+        return 'canceled';
+      case 'TIMEOUTED':
+        return 'failed';
+      case 'CREATED':
+      case 'PAYMENT_METHOD_CHOSEN':
+        return 'pending';
+      default:
+        return 'pending';
+    }
+  }
+
+  async syncGopayPaymentById(paymentId: string): Promise<{ orderId: string; tenantSlug: string; state: string }> {
+    const normalizedPaymentId = (paymentId || '').trim();
+    if (!normalizedPaymentId) {
+      throw new BadRequestException('Missing GoPay payment id');
+    }
+
+    const order = await this.ordersService.getOrderByPaymentRef(normalizedPaymentId);
+    if (!order) {
+      throw new NotFoundException(`Order for GoPay payment ${normalizedPaymentId} not found`);
+    }
+
+    const tenant = await this.tenantsService.getTenantById(order.tenantId);
+    if (tenant.paymentProvider !== 'gopay') {
+      throw new BadRequestException(`Tenant payment provider is ${tenant.paymentProvider}, not gopay`);
+    }
+
+    const paymentData = await this.gopayService.getPaymentStatus(normalizedPaymentId, tenant);
+    await this.handleGopayWebhook(paymentData);
+
+    return {
+      orderId: order.id,
+      tenantSlug: tenant.slug,
+      state: String(paymentData?.state || '').toUpperCase(),
+    };
+  }
+
+  async resolveGopayReturn(paymentId: string): Promise<{
+    orderId: string;
+    tenantSlug: string;
+    status: 'success' | 'canceled' | 'failed' | 'pending';
+    state: string;
+  }> {
+    const synced = await this.syncGopayPaymentById(paymentId);
+
+    return {
+      orderId: synced.orderId,
+      tenantSlug: synced.tenantSlug,
+      status: this.mapGopayStateToClientStatus(synced.state),
+      state: synced.state,
+    };
   }
 
   async handleWepayWebhook(data: any, signature?: string) {
