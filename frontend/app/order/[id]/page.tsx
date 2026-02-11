@@ -52,6 +52,9 @@ export default function OrderTrackingPage() {
   const [error, setError] = useState<string | null>(null);
   const [tenant, setTenant] = useState<Tenant | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const TRACKING_POLL_INTERVAL_MS = 10000;
+  const TRACKING_MIN_FETCH_GAP_MS = 2000;
   
   // Refs to prevent concurrent requests and track polling
   const isFetchingRef = useRef(false);
@@ -71,9 +74,9 @@ export default function OrderTrackingPage() {
     loadTenant();
   }, [tenantSlug]);
 
-  const fetchOrder = useCallback(async (retryCount = 0, isBackgroundRefresh = false) => {
+  const fetchOrder = useCallback(async (retryCount = 0, isBackgroundRefresh = false, force = false) => {
     // Prevent concurrent requests
-    if (isFetchingRef.current && retryCount === 0) {
+    if (isFetchingRef.current && retryCount === 0 && !force) {
       console.log('[Order Tracking] Fetch already in progress, skipping...');
       return;
     }
@@ -81,7 +84,7 @@ export default function OrderTrackingPage() {
     // Throttle: don't fetch if last fetch was less than 2 seconds ago (respects 30 req/min limit)
     const now = Date.now();
     const timeSinceLastFetch = now - lastFetchTimeRef.current;
-    if (timeSinceLastFetch < 2000 && retryCount === 0) {
+    if (timeSinceLastFetch < TRACKING_MIN_FETCH_GAP_MS && retryCount === 0 && !force) {
       console.log(`[Order Tracking] Throttling: last fetch was ${timeSinceLastFetch}ms ago`);
       return;
     }
@@ -95,11 +98,18 @@ export default function OrderTrackingPage() {
       }
       
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
-      const url = `${apiUrl}/api/track/${orderId}`;
+      const url = `${apiUrl}/api/track/${orderId}?t=${Date.now()}`;
       console.log(`[Order Tracking] Fetching order: ${url} (retry ${retryCount}, background: ${isBackgroundRefresh})`);
       
       // Use public tracking endpoint
-      const response = await fetch(url);
+      const response = await fetch(url, {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          Pragma: 'no-cache',
+          Expires: '0',
+        },
+      });
       
       console.log(`[Order Tracking] Response status: ${response.status}`, { orderId, retryCount });
       
@@ -111,7 +121,7 @@ export default function OrderTrackingPage() {
           if (retryCount < 2) {
             setTimeout(() => {
               isFetchingRef.current = false; // Allow retry
-              fetchOrder(retryCount + 1, isBackgroundRefresh);
+              fetchOrder(retryCount + 1, isBackgroundRefresh, true);
             }, waitTime);
             return;
           }
@@ -126,7 +136,7 @@ export default function OrderTrackingPage() {
             console.log(`[Order Tracking] Order not found, retrying in ${retryCount + 1}s... (${retryCount + 1}/3)`);
             setTimeout(() => {
               isFetchingRef.current = false; // Allow retry
-              fetchOrder(retryCount + 1, isBackgroundRefresh);
+              fetchOrder(retryCount + 1, isBackgroundRefresh, true);
             }, 1000 * (retryCount + 1)); // Exponential backoff: 1s, 2s, 3s
             return;
           }
@@ -158,15 +168,15 @@ export default function OrderTrackingPage() {
         setLoading(false);
       }
     }
-  }, [orderId]); // Removed 'order' from dependencies to prevent infinite loops
+  }, [orderId, TRACKING_MIN_FETCH_GAP_MS]); // Removed 'order' from dependencies to prevent infinite loops
 
   // Initial fetch on mount
   useEffect(() => {
     fetchOrder(0);
   }, [orderId, fetchOrder]); // Include fetchOrder in dependencies
 
-  // Poll for updates every 45 seconds (only after order is loaded and if order is not delivered/canceled)
-  // Increased to 45s to be well under the 30 req/min limit (allows ~1.3 req/min)
+  // Poll for updates every 10 seconds (only after order is loaded and if order is not delivered/canceled)
+  // 10s keeps the page responsive and stays safely under 100 req/min API throttling.
   useEffect(() => {
     // Clear any existing interval
     if (pollingIntervalRef.current) {
@@ -182,13 +192,13 @@ export default function OrderTrackingPage() {
       return;
     }
     
-    // Start polling with longer interval
+    // Start polling interval
     pollingIntervalRef.current = setInterval(() => {
       // Only poll if not currently fetching
       if (!isFetchingRef.current) {
         fetchOrder(0, true); // true = background refresh
       }
-    }, 45000); // Poll every 45 seconds to avoid rate limiting
+    }, TRACKING_POLL_INTERVAL_MS);
     
     return () => {
       if (pollingIntervalRef.current) {
@@ -197,7 +207,31 @@ export default function OrderTrackingPage() {
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [order?.id, order?.status, fetchOrder]); // Only depend on order.id and order.status to prevent interval reset on every order update
+  }, [order?.id, order?.status, fetchOrder, TRACKING_POLL_INTERVAL_MS]); // Only depend on order.id and order.status to prevent interval reset on every order update
+
+  // Refresh immediately when user returns to the tab/window.
+  useEffect(() => {
+    if (!order) return;
+    if (['DELIVERED', 'CANCELED'].includes(order.status)) return;
+
+    const refreshNow = () => {
+      fetchOrder(0, true, true);
+    };
+
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        refreshNow();
+      }
+    };
+
+    window.addEventListener('focus', refreshNow);
+    document.addEventListener('visibilitychange', onVisibilityChange);
+
+    return () => {
+      window.removeEventListener('focus', refreshNow);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+    };
+  }, [order?.id, order?.status, fetchOrder]);
 
   // Get tenant theme - Force dark theme for tracking page
   const normalizedTenant = withTenantThemeDefaults(tenant);

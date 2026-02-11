@@ -10,6 +10,7 @@ import {
   NotFoundException,
   UseGuards,
   Logger,
+  Header,
 } from '@nestjs/common';
 import { OrdersService } from './orders.service';
 import { OrderStatusService } from './order-status.service';
@@ -143,6 +144,10 @@ export class TrackingController {
 
   @Public()
   @Throttle({ default: { limit: 100, ttl: 60000 } }) // 100 requests per minute
+  @Header('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate')
+  @Header('Pragma', 'no-cache')
+  @Header('Expires', '0')
+  @Header('Surrogate-Control', 'no-store')
   @Get(':orderId')
   async trackOrder(@Param('orderId') orderId: string) {
     this.logger.log(`Tracking order: ${orderId}`);
@@ -158,6 +163,10 @@ export class TrackingController {
 
   @Public()
   @Throttle({ default: { limit: 100, ttl: 60000 } })
+  @Header('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate')
+  @Header('Pragma', 'no-cache')
+  @Header('Expires', '0')
+  @Header('Surrogate-Control', 'no-store')
   @Get('api/track/:orderId')
   async trackOrderApi(@Param('orderId') orderId: string) {
     this.logger.log(`API tracking order: ${orderId}`);
