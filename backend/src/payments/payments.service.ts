@@ -151,6 +151,23 @@ export class PaymentsService {
 
     // Handle different GoPay states
     if (parsed.success && parsed.eventType === 'PAID') {
+      // Admin might have canceled/rejected the order before the PAID webhook arrived.
+      // In that case, keep order canceled and immediately issue refund.
+      if (order.status === OrderStatus.CANCELED) {
+        await this.ordersService.updatePaymentRef(order.id, parsed.paymentRef, 'success');
+        try {
+          await this.refundGopayPayment(order.id);
+          this.logger.warn(
+            `GoPay PAID webhook arrived after order ${order.id} was canceled - refund initiated automatically`,
+          );
+        } catch (error: any) {
+          this.logger.error(
+            `GoPay PAID arrived for canceled order ${order.id}, but auto-refund failed: ${error?.message || error}`,
+          );
+        }
+        return;
+      }
+
       if ((order as any).paymentStatus === 'success' || this.isPaidFlowOrderStatus(order.status as OrderStatus)) {
         this.logger.log(`GoPay payment already processed for order ${order.id}, skipping duplicate PAID event`);
         return;
