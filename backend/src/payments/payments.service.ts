@@ -151,6 +151,11 @@ export class PaymentsService {
 
     // Handle different GoPay states
     if (parsed.success && parsed.eventType === 'PAID') {
+      if ((order as any).paymentStatus === 'success' || this.isPaidFlowOrderStatus(order.status as OrderStatus)) {
+        this.logger.log(`GoPay payment already processed for order ${order.id}, skipping duplicate PAID event`);
+        return;
+      }
+
       // Payment successful
       await this.ordersService.updatePaymentRef(order.id, parsed.paymentRef, 'success');
       await this.orderStatusService.updateStatus(order.id, OrderStatus.PAID);
@@ -164,6 +169,13 @@ export class PaymentsService {
         // Don't fail the payment, admin can manually dispatch
       }
     } else if (parsed.eventType === 'CANCELED' || parsed.eventType === 'TIMEOUTED') {
+      if (this.isPaidFlowOrderStatus(order.status as OrderStatus)) {
+        this.logger.warn(
+          `Ignoring GoPay ${parsed.eventType} for already processed order ${order.id} (status=${order.status})`
+        );
+        return;
+      }
+
       // Payment failed or canceled
       await this.ordersService.updatePaymentRef(order.id, parsed.paymentRef, 'failed');
       await this.orderStatusService.updateStatus(order.id, OrderStatus.CANCELED);
@@ -188,6 +200,19 @@ export class PaymentsService {
       default:
         return 'pending';
     }
+  }
+
+  private isPaidFlowOrderStatus(status: OrderStatus): boolean {
+    return [
+      OrderStatus.PAID,
+      OrderStatus.PREPARING,
+      OrderStatus.OUT_FOR_DELIVERY,
+      OrderStatus.DELIVERED,
+    ].includes(status);
+  }
+
+  private async sleep(ms: number): Promise<void> {
+    await new Promise((resolve) => setTimeout(resolve, ms));
   }
 
   async syncGopayPaymentById(paymentId: string): Promise<{ orderId: string; tenantSlug: string; state: string }> {
@@ -222,12 +247,22 @@ export class PaymentsService {
     status: 'success' | 'canceled' | 'failed' | 'pending';
     state: string;
   }> {
-    const synced = await this.syncGopayPaymentById(paymentId);
+    const maxAttempts = 4;
+    const delayMs = 1200;
+
+    let synced = await this.syncGopayPaymentById(paymentId);
+    let status = this.mapGopayStateToClientStatus(synced.state);
+
+    for (let attempt = 1; attempt < maxAttempts && status === 'pending'; attempt += 1) {
+      await this.sleep(delayMs);
+      synced = await this.syncGopayPaymentById(paymentId);
+      status = this.mapGopayStateToClientStatus(synced.state);
+    }
 
     return {
       orderId: synced.orderId,
       tenantSlug: synced.tenantSlug,
-      status: this.mapGopayStateToClientStatus(synced.state),
+      status,
       state: synced.state,
     };
   }

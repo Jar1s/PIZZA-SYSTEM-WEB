@@ -48,6 +48,7 @@ export default function OrderTrackingPage() {
   const tenantSlug = searchParams.get('tenant') || 'pornopizza';
   const paymentInitFailed = searchParams.get('paymentInitFailed') === '1';
   const paymentPending = searchParams.get('paymentPending') === '1';
+  const paymentId = searchParams.get('paymentId');
   
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
@@ -200,6 +201,60 @@ export default function OrderTrackingPage() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [order?.id, order?.status, fetchOrder]); // Only depend on order.id and order.status to prevent interval reset on every order update
+
+  // If we were redirected with GoPay paymentId in pending state, keep resolving it in background.
+  useEffect(() => {
+    if (!paymentPending || !paymentId) return;
+
+    let cancelled = false;
+    let attempts = 0;
+    const maxAttempts = 20;
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+
+    const syncGoPayStatus = async () => {
+      if (cancelled) return;
+      attempts += 1;
+
+      try {
+        const response = await fetch(`${apiUrl}/api/payments/gopay/resolve?id=${encodeURIComponent(paymentId)}`);
+        if (!response.ok) {
+          return;
+        }
+
+        const payload = await response.json();
+        if (cancelled) return;
+
+        const resolvedTenant = payload.tenantSlug || tenantSlug;
+        const tenantQuery = `&tenant=${encodeURIComponent(resolvedTenant)}`;
+
+        if (payload.status === 'success') {
+          router.push(`/order/success?orderId=${payload.orderId}${tenantQuery}`);
+          return;
+        }
+
+        if (payload.status === 'failed' || payload.status === 'canceled') {
+          router.push(`/checkout?error=payment_${payload.status}&orderId=${payload.orderId}${tenantQuery}`);
+        }
+      } catch {
+        // Ignore transient resolve errors; tracking page keeps polling order state as fallback.
+      }
+    };
+
+    void syncGoPayStatus();
+
+    const interval = setInterval(() => {
+      if (attempts >= maxAttempts || cancelled) {
+        clearInterval(interval);
+        return;
+      }
+      void syncGoPayStatus();
+    }, 8000);
+
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [paymentPending, paymentId, router, tenantSlug]);
 
   // Get tenant theme - Force dark theme for tracking page
   const normalizedTenant = withTenantThemeDefaults(tenant);
