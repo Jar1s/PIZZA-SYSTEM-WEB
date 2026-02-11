@@ -113,61 +113,105 @@ export function StatusTimeline({ status, paymentStatus }: StatusTimelineProps) {
   }
 
   return (
-    <div className="relative">
-      {/* Progress Line */}
-      <div className="absolute top-8 left-0 right-0 h-1 bg-gray-700">
-        <div
-          className="h-full bg-green-500 transition-all duration-500"
-          style={{ width: `${(effectiveIndex / (STATUSES.length - 1)) * 100}%` }}
-        />
-      </div>
-
-      {/* Status Steps */}
-      <div className="relative flex justify-between">
+    <>
+      {/* Mobile: Vertical timeline for readability */}
+      <div className="md:hidden">
         {STATUSES.map((step, index) => {
           const isComplete = index <= effectiveIndex;
           const isCurrent = index === effectiveIndex;
+          const isLast = index === STATUSES.length - 1;
 
           return (
-            <div key={step.key} className="flex flex-col items-center flex-1">
-              {/* Icon */}
+            <div key={step.key} className="relative pl-14 pb-5 last:pb-0">
+              {!isLast && (
+                <div
+                  className={`absolute left-5 top-10 w-0.5 h-[calc(100%-2rem)] ${
+                    index < effectiveIndex ? 'bg-green-500' : 'bg-gray-700'
+                  }`}
+                />
+              )}
+
               <div
-                className={`w-16 h-16 rounded-full flex items-center justify-center text-2xl mb-2 transition-all ${
-                  isComplete
-                    ? 'bg-green-500 text-white scale-110'
-                    : 'bg-gray-700 text-gray-500'
-                } ${isCurrent ? 'ring-4 ring-green-400 ring-opacity-50 animate-pulse' : ''}`}
+                className={`absolute left-0 top-0 w-10 h-10 rounded-full flex items-center justify-center text-lg transition-all ${
+                  isComplete ? 'bg-green-500 text-white' : 'bg-gray-700 text-gray-400'
+                } ${isCurrent ? 'ring-4 ring-green-400 ring-opacity-50' : ''}`}
               >
                 {step.icon}
               </div>
 
-              {/* Label */}
-              <div
-                className={`text-sm font-medium text-center mb-1 ${
-                  isComplete ? 'text-white' : 'text-gray-500'
-                }`}
-              >
+              <div className={`text-base font-semibold leading-tight ${isComplete ? 'text-white' : 'text-gray-400'}`}>
                 {step.label}
               </div>
-
-              {/* Description */}
-              <div
-                className={`text-xs text-center ${
-                  isComplete ? 'text-gray-400' : 'text-gray-600'
-                }`}
-              >
+              <div className={`text-sm leading-snug mt-1 ${isComplete ? 'text-gray-300' : 'text-gray-500'}`}>
                 {step.description}
               </div>
 
-              {/* Checkmark for completed */}
-              {isComplete && !isCurrent && (
-                <div className="text-green-500 text-lg mt-1">✓</div>
+              {isCurrent && (
+                <div className="text-green-300 text-[11px] uppercase tracking-wide font-semibold mt-1">
+                  {language === 'sk' ? 'Aktuálny krok' : 'Current step'}
+                </div>
               )}
             </div>
           );
         })}
       </div>
-    </div>
+
+      {/* Desktop/Tablet: Horizontal timeline */}
+      <div className="hidden md:block relative">
+        {/* Progress Line */}
+        <div className="absolute top-8 left-0 right-0 h-1 bg-gray-700">
+          <div
+            className="h-full bg-green-500 transition-all duration-500"
+            style={{ width: `${(effectiveIndex / (STATUSES.length - 1)) * 100}%` }}
+          />
+        </div>
+
+        {/* Status Steps */}
+        <div className="relative flex justify-between">
+          {STATUSES.map((step, index) => {
+            const isComplete = index <= effectiveIndex;
+            const isCurrent = index === effectiveIndex;
+
+            return (
+              <div key={step.key} className="flex flex-col items-center flex-1 px-1">
+                {/* Icon */}
+                <div
+                  className={`w-16 h-16 rounded-full flex items-center justify-center text-2xl mb-2 transition-all ${
+                    isComplete
+                      ? 'bg-green-500 text-white scale-110'
+                      : 'bg-gray-700 text-gray-500'
+                  } ${isCurrent ? 'ring-4 ring-green-400 ring-opacity-50 animate-pulse' : ''}`}
+                >
+                  {step.icon}
+                </div>
+
+                {/* Label */}
+                <div
+                  className={`text-sm font-medium text-center mb-1 ${
+                    isComplete ? 'text-white' : 'text-gray-500'
+                  }`}
+                >
+                  {step.label}
+                </div>
+
+                {/* Description */}
+                <div
+                  className={`text-xs text-center ${
+                    isComplete ? 'text-gray-400' : 'text-gray-600'
+                  }`}
+                >
+                  {step.description}
+                </div>
+
+                {/* Checkmark for completed */}
+                {isComplete && !isCurrent && (
+                  <div className="text-green-500 text-lg mt-1">✓</div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </>
   );
 }
-
