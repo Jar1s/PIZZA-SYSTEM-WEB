@@ -62,11 +62,18 @@ const DELIVERY_TIMELINE_STEPS: TimelineStepConfig[] = [
   { key: OrderStatus.DELIVERED, icon: '🎉' },
 ];
 
+const BRAND_LABELS: Record<string, string> = {
+  pornopizza: 'Porno Pizza',
+  partypizza: 'Party Pizza',
+  pizzavnudzi: 'Pizza v Nudzi',
+};
+
 export function OrderCard({
   order,
   onStatusUpdate,
   isExpanded = false,
   onToggleExpand,
+  tenantSlug,
   showToggle = true,
 }: OrderCardProps) {
   const { language } = useLanguage();
@@ -396,6 +403,114 @@ export function OrderCard({
       durationFromPrevious,
     };
   });
+
+  const isDispatchDetailMode = !showToggle;
+  const orderDisplayNumber =
+    order.orderNumber != null && order.orderNumber > 0
+      ? `#${order.orderNumber.toString().padStart(4, '0')}`
+      : `#${order.id.slice(0, 8).toUpperCase()}`;
+  const brandLabel = tenantSlug ? BRAND_LABELS[tenantSlug] || tenantSlug : '';
+  const dispatchHeadline =
+    language === 'sk'
+      ? order.status === OrderStatus.DELIVERED
+        ? `Doručenie ${orderDisplayNumber}`
+        : `Objednávka ${orderDisplayNumber}`
+      : order.status === OrderStatus.DELIVERED
+        ? `Delivery ${orderDisplayNumber}`
+        : `Order ${orderDisplayNumber}`;
+  const dispatchStatusLabel = getStatusLabel(order.status).toUpperCase();
+  const dispatchElapsed = formatDuration(updatedAtDate.getTime() - createdAtDate.getTime());
+
+  const desktopActionButtons = (
+    <>
+      {isPendingDelivery && (
+        <>
+          <button
+            onClick={() => onStatusUpdate(order.id, OrderStatus.PAID)}
+            className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 text-sm font-semibold"
+          >
+            ✅ Prijať
+          </button>
+          <button
+            onClick={() => onStatusUpdate(order.id, OrderStatus.CANCELED)}
+            className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 text-sm font-semibold"
+          >
+            ❌ Zrušiť
+          </button>
+        </>
+      )}
+      {isPendingOnline && (
+        <button
+          onClick={() => onStatusUpdate(order.id, OrderStatus.CANCELED)}
+          className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 text-sm font-semibold"
+        >
+          ❌ Zrušiť
+        </button>
+      )}
+      {isPaidOnline && (
+        <>
+          <button
+            onClick={() => onStatusUpdate(order.id, OrderStatus.PREPARING)}
+            className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 text-sm font-semibold"
+          >
+            ✅ Potvrdiť
+          </button>
+          <button
+            onClick={() => onStatusUpdate(order.id, OrderStatus.CANCELED)}
+            className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 text-sm font-semibold"
+            title="Odmietnuť objednávku (refund bude spracovaný neskôr)"
+          >
+            ❌ Odmietnuť
+          </button>
+        </>
+      )}
+      {canSyncToStoryous && (
+        <button
+          onClick={handleSyncStoryous}
+          disabled={syncingStoryous}
+          className="px-3 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+          title="Send to Storyous"
+        >
+          {syncingStoryous ? '⏳' : '📦 Storyous'}
+        </button>
+      )}
+      {!hasWoltDelivery && order.status === OrderStatus.PAID && (
+        <button
+          onClick={handleCreateWoltDelivery}
+          disabled={creatingWolt}
+          className="px-3 py-2 bg-orange-600 text-white rounded hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+          title="Create Wolt delivery"
+        >
+          {creatingWolt ? '⏳' : '🚚 Wolt'}
+        </button>
+      )}
+      {shouldShowNextStatusButton() && nextStatus && (
+        <button
+          onClick={() => onStatusUpdate(order.id, nextStatus!)}
+          className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+        >
+          → {getNextStatusLabel(order.status)}
+        </button>
+      )}
+      {showDesktopBackdoorCancel && (
+        <button
+          onClick={() => onStatusUpdate(order.id, OrderStatus.CANCELED)}
+          className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+          title="Backdoor zrusenie objednavky"
+        >
+          ❌ Zrušiť
+        </button>
+      )}
+      {showToggle && (
+        <button
+          onClick={handleToggle}
+          className="px-4 py-2 border rounded hover:bg-gray-100"
+        >
+          {expanded ? 'Hide' : 'Details'}
+        </button>
+      )}
+    </>
+  );
   
   return (
     <div className="p-3 sm:p-4 hover:bg-gray-50">
@@ -527,199 +642,184 @@ export function OrderCard({
       </div>
 
       {/* Desktop Layout */}
-      <div className="hidden md:flex items-center justify-between">
-        <div className="flex-1">
-          <div className="flex items-center gap-3 flex-wrap">
-            <span className="font-mono text-sm text-gray-500">
-              {order.orderNumber != null && order.orderNumber > 0
-                ? `#${order.orderNumber.toString().padStart(4, '0')}`
-                : `#${order.id.slice(0, 8).toUpperCase()}`}
-            </span>
-            <span className="text-xs text-gray-500">
-              {formatCreatedTime(order.createdAt)}
-            </span>
-            <span className={`px-2 py-1 rounded text-xs font-semibold ${STATUS_COLORS[order.status]}`}>
-              {getStatusLabel(order.status)}
-            </span>
-            {isStoryousSynced && (
-              <span className="px-2 py-1 rounded text-xs font-semibold bg-green-100 text-green-800">
-                📦 Storyous
-              </span>
-            )}
-            {hasWoltDelivery && (
-              <span className="px-2 py-1 rounded text-xs font-semibold bg-orange-100 text-orange-800">
-                🚚 Wolt
-              </span>
-            )}
-            <span className="text-sm text-gray-600">
-              {customer.name} • {customer.phone}
-            </span>
+      {isDispatchDetailMode ? (
+        <div className="hidden md:block border-l-2 border-red-500 pl-3 pb-4 mb-4 border-b border-gray-200">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <div className="text-[11px] uppercase tracking-wide font-extrabold text-emerald-600">
+                {dispatchStatusLabel}
+              </div>
+              <div className="text-3xl font-extrabold text-gray-900 leading-tight mt-1">
+                {dispatchHeadline}
+              </div>
+              <div className="text-sm font-semibold text-emerald-700 mt-1">
+                {brandLabel}{brandLabel ? ' • ' : ''}{customer.name}
+              </div>
+            </div>
+            <div className="rounded-xl bg-gray-100 border border-gray-200 px-4 py-3 text-right min-w-[128px]">
+              <div className="text-[10px] uppercase tracking-wide font-bold text-gray-500">
+                {language === 'sk' ? 'Vydanie' : 'Updated'}
+              </div>
+              <div className="text-3xl font-extrabold text-gray-900 leading-none mt-1">
+                {formatTimelineTime(order.updatedAt)}
+              </div>
+              <div className="text-[11px] font-semibold text-emerald-600 mt-1">
+                {dispatchElapsed}
+              </div>
+            </div>
           </div>
-          
-          <div className="mt-2 text-sm text-gray-600">
-            {order.items.length} items • €{(order.totalCents / 100).toFixed(2)}
+          <div className="mt-3 flex items-center gap-2 flex-wrap">
+            {desktopActionButtons}
           </div>
         </div>
-        
-        <div className="flex items-center gap-2 ml-4">
-          {/* PENDING with delivery payment - Accept/Cancel buttons */}
-          {isPendingDelivery && (
-            <>
-              <button
-                onClick={() => onStatusUpdate(order.id, OrderStatus.PAID)}
-                className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 text-sm font-semibold"
-              >
-                ✅ Prijať
-              </button>
-              <button
-                onClick={() => onStatusUpdate(order.id, OrderStatus.CANCELED)}
-                className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 text-sm font-semibold"
-              >
-                ❌ Zrušiť
-              </button>
-            </>
-          )}
-          {/* PENDING with online payment - Cancel button only (waiting for customer payment) */}
-          {isPendingOnline && (
-            <button
-              onClick={() => onStatusUpdate(order.id, OrderStatus.CANCELED)}
-              className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 text-sm font-semibold"
-            >
-              ❌ Zrušiť
-            </button>
-          )}
-          {/* PAID online payment - Confirm/Reject buttons (after payment, operator must confirm) */}
-          {isPaidOnline && (
-            <>
-              <button
-                onClick={() => onStatusUpdate(order.id, OrderStatus.PREPARING)}
-                className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 text-sm font-semibold"
-              >
-                ✅ Potvrdiť
-              </button>
-              <button
-                onClick={() => onStatusUpdate(order.id, OrderStatus.CANCELED)}
-                className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 text-sm font-semibold"
-                title="Odmietnuť objednávku (refund bude spracovaný neskôr)"
-              >
-                ❌ Odmietnuť
-              </button>
-            </>
-          )}
-          {canSyncToStoryous && (
-            <button
-              onClick={handleSyncStoryous}
-              disabled={syncingStoryous}
-              className="px-3 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
-              title="Send to Storyous"
-            >
-              {syncingStoryous ? '⏳' : '📦 Storyous'}
-            </button>
-          )}
-          {!hasWoltDelivery && order.status === OrderStatus.PAID && (
-            <button
-              onClick={handleCreateWoltDelivery}
-              disabled={creatingWolt}
-              className="px-3 py-2 bg-orange-600 text-white rounded hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
-              title="Create Wolt delivery"
-            >
-              {creatingWolt ? '⏳' : '🚚 Wolt'}
-            </button>
-          )}
-          {shouldShowNextStatusButton() && nextStatus && (
-            <button
-              onClick={() => onStatusUpdate(order.id, nextStatus!)}
-              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-            >
-              → {getNextStatusLabel(order.status)}
-            </button>
-          )}
-          {showDesktopBackdoorCancel && (
-            <button
-              onClick={() => onStatusUpdate(order.id, OrderStatus.CANCELED)}
-              className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
-              title="Backdoor zrusenie objednavky"
-            >
-              ❌ Zrušiť
-            </button>
-          )}
+      ) : (
+        <div className="hidden md:flex items-center justify-between">
+          <div className="flex-1">
+            <div className="flex items-center gap-3 flex-wrap">
+              <span className="font-mono text-sm text-gray-500">{orderDisplayNumber}</span>
+              <span className="text-xs text-gray-500">
+                {formatCreatedTime(order.createdAt)}
+              </span>
+              <span className={`px-2 py-1 rounded text-xs font-semibold ${STATUS_COLORS[order.status]}`}>
+                {getStatusLabel(order.status)}
+              </span>
+              {isStoryousSynced && (
+                <span className="px-2 py-1 rounded text-xs font-semibold bg-green-100 text-green-800">
+                  📦 Storyous
+                </span>
+              )}
+              {hasWoltDelivery && (
+                <span className="px-2 py-1 rounded text-xs font-semibold bg-orange-100 text-orange-800">
+                  🚚 Wolt
+                </span>
+              )}
+              <span className="text-sm text-gray-600">
+                {customer.name} • {customer.phone}
+              </span>
+            </div>
+            
+            <div className="mt-2 text-sm text-gray-600">
+              {order.items.length} items • €{(order.totalCents / 100).toFixed(2)}
+            </div>
+          </div>
           
-          {showToggle && (
-            <button
-              onClick={handleToggle}
-              className="px-4 py-2 border rounded hover:bg-gray-100"
-            >
-              {expanded ? 'Hide' : 'Details'}
-            </button>
-          )}
+          <div className="flex items-center gap-2 ml-4">
+            {desktopActionButtons}
+          </div>
         </div>
-      </div>
+      )}
       
       {expanded && (
-        <div className="mt-4 pt-4 border-t grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-          <div className="col-span-2 rounded-xl border border-gray-200 bg-gray-50 p-4">
-            <div className="flex items-center justify-between gap-2 mb-4">
+        <div className={`${isDispatchDetailMode ? 'grid grid-cols-1 md:grid-cols-2 gap-4 text-sm border-l-2 border-red-500 pl-3' : 'mt-4 pt-4 border-t grid grid-cols-1 md:grid-cols-2 gap-4 text-sm'}`}>
+          <div className={`col-span-2 border border-gray-200 ${isDispatchDetailMode ? 'rounded-lg bg-white overflow-hidden' : 'rounded-xl bg-gray-50 p-4'}`}>
+            <div className={`flex items-center justify-between gap-2 ${isDispatchDetailMode ? 'px-4 py-3 border-b border-gray-200 bg-gray-50/60' : 'mb-4'}`}>
               <div className="font-semibold text-gray-900">
                 {language === 'sk' ? 'Časová os objednávky' : 'Order timeline'}
               </div>
-              <div className="text-xs text-gray-500">
-                {formatTimelineTime(order.createdAt)} to {formatTimelineTime(order.updatedAt)}
-              </div>
+              {isDispatchDetailMode ? (
+                <button
+                  type="button"
+                  className="text-[11px] uppercase tracking-wide font-bold text-orange-600 hover:text-orange-700"
+                >
+                  {language === 'sk' ? 'Zobrazit denniky' : 'Show logs'}
+                </button>
+              ) : (
+                <div className="text-xs text-gray-500">
+                  {formatTimelineTime(order.createdAt)} to {formatTimelineTime(order.updatedAt)}
+                </div>
+              )}
             </div>
 
             {order.status === OrderStatus.CANCELED ? (
-              <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-3 text-sm text-red-700">
+              <div className={`${isDispatchDetailMode ? 'm-4 rounded-lg border border-red-200 bg-red-50 px-3 py-3 text-sm text-red-700' : 'rounded-lg border border-red-200 bg-red-50 px-3 py-3 text-sm text-red-700'}`}>
                 {language === 'sk'
                   ? 'Objednávka bola zrušená.'
                   : 'This order has been canceled.'}
               </div>
             ) : (
               <>
-                <div className="hidden lg:block relative">
-                  <div className="absolute left-0 right-0 top-5 h-1 bg-gray-200 rounded-full" />
-                  <div
-                    className="absolute left-0 top-5 h-1 bg-emerald-500 rounded-full transition-all duration-300"
-                    style={{ width: timelineProgressWidth }}
-                  />
-
-                  <div
-                    className="relative grid gap-2"
-                    style={{ gridTemplateColumns: `repeat(${timelineEntries.length}, minmax(0, 1fr))` }}
-                  >
+                {isDispatchDetailMode ? (
+                  <div className="hidden lg:grid gap-2 p-4" style={{ gridTemplateColumns: `repeat(${timelineEntries.length}, minmax(0, 1fr))` }}>
                     {timelineEntries.map((step, index) => {
                       const isComplete = index <= currentTimelineIndex;
                       const isCurrent = index === currentTimelineIndex;
 
                       return (
-                        <div key={step.key} className="text-center">
-                          <div className="text-[11px] font-semibold text-gray-500 mb-1">
+                        <div
+                          key={step.key}
+                          className={`rounded-md border px-2.5 py-2 min-h-[72px] ${
+                            isCurrent
+                              ? 'border-emerald-400 bg-emerald-50'
+                              : isComplete
+                                ? 'border-gray-200 bg-white'
+                                : 'border-gray-200 bg-gray-50'
+                          }`}
+                        >
+                          <div className="text-[12px] font-bold text-gray-900">
                             {step.timestamp ? formatTimelineTime(step.timestamp) : '--:--'}
                           </div>
-                          <div
-                            className={`mx-auto h-10 w-10 rounded-full flex items-center justify-center text-lg transition-all ${
-                              isComplete
-                                ? 'bg-emerald-500 text-white'
-                                : 'bg-gray-200 text-gray-500'
-                            } ${isCurrent ? 'ring-4 ring-emerald-200' : ''}`}
-                          >
-                            {step.icon}
-                          </div>
-                          <div className={`mt-2 text-xs font-semibold ${isComplete ? 'text-gray-900' : 'text-gray-500'}`}>
+                          <div className={`text-[12px] font-semibold mt-0.5 ${isComplete ? 'text-gray-900' : 'text-gray-500'}`}>
                             {getStatusLabel(step.key)}
                           </div>
-                          <div className={`mt-1 text-[11px] leading-tight ${isComplete ? 'text-gray-600' : 'text-gray-400'}`}>
-                            {getTimelineDescription(step.key)}
-                          </div>
                           {step.durationFromPrevious && (
-                            <div className="mt-1 text-[11px] font-semibold text-emerald-600">
+                            <div className="text-[11px] font-bold text-emerald-600 mt-1">
                               {step.durationFromPrevious}
                             </div>
+                          )}
+                          {!step.durationFromPrevious && (
+                            <div className="text-[11px] text-gray-400 mt-1">--</div>
                           )}
                         </div>
                       );
                     })}
                   </div>
-                </div>
+                ) : (
+                  <div className="hidden lg:block relative">
+                    <div className="absolute left-0 right-0 top-5 h-1 bg-gray-200 rounded-full" />
+                    <div
+                      className="absolute left-0 top-5 h-1 bg-emerald-500 rounded-full transition-all duration-300"
+                      style={{ width: timelineProgressWidth }}
+                    />
+
+                    <div
+                      className="relative grid gap-2"
+                      style={{ gridTemplateColumns: `repeat(${timelineEntries.length}, minmax(0, 1fr))` }}
+                    >
+                      {timelineEntries.map((step, index) => {
+                        const isComplete = index <= currentTimelineIndex;
+                        const isCurrent = index === currentTimelineIndex;
+
+                        return (
+                          <div key={step.key} className="text-center">
+                            <div className="text-[11px] font-semibold text-gray-500 mb-1">
+                              {step.timestamp ? formatTimelineTime(step.timestamp) : '--:--'}
+                            </div>
+                            <div
+                              className={`mx-auto h-10 w-10 rounded-full flex items-center justify-center text-lg transition-all ${
+                                isComplete
+                                  ? 'bg-emerald-500 text-white'
+                                  : 'bg-gray-200 text-gray-500'
+                              } ${isCurrent ? 'ring-4 ring-emerald-200' : ''}`}
+                            >
+                              {step.icon}
+                            </div>
+                            <div className={`mt-2 text-xs font-semibold ${isComplete ? 'text-gray-900' : 'text-gray-500'}`}>
+                              {getStatusLabel(step.key)}
+                            </div>
+                            <div className={`mt-1 text-[11px] leading-tight ${isComplete ? 'text-gray-600' : 'text-gray-400'}`}>
+                              {getTimelineDescription(step.key)}
+                            </div>
+                            {step.durationFromPrevious && (
+                              <div className="mt-1 text-[11px] font-semibold text-emerald-600">
+                                {step.durationFromPrevious}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
 
                 <div className="lg:hidden space-y-3">
                   {timelineEntries.map((step, index) => {

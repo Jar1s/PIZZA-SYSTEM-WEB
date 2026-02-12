@@ -624,6 +624,7 @@ export function OrderList({ todayOnly = false, selectedTenant }: OrderListProps 
                   onStatusUpdate={handleStatusUpdate}
                   isExpanded={true}
                   showToggle={false}
+                  tenantSlug={tenantIdToSlug[selectedOrder.tenantId]}
                 />
               ) : (
                 <div className="h-full min-h-[420px] flex items-center justify-center text-gray-500">
