@@ -522,14 +522,14 @@ export function OrderList({ todayOnly = false, selectedTenant }: OrderListProps 
                         key={slug}
                         onClick={() => setTenantFilterFromIcon(slug)}
                         title={brand.label}
-                        className={`relative h-11 w-11 shrink-0 rounded-full border-2 transition-all duration-150 ${
+                        className={`relative h-11 w-11 shrink-0 rounded-full border p-[2px] transition-colors duration-150 ${
                           isActive
-                            ? 'border-gray-900 ring-2 ring-inset ring-white'
-                            : 'border-gray-300 hover:border-gray-500'
+                            ? 'border-gray-900 bg-gray-900'
+                            : 'border-gray-300 bg-white hover:border-gray-500'
                         }`}
                       >
                         <span
-                          className={`absolute inset-0 rounded-full bg-gradient-to-br ${brand.color} flex items-center justify-center`}
+                          className={`absolute inset-[2px] rounded-full bg-gradient-to-br ${brand.color} flex items-center justify-center`}
                           aria-hidden="true"
                         >
                           <span className="text-[10px] font-black tracking-wide text-white">
