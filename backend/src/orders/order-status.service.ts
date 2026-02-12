@@ -66,10 +66,18 @@ export class OrderStatusService implements OnModuleInit, OnModuleDestroy {
       );
     }
 
-    await this.prisma.order.update({
-      where: { id: orderId },
-      data: { status: newStatus },
-    });
+    await this.prisma.$transaction([
+      this.prisma.order.update({
+        where: { id: orderId },
+        data: { status: newStatus },
+      }),
+      this.prisma.orderStatusHistory.create({
+        data: {
+          orderId,
+          status: newStatus,
+        },
+      }),
+    ]);
 
     // Auto-sync to Storyous when order is confirmed (PREPARING) and autoSync is enabled
     // This runs ONLY ONCE when status changes to PREPARING, not on subsequent status changes
@@ -244,7 +252,6 @@ export class OrderStatusService implements OnModuleInit, OnModuleDestroy {
     }
   }
 }
-
 
 
 

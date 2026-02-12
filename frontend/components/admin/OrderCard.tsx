@@ -313,6 +313,81 @@ export function OrderCard({
       hour: '2-digit',
       minute: '2-digit',
     });
+
+  const formatDuration = (milliseconds: number): string => {
+    const totalSeconds = Math.max(0, Math.floor(milliseconds / 1000));
+    if (totalSeconds < 60) {
+      return `${totalSeconds}s`;
+    }
+
+    const totalMinutes = Math.floor(totalSeconds / 60);
+    if (totalMinutes < 60) {
+      return `${totalMinutes}m`;
+    }
+
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+    if (hours < 24) {
+      return minutes > 0 ? `${hours}h ${minutes}m` : `${hours}h`;
+    }
+
+    const days = Math.floor(hours / 24);
+    const remainingHours = hours % 24;
+    return remainingHours > 0 ? `${days}d ${remainingHours}h` : `${days}d`;
+  };
+
+  const createdAtDate = new Date(order.createdAt);
+  const updatedAtDate = new Date(order.updatedAt);
+  const normalizedHistory = [...(order.statusHistory || [])]
+    .map((entry) => ({
+      ...entry,
+      createdAt: new Date(entry.createdAt),
+    }))
+    .filter((entry) => !Number.isNaN(entry.createdAt.getTime()))
+    .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+
+  const getStepTimestamp = (status: OrderStatus): Date | null => {
+    if (status === OrderStatus.PENDING) {
+      const pendingEntry = normalizedHistory.find((entry) => entry.status === OrderStatus.PENDING);
+      return pendingEntry?.createdAt || createdAtDate;
+    }
+
+    const exactEntry = normalizedHistory.find((entry) => entry.status === status);
+    if (exactEntry) {
+      return exactEntry.createdAt;
+    }
+
+    // Legacy flow stored READY before OUT_FOR_DELIVERY.
+    if (status === OrderStatus.OUT_FOR_DELIVERY) {
+      const readyEntry = normalizedHistory.find((entry) => entry.status === OrderStatus.READY);
+      if (readyEntry) {
+        return readyEntry.createdAt;
+      }
+    }
+
+    const currentStatusForTimeline =
+      order.status === OrderStatus.READY ? OrderStatus.OUT_FOR_DELIVERY : order.status;
+    if (status === currentStatusForTimeline) {
+      return updatedAtDate;
+    }
+
+    return null;
+  };
+
+  const timelineEntries = timelineSteps.map((step, index) => {
+    const timestamp = getStepTimestamp(step.key);
+    const previousTimestamp = index > 0 ? getStepTimestamp(timelineSteps[index - 1].key) : null;
+    const durationFromPrevious =
+      timestamp && previousTimestamp
+        ? formatDuration(timestamp.getTime() - previousTimestamp.getTime())
+        : null;
+
+    return {
+      ...step,
+      timestamp,
+      durationFromPrevious,
+    };
+  });
   
   return (
     <div className="p-3 sm:p-4 hover:bg-gray-50">
@@ -601,14 +676,17 @@ export function OrderCard({
 
                   <div
                     className="relative grid gap-2"
-                    style={{ gridTemplateColumns: `repeat(${timelineSteps.length}, minmax(0, 1fr))` }}
+                    style={{ gridTemplateColumns: `repeat(${timelineEntries.length}, minmax(0, 1fr))` }}
                   >
-                    {timelineSteps.map((step, index) => {
+                    {timelineEntries.map((step, index) => {
                       const isComplete = index <= currentTimelineIndex;
                       const isCurrent = index === currentTimelineIndex;
 
                       return (
                         <div key={step.key} className="text-center">
+                          <div className="text-[11px] font-semibold text-gray-500 mb-1">
+                            {step.timestamp ? formatTimelineTime(step.timestamp) : '--:--'}
+                          </div>
                           <div
                             className={`mx-auto h-10 w-10 rounded-full flex items-center justify-center text-lg transition-all ${
                               isComplete
@@ -624,6 +702,11 @@ export function OrderCard({
                           <div className={`mt-1 text-[11px] leading-tight ${isComplete ? 'text-gray-600' : 'text-gray-400'}`}>
                             {getTimelineDescription(step.key)}
                           </div>
+                          {step.durationFromPrevious && (
+                            <div className="mt-1 text-[11px] font-semibold text-emerald-600">
+                              {step.durationFromPrevious}
+                            </div>
+                          )}
                         </div>
                       );
                     })}
@@ -631,7 +714,7 @@ export function OrderCard({
                 </div>
 
                 <div className="lg:hidden space-y-3">
-                  {timelineSteps.map((step, index) => {
+                  {timelineEntries.map((step, index) => {
                     const isComplete = index <= currentTimelineIndex;
                     const isCurrent = index === currentTimelineIndex;
 
@@ -645,12 +728,22 @@ export function OrderCard({
                           {step.icon}
                         </div>
                         <div className="min-w-0">
-                          <div className={`text-sm font-semibold ${isComplete ? 'text-gray-900' : 'text-gray-500'}`}>
-                            {getStatusLabel(step.key)}
+                          <div className="flex items-center gap-2">
+                            <div className={`text-sm font-semibold ${isComplete ? 'text-gray-900' : 'text-gray-500'}`}>
+                              {getStatusLabel(step.key)}
+                            </div>
+                            <div className="text-[11px] text-gray-500">
+                              {step.timestamp ? formatTimelineTime(step.timestamp) : '--:--'}
+                            </div>
                           </div>
                           <div className={`text-xs ${isComplete ? 'text-gray-600' : 'text-gray-400'}`}>
                             {getTimelineDescription(step.key)}
                           </div>
+                          {step.durationFromPrevious && (
+                            <div className="text-[11px] text-emerald-600 font-semibold mt-1">
+                              {step.durationFromPrevious}
+                            </div>
+                          )}
                           {isCurrent && (
                             <div className="text-[11px] text-emerald-600 font-semibold mt-1">
                               {language === 'sk' ? 'Aktuálny krok' : 'Current step'}
@@ -736,10 +829,16 @@ export function OrderCard({
                     <span>€{(itemTotal / 100).toFixed(2)}</span>
                   </div>
                   {modifiers.length > 0 && (
-                    <div className="text-xs text-gray-500 mt-1 ml-4 space-y-0.5">
-                      {modifiers.map((mod, idx) => (
-                        <div key={idx}>• {mod}</div>
-                      ))}
+                    <div className="mt-1 ml-4 space-y-1">
+                      {modifiers.map((mod, idx) => {
+                        const modifierLine = mod.replace(/^[-•\s]+/, '');
+                        return (
+                          <div key={idx} className="flex justify-between gap-2 text-xs text-gray-600">
+                            <span className="truncate">1x {modifierLine}</span>
+                            <span className="text-gray-400">-</span>
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
                 </div>

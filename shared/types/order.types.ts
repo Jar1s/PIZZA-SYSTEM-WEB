@@ -44,9 +44,18 @@ export interface Order {
   
   // Items
   items: OrderItem[];
+
+  // Status history timeline (oldest -> newest)
+  statusHistory?: OrderStatusHistoryEntry[];
   
   createdAt: Date;
   updatedAt: Date;
+}
+
+export interface OrderStatusHistoryEntry {
+  id: string;
+  status: OrderStatus;
+  createdAt: Date;
 }
 
 export interface OrderItem {
@@ -78,4 +87,3 @@ export interface Address {
     lng: number;
   };
 }
-

@@ -540,9 +540,17 @@ export class OrdersService {
         items: {
           create: orderItems,
         },
+        statusHistory: {
+          create: [{ status: OrderStatus.PENDING }],
+        },
       } as any, // Type assertion needed until Prisma types are fully regenerated
       include: {
         items: true,
+        statusHistory: {
+          orderBy: {
+            createdAt: 'asc',
+          },
+        },
         tenant: {
           select: {
             id: true,
@@ -716,6 +724,11 @@ export class OrdersService {
       include: {
         items: true,
         delivery: true,
+        statusHistory: {
+          orderBy: {
+            createdAt: 'asc',
+          },
+        },
       },
     });
 
@@ -740,6 +753,7 @@ export class OrdersService {
     // Explicitly map items to ensure productName and displayName are included
     const orderWithItems = {
       ...order,
+      statusHistory: order.statusHistory,
       items: order.items.map(item => {
         const product = productMap.get(item.productId) as any;
         const productNameForMapping = (product?.name || item.productName || '') as string;
@@ -802,6 +816,11 @@ export class OrdersService {
       include: {
         items: true,
         delivery: true,
+        statusHistory: {
+          orderBy: {
+            createdAt: 'asc',
+          },
+        },
       },
       orderBy: {
         createdAt: 'desc',
@@ -827,6 +846,7 @@ export class OrdersService {
       // Explicitly map items to ensure productName and displayName are included
       const orderWithItems = {
         ...order,
+        statusHistory: order.statusHistory,
         items: order.items.map(item => {
           const product = productMap.get(item.productId) as any;
           const productNameForMapping = (product?.name || item.productName || '') as string;
@@ -1081,5 +1101,4 @@ export class OrdersService {
     }
   }
 }
-
 

@@ -84,6 +84,7 @@ model Order {
   storyousOrderId  String?
   userId           String?
   items            OrderItem[]
+  statusHistory    OrderStatusHistory[]
   delivery         Delivery?   @relation(fields: [deliveryId], references: [id])
   tenant           Tenant      @relation(fields: [tenantId], references: [id])
   user             User?       @relation(fields: [userId], references: [id])
@@ -95,6 +96,18 @@ model Order {
   @@index([paymentRef])
   @@index([userId])
   @@map("orders")
+}
+
+model OrderStatusHistory {
+  id        String      @id @default(cuid())
+  orderId   String
+  status    OrderStatus
+  createdAt DateTime    @default(now())
+  order     Order       @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId, createdAt])
+  @@index([orderId, status])
+  @@map("order_status_history")
 }
 
 model OrderItem {
