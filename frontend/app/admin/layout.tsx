@@ -17,12 +17,16 @@ export default function AdminLayout({
   const router = useRouter();
   const [selectedTenant, setSelectedTenant] = useState<'all' | string>('all');
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const savedTenant = localStorage.getItem('admin_selected_tenant') as 'all' | string | null;
     const fallbackTenant = getTenantSlug();
     setSelectedTenant(savedTenant || fallbackTenant || 'all');
+
+    const savedSidebarState = localStorage.getItem('admin_sidebar_collapsed');
+    setSidebarCollapsed(savedSidebarState === 'true');
   }, []);
 
   const handleTenantChange = (tenant: 'all' | string) => {
@@ -30,6 +34,16 @@ export default function AdminLayout({
     if (typeof window !== 'undefined') {
       localStorage.setItem('admin_selected_tenant', tenant);
     }
+  };
+
+  const handleToggleSidebarCollapse = () => {
+    setSidebarCollapsed(prev => {
+      const next = !prev;
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('admin_sidebar_collapsed', String(next));
+      }
+      return next;
+    });
   };
 
   useEffect(() => {
@@ -90,12 +104,17 @@ export default function AdminLayout({
         <aside 
           className={`
             fixed lg:static inset-y-0 left-0 z-50
-            transform transition-transform duration-300 ease-in-out
+            transform transition-all duration-300 ease-in-out
+            w-64 ${sidebarCollapsed ? 'lg:w-20' : 'lg:w-64'}
             ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
             lg:translate-x-0
           `}
         >
-          <Sidebar onClose={() => setSidebarOpen(false)} />
+          <Sidebar
+            onClose={() => setSidebarOpen(false)}
+            collapsed={sidebarCollapsed && !sidebarOpen}
+            onToggleCollapse={handleToggleSidebarCollapse}
+          />
         </aside>
         
         <div className="flex-1 flex flex-col overflow-hidden lg:ml-0">
