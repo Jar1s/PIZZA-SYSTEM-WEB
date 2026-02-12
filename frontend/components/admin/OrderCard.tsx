@@ -580,7 +580,7 @@ export function OrderCard({
                 {language === 'sk' ? 'Časová os objednávky' : 'Order timeline'}
               </div>
               <div className="text-xs text-gray-500">
-                {formatTimelineTime(order.createdAt)} -> {formatTimelineTime(order.updatedAt)}
+                {formatTimelineTime(order.createdAt)} to {formatTimelineTime(order.updatedAt)}
               </div>
             </div>
 
