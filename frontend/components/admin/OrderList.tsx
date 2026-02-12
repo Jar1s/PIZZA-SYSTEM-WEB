@@ -350,7 +350,7 @@ export function OrderList({ todayOnly = false, selectedTenant }: OrderListProps 
       ) : (
         <>
           {/* Dispatch-style desktop layout */}
-          <div className="hidden xl:grid xl:grid-cols-[370px_minmax(0,1fr)] min-h-[700px]">
+          <div className="hidden lg:grid lg:grid-cols-[370px_minmax(0,1fr)] min-h-[700px]">
             <div className="border-r border-gray-200 bg-gray-50/70">
               <div className="px-4 py-4 border-b border-gray-200 bg-white sticky top-0 z-10">
                 <p className="text-xs uppercase tracking-[0.2em] text-gray-500 mb-3">Brands</p>
@@ -445,7 +445,7 @@ export function OrderList({ todayOnly = false, selectedTenant }: OrderListProps 
           </div>
 
           {/* Existing mobile/tablet cards */}
-          <div className="xl:hidden divide-y divide-gray-200">
+          <div className="lg:hidden divide-y divide-gray-200">
             {orders.map((order) => (
               <OrderCard
                 key={order.id}
