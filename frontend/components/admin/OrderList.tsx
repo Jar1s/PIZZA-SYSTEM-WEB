@@ -513,7 +513,7 @@ export function OrderList({ todayOnly = false, selectedTenant }: OrderListProps 
             <div className="border-r border-gray-200 bg-gray-50/70">
               <div className="px-4 py-4 border-b border-gray-200 bg-white sticky top-0 z-10">
                 <p className="text-xs uppercase tracking-[0.2em] text-gray-500 mb-3">Brands</p>
-                <div className="flex items-center gap-2 overflow-x-auto pb-1">
+                <div className="flex items-center gap-2 overflow-x-auto overflow-y-visible px-1 py-1">
                   {BRAND_FILTER_SLUGS.map((slug) => {
                     const isActive = filters.tenantSlug === slug;
                     const brand = BRAND_META[slug];
@@ -524,7 +524,7 @@ export function OrderList({ todayOnly = false, selectedTenant }: OrderListProps 
                         title={brand.label}
                         className={`relative h-11 w-11 shrink-0 rounded-full border-2 transition-all duration-150 ${
                           isActive
-                            ? 'border-gray-900 shadow-[0_0_0_2px_#ffffff,0_0_0_4px_#111827]'
+                            ? 'border-gray-900 ring-2 ring-inset ring-white'
                             : 'border-gray-300 hover:border-gray-500'
                         }`}
                       >
