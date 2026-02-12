@@ -367,12 +367,17 @@ export function OrderList({ todayOnly = false, selectedTenant }: OrderListProps 
     }
   }, [filters, tenantIdToSlug, fetchTenantMapping, todayOnly]);
 
-  // Update filters when selectedTenant changes
+  // Sync with top tenant selector only when it actually changes.
+  // This keeps brand chip clicks functional inside the dispatch panel.
   useEffect(() => {
-    if (selectedTenant && selectedTenant !== filters.tenantSlug) {
-      setFilters((prev) => ({ ...prev, tenantSlug: selectedTenant }));
-    }
-  }, [selectedTenant, filters.tenantSlug]);
+    if (!selectedTenant) return;
+    setFilters((prev) => {
+      if (prev.tenantSlug === selectedTenant) {
+        return prev;
+      }
+      return { ...prev, tenantSlug: selectedTenant };
+    });
+  }, [selectedTenant]);
 
   // Reset initial load when filters change
   useEffect(() => {
@@ -517,9 +522,9 @@ export function OrderList({ todayOnly = false, selectedTenant }: OrderListProps 
                         key={slug}
                         onClick={() => setTenantFilterFromIcon(slug)}
                         title={brand.label}
-                        className={`relative h-11 w-11 shrink-0 rounded-full border-2 transition-all ${
+                        className={`relative h-11 w-11 shrink-0 rounded-full border-2 transition-all duration-150 ${
                           isActive
-                            ? 'border-gray-900 ring-2 ring-offset-1 ring-gray-900'
+                            ? 'border-gray-900 shadow-[0_0_0_2px_#ffffff,0_0_0_4px_#111827]'
                             : 'border-gray-300 hover:border-gray-500'
                         }`}
                       >
