@@ -37,11 +37,9 @@ export function Sidebar({ onClose, collapsed = false, onToggleCollapse }: Sideba
   return (
     <div className={`w-64 lg:w-auto bg-gray-900 text-white flex flex-col h-full ${collapsed ? 'lg:w-20' : 'lg:w-64'}`}>
       <div className="p-4 lg:p-6">
-        <div className="flex items-center justify-between">
-          {!collapsed ? (
+        <div className={`flex items-center ${collapsed ? 'justify-end' : 'justify-between'}`}>
+          {!collapsed && (
             <h1 className="text-xl lg:text-2xl font-bold">Pizza HQ</h1>
-          ) : (
-            <h1 className="hidden lg:block text-xl font-bold">🍕</h1>
           )}
           {onToggleCollapse && (
             <button
