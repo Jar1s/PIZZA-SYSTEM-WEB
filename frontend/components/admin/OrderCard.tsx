@@ -2,7 +2,7 @@
 
 import { Order, OrderStatus } from '@pizza-ecosystem/shared';
 import { useState } from 'react';
-import { formatModifiers } from '@/lib/format-modifiers';
+import { getFormattedModifierLines } from '@/lib/format-modifiers';
 import { syncOrderToStoryous, createWoltDelivery, checkWoltAvailability } from '@/lib/api';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { calculateOrderItemPrice } from '@/lib/calculate-order-item-price';
@@ -313,6 +313,14 @@ export function OrderCard({
       hour: '2-digit',
       minute: '2-digit',
     });
+
+  const formatEurPrice = (priceCents: number): string => {
+    const value = priceCents / 100;
+    if (Number.isInteger(value)) {
+      return `${value} EUR`;
+    }
+    return `${value.toFixed(2)} EUR`;
+  };
 
   const formatDuration = (milliseconds: number): string => {
     const totalSeconds = Math.max(0, Math.floor(milliseconds / 1000));
@@ -816,7 +824,12 @@ export function OrderCard({
           <div className="col-span-2">
             <div className="font-semibold mb-2">Items</div>
             {order.items.map((item, i) => {
-              const modifiers = formatModifiers(item.modifiers, true, language, customizationLabels); // Use defaults for admin
+              const modifierLines = getFormattedModifierLines(
+                item.modifiers,
+                true,
+                language,
+                customizationLabels,
+              );
               // Calculate correct price (handles both old and new orders)
               const itemTotal = calculateOrderItemPrice(item, 'PIZZA');
               // In admin, show the database product name (internal name), not the web display name
@@ -826,16 +839,15 @@ export function OrderCard({
                 <div key={i} className="mb-3 pb-3 border-b last:border-b-0">
                   <div className="flex justify-between">
                     <span className="font-medium">{item.quantity}x {displayName}</span>
-                    <span>€{(itemTotal / 100).toFixed(2)}</span>
+                    <span>{formatEurPrice(itemTotal)}</span>
                   </div>
-                  {modifiers.length > 0 && (
+                  {modifierLines.length > 0 && (
                     <div className="mt-1 ml-4 space-y-1">
-                      {modifiers.map((mod, idx) => {
-                        const modifierLine = mod.replace(/^[-•\s]+/, '');
+                      {modifierLines.map((modifier, idx) => {
                         return (
                           <div key={idx} className="flex justify-between gap-2 text-xs text-gray-600">
-                            <span className="truncate">1x {modifierLine}</span>
-                            <span className="text-gray-400">-</span>
+                            <span className="truncate">1x {modifier.label}</span>
+                            <span>{formatEurPrice(modifier.priceCents)}</span>
                           </div>
                         );
                       })}
@@ -848,12 +860,12 @@ export function OrderCard({
             {order.deliveryFeeCents != null && (
               <div className="pt-2 flex justify-between text-sm text-gray-600">
                 <span>Delivery fee</span>
-                <span>€{(order.deliveryFeeCents / 100).toFixed(2)}</span>
+                <span>{formatEurPrice(order.deliveryFeeCents)}</span>
               </div>
             )}
             <div className="mt-2 pt-2 border-t flex justify-between font-semibold">
               <span>Total</span>
-              <span>€{(order.totalCents / 100).toFixed(2)}</span>
+              <span>{formatEurPrice(order.totalCents)}</span>
             </div>
           </div>
         </div>

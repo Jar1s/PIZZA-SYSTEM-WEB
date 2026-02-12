@@ -52,6 +52,109 @@ function getOptionLabel(optionId: string, optionName: string, language: 'sk' | '
   return cleaned.trim();
 }
 
+export interface FormattedModifierLine {
+  categoryId: string;
+  optionId: string;
+  label: string;
+  priceCents: number;
+}
+
+export function getFormattedModifierLines(
+  modifiers: Record<string, any> | null | undefined,
+  useDefaults: boolean = false,
+  language: 'sk' | 'en' = 'sk',
+  customizationLabels?: CustomizationLabels
+): FormattedModifierLine[] {
+  if (!modifiers || typeof modifiers !== 'object') {
+    return [];
+  }
+
+  let parsedModifiers: Record<string, any>;
+  if (typeof modifiers === 'string') {
+    try {
+      parsedModifiers = JSON.parse(modifiers);
+    } catch (error) {
+      console.error('[getFormattedModifierLines] Failed to parse JSON string:', error, modifiers);
+      return [];
+    }
+  } else {
+    parsedModifiers = modifiers;
+  }
+
+  if (Object.keys(parsedModifiers).length === 0) {
+    return [];
+  }
+
+  const lines: FormattedModifierLine[] = [];
+  const pizzaCustomizations = getCustomizationOptions('PIZZA');
+  const stangleCustomizations = getCustomizationOptions('STANGLE');
+  const allCustomizations = [...pizzaCustomizations, ...stangleCustomizations];
+
+  Object.entries(parsedModifiers).forEach(([categoryId, optionIds]) => {
+    const optionIdsArray = Array.isArray(optionIds)
+      ? optionIds
+      : optionIds ? [optionIds] : [];
+
+    if (optionIdsArray.length === 0) return;
+
+    const category = allCustomizations.find(c => c.id === categoryId);
+
+    if (!category) {
+      optionIdsArray.forEach((rawOptionId: any) => {
+        const optionId = String(rawOptionId);
+        const categoryName = useDefaults
+          ? getDefaultCategoryName(categoryId, language, customizationLabels)
+          : cleanName(categoryId);
+        const fallbackOptionName = cleanName(optionId.replace(/[-_]/g, ' '));
+        lines.push({
+          categoryId,
+          optionId,
+          label: `${categoryName}: ${fallbackOptionName}`,
+          priceCents: 0,
+        });
+      });
+      return;
+    }
+
+    const categoryName = useDefaults
+      ? getDefaultCategoryName(categoryId, language, customizationLabels)
+      : cleanName(language === 'en' ? category.nameEn : category.name);
+
+    optionIdsArray.forEach((rawOptionId: any) => {
+      const optionId = String(rawOptionId);
+      const option = category.options.find(o => o.id === optionId);
+      if (option) {
+        const optionName = useDefaults
+          ? getOptionLabel(
+              optionId,
+              language === 'en' ? option.nameEn : option.name,
+              language,
+              customizationLabels,
+            )
+          : cleanName(language === 'en' ? option.nameEn : option.name);
+
+        lines.push({
+          categoryId,
+          optionId,
+          label: `${categoryName}: ${optionName}`,
+          priceCents: option.priceCents ?? option.price ?? 0,
+        });
+        return;
+      }
+
+      const fallbackOptionName = cleanName(optionId.replace(/[-_]/g, ' '));
+      lines.push({
+        categoryId,
+        optionId,
+        label: `${categoryName}: ${fallbackOptionName}`,
+        priceCents: 0,
+      });
+    });
+  });
+
+  return lines;
+}
+
 export function formatModifiers(
   modifiers: Record<string, any> | null | undefined,
   useDefaults: boolean = false,
