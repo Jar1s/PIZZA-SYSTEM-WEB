@@ -56,26 +56,6 @@ const BRAND_META: Record<string, { label: string; initials: string; color: strin
   },
 };
 
-const STATUS_ACCENT: Record<OrderStatus, string> = {
-  PENDING: 'bg-slate-500',
-  PAID: 'bg-blue-500',
-  PREPARING: 'bg-amber-500',
-  READY: 'bg-emerald-500',
-  OUT_FOR_DELIVERY: 'bg-violet-500',
-  DELIVERED: 'bg-green-600',
-  CANCELED: 'bg-rose-500',
-};
-
-const STATUS_TEXT: Record<OrderStatus, string> = {
-  PENDING: 'Caka',
-  PAID: 'Zaplatene',
-  PREPARING: 'V priprave',
-  READY: 'Pripravene',
-  OUT_FOR_DELIVERY: 'Na ceste',
-  DELIVERED: 'Dorucene',
-  CANCELED: 'Zrusene',
-};
-
 const GROUP_ACCENT: Record<DispatchGroupKey, string> = {
   new: 'text-emerald-700',
   inProgress: 'text-amber-700',
@@ -110,6 +90,21 @@ const getOrderNumber = (order: Order): string => {
 const formatOrderTime = (createdAt: Date): string => {
   const date = new Date(createdAt);
   return date.toLocaleTimeString('sk-SK', { hour: '2-digit', minute: '2-digit' });
+};
+
+const getListHeadlineCode = (order: Order): string => {
+  const raw = order.id.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+  if (raw.length >= 5) {
+    return `#${raw.slice(raw.length - 5)}`;
+  }
+  return getOrderNumber(order);
+};
+
+const getCustomerShortName = (fullName: string | undefined): string => {
+  if (!fullName) return 'Customer';
+  const parts = fullName.trim().split(/\s+/).filter(Boolean);
+  if (parts.length <= 1) return parts[0];
+  return `${parts[0]} ${parts[1].charAt(0)}.`;
 };
 
 const getMinutesSinceCreated = (createdAt: Date): number => {
@@ -554,6 +549,8 @@ export function OrderList({ todayOnly = false, selectedTenant }: OrderListProps 
                                   const ageMinutes = getMinutesSinceCreated(order.createdAt);
                                   const isFinished = order.status === OrderStatus.DELIVERED;
                                   const isCanceled = order.status === OrderStatus.CANCELED;
+                                  const headlineCode = getListHeadlineCode(order);
+                                  const shortCustomer = getCustomerShortName(order.customer?.name);
 
                                   return (
                                     <button
@@ -563,41 +560,46 @@ export function OrderList({ todayOnly = false, selectedTenant }: OrderListProps 
                                         isSelected ? 'bg-blue-50/70' : 'bg-transparent hover:bg-white'
                                       }`}
                                     >
-                                      <div className="flex items-stretch">
+                                      <div className="flex items-stretch min-h-[72px]">
                                         <div className={`w-10 flex items-center justify-center text-white ${GROUP_ROW_COLOR[group.key]}`}>
-                                          <span className="text-xs">📍</span>
+                                          <span className="text-[11px]">◉</span>
                                         </div>
-                                        <div className="flex-1 min-w-0 px-3 py-2.5">
-                                          <div className="flex items-start justify-between gap-2">
-                                            <p className="font-semibold text-gray-900 leading-tight truncate">
-                                              {getOrderNumber(order)} - {brand.label}
+                                        <div className="flex-1 min-w-0 px-3 py-2.5 flex items-center justify-between gap-3">
+                                          <div className="min-w-0">
+                                            <p className="font-bold text-[19px] text-gray-900 leading-tight truncate">
+                                              {headlineCode} - {brand.label}
                                             </p>
-                                            {group.key !== 'recentDone' && (
-                                              <span className="inline-flex min-w-[36px] h-8 px-1 items-center justify-center rounded-full border-2 border-emerald-600 text-[11px] font-bold text-emerald-700 bg-white">
+                                            <p className="mt-1 text-[13px] text-gray-600 truncate">
+                                              {getOrderNumber(order)} - €{(order.totalCents / 100).toFixed(2)}, {shortCustomer}
+                                            </p>
+                                          </div>
+
+                                          <div className="w-[68px] shrink-0 flex flex-col items-center justify-center gap-1">
+                                            {isFinished && (
+                                              <>
+                                                <span className="inline-flex h-8 w-8 items-center justify-center rounded-full border-2 border-emerald-600 text-emerald-600 text-sm font-black bg-white">
+                                                  ✓
+                                                </span>
+                                                <span className="text-[9px] uppercase tracking-wide font-black text-emerald-600 leading-none text-center">
+                                                  DOKONCENE
+                                                </span>
+                                              </>
+                                            )}
+                                            {isCanceled && (
+                                              <>
+                                                <span className="inline-flex h-8 w-8 items-center justify-center rounded-full border-2 border-rose-600 text-rose-600 text-sm font-black bg-white">
+                                                  ✕
+                                                </span>
+                                                <span className="text-[9px] uppercase tracking-wide font-black text-rose-600 leading-none text-center">
+                                                  ZRUSENE
+                                                </span>
+                                              </>
+                                            )}
+                                            {!isFinished && !isCanceled && (
+                                              <span className="inline-flex min-w-[38px] h-9 px-1 items-center justify-center rounded-full border-2 border-emerald-600 text-[11px] font-bold text-emerald-700 bg-white">
                                                 {ageMinutes}m
                                               </span>
                                             )}
-                                            {isFinished && (
-                                              <span className="text-[10px] uppercase tracking-wide font-black text-emerald-600">
-                                                Dokoncene
-                                              </span>
-                                            )}
-                                            {isCanceled && (
-                                              <span className="text-[10px] uppercase tracking-wide font-black text-rose-600">
-                                                Zrusene
-                                              </span>
-                                            )}
-                                          </div>
-
-                                          <p className="mt-1 text-[12px] text-gray-500 truncate">
-                                            {formatOrderTime(order.createdAt)} - {(order.customer?.name || 'Customer')}, €{(order.totalCents / 100).toFixed(2)}
-                                          </p>
-                                          <div className="mt-1.5 flex items-center justify-between gap-2">
-                                            <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ${
-                                              STATUS_ACCENT[order.status as OrderStatus]
-                                            } text-white`}>
-                                              {STATUS_TEXT[order.status as OrderStatus] || order.status}
-                                            </span>
                                           </div>
                                         </div>
                                       </div>
