@@ -20,6 +20,10 @@ type DispatchGroupKey =
   | 'scheduled'
   | 'recentDone';
 
+type BrandSlug = 'all' | 'pornopizza' | 'partypizza' | 'pizzavnudzi';
+
+const BRAND_FILTER_SLUGS: BrandSlug[] = ['all', 'pornopizza', 'partypizza', 'pizzavnudzi'];
+
 const DISPATCH_GROUPS: Array<{
   key: DispatchGroupKey;
   label: string;
@@ -33,7 +37,7 @@ const DISPATCH_GROUPS: Array<{
   { key: 'recentDone', label: 'Nedavno dokoncene', defaultCollapsed: false },
 ];
 
-const BRAND_META: Record<string, { label: string; initials: string; color: string }> = {
+const BRAND_META: Record<BrandSlug, { label: string; initials: string; color: string }> = {
   all: {
     label: 'Vsetky',
     initials: 'ALL',
@@ -55,6 +59,9 @@ const BRAND_META: Record<string, { label: string; initials: string; color: strin
     color: 'from-lime-500 to-emerald-700',
   },
 };
+
+const isKnownTenantBrand = (value: string): value is Exclude<BrandSlug, 'all'> =>
+  value === 'pornopizza' || value === 'partypizza' || value === 'pizzavnudzi';
 
 const GROUP_ACCENT: Record<DispatchGroupKey, string> = {
   new: 'text-emerald-700',
@@ -414,6 +421,24 @@ export function OrderList({ todayOnly = false, selectedTenant }: OrderListProps 
     [collapsedGroups],
   );
 
+  const brandCounts = useMemo<Record<BrandSlug, number>>(() => {
+    const counts: Record<BrandSlug, number> = {
+      all: orders.length,
+      pornopizza: 0,
+      partypizza: 0,
+      pizzavnudzi: 0,
+    };
+
+    for (const order of orders) {
+      const slug = tenantIdToSlug[order.tenantId];
+      if (slug && isKnownTenantBrand(slug)) {
+        counts[slug] += 1;
+      }
+    }
+
+    return counts;
+  }, [orders, tenantIdToSlug]);
+
   const handleStatusUpdate = async (orderId: string, newStatus: OrderStatus) => {
     try {
       const order = orders.find((o) => o.id === orderId);
@@ -444,7 +469,7 @@ export function OrderList({ todayOnly = false, selectedTenant }: OrderListProps 
     }
   };
 
-  const setTenantFilterFromIcon = (tenantSlug: string) => {
+  const setTenantFilterFromIcon = (tenantSlug: BrandSlug) => {
     setFilters((prev) => ({ ...prev, tenantSlug }));
   };
 
@@ -476,8 +501,8 @@ export function OrderList({ todayOnly = false, selectedTenant }: OrderListProps 
             <div className="border-r border-gray-200 bg-gray-50/70">
               <div className="px-4 py-4 border-b border-gray-200 bg-white sticky top-0 z-10">
                 <p className="text-xs uppercase tracking-[0.2em] text-gray-500 mb-3">Brands</p>
-                <div className="flex items-center gap-3 flex-wrap">
-                  {(['all', 'pornopizza', 'partypizza', 'pizzavnudzi'] as const).map((slug) => {
+                <div className="grid grid-cols-2 gap-2">
+                  {BRAND_FILTER_SLUGS.map((slug) => {
                     const isActive = filters.tenantSlug === slug;
                     const brand = BRAND_META[slug];
                     return (
@@ -485,19 +510,39 @@ export function OrderList({ todayOnly = false, selectedTenant }: OrderListProps 
                         key={slug}
                         onClick={() => setTenantFilterFromIcon(slug)}
                         title={brand.label}
-                        className={`relative h-11 w-11 rounded-full border transition-all ${
+                        className={`w-full rounded-xl border px-2.5 py-2 transition-all ${
                           isActive
-                            ? 'border-gray-900 ring-2 ring-offset-2 ring-gray-900 scale-105'
-                            : 'border-gray-300 hover:border-gray-500 hover:scale-105'
+                            ? 'border-gray-900 bg-gray-900 shadow-md'
+                            : 'border-gray-200 bg-white hover:border-gray-400 hover:bg-gray-50'
                         }`}
                       >
-                        <span
-                          className={`absolute inset-0 rounded-full bg-gradient-to-br ${brand.color}`}
-                          aria-hidden="true"
-                        />
-                        <span className="relative z-10 text-[10px] font-black tracking-wide text-white">
-                          {brand.initials}
-                        </span>
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="flex items-center gap-2 min-w-0">
+                            <span
+                              className={`h-8 w-8 shrink-0 rounded-full bg-gradient-to-br ${brand.color} flex items-center justify-center`}
+                              aria-hidden="true"
+                            >
+                              <span className="text-[10px] font-black tracking-wide text-white">
+                                {brand.initials}
+                              </span>
+                            </span>
+                            <span className="min-w-0 text-left">
+                              <span className={`block text-[12px] font-semibold truncate ${isActive ? 'text-white' : 'text-gray-800'}`}>
+                                {brand.label}
+                              </span>
+                              <span className={`block text-[10px] uppercase tracking-wide ${isActive ? 'text-gray-300' : 'text-gray-400'}`}>
+                                {slug === 'all' ? 'Filter' : 'Brand'}
+                              </span>
+                            </span>
+                          </span>
+                          <span
+                            className={`inline-flex h-6 min-w-[24px] items-center justify-center rounded-full px-1.5 text-[11px] font-bold ${
+                              isActive ? 'bg-white text-gray-900' : 'bg-gray-100 text-gray-600'
+                            }`}
+                          >
+                            {brandCounts[slug]}
+                          </span>
+                        </div>
                       </button>
                     );
                   })}
