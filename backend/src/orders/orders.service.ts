@@ -811,11 +811,17 @@ export class OrdersService {
     }
 
     // Load products to get displayName
-    const productIds = [...new Set(order.items.map(item => item.productId))];
+    const productIds = [
+      ...new Set(
+        order.items
+          .map(item => item.productId)
+          .filter((productId): productId is string => typeof productId === 'string' && productId.length > 0),
+      ),
+    ];
     const products = await Promise.all(
-      productIds.map(id =>
+      productIds.map((productId: string) =>
         this.prisma.product.findUnique({
-          where: { id },
+          where: { id: productId },
           select: { id: true, name: true, displayName: true } as any,
         })
       )
@@ -926,11 +932,17 @@ export class OrdersService {
     }
 
     // Load all products for all orders to get displayName
-    const allProductIds = [...new Set(orders.flatMap(order => order.items.map(item => item.productId)))];
+    const allProductIds = [
+      ...new Set(
+        orders
+          .flatMap(order => order.items.map(item => item.productId))
+          .filter((productId): productId is string => typeof productId === 'string' && productId.length > 0),
+      ),
+    ];
     const products = await Promise.all(
-      allProductIds.map(id =>
+      allProductIds.map((productId: string) =>
         this.prisma.product.findUnique({
-          where: { id },
+          where: { id: productId },
           select: { id: true, name: true, displayName: true } as any,
         })
       )
