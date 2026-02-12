@@ -12,6 +12,27 @@ interface OrderListProps {
   selectedTenant?: 'all' | string;
 }
 
+type DispatchGroupKey =
+  | 'new'
+  | 'inProgress'
+  | 'readyForPickup'
+  | 'delivering'
+  | 'scheduled'
+  | 'recentDone';
+
+const DISPATCH_GROUPS: Array<{
+  key: DispatchGroupKey;
+  label: string;
+  defaultCollapsed: boolean;
+}> = [
+  { key: 'new', label: 'Nove', defaultCollapsed: false },
+  { key: 'inProgress', label: 'Prebieha', defaultCollapsed: true },
+  { key: 'readyForPickup', label: 'Pripravene na vyzdvihnutie', defaultCollapsed: true },
+  { key: 'delivering', label: 'Dorucuje sa', defaultCollapsed: true },
+  { key: 'scheduled', label: 'Naplanovane', defaultCollapsed: true },
+  { key: 'recentDone', label: 'Nedavno dokoncene', defaultCollapsed: false },
+];
+
 const BRAND_META: Record<string, { label: string; initials: string; color: string }> = {
   all: {
     label: 'Vsetky',
@@ -55,6 +76,24 @@ const STATUS_TEXT: Record<OrderStatus, string> = {
   CANCELED: 'Zrusene',
 };
 
+const GROUP_ACCENT: Record<DispatchGroupKey, string> = {
+  new: 'text-emerald-700',
+  inProgress: 'text-amber-700',
+  readyForPickup: 'text-teal-700',
+  delivering: 'text-violet-700',
+  scheduled: 'text-sky-700',
+  recentDone: 'text-gray-600',
+};
+
+const GROUP_ROW_COLOR: Record<DispatchGroupKey, string> = {
+  new: 'bg-emerald-600',
+  inProgress: 'bg-amber-500',
+  readyForPickup: 'bg-teal-500',
+  delivering: 'bg-violet-500',
+  scheduled: 'bg-sky-500',
+  recentDone: 'bg-emerald-700',
+};
+
 // Get today's date in YYYY-MM-DD format
 const getTodayDate = () => {
   const today = new Date();
@@ -71,6 +110,58 @@ const getOrderNumber = (order: Order): string => {
 const formatOrderTime = (createdAt: Date): string => {
   const date = new Date(createdAt);
   return date.toLocaleTimeString('sk-SK', { hour: '2-digit', minute: '2-digit' });
+};
+
+const getMinutesSinceCreated = (createdAt: Date): number => {
+  const createdMs = new Date(createdAt).getTime();
+  const diffMs = Date.now() - createdMs;
+  return Math.max(0, Math.floor(diffMs / 60000));
+};
+
+const parseOptionalDate = (value: unknown): Date | null => {
+  if (!value) return null;
+  const parsed = new Date(String(value));
+  if (Number.isNaN(parsed.getTime())) return null;
+  return parsed;
+};
+
+const getScheduledAtFromOrder = (order: Order): Date | null => {
+  const maybeOrder = order as any;
+  return parseOptionalDate(
+    maybeOrder?.scheduledAt ??
+      maybeOrder?.scheduledFor ??
+      maybeOrder?.preferredAt ??
+      maybeOrder?.deliveryAt,
+  );
+};
+
+const getDispatchGroupForOrder = (order: Order, now: Date): DispatchGroupKey => {
+  const scheduledAt = getScheduledAtFromOrder(order);
+  if (
+    scheduledAt &&
+    scheduledAt.getTime() > now.getTime() &&
+    (order.status === OrderStatus.PENDING ||
+      order.status === OrderStatus.PAID ||
+      order.status === OrderStatus.PREPARING)
+  ) {
+    return 'scheduled';
+  }
+
+  switch (order.status) {
+    case OrderStatus.PENDING:
+      return 'new';
+    case OrderStatus.PAID:
+    case OrderStatus.PREPARING:
+      return 'inProgress';
+    case OrderStatus.READY:
+      return 'readyForPickup';
+    case OrderStatus.OUT_FOR_DELIVERY:
+      return 'delivering';
+    case OrderStatus.DELIVERED:
+    case OrderStatus.CANCELED:
+    default:
+      return 'recentDone';
+  }
 };
 
 // Funkcia na prehratie zvuku pri novej objednávke
@@ -112,6 +203,14 @@ export function OrderList({ todayOnly = false, selectedTenant }: OrderListProps 
   const [tenantIdToSlug, setTenantIdToSlug] = useState<Record<string, string>>({});
   const [expandedOrders, setExpandedOrders] = useState<Set<string>>(new Set());
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
+  const [collapsedGroups, setCollapsedGroups] = useState<Record<DispatchGroupKey, boolean>>({
+    new: false,
+    inProgress: true,
+    readyForPickup: true,
+    delivering: true,
+    scheduled: true,
+    recentDone: false,
+  });
   const isInitialLoad = useRef(true);
 
   // Ref na uloženie predchádzajúcich order IDs pre detekciu nových objednávok
@@ -296,6 +395,30 @@ export function OrderList({ todayOnly = false, selectedTenant }: OrderListProps 
     [orders, selectedOrderId],
   );
 
+  const groupedOrders = useMemo<Record<DispatchGroupKey, Order[]>>(() => {
+    const grouped: Record<DispatchGroupKey, Order[]> = {
+      new: [],
+      inProgress: [],
+      readyForPickup: [],
+      delivering: [],
+      scheduled: [],
+      recentDone: [],
+    };
+
+    const now = new Date();
+    for (const order of orders) {
+      const groupKey = getDispatchGroupForOrder(order, now);
+      grouped[groupKey].push(order);
+    }
+
+    return grouped;
+  }, [orders]);
+
+  const expandedGroupCount = useMemo(
+    () => DISPATCH_GROUPS.filter((group) => !collapsedGroups[group.key]).length,
+    [collapsedGroups],
+  );
+
   const handleStatusUpdate = async (orderId: string, newStatus: OrderStatus) => {
     try {
       const order = orders.find((o) => o.id === orderId);
@@ -328,6 +451,10 @@ export function OrderList({ todayOnly = false, selectedTenant }: OrderListProps 
 
   const setTenantFilterFromIcon = (tenantSlug: string) => {
     setFilters((prev) => ({ ...prev, tenantSlug }));
+  };
+
+  const toggleGroup = (groupKey: DispatchGroupKey) => {
+    setCollapsedGroups((prev) => ({ ...prev, [groupKey]: !prev[groupKey] }));
   };
 
   return (
@@ -380,47 +507,107 @@ export function OrderList({ todayOnly = false, selectedTenant }: OrderListProps 
                     );
                   })}
                 </div>
+                <div className="mt-3 flex items-center justify-between text-[11px] font-semibold text-gray-500">
+                  <span>Filtre ({expandedGroupCount}/{DISPATCH_GROUPS.length})</span>
+                  <span>{orders.length} objednavok</span>
+                </div>
               </div>
 
               <div className="max-h-[620px] overflow-y-auto">
                 {orders.length === 0 ? (
                   <div className="p-6 text-sm text-gray-500">No orders found</div>
                 ) : (
-                  <div className="divide-y divide-gray-200">
-                    {orders.map((order) => {
-                      const isSelected = order.id === selectedOrderId;
-                      const tenantSlugForOrder = tenantIdToSlug[order.tenantId] || filters.tenantSlug;
-                      const brand = BRAND_META[tenantSlugForOrder] || BRAND_META.all;
+                  <div>
+                    {DISPATCH_GROUPS.map((group) => {
+                      const sectionOrders = groupedOrders[group.key];
+                      const isCollapsed = collapsedGroups[group.key];
+                      const count = sectionOrders.length;
 
                       return (
-                        <button
-                          key={order.id}
-                          onClick={() => setSelectedOrderId(order.id)}
-                          className={`w-full text-left p-3 transition-colors ${
-                            isSelected ? 'bg-white shadow-inner' : 'bg-transparent hover:bg-white/80'
-                          }`}
-                        >
-                          <div className="flex gap-3">
-                            <span className={`w-1.5 rounded-full ${STATUS_ACCENT[order.status as OrderStatus]}`} />
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-start justify-between gap-2">
-                                <div>
-                                  <p className="font-semibold text-gray-900 leading-tight">{getOrderNumber(order)}</p>
-                                  <p className="text-xs text-gray-500 mt-0.5">{formatOrderTime(order.createdAt)}</p>
-                                </div>
-                                <span className="text-xs font-semibold text-gray-500">€{(order.totalCents / 100).toFixed(2)}</span>
-                              </div>
-
-                              <p className="text-sm text-gray-800 mt-1 truncate">{order.customer?.name || 'Customer'}</p>
-                              <div className="mt-2 flex items-center justify-between gap-2">
-                                <span className="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-semibold text-gray-700">
-                                  {STATUS_TEXT[order.status as OrderStatus] || order.status}
-                                </span>
-                                <span className="text-[11px] font-semibold text-gray-400">{brand.label}</span>
-                              </div>
+                        <section key={group.key} className="border-b border-gray-200 last:border-b-0">
+                          <button
+                            onClick={() => toggleGroup(group.key)}
+                            className="w-full px-3 py-2.5 bg-white text-left flex items-center justify-between hover:bg-gray-50 transition-colors"
+                          >
+                            <div className="flex items-center gap-2 min-w-0">
+                              <span
+                                className={`text-xs text-gray-500 transition-transform ${isCollapsed ? '-rotate-90' : 'rotate-0'}`}
+                              >
+                                ▼
+                              </span>
+                              <span className={`text-[12px] font-semibold uppercase tracking-wide ${GROUP_ACCENT[group.key]}`}>
+                                {group.label}
+                              </span>
                             </div>
-                          </div>
-                        </button>
+                            <span className="text-[12px] font-semibold text-gray-500">{count}</span>
+                          </button>
+
+                          {!isCollapsed && (
+                            <div className="divide-y divide-gray-200 bg-gray-50/40">
+                              {count === 0 ? (
+                                <div className="px-4 py-2 text-xs text-gray-400">Ziadne objednavky</div>
+                              ) : (
+                                sectionOrders.map((order) => {
+                                  const isSelected = order.id === selectedOrderId;
+                                  const tenantSlugForOrder = tenantIdToSlug[order.tenantId] || filters.tenantSlug;
+                                  const brand = BRAND_META[tenantSlugForOrder] || BRAND_META.all;
+                                  const ageMinutes = getMinutesSinceCreated(order.createdAt);
+                                  const isFinished = order.status === OrderStatus.DELIVERED;
+                                  const isCanceled = order.status === OrderStatus.CANCELED;
+
+                                  return (
+                                    <button
+                                      key={order.id}
+                                      onClick={() => setSelectedOrderId(order.id)}
+                                      className={`w-full text-left transition-colors ${
+                                        isSelected ? 'bg-blue-50/70' : 'bg-transparent hover:bg-white'
+                                      }`}
+                                    >
+                                      <div className="flex items-stretch">
+                                        <div className={`w-10 flex items-center justify-center text-white ${GROUP_ROW_COLOR[group.key]}`}>
+                                          <span className="text-xs">📍</span>
+                                        </div>
+                                        <div className="flex-1 min-w-0 px-3 py-2.5">
+                                          <div className="flex items-start justify-between gap-2">
+                                            <p className="font-semibold text-gray-900 leading-tight truncate">
+                                              {getOrderNumber(order)} - {brand.label}
+                                            </p>
+                                            {group.key !== 'recentDone' && (
+                                              <span className="inline-flex min-w-[36px] h-8 px-1 items-center justify-center rounded-full border-2 border-emerald-600 text-[11px] font-bold text-emerald-700 bg-white">
+                                                {ageMinutes}m
+                                              </span>
+                                            )}
+                                            {isFinished && (
+                                              <span className="text-[10px] uppercase tracking-wide font-black text-emerald-600">
+                                                Dokoncene
+                                              </span>
+                                            )}
+                                            {isCanceled && (
+                                              <span className="text-[10px] uppercase tracking-wide font-black text-rose-600">
+                                                Zrusene
+                                              </span>
+                                            )}
+                                          </div>
+
+                                          <p className="mt-1 text-[12px] text-gray-500 truncate">
+                                            {formatOrderTime(order.createdAt)} - {(order.customer?.name || 'Customer')}, €{(order.totalCents / 100).toFixed(2)}
+                                          </p>
+                                          <div className="mt-1.5 flex items-center justify-between gap-2">
+                                            <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+                                              STATUS_ACCENT[order.status as OrderStatus]
+                                            } text-white`}>
+                                              {STATUS_TEXT[order.status as OrderStatus] || order.status}
+                                            </span>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    </button>
+                                  );
+                                })
+                              )}
+                            </div>
+                          )}
+                        </section>
                       );
                     })}
                   </div>
