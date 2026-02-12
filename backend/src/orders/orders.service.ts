@@ -56,6 +56,17 @@ type ProductWithModifiers = Prisma.ProductGetPayload<{
 @Injectable()
 export class OrdersService {
   private readonly logger = new Logger(OrdersService.name);
+
+  private collectUniqueProductIds(rawProductIds: unknown[]): string[] {
+    return [
+      ...new Set(
+        rawProductIds
+          .filter((productId): productId is string => typeof productId === 'string')
+          .map((productId) => productId.trim())
+          .filter((productId) => productId.length > 0),
+      ),
+    ];
+  }
   
   constructor(
     private prisma: PrismaService,
@@ -811,13 +822,7 @@ export class OrdersService {
     }
 
     // Load products to get displayName
-    const productIds = [
-      ...new Set(
-        order.items
-          .map(item => item.productId)
-          .filter((productId): productId is string => typeof productId === 'string' && productId.length > 0),
-      ),
-    ];
+    const productIds = this.collectUniqueProductIds(order.items.map(item => item.productId));
     const products = await Promise.all(
       productIds.map((productId: string) =>
         this.prisma.product.findUnique({
@@ -932,13 +937,9 @@ export class OrdersService {
     }
 
     // Load all products for all orders to get displayName
-    const allProductIds = [
-      ...new Set(
-        orders
-          .flatMap(order => order.items.map(item => item.productId))
-          .filter((productId): productId is string => typeof productId === 'string' && productId.length > 0),
-      ),
-    ];
+    const allProductIds = this.collectUniqueProductIds(
+      orders.flatMap(order => order.items.map(item => item.productId))
+    );
     const products = await Promise.all(
       allProductIds.map((productId: string) =>
         this.prisma.product.findUnique({
