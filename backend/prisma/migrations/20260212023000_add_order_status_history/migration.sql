@@ -8,6 +8,26 @@ CREATE TABLE "order_status_history" (
   CONSTRAINT "order_status_history_pkey" PRIMARY KEY ("id")
 );
 
+-- Backfill existing orders so timeline has baseline data:
+-- 1) order received at createdAt
+INSERT INTO "order_status_history" ("id", "orderId", "status", "createdAt")
+SELECT
+  ('legacy_' || o."id" || '_pending'),
+  o."id",
+  'PENDING'::"OrderStatus",
+  o."createdAt"
+FROM "orders" o;
+
+-- 2) current status at updatedAt (for orders that already progressed)
+INSERT INTO "order_status_history" ("id", "orderId", "status", "createdAt")
+SELECT
+  ('legacy_' || o."id" || '_current'),
+  o."id",
+  o."status",
+  o."updatedAt"
+FROM "orders" o
+WHERE o."status" <> 'PENDING'::"OrderStatus";
+
 CREATE INDEX "order_status_history_orderId_createdAt_idx"
   ON "order_status_history"("orderId", "createdAt");
 
