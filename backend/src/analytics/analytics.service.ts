@@ -21,11 +21,250 @@ export interface AnalyticsData {
     revenue: number;
   }>;
   ordersByStatus: Record<OrderStatus, number>;
+  timingMetrics: TimingMetrics;
+}
+
+export interface TimingMetrics {
+  avgConfirmSeconds: number;
+  avgPreparingSeconds: number;
+  avgDeliveredSeconds: number;
+  avgLastMileSeconds: number;
+  confirmSamples: number;
+  preparingSamples: number;
+  deliveredSamples: number;
+  lastMileSamples: number;
 }
 
 @Injectable()
 export class AnalyticsService {
   constructor(private prisma: PrismaService) {}
+
+  private isStatusHistoryUnavailable(error: unknown): boolean {
+    const message = error instanceof Error ? error.message : String(error);
+    return (
+      message.includes('order_status_history') ||
+      message.includes('statusHistory') ||
+      message.includes('orderStatusHistory')
+    );
+  }
+
+  private getEmptyTimingMetrics(): TimingMetrics {
+    return {
+      avgConfirmSeconds: 0,
+      avgPreparingSeconds: 0,
+      avgDeliveredSeconds: 0,
+      avgLastMileSeconds: 0,
+      confirmSamples: 0,
+      preparingSamples: 0,
+      deliveredSamples: 0,
+      lastMileSamples: 0,
+    };
+  }
+
+  private getAverage(totalSeconds: number, samples: number): number {
+    if (samples <= 0) return 0;
+    return Math.round(totalSeconds / samples);
+  }
+
+  private getPositiveDiffSeconds(start: Date, end: Date): number | null {
+    const startMs = new Date(start).getTime();
+    const endMs = new Date(end).getTime();
+    if (!Number.isFinite(startMs) || !Number.isFinite(endMs) || endMs <= startMs) {
+      return null;
+    }
+    return Math.round((endMs - startMs) / 1000);
+  }
+
+  private getStatusTimestamp(
+    history: Array<{ status: OrderStatus; createdAt: Date }>,
+    targetStatus: OrderStatus,
+    fallback: Date | null = null,
+  ): Date | null {
+    const match = history.find((entry) => entry.status === targetStatus);
+    if (match) {
+      return new Date(match.createdAt);
+    }
+    return fallback ? new Date(fallback) : null;
+  }
+
+  private calculateTimingMetrics(
+    orders: Array<{
+      status: OrderStatus;
+      createdAt: Date;
+      updatedAt: Date;
+      statusHistory?: Array<{ status: OrderStatus; createdAt: Date }>;
+    }>,
+  ): TimingMetrics {
+    let confirmTotalSeconds = 0;
+    let preparingTotalSeconds = 0;
+    let deliveredTotalSeconds = 0;
+    let lastMileTotalSeconds = 0;
+
+    let confirmSamples = 0;
+    let preparingSamples = 0;
+    let deliveredSamples = 0;
+    let lastMileSamples = 0;
+
+    for (const order of orders) {
+      if (order.status === OrderStatus.CANCELED) {
+        continue;
+      }
+
+      const history = [...(order.statusHistory || [])]
+        .map((entry) => ({
+          status: entry.status as OrderStatus,
+          createdAt: new Date(entry.createdAt),
+        }))
+        .filter((entry) => !Number.isNaN(entry.createdAt.getTime()))
+        .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+
+      const paidAt = this.getStatusTimestamp(
+        history,
+        OrderStatus.PAID,
+        order.status === OrderStatus.PAID ? order.updatedAt : null,
+      );
+      const preparingAt = this.getStatusTimestamp(
+        history,
+        OrderStatus.PREPARING,
+        order.status === OrderStatus.PREPARING ? order.updatedAt : null,
+      );
+      const outForDeliveryAt =
+        this.getStatusTimestamp(
+          history,
+          OrderStatus.OUT_FOR_DELIVERY,
+          order.status === OrderStatus.OUT_FOR_DELIVERY ? order.updatedAt : null,
+        ) ||
+        this.getStatusTimestamp(
+          history,
+          OrderStatus.READY,
+          order.status === OrderStatus.READY ? order.updatedAt : null,
+        );
+      const deliveredAt = this.getStatusTimestamp(
+        history,
+        OrderStatus.DELIVERED,
+        order.status === OrderStatus.DELIVERED ? order.updatedAt : null,
+      );
+
+      if (paidAt) {
+        const seconds = this.getPositiveDiffSeconds(order.createdAt, paidAt);
+        if (seconds != null) {
+          confirmTotalSeconds += seconds;
+          confirmSamples += 1;
+        }
+      }
+
+      if (preparingAt) {
+        const seconds = this.getPositiveDiffSeconds(order.createdAt, preparingAt);
+        if (seconds != null) {
+          preparingTotalSeconds += seconds;
+          preparingSamples += 1;
+        }
+      }
+
+      if (deliveredAt) {
+        const seconds = this.getPositiveDiffSeconds(order.createdAt, deliveredAt);
+        if (seconds != null) {
+          deliveredTotalSeconds += seconds;
+          deliveredSamples += 1;
+        }
+      }
+
+      if (outForDeliveryAt && deliveredAt) {
+        const seconds = this.getPositiveDiffSeconds(outForDeliveryAt, deliveredAt);
+        if (seconds != null) {
+          lastMileTotalSeconds += seconds;
+          lastMileSamples += 1;
+        }
+      }
+    }
+
+    return {
+      avgConfirmSeconds: this.getAverage(confirmTotalSeconds, confirmSamples),
+      avgPreparingSeconds: this.getAverage(preparingTotalSeconds, preparingSamples),
+      avgDeliveredSeconds: this.getAverage(deliveredTotalSeconds, deliveredSamples),
+      avgLastMileSeconds: this.getAverage(lastMileTotalSeconds, lastMileSamples),
+      confirmSamples,
+      preparingSamples,
+      deliveredSamples,
+      lastMileSamples,
+    };
+  }
+
+  private async fetchOrdersWithAnalyticsRelations(
+    tenantId: string,
+    startDate: Date,
+    endDate: Date,
+  ): Promise<
+    Array<{
+      status: OrderStatus;
+      totalCents: number;
+      createdAt: Date;
+      updatedAt: Date;
+      items: Array<{
+        productId: string;
+        productName: string;
+        quantity: number;
+        priceCents: number;
+      }>;
+      statusHistory: Array<{ status: OrderStatus; createdAt: Date }>;
+    }>
+  > {
+    try {
+      const orders = await this.prisma.order.findMany({
+        where: {
+          tenantId,
+          createdAt: {
+            gte: startDate,
+            lte: endDate,
+          },
+        },
+        include: {
+          items: true,
+          statusHistory: {
+            select: {
+              status: true,
+              createdAt: true,
+            },
+            orderBy: {
+              createdAt: 'asc',
+            },
+          },
+        },
+      });
+
+      return orders.map((order) => ({
+        ...order,
+        status: order.status as OrderStatus,
+        statusHistory: (order.statusHistory || []).map((entry) => ({
+          status: entry.status as OrderStatus,
+          createdAt: entry.createdAt,
+        })),
+      }));
+    } catch (error) {
+      if (!this.isStatusHistoryUnavailable(error)) {
+        throw error;
+      }
+
+      const ordersWithoutHistory = await this.prisma.order.findMany({
+        where: {
+          tenantId,
+          createdAt: {
+            gte: startDate,
+            lte: endDate,
+          },
+        },
+        include: {
+          items: true,
+        },
+      });
+
+      return ordersWithoutHistory.map((order) => ({
+        ...order,
+        status: order.status as OrderStatus,
+        statusHistory: [],
+      }));
+    }
+  }
 
   async getAnalytics(
     tenantId: string,
@@ -33,18 +272,11 @@ export class AnalyticsService {
     endDate: Date,
   ): Promise<AnalyticsData> {
     // Get orders in date range
-    const orders = await this.prisma.order.findMany({
-      where: {
-        tenantId,
-        createdAt: {
-          gte: startDate,
-          lte: endDate,
-        },
-      },
-      include: {
-        items: true, // OrderItem already has productName snapshot, no need to include product relation
-      },
-    });
+    const orders = await this.fetchOrdersWithAnalyticsRelations(
+      tenantId,
+      startDate,
+      endDate,
+    );
 
     const revenueOrders = orders.filter(
       (order) => order.status !== OrderStatus.CANCELED,
@@ -194,6 +426,7 @@ export class AnalyticsService {
       topProducts,
       ordersByDay,
       ordersByStatus,
+      timingMetrics: this.calculateTimingMetrics(orders),
     };
   }
 
@@ -225,6 +458,14 @@ export class AnalyticsService {
       DELIVERED: 0,
       CANCELED: 0,
     };
+    let confirmTotalSeconds = 0;
+    let preparingTotalSeconds = 0;
+    let deliveredTotalSeconds = 0;
+    let lastMileTotalSeconds = 0;
+    let confirmSamples = 0;
+    let preparingSamples = 0;
+    let deliveredSamples = 0;
+    let lastMileSamples = 0;
 
     for (const tenant of tenants) {
       const tenantAnalytics = await this.getAnalytics(
@@ -264,6 +505,16 @@ export class AnalyticsService {
         ordersByStatus[status as OrderStatus] +=
           tenantAnalytics.ordersByStatus[status as OrderStatus] || 0;
       });
+
+      const timing = tenantAnalytics.timingMetrics || this.getEmptyTimingMetrics();
+      confirmTotalSeconds += timing.avgConfirmSeconds * timing.confirmSamples;
+      preparingTotalSeconds += timing.avgPreparingSeconds * timing.preparingSamples;
+      deliveredTotalSeconds += timing.avgDeliveredSeconds * timing.deliveredSamples;
+      lastMileTotalSeconds += timing.avgLastMileSeconds * timing.lastMileSamples;
+      confirmSamples += timing.confirmSamples;
+      preparingSamples += timing.preparingSamples;
+      deliveredSamples += timing.deliveredSamples;
+      lastMileSamples += timing.lastMileSamples;
     }
 
     // Calculate previous period for comparison
@@ -351,7 +602,16 @@ export class AnalyticsService {
       topProducts,
       ordersByDay,
       ordersByStatus,
+      timingMetrics: {
+        avgConfirmSeconds: this.getAverage(confirmTotalSeconds, confirmSamples),
+        avgPreparingSeconds: this.getAverage(preparingTotalSeconds, preparingSamples),
+        avgDeliveredSeconds: this.getAverage(deliveredTotalSeconds, deliveredSamples),
+        avgLastMileSeconds: this.getAverage(lastMileTotalSeconds, lastMileSamples),
+        confirmSamples,
+        preparingSamples,
+        deliveredSamples,
+        lastMileSamples,
+      },
     };
   }
 }
-
