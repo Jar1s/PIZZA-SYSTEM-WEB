@@ -41,6 +41,27 @@ const NEXT_STATUS: Record<OrderStatus, OrderStatus | null> = {
   CANCELED: null,
 };
 
+interface TimelineStepConfig {
+  key: OrderStatus;
+  icon: string;
+}
+
+const ONLINE_TIMELINE_STEPS: TimelineStepConfig[] = [
+  { key: OrderStatus.PENDING, icon: '💳' },
+  { key: OrderStatus.PAID, icon: '💰' },
+  { key: OrderStatus.PREPARING, icon: '👨‍🍳' },
+  { key: OrderStatus.OUT_FOR_DELIVERY, icon: '🚗' },
+  { key: OrderStatus.DELIVERED, icon: '🎉' },
+];
+
+const DELIVERY_TIMELINE_STEPS: TimelineStepConfig[] = [
+  { key: OrderStatus.PENDING, icon: '⏳' },
+  { key: OrderStatus.PAID, icon: '✅' },
+  { key: OrderStatus.PREPARING, icon: '👨‍🍳' },
+  { key: OrderStatus.OUT_FOR_DELIVERY, icon: '🚗' },
+  { key: OrderStatus.DELIVERED, icon: '🎉' },
+];
+
 export function OrderCard({
   order,
   onStatusUpdate,
@@ -52,7 +73,7 @@ export function OrderCard({
   const t = getTranslations(language);
   // Use prop if provided, otherwise fall back to local state for backward compatibility
   const [localExpanded, setLocalExpanded] = useState(false);
-  const expanded = onToggleExpand ? isExpanded : localExpanded;
+  const expanded = onToggleExpand ? isExpanded : isExpanded || localExpanded;
   const handleToggle = onToggleExpand 
     ? () => onToggleExpand(order.id)
     : () => setLocalExpanded(!localExpanded);
@@ -122,6 +143,17 @@ export function OrderCard({
   // Desktop already has specialized reject/cancel buttons for some states.
   // Show this backdoor cancel only where a cancel button is otherwise missing.
   const showDesktopBackdoorCancel = canShowCancel && !isPendingDelivery && !isPendingOnline && !isPaidOnline;
+  const timelineSteps = isDeliveryPaymentValue ? DELIVERY_TIMELINE_STEPS : ONLINE_TIMELINE_STEPS;
+  const timelineStatus =
+    order.status === OrderStatus.READY ? OrderStatus.OUT_FOR_DELIVERY : order.status;
+  const currentTimelineIndex = Math.max(
+    timelineSteps.findIndex((step) => step.key === timelineStatus),
+    0,
+  );
+  const timelineProgressWidth =
+    timelineSteps.length > 1
+      ? `${(currentTimelineIndex / (timelineSteps.length - 1)) * 100}%`
+      : '0%';
   
   // Get translated status label
   const getStatusLabel = (status: OrderStatus): string => {
@@ -144,6 +176,30 @@ export function OrderCard({
       [OrderStatus.CANCELED]: t.orderStatusCanceled,
     };
     return statusMap[status] || status;
+  };
+
+  const getTimelineDescription = (status: OrderStatus): string => {
+    if (status === OrderStatus.PENDING && isDeliveryPayment()) {
+      return language === 'sk'
+        ? 'Objednávka čaká na potvrdenie operátora'
+        : 'Order is waiting for operator confirmation';
+    }
+    if (status === OrderStatus.PAID && isDeliveryPayment()) {
+      return language === 'sk' ? 'Objednávka potvrdená' : 'Order confirmed';
+    }
+
+    const descriptionMap: Record<OrderStatus, string> = {
+      [OrderStatus.PENDING]: t.orderStatusPendingDesc,
+      [OrderStatus.PAID]: t.orderStatusPaidDesc,
+      [OrderStatus.PREPARING]: t.orderStatusPreparingDesc,
+      [OrderStatus.READY]: t.orderStatusOutForDeliveryDesc,
+      [OrderStatus.OUT_FOR_DELIVERY]: t.orderStatusOutForDeliveryDesc,
+      [OrderStatus.DELIVERED]: t.orderStatusDeliveredDesc,
+      [OrderStatus.CANCELED]:
+        language === 'sk' ? 'Objednávka bola zrušená' : 'Order was canceled',
+    };
+
+    return descriptionMap[status];
   };
   
   const getNextStatusLabel = (status: OrderStatus): string => {
@@ -251,6 +307,12 @@ export function OrderCard({
     const dateStr = orderDate.toLocaleDateString('sk-SK', { day: '2-digit', month: '2-digit' });
     return `${dateStr} o ${time}`;
   };
+
+  const formatTimelineTime = (date: Date): string =>
+    new Date(date).toLocaleTimeString(language === 'sk' ? 'sk-SK' : 'en-US', {
+      hour: '2-digit',
+      minute: '2-digit',
+    });
   
   return (
     <div className="p-3 sm:p-4 hover:bg-gray-50">
@@ -512,6 +574,97 @@ export function OrderCard({
       
       {expanded && (
         <div className="mt-4 pt-4 border-t grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+          <div className="col-span-2 rounded-xl border border-gray-200 bg-gray-50 p-4">
+            <div className="flex items-center justify-between gap-2 mb-4">
+              <div className="font-semibold text-gray-900">
+                {language === 'sk' ? 'Časová os objednávky' : 'Order timeline'}
+              </div>
+              <div className="text-xs text-gray-500">
+                {formatTimelineTime(order.createdAt)} -> {formatTimelineTime(order.updatedAt)}
+              </div>
+            </div>
+
+            {order.status === OrderStatus.CANCELED ? (
+              <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-3 text-sm text-red-700">
+                {language === 'sk'
+                  ? 'Objednávka bola zrušená.'
+                  : 'This order has been canceled.'}
+              </div>
+            ) : (
+              <>
+                <div className="hidden lg:block relative">
+                  <div className="absolute left-0 right-0 top-5 h-1 bg-gray-200 rounded-full" />
+                  <div
+                    className="absolute left-0 top-5 h-1 bg-emerald-500 rounded-full transition-all duration-300"
+                    style={{ width: timelineProgressWidth }}
+                  />
+
+                  <div
+                    className="relative grid gap-2"
+                    style={{ gridTemplateColumns: `repeat(${timelineSteps.length}, minmax(0, 1fr))` }}
+                  >
+                    {timelineSteps.map((step, index) => {
+                      const isComplete = index <= currentTimelineIndex;
+                      const isCurrent = index === currentTimelineIndex;
+
+                      return (
+                        <div key={step.key} className="text-center">
+                          <div
+                            className={`mx-auto h-10 w-10 rounded-full flex items-center justify-center text-lg transition-all ${
+                              isComplete
+                                ? 'bg-emerald-500 text-white'
+                                : 'bg-gray-200 text-gray-500'
+                            } ${isCurrent ? 'ring-4 ring-emerald-200' : ''}`}
+                          >
+                            {step.icon}
+                          </div>
+                          <div className={`mt-2 text-xs font-semibold ${isComplete ? 'text-gray-900' : 'text-gray-500'}`}>
+                            {getStatusLabel(step.key)}
+                          </div>
+                          <div className={`mt-1 text-[11px] leading-tight ${isComplete ? 'text-gray-600' : 'text-gray-400'}`}>
+                            {getTimelineDescription(step.key)}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="lg:hidden space-y-3">
+                  {timelineSteps.map((step, index) => {
+                    const isComplete = index <= currentTimelineIndex;
+                    const isCurrent = index === currentTimelineIndex;
+
+                    return (
+                      <div key={step.key} className="flex items-start gap-3">
+                        <div
+                          className={`h-9 w-9 mt-0.5 rounded-full flex items-center justify-center text-sm ${
+                            isComplete ? 'bg-emerald-500 text-white' : 'bg-gray-200 text-gray-500'
+                          }`}
+                        >
+                          {step.icon}
+                        </div>
+                        <div className="min-w-0">
+                          <div className={`text-sm font-semibold ${isComplete ? 'text-gray-900' : 'text-gray-500'}`}>
+                            {getStatusLabel(step.key)}
+                          </div>
+                          <div className={`text-xs ${isComplete ? 'text-gray-600' : 'text-gray-400'}`}>
+                            {getTimelineDescription(step.key)}
+                          </div>
+                          {isCurrent && (
+                            <div className="text-[11px] text-emerald-600 font-semibold mt-1">
+                              {language === 'sk' ? 'Aktuálny krok' : 'Current step'}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
+            )}
+          </div>
+
           {storyousMessage && (
             <div
               className={`col-span-2 mb-2 p-2 rounded text-xs border ${
