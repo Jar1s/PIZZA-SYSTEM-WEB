@@ -508,7 +508,7 @@ export function OrderList({ todayOnly = false, selectedTenant }: OrderListProps 
             <div className="border-r border-gray-200 bg-gray-50/70">
               <div className="px-4 py-4 border-b border-gray-200 bg-white sticky top-0 z-10">
                 <p className="text-xs uppercase tracking-[0.2em] text-gray-500 mb-3">Brands</p>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="flex items-center gap-2 overflow-x-auto pb-1">
                   {BRAND_FILTER_SLUGS.map((slug) => {
                     const isActive = filters.tenantSlug === slug;
                     const brand = BRAND_META[slug];
@@ -517,39 +517,29 @@ export function OrderList({ todayOnly = false, selectedTenant }: OrderListProps 
                         key={slug}
                         onClick={() => setTenantFilterFromIcon(slug)}
                         title={brand.label}
-                        className={`w-full rounded-xl border px-2.5 py-2 transition-all ${
+                        className={`relative h-11 w-11 shrink-0 rounded-full border-2 transition-all ${
                           isActive
-                            ? 'border-gray-900 bg-gray-900 shadow-md'
-                            : 'border-gray-200 bg-white hover:border-gray-400 hover:bg-gray-50'
+                            ? 'border-gray-900 ring-2 ring-offset-1 ring-gray-900'
+                            : 'border-gray-300 hover:border-gray-500'
                         }`}
                       >
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="flex items-center gap-2 min-w-0">
-                            <span
-                              className={`h-8 w-8 shrink-0 rounded-full bg-gradient-to-br ${brand.color} flex items-center justify-center`}
-                              aria-hidden="true"
-                            >
-                              <span className="text-[10px] font-black tracking-wide text-white">
-                                {brand.initials}
-                              </span>
-                            </span>
-                            <span className="min-w-0 text-left">
-                              <span className={`block text-[12px] font-semibold truncate ${isActive ? 'text-white' : 'text-gray-800'}`}>
-                                {brand.label}
-                              </span>
-                              <span className={`block text-[10px] uppercase tracking-wide ${isActive ? 'text-gray-300' : 'text-gray-400'}`}>
-                                {slug === 'all' ? 'Filter' : 'Brand'}
-                              </span>
-                            </span>
+                        <span
+                          className={`absolute inset-0 rounded-full bg-gradient-to-br ${brand.color} flex items-center justify-center`}
+                          aria-hidden="true"
+                        >
+                          <span className="text-[10px] font-black tracking-wide text-white">
+                            {brand.initials}
                           </span>
-                          <span
-                            className={`inline-flex h-6 min-w-[24px] items-center justify-center rounded-full px-1.5 text-[11px] font-bold ${
-                              isActive ? 'bg-white text-gray-900' : 'bg-gray-100 text-gray-600'
-                            }`}
-                          >
-                            {brandCounts[slug]}
-                          </span>
-                        </div>
+                        </span>
+                        <span
+                          className={`absolute -top-1 -right-1 inline-flex h-5 min-w-[20px] items-center justify-center rounded-full px-1 text-[10px] font-bold border ${
+                            isActive
+                              ? 'bg-gray-900 text-white border-white'
+                              : 'bg-white text-gray-700 border-gray-300'
+                          }`}
+                        >
+                          {brandCounts[slug]}
+                        </span>
                       </button>
                     );
                   })}
