@@ -63,6 +63,13 @@ const BRAND_META: Record<BrandSlug, { label: string; initials: string; color: st
 const isKnownTenantBrand = (value: string): value is Exclude<BrandSlug, 'all'> =>
   value === 'pornopizza' || value === 'partypizza' || value === 'pizzavnudzi';
 
+const normalizeBrandSlug = (value: string): BrandSlug => {
+  if (value === 'all' || isKnownTenantBrand(value)) {
+    return value;
+  }
+  return 'all';
+};
+
 const GROUP_ACCENT: Record<DispatchGroupKey, string> = {
   new: 'text-emerald-700',
   inProgress: 'text-amber-700',
@@ -589,8 +596,10 @@ export function OrderList({ todayOnly = false, selectedTenant }: OrderListProps 
                               ) : (
                                 sectionOrders.map((order) => {
                                   const isSelected = order.id === selectedOrderId;
-                                  const tenantSlugForOrder = tenantIdToSlug[order.tenantId] || filters.tenantSlug;
-                                  const brand = BRAND_META[tenantSlugForOrder] || BRAND_META.all;
+                                  const tenantSlugForOrder = normalizeBrandSlug(
+                                    tenantIdToSlug[order.tenantId] || filters.tenantSlug,
+                                  );
+                                  const brand = BRAND_META[tenantSlugForOrder];
                                   const ageMinutes = getMinutesSinceCreated(order.createdAt);
                                   const isFinished = order.status === OrderStatus.DELIVERED;
                                   const isCanceled = order.status === OrderStatus.CANCELED;
