@@ -836,18 +836,24 @@ export function OrderCard({
               const displayName = item.productName;
               
               return (
-                <div key={i} className="mb-3 pb-3 border-b last:border-b-0">
-                  <div className="flex justify-between">
-                    <span className="font-medium">{item.quantity}x {displayName}</span>
-                    <span>{formatEurPrice(itemTotal)}</span>
+                <div key={i} className="mb-4 pb-3 border-b border-gray-200 last:border-b-0">
+                  <div className="flex justify-between gap-3 text-[15px] leading-6">
+                    <span className="font-semibold text-gray-900 truncate">
+                      <span className="text-red-500 font-bold mr-1">{item.quantity}x</span>
+                      {displayName}
+                    </span>
+                    <span className="font-semibold text-gray-800 whitespace-nowrap">{formatEurPrice(itemTotal)}</span>
                   </div>
                   {modifierLines.length > 0 && (
-                    <div className="mt-1 ml-4 space-y-1">
+                    <div className="mt-1.5 ml-5 space-y-1">
                       {modifierLines.map((modifier, idx) => {
                         return (
-                          <div key={idx} className="flex justify-between gap-2 text-xs text-gray-600">
-                            <span className="truncate">1x {modifier.label}</span>
-                            <span>{formatEurPrice(modifier.priceCents)}</span>
+                          <div key={idx} className="flex justify-between gap-3 text-[14px] text-gray-700 leading-5">
+                            <span className="truncate">
+                              <span className="text-red-500 font-semibold mr-1">1x</span>
+                              {modifier.label}
+                            </span>
+                            <span className="text-gray-700 whitespace-nowrap">{formatEurPrice(modifier.priceCents)}</span>
                           </div>
                         );
                       })}
