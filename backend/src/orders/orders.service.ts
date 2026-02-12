@@ -68,6 +68,15 @@ export class OrdersService {
     private jwtService: JwtService,
   ) {}
 
+  private isStatusHistoryUnavailable(error: unknown): boolean {
+    const message = error instanceof Error ? error.message : String(error);
+    return (
+      message.includes('order_status_history') ||
+      message.includes('statusHistory') ||
+      message.includes('orderStatusHistory')
+    );
+  }
+
   async createOrder(tenantId: string, data: CreateOrderDto): Promise<Order | { order: Order; authToken?: string; refreshToken?: string; user?: any }> {
     // Log incoming data to see what we receive
     this.logger.log('createOrder called', {
@@ -521,50 +530,98 @@ export class OrdersService {
       firstItemModifiersStringified: JSON.stringify(orderItems[0]?.modifiers),
     });
     
-    const order = await this.prisma.order.create({
-      data: {
-        tenantId,
-        orderNumber,
-        userId: userId || null, // Can be null for guest orders
-        status: OrderStatus.PENDING,
-        paymentStatus: data.paymentMethod ? 'pending' : null, // For cash on delivery
-        customer: data.customer as unknown as Prisma.InputJsonValue,
-        address: {
-          ...data.address,
-          houseNumber: data.address.houseNumber, // Include houseNumber
-        } as unknown as Prisma.InputJsonValue,
-        subtotalCents,
-        taxCents,
-        deliveryFeeCents,
-        totalCents,
-        items: {
-          create: orderItems,
-        },
-        statusHistory: {
-          create: [{ status: OrderStatus.PENDING }],
-        },
-      } as any, // Type assertion needed until Prisma types are fully regenerated
-      include: {
-        items: true,
-        statusHistory: {
-          orderBy: {
-            createdAt: 'asc',
+    let order: any;
+    try {
+      order = await this.prisma.order.create({
+        data: {
+          tenantId,
+          orderNumber,
+          userId: userId || null, // Can be null for guest orders
+          status: OrderStatus.PENDING,
+          paymentStatus: data.paymentMethod ? 'pending' : null, // For cash on delivery
+          customer: data.customer as unknown as Prisma.InputJsonValue,
+          address: {
+            ...data.address,
+            houseNumber: data.address.houseNumber, // Include houseNumber
+          } as unknown as Prisma.InputJsonValue,
+          subtotalCents,
+          taxCents,
+          deliveryFeeCents,
+          totalCents,
+          items: {
+            create: orderItems,
+          },
+          statusHistory: {
+            create: [{ status: OrderStatus.PENDING }],
+          },
+        } as any, // Type assertion needed until Prisma types are fully regenerated
+        include: {
+          items: true,
+          statusHistory: {
+            orderBy: {
+              createdAt: 'asc',
+            },
+          },
+          tenant: {
+            select: {
+              id: true,
+              name: true,
+              slug: true,
+              domain: true,
+              subdomain: true,
+              currency: true, // Currency field added to schema
+              theme: true, // Include theme for email colors and logo
+              emailConfig: true, // Include tenant-specific SMTP settings
+            } as any, // Type assertion needed until Prisma types are fully regenerated
           },
         },
-        tenant: {
-          select: {
-            id: true,
-            name: true,
-            slug: true,
-            domain: true,
-            subdomain: true,
-            currency: true, // Currency field added to schema
-            theme: true, // Include theme for email colors and logo
-            emailConfig: true, // Include tenant-specific SMTP settings
-          } as any, // Type assertion needed until Prisma types are fully regenerated
+      });
+    } catch (error) {
+      if (!this.isStatusHistoryUnavailable(error)) {
+        throw error;
+      }
+
+      this.logger.warn(
+        '[createOrder] statusHistory relation not available, falling back to legacy create',
+      );
+
+      order = await this.prisma.order.create({
+        data: {
+          tenantId,
+          orderNumber,
+          userId: userId || null,
+          status: OrderStatus.PENDING,
+          paymentStatus: data.paymentMethod ? 'pending' : null,
+          customer: data.customer as unknown as Prisma.InputJsonValue,
+          address: {
+            ...data.address,
+            houseNumber: data.address.houseNumber,
+          } as unknown as Prisma.InputJsonValue,
+          subtotalCents,
+          taxCents,
+          deliveryFeeCents,
+          totalCents,
+          items: {
+            create: orderItems,
+          },
+        } as any,
+        include: {
+          items: true,
+          tenant: {
+            select: {
+              id: true,
+              name: true,
+              slug: true,
+              domain: true,
+              subdomain: true,
+              currency: true,
+              theme: true,
+              emailConfig: true,
+            } as any,
+          },
         },
-      },
-    });
+      });
+    }
 
     // Log what was actually saved to database
     this.logger.log('Order created in Prisma, checking saved items', {
@@ -719,18 +776,35 @@ export class OrdersService {
   }
 
   async getOrderById(id: string): Promise<Order> {
-    const order = await this.prisma.order.findUnique({
-      where: { id },
-      include: {
-        items: true,
-        delivery: true,
-        statusHistory: {
-          orderBy: {
-            createdAt: 'asc',
+    let order: any;
+    try {
+      order = await this.prisma.order.findUnique({
+        where: { id },
+        include: {
+          items: true,
+          delivery: true,
+          statusHistory: {
+            orderBy: {
+              createdAt: 'asc',
+            },
           },
         },
-      },
-    });
+      });
+    } catch (error) {
+      if (!this.isStatusHistoryUnavailable(error)) {
+        throw error;
+      }
+      this.logger.warn(
+        '[getOrderById] statusHistory relation not available, falling back to legacy query',
+      );
+      order = await this.prisma.order.findUnique({
+        where: { id },
+        include: {
+          items: true,
+          delivery: true,
+        },
+      });
+    }
 
     if (!order) {
       throw new NotFoundException(`Order ${id} not found`);
@@ -750,11 +824,11 @@ export class OrdersService {
       (products.filter(p => p) as any[]).map((p: any) => [p.id, p])
     );
 
-    // Explicitly map items to ensure productName and displayName are included
-    const orderWithItems = {
-      ...order,
-      statusHistory: order.statusHistory,
-      items: order.items.map(item => {
+      // Explicitly map items to ensure productName and displayName are included
+      const orderWithItems = {
+        ...order,
+        statusHistory: order.statusHistory || [],
+        items: order.items.map(item => {
         const product = productMap.get(item.productId) as any;
         const productNameForMapping = (product?.name || item.productName || '') as string;
         const displayName = product?.displayName 
@@ -807,25 +881,49 @@ export class OrdersService {
       createdAtFilter.lte = filters.endDate;
     }
 
-    const orders = await this.prisma.order.findMany({
-      where: {
-        tenantId,
-        ...(filters?.status && { status: filters.status }),
-        ...(Object.keys(createdAtFilter).length > 0 && { createdAt: createdAtFilter }),
-      },
-      include: {
-        items: true,
-        delivery: true,
-        statusHistory: {
-          orderBy: {
-            createdAt: 'asc',
+    let orders: any[];
+    try {
+      orders = await this.prisma.order.findMany({
+        where: {
+          tenantId,
+          ...(filters?.status && { status: filters.status }),
+          ...(Object.keys(createdAtFilter).length > 0 && { createdAt: createdAtFilter }),
+        },
+        include: {
+          items: true,
+          delivery: true,
+          statusHistory: {
+            orderBy: {
+              createdAt: 'asc',
+            },
           },
         },
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
-    });
+        orderBy: {
+          createdAt: 'desc',
+        },
+      });
+    } catch (error) {
+      if (!this.isStatusHistoryUnavailable(error)) {
+        throw error;
+      }
+      this.logger.warn(
+        '[getOrders] statusHistory relation not available, falling back to legacy query',
+      );
+      orders = await this.prisma.order.findMany({
+        where: {
+          tenantId,
+          ...(filters?.status && { status: filters.status }),
+          ...(Object.keys(createdAtFilter).length > 0 && { createdAt: createdAtFilter }),
+        },
+        include: {
+          items: true,
+          delivery: true,
+        },
+        orderBy: {
+          createdAt: 'desc',
+        },
+      });
+    }
 
     // Load all products for all orders to get displayName
     const allProductIds = [...new Set(orders.flatMap(order => order.items.map(item => item.productId)))];
@@ -846,7 +944,7 @@ export class OrdersService {
       // Explicitly map items to ensure productName and displayName are included
       const orderWithItems = {
         ...order,
-        statusHistory: order.statusHistory,
+        statusHistory: order.statusHistory || [],
         items: order.items.map(item => {
           const product = productMap.get(item.productId) as any;
           const productNameForMapping = (product?.name || item.productName || '') as string;
@@ -1101,4 +1199,3 @@ export class OrdersService {
     }
   }
 }
-
