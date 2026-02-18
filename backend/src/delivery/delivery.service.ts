@@ -136,6 +136,8 @@ export class DeliveryService {
       woltConfig.apiKey,
       pickupAddress,
       dropoffAddress,
+      3,
+      woltConfig,
     );
   }
 
@@ -176,6 +178,8 @@ export class DeliveryService {
         address,
         customer.name,
         customer.phone,
+        3,
+        woltConfig,
       );
     } catch (error: any) {
       // Propagate user-friendly error message from WoltDriveService
@@ -255,6 +259,8 @@ export class DeliveryService {
         customer.phone,
         shipmentPromiseId, // Optional: if provided, will use shipment promise ID
         promiseData,
+        3,
+        woltConfig,
       );
     } catch (error: any) {
       // Propagate user-friendly error message from WoltDriveService
@@ -320,7 +326,7 @@ export class DeliveryService {
       // Best effort cleanup of duplicate local record and external Wolt job.
       try {
         if (delivery.jobId) {
-          await this.woltDrive.cancelDelivery(woltConfig.apiKey, delivery.jobId);
+          await this.woltDrive.cancelDelivery(woltConfig.apiKey, delivery.jobId, 3, woltConfig);
         }
       } catch (cancelError: any) {
         this.logger.warn('[createDeliveryForOrder] Failed to cancel duplicate Wolt job', {
@@ -437,7 +443,6 @@ export class DeliveryService {
     }
   }
 }
-
 
 
 

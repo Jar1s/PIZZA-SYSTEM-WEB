@@ -83,8 +83,10 @@ export interface DeliveryConfig {
   provider?: string;
   apiKey?: string;
   woltConfig?: {
-    merchantId?: string;
     apiKey?: string;
+    apiUrl?: string;
+    merchantId?: string;
+    venueId?: string;
     webhookSecret?: string;
   };
   // Multi-tenant pickup address (kitchen location)

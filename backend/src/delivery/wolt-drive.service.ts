@@ -30,11 +30,50 @@ interface WoltQuoteRequest {
   };
 }
 
+interface WoltApiConfig {
+  apiUrl?: string;
+  merchantId?: string;
+  venueId?: string;
+}
+
+interface WoltApiEndpoints {
+  deliveriesUrl: string;
+  shipmentPromisesUrl: string;
+}
+
 @Injectable()
 export class WoltDriveService {
   private readonly logger = new Logger(WoltDriveService.name);
-  private apiUrl = 'https://daas-public-api.wolt.com/merchants/v1/deliveries';
-  private shipmentPromisesUrl = 'https://daas-public-api.wolt.com/merchants/v1/shipment-promises';
+  private readonly defaultApiBaseUrl = 'https://daas-public-api.wolt.com/merchants/v1';
+  private readonly defaultDeliveriesUrl = `${this.defaultApiBaseUrl}/deliveries`;
+  private readonly defaultShipmentPromisesUrl = `${this.defaultApiBaseUrl}/shipment-promises`;
+
+  private resolveApiEndpoints(apiConfig?: WoltApiConfig): WoltApiEndpoints {
+    const rawApiUrl = apiConfig?.apiUrl?.trim();
+
+    if (!rawApiUrl) {
+      return {
+        deliveriesUrl: this.defaultDeliveriesUrl,
+        shipmentPromisesUrl: this.defaultShipmentPromisesUrl,
+      };
+    }
+
+    const normalized = rawApiUrl.replace(/\/+$/, '');
+    let apiBase = normalized;
+
+    if (normalized.endsWith('/deliveries')) {
+      apiBase = normalized.slice(0, -'/deliveries'.length);
+    } else if (normalized.endsWith('/shipment-promises')) {
+      apiBase = normalized.slice(0, -'/shipment-promises'.length);
+    } else if (!normalized.includes('/merchants/v1')) {
+      apiBase = `${normalized}/merchants/v1`;
+    }
+
+    return {
+      deliveriesUrl: `${apiBase}/deliveries`,
+      shipmentPromisesUrl: `${apiBase}/shipment-promises`,
+    };
+  }
   
   /**
    * Get kitchen phone number with validation
@@ -156,9 +195,11 @@ export class WoltDriveService {
     pickupAddress: Address,
     dropoffAddress: Address,
     maxRetries = 3,
+    apiConfig?: WoltApiConfig,
   ) {
     const pickupLocation = this.getValidatedLocation(pickupAddress, 'pickup');
     const dropoffLocation = this.getValidatedLocation(dropoffAddress, 'dropoff');
+    const { deliveriesUrl } = this.resolveApiEndpoints(apiConfig);
 
     const request: WoltQuoteRequest = {
       pickup: {
@@ -179,7 +220,7 @@ export class WoltDriveService {
     
     for (let attempt = 0; attempt < maxRetries; attempt++) {
       try {
-        const response = await fetch(`${this.apiUrl}/quote`, {
+        const response = await fetch(`${deliveriesUrl}/quote`, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${apiKey}`,
@@ -248,9 +289,11 @@ export class WoltDriveService {
     customerName: string,
     customerPhone: string,
     maxRetries = 3,
+    apiConfig?: WoltApiConfig,
   ) {
     const pickupLocation = this.getValidatedLocation(pickupAddress, 'pickup');
     const dropoffLocation = this.getValidatedLocation(dropoffAddress, 'dropoff');
+    const { shipmentPromisesUrl } = this.resolveApiEndpoints(apiConfig);
 
     const request = {
       pickup: {
@@ -272,7 +315,7 @@ export class WoltDriveService {
     for (let attempt = 0; attempt < maxRetries; attempt++) {
       try {
         // Use correct endpoint: /shipment-promises (not /deliveries/quote)
-        const response = await fetch(this.shipmentPromisesUrl, {
+        const response = await fetch(shipmentPromisesUrl, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${apiKey}`,
@@ -347,9 +390,11 @@ export class WoltDriveService {
     shipmentPromiseId?: string, // Optional: if provided, use shipment promise ID
     promiseSnapshot?: ShipmentPromiseSnapshot,
     maxRetries = 3,
+    apiConfig?: WoltApiConfig,
   ) {
     const pickupLocation = this.getValidatedLocation(pickupAddress, 'pickup');
     const dropoffLocation = this.getValidatedLocation(dropoffAddress, 'dropoff');
+    const { deliveriesUrl } = this.resolveApiEndpoints(apiConfig);
 
     const effectivePromiseId = shipmentPromiseId || promiseSnapshot?.promiseId;
 
@@ -391,7 +436,7 @@ export class WoltDriveService {
     
     for (let attempt = 0; attempt < maxRetries; attempt++) {
       try {
-        const response = await fetch(`${this.apiUrl}`, {
+        const response = await fetch(deliveriesUrl, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${apiKey}`,
@@ -474,12 +519,13 @@ export class WoltDriveService {
     throw lastError || new Error('Wolt API createDelivery failed');
   }
 
-  async cancelDelivery(apiKey: string, jobId: string, maxRetries = 3) {
+  async cancelDelivery(apiKey: string, jobId: string, maxRetries = 3, apiConfig?: WoltApiConfig) {
     let lastError: Error | null = null;
+    const { deliveriesUrl } = this.resolveApiEndpoints(apiConfig);
     
     for (let attempt = 0; attempt < maxRetries; attempt++) {
       try {
-        const response = await fetch(`${this.apiUrl}/${jobId}/cancel`, {
+        const response = await fetch(`${deliveriesUrl}/${jobId}/cancel`, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${apiKey}`,
@@ -533,7 +579,6 @@ export class WoltDriveService {
     throw lastError || new Error('Wolt API cancelDelivery failed');
   }
 }
-
 
 
 

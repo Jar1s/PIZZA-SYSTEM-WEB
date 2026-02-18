@@ -62,6 +62,9 @@ export function EditBrandModal({
 
   // Wolt/Delivery settings
   const [woltApiKey, setWoltApiKey] = useState('');
+  const [woltApiUrl, setWoltApiUrl] = useState('');
+  const [woltMerchantId, setWoltMerchantId] = useState('');
+  const [woltVenueId, setWoltVenueId] = useState('');
   const [pickupStreet, setPickupStreet] = useState('');
   const [pickupCity, setPickupCity] = useState('');
   const [pickupPostalCode, setPickupPostalCode] = useState('');
@@ -141,6 +144,9 @@ export function EditBrandModal({
       
       // Load Wolt/Delivery settings
       setWoltApiKey(woltConfig.apiKey || '');
+      setWoltApiUrl(woltConfig.apiUrl || '');
+      setWoltMerchantId(woltConfig.merchantId || '');
+      setWoltVenueId(woltConfig.venueId || '');
       setPickupStreet(pickupAddress.street || '');
       setPickupCity(pickupAddress.city || '');
       setPickupPostalCode(pickupAddress.postalCode || '');
@@ -272,11 +278,20 @@ export function EditBrandModal({
         ...existingDeliveryConfig,
       };
       
-      // Add Wolt config if API key is provided
-      if (woltApiKey.trim()) {
+      const hasWoltConfig =
+        woltApiKey.trim() ||
+        woltApiUrl.trim() ||
+        woltMerchantId.trim() ||
+        woltVenueId.trim();
+
+      // Add Wolt config if at least one Wolt field is provided
+      if (hasWoltConfig) {
         deliveryConfig.woltConfig = {
           ...(existingDeliveryConfig.woltConfig || {}),
           apiKey: woltApiKey.trim(),
+          apiUrl: woltApiUrl.trim() || undefined,
+          merchantId: woltMerchantId.trim() || undefined,
+          venueId: woltVenueId.trim() || undefined,
         };
       }
       
@@ -932,6 +947,50 @@ export function EditBrandModal({
                       <p className="mt-1 text-xs text-gray-500">
                         API kľúč z Wolt Drive dashboardu
                       </p>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Wolt API URL (voliteľné)
+                      </label>
+                      <input
+                        type="text"
+                        value={woltApiUrl}
+                        onChange={(e) => setWoltApiUrl(e.target.value)}
+                        placeholder="https://daas-public-api.wolt.com"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                      />
+                      <p className="mt-1 text-xs text-gray-500">
+                        Pre staging napr. https://daas-public-api.development.dev.woltapi.com
+                      </p>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Merchant ID (voliteľné)
+                        </label>
+                        <input
+                          type="text"
+                          value={woltMerchantId}
+                          onChange={(e) => setWoltMerchantId(e.target.value)}
+                          placeholder="6995..."
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Venue ID (voliteľné)
+                        </label>
+                        <input
+                          type="text"
+                          value={woltVenueId}
+                          onChange={(e) => setWoltVenueId(e.target.value)}
+                          placeholder="6995..."
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                        />
+                      </div>
                     </div>
 
                     {/* Pickup Address Section */}
