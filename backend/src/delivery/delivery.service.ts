@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException, Logger, Inject, forwardRef } from '@nestjs/common';
+import { Injectable, BadRequestException, Logger, Inject, forwardRef, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { WoltDriveService } from './wolt-drive.service';
 import { OrdersService } from '../orders/orders.service';
@@ -6,6 +6,22 @@ import { OrderStatusService } from '../orders/order-status.service';
 import { TenantsService } from '../tenants/tenants.service';
 import { OrderStatus, DeliveryStatus, Address } from '@pizza-ecosystem/shared';
 import { DeliveryConfig } from '../types/tenant.types';
+
+interface AuthenticatedUser {
+  id: string;
+  role: string;
+  tenantId?: string | null;
+  email?: string | null;
+}
+
+interface ShipmentPromiseData {
+  promiseId?: string;
+  feeCents?: number;
+  etaMinutes?: number;
+  validUntil?: string;
+  currency?: string;
+  distance?: number;
+}
 
 @Injectable()
 export class DeliveryService {
@@ -20,6 +36,40 @@ export class DeliveryService {
     private orderStatusService: OrderStatusService,
     private tenantsService: TenantsService,
   ) {}
+
+  private assertTenantAccess(
+    tenantId: string,
+    user: AuthenticatedUser | undefined,
+    context: string,
+  ): void {
+    if (!user) {
+      // Internal service-to-service calls (e.g. payment webhooks) do not have request user context.
+      return;
+    }
+
+    const userTenantId = user.tenantId || null;
+    if (userTenantId && userTenantId !== tenantId) {
+      this.logger.warn(`[${context}] Tenant mismatch`, {
+        userId: user.id,
+        userTenantId,
+        targetTenantId: tenantId,
+      });
+      throw new ForbiddenException('You do not have access to this tenant data');
+    }
+  }
+
+  private async getExistingDeliveryForOrder(orderId: string) {
+    const latestOrder = await this.prisma.order.findUnique({
+      where: { id: orderId },
+      include: { delivery: true },
+    });
+
+    if (!latestOrder?.deliveryId || !latestOrder.delivery) {
+      return null;
+    }
+
+    return latestOrder.delivery;
+  }
 
   /**
    * Get pickup address from tenant configuration
@@ -60,7 +110,7 @@ export class DeliveryService {
     return Object.assign(address, { phone: pickupAddress.phone }) as Address & { phone?: string };
   }
 
-  async getQuote(tenantId: string, dropoffAddress: any) {
+  async getQuote(tenantId: string, dropoffAddress: any, user?: AuthenticatedUser) {
     const tenant = await this.prisma.tenant.findUnique({
       where: { id: tenantId },
     });
@@ -68,6 +118,8 @@ export class DeliveryService {
     if (!tenant) {
       throw new BadRequestException('Tenant not found');
     }
+
+    this.assertTenantAccess(tenant.id, user, 'getQuote');
 
     const deliveryConfig = tenant.deliveryConfig as DeliveryConfig;
     const woltConfig = deliveryConfig.woltConfig;
@@ -90,8 +142,9 @@ export class DeliveryService {
    * Get shipment promise for an order (check availability and get pricing)
    * This is the proper way according to Wolt Drive API documentation
    */
-  async getShipmentPromiseForOrder(orderId: string) {
+  async getShipmentPromiseForOrder(orderId: string, user?: AuthenticatedUser) {
     const order = await this.ordersService.getOrderById(orderId);
+    this.assertTenantAccess(order.tenantId, user, 'getShipmentPromiseForOrder');
     
     const tenant = await this.prisma.tenant.findUnique({
       where: { id: order.tenantId },
@@ -134,11 +187,31 @@ export class DeliveryService {
     }
   }
 
-  async createDeliveryForOrder(orderId: string, shipmentPromiseId?: string) {
+  async createDeliveryForOrder(
+    orderId: string,
+    shipmentPromiseId?: string,
+    promiseData?: ShipmentPromiseData,
+    user?: AuthenticatedUser,
+  ) {
     const order = await this.ordersService.getOrderById(orderId);
+    this.assertTenantAccess(order.tenantId, user, 'createDeliveryForOrder');
+
+    const existingDelivery = await this.getExistingDeliveryForOrder(order.id);
+    if (existingDelivery) {
+      this.logger.log('[createDeliveryForOrder] Delivery already exists, reusing existing record', {
+        orderId: order.id,
+        deliveryId: existingDelivery.id,
+        jobId: existingDelivery.jobId,
+      });
+      return existingDelivery;
+    }
     
-    if (order.status !== OrderStatus.PAID) {
-      throw new BadRequestException('Order must be paid before creating delivery');
+    if (
+      order.status !== OrderStatus.PAID &&
+      order.status !== OrderStatus.PREPARING &&
+      order.status !== OrderStatus.READY
+    ) {
+      throw new BadRequestException('Order must be paid or preparing before creating delivery');
     }
 
     const tenant = await this.prisma.tenant.findUnique({
@@ -166,6 +239,12 @@ export class DeliveryService {
     // If shipmentPromiseId is provided, use it (proper flow according to documentation)
     let woltDelivery;
     try {
+      // Re-check immediately before external API call to reduce duplicate dispatches.
+      const existingBeforeCreate = await this.getExistingDeliveryForOrder(order.id);
+      if (existingBeforeCreate) {
+        return existingBeforeCreate;
+      }
+
       woltDelivery = await this.woltDrive.createDelivery(
         woltConfig.apiKey,
         order.id,
@@ -174,6 +253,7 @@ export class DeliveryService {
         customer.name,
         customer.phone,
         shipmentPromiseId, // Optional: if provided, will use shipment promise ID
+        promiseData,
       );
     } catch (error: any) {
       // Propagate user-friendly error message from WoltDriveService
@@ -186,6 +266,21 @@ export class DeliveryService {
     }
 
     // Save delivery record
+    const quote: Record<string, unknown> = {};
+    const feeCents = woltDelivery?.feeCents ?? promiseData?.feeCents;
+    const etaMinutes = woltDelivery?.etaMinutes ?? woltDelivery?.courierEta ?? promiseData?.etaMinutes;
+    const distance = woltDelivery?.distance ?? promiseData?.distance;
+    const currency = woltDelivery?.currency ?? promiseData?.currency;
+    const promiseId = woltDelivery?.promiseId ?? shipmentPromiseId ?? promiseData?.promiseId;
+    const validUntil = woltDelivery?.validUntil ?? promiseData?.validUntil;
+
+    if (typeof feeCents === 'number') quote.feeCents = feeCents;
+    if (typeof etaMinutes === 'number') quote.etaMinutes = etaMinutes;
+    if (typeof distance === 'number') quote.distance = distance;
+    if (typeof currency === 'string') quote.currency = currency;
+    if (typeof promiseId === 'string') quote.promiseId = promiseId;
+    if (typeof validUntil === 'string') quote.validUntil = validUntil;
+
     const delivery = await this.prisma.delivery.create({
       data: {
         tenantId: order.tenantId,
@@ -193,22 +288,66 @@ export class DeliveryService {
         jobId: woltDelivery.jobId,
         status: DeliveryStatus.PENDING,
         trackingUrl: woltDelivery.trackingUrl,
-        quote: {
-          courierEta: woltDelivery.courierEta,
-        },
+        quote: Object.keys(quote).length > 0 ? quote : { courierEta: woltDelivery.courierEta },
       },
     });
 
-    // Link delivery to order
-    await this.ordersService.updateDeliveryRef(order.id, delivery.id);
+    // Link delivery to order safely (idempotent update).
+    const linkResult = await this.prisma.order.updateMany({
+      where: {
+        id: order.id,
+        deliveryId: null,
+      },
+      data: { deliveryId: delivery.id },
+    });
+
+    if (linkResult.count === 0) {
+      const linkedDelivery = await this.getExistingDeliveryForOrder(order.id);
+
+      this.logger.warn('[createDeliveryForOrder] Delivery link race detected, keeping existing linked delivery', {
+        orderId: order.id,
+        newDeliveryId: delivery.id,
+        existingDeliveryId: linkedDelivery?.id,
+      });
+
+      // Best effort cleanup of duplicate local record and external Wolt job.
+      try {
+        if (delivery.jobId) {
+          await this.woltDrive.cancelDelivery(woltConfig.apiKey, delivery.jobId);
+        }
+      } catch (cancelError: any) {
+        this.logger.warn('[createDeliveryForOrder] Failed to cancel duplicate Wolt job', {
+          orderId: order.id,
+          deliveryId: delivery.id,
+          jobId: delivery.jobId,
+          error: cancelError?.message,
+        });
+      }
+
+      await this.prisma.delivery.delete({
+        where: { id: delivery.id },
+      }).catch((deleteError: any) => {
+        this.logger.warn('[createDeliveryForOrder] Failed to remove duplicate delivery record', {
+          orderId: order.id,
+          deliveryId: delivery.id,
+          error: deleteError?.message,
+        });
+      });
+
+      if (linkedDelivery) {
+        return linkedDelivery;
+      }
+    }
     
     // Update order status to PREPARING
-    await this.orderStatusService.updateStatus(order.id, OrderStatus.PREPARING);
+    if (order.status === OrderStatus.PAID) {
+      await this.orderStatusService.updateStatus(order.id, OrderStatus.PREPARING);
+    }
 
     return delivery;
   }
 
-  async getDeliveryById(id: string) {
+  async getDeliveryById(id: string, user?: AuthenticatedUser) {
     const delivery = await this.prisma.delivery.findUnique({
       where: { id },
       include: {
@@ -225,19 +364,32 @@ export class DeliveryService {
       throw new BadRequestException('Delivery not found');
     }
 
+    this.assertTenantAccess(delivery.tenantId, user, 'getDeliveryById');
+
     return delivery;
   }
 
   async handleWoltWebhook(webhookData: any) {
-    const { delivery_id, status, courier } = webhookData;
+    const status = webhookData?.status;
+    const deliveryJobId = webhookData?.delivery_id || webhookData?.job_id;
+
+    if (!deliveryJobId) {
+      this.logger.warn('Wolt webhook payload missing delivery identifier', {
+        keys: webhookData ? Object.keys(webhookData) : [],
+      });
+      return;
+    }
 
     const delivery = await this.prisma.delivery.findFirst({
-      where: { jobId: delivery_id },
+      where: { jobId: deliveryJobId },
       include: { orders: true },
     });
 
     if (!delivery) {
-      this.logger.error('Delivery not found for Wolt job', { deliveryId: delivery_id, woltJobId: delivery_id });
+      this.logger.error('Delivery not found for Wolt job', {
+        deliveryId: deliveryJobId,
+        woltJobId: deliveryJobId,
+      });
       return;
     }
 
@@ -278,8 +430,6 @@ export class DeliveryService {
     }
   }
 }
-
-
 
 
 

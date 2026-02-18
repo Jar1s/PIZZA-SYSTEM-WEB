@@ -62,6 +62,7 @@ export function OrderCard({ order, onStatusUpdate, isExpanded = false, onToggleE
     etaMinutes: number;
     validUntil: string;
     currency: string;
+    distance?: number;
   } | null>(null);
   const [woltError, setWoltError] = useState<string | null>(null);
   const { success: toastSuccess, error: toastError } = useToastContext();
@@ -193,7 +194,7 @@ export function OrderCard({ order, onStatusUpdate, isExpanded = false, onToggleE
     setCreatingWolt(true);
     setWoltError(null);
     try {
-      const woltResult = await createWoltDelivery(order.id, woltPromise.promiseId);
+      const woltResult = await createWoltDelivery(order.id, woltPromise.promiseId, woltPromise);
       if (woltResult.success) {
         setShowWoltModal(false);
         setWoltMessage(`✅ Wolt delivery created! ${woltResult.trackingUrl ? `Tracking: ${woltResult.trackingUrl}` : ''}`);

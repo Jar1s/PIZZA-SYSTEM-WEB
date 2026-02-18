@@ -41,12 +41,19 @@ export class WebhooksController {
         .createHmac('sha256', secret)
         .update(rawBodyString)
         .digest('hex');
-      
+
+      const providedSignature = signature.trim().replace(/^sha256=/i, '');
+      const providedBuffer = Buffer.from(providedSignature, 'utf8');
+      const expectedBuffer = Buffer.from(expectedSignature, 'utf8');
+
+      // timingSafeEqual throws when buffer lengths differ
+      if (providedBuffer.length !== expectedBuffer.length) {
+        this.logger.error('Invalid Wolt webhook signature length');
+        return res.status(401).send('Invalid webhook signature');
+      }
+
       // Constant-time comparison to prevent timing attacks
-      if (!crypto.timingSafeEqual(
-        Buffer.from(signature),
-        Buffer.from(expectedSignature)
-      )) {
+      if (!crypto.timingSafeEqual(providedBuffer, expectedBuffer)) {
         this.logger.error('Invalid Wolt webhook signature');
         return res.status(401).send('Invalid webhook signature');
       }
@@ -113,5 +120,4 @@ export class WebhooksController {
     return false;
   }
 }
-
 
