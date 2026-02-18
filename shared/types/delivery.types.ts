@@ -28,17 +28,19 @@ export interface DeliveryQuote {
   validUntil?: string;
 }
 
-export interface WoltWebhook {
-  job_id?: string;
-  delivery_id?: string;
-  status: string;
-  courier?: {
-    name: string;
-    phone: string;
-  };
-  eta?: string;
+export interface WoltWebhookRequest {
+  token: string;
 }
 
+export interface WoltWebhook {
+  event?: string;
+  event_ts?: number;
+  order?: {
+    status?: string;
+    merchant_order_reference_id?: string;
+    wolt_order_reference_id?: string;
+  };
+}
 
 
 

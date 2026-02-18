@@ -125,8 +125,10 @@ export class DeliveryService {
     const deliveryConfig = tenant.deliveryConfig as DeliveryConfig;
     const woltConfig = deliveryConfig.woltConfig;
     
-    if (!woltConfig?.apiKey) {
-      throw new BadRequestException('Wolt API key not configured for this tenant');
+    if (!woltConfig?.apiKey || !woltConfig?.venueId) {
+      throw new BadRequestException(
+        'Wolt konfigurácia je nekompletná. Vyplň Merchant Key a Venue ID pre tenant.',
+      );
     }
 
     // Get tenant-specific pickup address
@@ -160,8 +162,10 @@ export class DeliveryService {
     const deliveryConfig = tenant.deliveryConfig as DeliveryConfig;
     const woltConfig = deliveryConfig.woltConfig;
     
-    if (!woltConfig?.apiKey) {
-      throw new BadRequestException('Wolt API key not configured for this tenant');
+    if (!woltConfig?.apiKey || !woltConfig?.venueId) {
+      throw new BadRequestException(
+        'Wolt konfigurácia je nekompletná. Vyplň Merchant Key a Venue ID pre tenant.',
+      );
     }
 
     // Get tenant-specific pickup address
@@ -230,8 +234,10 @@ export class DeliveryService {
     const deliveryConfig = tenant.deliveryConfig as DeliveryConfig;
     const woltConfig = deliveryConfig.woltConfig;
     
-    if (!woltConfig?.apiKey) {
-      throw new BadRequestException('Wolt API key not configured for this tenant');
+    if (!woltConfig?.apiKey || !woltConfig?.venueId) {
+      throw new BadRequestException(
+        'Wolt konfigurácia je nekompletná. Vyplň Merchant Key a Venue ID pre tenant.',
+      );
     }
 
     // Get tenant-specific pickup address
@@ -261,6 +267,13 @@ export class DeliveryService {
         promiseData,
         3,
         woltConfig,
+        {
+          parcelPriceCents: order.totalCents,
+          parcelCurrency: (tenant as any).currency || promiseData?.currency || 'EUR',
+          orderNumber: (order as any).orderNumber ?? order.id,
+          supportEmail: (tenant as any).email || process.env.WOLT_SUPPORT_EMAIL,
+          supportUrl: process.env.FRONTEND_URL,
+        },
       );
     } catch (error: any) {
       // Propagate user-friendly error message from WoltDriveService
@@ -383,8 +396,14 @@ export class DeliveryService {
   }
 
   async handleWoltWebhook(webhookData: any) {
-    const status = webhookData?.status;
-    const deliveryJobId = webhookData?.delivery_id || webhookData?.job_id;
+    const eventType = webhookData?.event;
+    const orderData = webhookData?.order || {};
+    const status = String(orderData?.status || webhookData?.status || '').toUpperCase();
+    const deliveryJobId =
+      orderData?.wolt_order_reference_id ||
+      webhookData?.wolt_order_reference_id ||
+      webhookData?.delivery_id ||
+      webhookData?.job_id;
 
     if (!deliveryJobId) {
       this.logger.warn('Wolt webhook payload missing delivery identifier', {
@@ -392,6 +411,12 @@ export class DeliveryService {
       });
       return;
     }
+
+    this.logger.log('Processing Wolt webhook event', {
+      eventType: eventType || 'unknown',
+      deliveryJobId,
+      status,
+    });
 
     const delivery = await this.prisma.delivery.findFirst({
       where: { jobId: deliveryJobId },
@@ -411,19 +436,28 @@ export class DeliveryService {
     let newOrderStatus: OrderStatus | null = null;
 
     switch (status) {
-      case 'courier_assigned':
+      case 'INFO_RECEIVED':
+        newDeliveryStatus = DeliveryStatus.PENDING;
+        break;
+      case 'COURIER_ASSIGNED':
         newDeliveryStatus = DeliveryStatus.COURIER_ASSIGNED;
         break;
-      case 'picked_up':
+      case 'ITEM_PICKED_UP':
+      case 'PICKED_UP':
         newDeliveryStatus = DeliveryStatus.PICKED_UP;
         newOrderStatus = OrderStatus.OUT_FOR_DELIVERY;
         break;
-      case 'delivered':
+      case 'COURIER_LEFT_PICK_UP':
+      case 'IN_TRANSIT':
+        newDeliveryStatus = DeliveryStatus.IN_TRANSIT;
+        break;
+      case 'DELIVERED':
         newDeliveryStatus = DeliveryStatus.DELIVERED;
         newOrderStatus = OrderStatus.DELIVERED;
         break;
-      case 'failed':
-      case 'cancelled':
+      case 'CANCELLED':
+      case 'FAILED':
+      case 'REJECTED':
         newDeliveryStatus = DeliveryStatus.FAILED;
         break;
       default:
@@ -443,8 +477,6 @@ export class DeliveryService {
     }
   }
 }
-
-
 
 
 
