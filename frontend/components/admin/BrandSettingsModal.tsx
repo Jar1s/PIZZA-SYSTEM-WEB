@@ -413,17 +413,17 @@ export function BrandSettingsModal({
                       {/* Wolt API Key */}
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Wolt API Kľúč <span className="text-red-500">*</span>
+                          Merchant Key (Bearer token) <span className="text-red-500">*</span>
                         </label>
                         <input
                           type="password"
                           value={woltApiKey}
                           onChange={(e) => setWoltApiKey(e.target.value)}
-                          placeholder="wolt_api_key_..."
+                          placeholder="Bearer token z Wolt Drive dashboardu"
                           className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
                         />
                         <p className="mt-1 text-xs text-gray-500">
-                          API kľúč z Wolt Drive dashboardu
+                          Toto je Merchant Key (Authorization: Bearer ...).
                         </p>
                       </div>
 
@@ -585,4 +585,3 @@ export function BrandSettingsModal({
     </div>
   );
 }
-
