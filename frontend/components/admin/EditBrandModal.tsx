@@ -928,14 +928,39 @@ export function EditBrandModal({
                     🚚 Wolt Delivery Settings
                   </h4>
                   <p className="text-sm text-gray-600 mb-4">
-                    Konfigurácia Wolt API a adresy kuchyne pre doručovanie.
+                    Zadaj tieto 4 Wolt Drive údaje pre tenant.
                   </p>
                   
                   <div className="space-y-4">
-                    {/* Wolt API Key */}
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Merchant Key (Bearer token) <span className="text-red-500">*</span>
+                        Staging URL API endpoint adresa
+                      </label>
+                      <input
+                        type="text"
+                        value={woltApiUrl}
+                        onChange={(e) => setWoltApiUrl(e.target.value)}
+                        placeholder="https://daas-public-api.development.dev.woltapi.com"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Merchant ID
+                      </label>
+                      <input
+                        type="text"
+                        value={woltMerchantId}
+                        onChange={(e) => setWoltMerchantId(e.target.value)}
+                        placeholder="6995..."
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Merchant Key (Bearer token)
                       </label>
                       <input
                         type="password"
@@ -944,53 +969,19 @@ export function EditBrandModal({
                         placeholder="Bearer token z Wolt Drive dashboardu"
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
                       />
-                      <p className="mt-1 text-xs text-gray-500">
-                        Toto je Merchant Key (Authorization: Bearer ...).
-                      </p>
                     </div>
 
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Wolt API URL (voliteľné)
+                        Venue ID
                       </label>
                       <input
                         type="text"
-                        value={woltApiUrl}
-                        onChange={(e) => setWoltApiUrl(e.target.value)}
-                        placeholder="https://daas-public-api.wolt.com"
+                        value={woltVenueId}
+                        onChange={(e) => setWoltVenueId(e.target.value)}
+                        placeholder="6995..."
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
                       />
-                      <p className="mt-1 text-xs text-gray-500">
-                        Pre staging napr. https://daas-public-api.development.dev.woltapi.com
-                      </p>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Merchant ID (voliteľné)
-                        </label>
-                        <input
-                          type="text"
-                          value={woltMerchantId}
-                          onChange={(e) => setWoltMerchantId(e.target.value)}
-                          placeholder="6995..."
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Venue ID (voliteľné)
-                        </label>
-                        <input
-                          type="text"
-                          value={woltVenueId}
-                          onChange={(e) => setWoltVenueId(e.target.value)}
-                          placeholder="6995..."
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                        />
-                      </div>
                     </div>
 
                     {/* Pickup Address Section */}
