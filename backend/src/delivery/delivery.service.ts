@@ -6,6 +6,7 @@ import { OrderStatusService } from '../orders/order-status.service';
 import { TenantsService } from '../tenants/tenants.service';
 import { OrderStatus, DeliveryStatus, Address } from '@pizza-ecosystem/shared';
 import { DeliveryConfig } from '../types/tenant.types';
+import { Prisma } from '@prisma/client';
 
 interface AuthenticatedUser {
   id: string;
@@ -266,7 +267,7 @@ export class DeliveryService {
     }
 
     // Save delivery record
-    const quote: Record<string, unknown> = {};
+    const quote: Prisma.JsonObject = {};
     const feeCents = woltDelivery?.feeCents ?? promiseData?.feeCents;
     const etaMinutes = woltDelivery?.etaMinutes ?? woltDelivery?.courierEta ?? promiseData?.etaMinutes;
     const distance = woltDelivery?.distance ?? promiseData?.distance;
@@ -281,6 +282,12 @@ export class DeliveryService {
     if (typeof promiseId === 'string') quote.promiseId = promiseId;
     if (typeof validUntil === 'string') quote.validUntil = validUntil;
 
+    const fallbackQuote: Prisma.JsonObject = {
+      courierEta: woltDelivery?.courierEta ?? null,
+    };
+    const quoteData: Prisma.InputJsonValue =
+      Object.keys(quote).length > 0 ? quote : fallbackQuote;
+
     const delivery = await this.prisma.delivery.create({
       data: {
         tenantId: order.tenantId,
@@ -288,7 +295,7 @@ export class DeliveryService {
         jobId: woltDelivery.jobId,
         status: DeliveryStatus.PENDING,
         trackingUrl: woltDelivery.trackingUrl,
-        quote: Object.keys(quote).length > 0 ? quote : { courierEta: woltDelivery.courierEta },
+        quote: quoteData,
       },
     });
 
@@ -430,7 +437,6 @@ export class DeliveryService {
     }
   }
 }
-
 
 
 
