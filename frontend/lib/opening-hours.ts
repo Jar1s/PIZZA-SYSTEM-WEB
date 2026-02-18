@@ -3,7 +3,7 @@
  */
 
 // OpeningHours type - defined locally since it's not exported from shared
-interface OpeningHours {
+export interface OpeningHours {
   enabled: boolean;
   timezone?: string;
   days: {
