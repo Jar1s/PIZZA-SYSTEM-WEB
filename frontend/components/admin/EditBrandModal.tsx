@@ -540,6 +540,7 @@ export function EditBrandModal({
                     </div>
                     {logoPreview && (
                       <div className="h-12 w-28 bg-gray-50 border border-gray-200 rounded-md flex items-center justify-center px-2">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
                           src={logoPreview}
                           alt={`${formData.name} logo`}

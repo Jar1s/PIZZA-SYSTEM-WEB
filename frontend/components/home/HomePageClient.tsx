@@ -145,7 +145,9 @@ export function HomePageClient({ products, tenant }: HomePageClientProps) {
   }, [products, categoryCounts, productsByCategory]);
 
   // Per-tenant subcategory labels (editable in admin)
-  const subCategoryLabels = (tenant.theme as any)?.subCategoryLabels || {};
+  const subCategoryLabels = useMemo(() => {
+    return (tenant.theme as any)?.subCategoryLabels || {};
+  }, [tenant.theme]);
   const defaultSubCategoryText = useMemo(() => ({
     foreplay: { title: t.foreplay, desc: t.foreplayDesc },
     mainAction: { title: t.mainAction, desc: t.mainActionDesc },

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { getNextOpeningTime, isCurrentlyOpen, OpeningHours } from '@/lib/opening-hours';
+import { getNextOpeningTime, isCurrentlyOpen, type OpeningHours } from '@/lib/opening-hours';
 
 export function useOpeningHours(openingHours?: OpeningHours | null) {
   const [isOpen, setIsOpen] = useState(() => isCurrentlyOpen(openingHours));
@@ -32,4 +32,3 @@ export function useOpeningHours(openingHours?: OpeningHours | null) {
     enabled: Boolean(openingHours ? openingHours.enabled !== false : true),
   };
 }
-

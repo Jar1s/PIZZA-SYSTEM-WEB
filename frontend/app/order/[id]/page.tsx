@@ -193,6 +193,9 @@ export default function OrderTrackingPage() {
     fetchOrder(0);
   }, [orderId, fetchOrder]); // Include fetchOrder in dependencies
 
+  const currentOrderId = order?.id;
+  const currentOrderStatus = order?.status;
+
   // Poll for updates every 10 seconds (only after order is loaded and if order is not delivered/canceled)
   // 10s keeps the page responsive and stays safely under 100 req/min API throttling.
   useEffect(() => {
@@ -202,11 +205,11 @@ export default function OrderTrackingPage() {
       pollingIntervalRef.current = null;
     }
     
-    if (!order) return;
+    if (!currentOrderId) return;
     
     // Stop polling if order is in final state
     const finalStates = ['DELIVERED', 'CANCELED'];
-    if (finalStates.includes(order.status)) {
+    if (currentOrderStatus && finalStates.includes(currentOrderStatus)) {
       return;
     }
     
@@ -225,12 +228,12 @@ export default function OrderTrackingPage() {
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [order?.id, order?.status, fetchOrder, TRACKING_POLL_INTERVAL_MS]); // Only depend on order.id and order.status to prevent interval reset on every order update
+  }, [currentOrderId, currentOrderStatus, fetchOrder, TRACKING_POLL_INTERVAL_MS]); // Only depend on order identity/status to prevent interval reset on every order update
 
   // Refresh immediately when user returns to the tab/window.
   useEffect(() => {
-    if (!order) return;
-    if (['DELIVERED', 'CANCELED'].includes(order.status)) return;
+    if (!currentOrderId) return;
+    if (currentOrderStatus && ['DELIVERED', 'CANCELED'].includes(currentOrderStatus)) return;
 
     const refreshNow = () => {
       fetchOrder(0, true, true);
@@ -249,7 +252,7 @@ export default function OrderTrackingPage() {
       window.removeEventListener('focus', refreshNow);
       document.removeEventListener('visibilitychange', onVisibilityChange);
     };
-  }, [order?.id, order?.status, fetchOrder]);
+  }, [currentOrderId, currentOrderStatus, fetchOrder]);
 
   // If we were redirected with GoPay paymentId in pending state, keep resolving it in background.
   useEffect(() => {
