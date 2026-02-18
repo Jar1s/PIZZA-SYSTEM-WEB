@@ -610,13 +610,16 @@ export async function updateOrderStatus(
 }
 
 // Admin: Check Wolt availability and get shipment promise
-export async function checkWoltAvailability(orderId: string): Promise<{
+export interface WoltShipmentPromise {
   promiseId: string;
   feeCents: number;
   etaMinutes: number;
   validUntil: string;
   currency: string;
-}> {
+  distance?: number;
+}
+
+export async function checkWoltAvailability(orderId: string): Promise<WoltShipmentPromise> {
   const token = localStorage.getItem('auth_token');
   const headers: HeadersInit = { 'Content-Type': 'application/json' };
   
@@ -640,7 +643,11 @@ export async function checkWoltAvailability(orderId: string): Promise<{
 }
 
 // Admin: Create Wolt delivery
-export async function createWoltDelivery(orderId: string, promiseId?: string): Promise<{ success: boolean; deliveryId?: string; trackingUrl?: string; message: string }> {
+export async function createWoltDelivery(
+  orderId: string,
+  promiseId?: string,
+  promiseData?: WoltShipmentPromise | null,
+): Promise<{ success: boolean; deliveryId?: string; trackingUrl?: string | null; message: string }> {
   const token = localStorage.getItem('auth_token');
   const headers: HeadersInit = { 'Content-Type': 'application/json' };
   
@@ -651,7 +658,20 @@ export async function createWoltDelivery(orderId: string, promiseId?: string): P
   const res = await fetch(`${API_URL}/api/delivery/create`, {
     method: 'POST',
     headers,
-    body: JSON.stringify({ orderId, promiseId }),
+    body: JSON.stringify({
+      orderId,
+      promiseId,
+      promiseData: promiseData
+        ? {
+            promiseId: promiseData.promiseId,
+            feeCents: promiseData.feeCents,
+            etaMinutes: promiseData.etaMinutes,
+            validUntil: promiseData.validUntil,
+            currency: promiseData.currency,
+            distance: promiseData.distance,
+          }
+        : undefined,
+    }),
   });
   
   if (!res.ok) {

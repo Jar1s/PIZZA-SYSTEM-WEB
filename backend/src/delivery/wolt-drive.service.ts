@@ -6,6 +6,15 @@ interface WoltLocation {
   lon: number;
 }
 
+interface ShipmentPromiseSnapshot {
+  promiseId?: string;
+  feeCents?: number;
+  etaMinutes?: number;
+  validUntil?: string;
+  currency?: string;
+  distance?: number;
+}
+
 interface WoltQuoteRequest {
   pickup: {
     location: WoltLocation;
@@ -43,6 +52,28 @@ export class WoltDriveService {
     }
     
     return phone;
+  }
+
+  /**
+   * Coordinates are mandatory for Wolt requests.
+   * Never silently fallback to 0,0 because that creates invalid jobs.
+   */
+  private getValidatedLocation(address: Address, label: 'pickup' | 'dropoff'): WoltLocation {
+    const lat = address.coordinates?.lat;
+    const lng = address.coordinates?.lng;
+
+    if (
+      typeof lat !== 'number' ||
+      Number.isNaN(lat) ||
+      typeof lng !== 'number' ||
+      Number.isNaN(lng)
+    ) {
+      throw new BadRequestException(
+        `Missing or invalid ${label} coordinates for Wolt delivery. Please set geolocation first.`,
+      );
+    }
+
+    return { lat, lon: lng };
   }
   
   /**
@@ -126,19 +157,16 @@ export class WoltDriveService {
     dropoffAddress: Address,
     maxRetries = 3,
   ) {
+    const pickupLocation = this.getValidatedLocation(pickupAddress, 'pickup');
+    const dropoffLocation = this.getValidatedLocation(dropoffAddress, 'dropoff');
+
     const request: WoltQuoteRequest = {
       pickup: {
-        location: {
-          lat: pickupAddress.coordinates?.lat || 0,
-          lon: pickupAddress.coordinates?.lng || 0,
-        },
+        location: pickupLocation,
         comment: 'Kitchen entrance',
       },
       dropoff: {
-        location: {
-          lat: dropoffAddress.coordinates?.lat || 0,
-          lon: dropoffAddress.coordinates?.lng || 0,
-        },
+        location: dropoffLocation,
         comment: dropoffAddress.instructions || '',
         contact: {
           name: 'Customer', // Will be replaced with actual customer name
@@ -221,19 +249,16 @@ export class WoltDriveService {
     customerPhone: string,
     maxRetries = 3,
   ) {
+    const pickupLocation = this.getValidatedLocation(pickupAddress, 'pickup');
+    const dropoffLocation = this.getValidatedLocation(dropoffAddress, 'dropoff');
+
     const request = {
       pickup: {
-        location: {
-          lat: pickupAddress.coordinates?.lat || 0,
-          lon: pickupAddress.coordinates?.lng || 0,
-        },
+        location: pickupLocation,
         comment: pickupAddress.instructions || 'Kitchen entrance',
       },
       dropoff: {
-        location: {
-          lat: dropoffAddress.coordinates?.lat || 0,
-          lon: dropoffAddress.coordinates?.lng || 0,
-        },
+        location: dropoffLocation,
         comment: dropoffAddress.instructions || '',
         contact: {
           name: customerName,
@@ -320,14 +345,17 @@ export class WoltDriveService {
     customerName: string,
     customerPhone: string,
     shipmentPromiseId?: string, // Optional: if provided, use shipment promise ID
+    promiseSnapshot?: ShipmentPromiseSnapshot,
     maxRetries = 3,
   ) {
+    const pickupLocation = this.getValidatedLocation(pickupAddress, 'pickup');
+    const dropoffLocation = this.getValidatedLocation(dropoffAddress, 'dropoff');
+
+    const effectivePromiseId = shipmentPromiseId || promiseSnapshot?.promiseId;
+
     const request: any = {
       pickup: {
-        location: {
-          lat: pickupAddress.coordinates?.lat || 0,
-          lon: pickupAddress.coordinates?.lng || 0,
-        },
+        location: pickupLocation,
         address: `${pickupAddress.street}, ${pickupAddress.city}`,
         comment: pickupAddress.instructions || 'Kitchen entrance - call on arrival',
         contact: {
@@ -336,10 +364,7 @@ export class WoltDriveService {
         },
       },
       dropoff: {
-        location: {
-          lat: dropoffAddress.coordinates?.lat || 0,
-          lon: dropoffAddress.coordinates?.lng || 0,
-        },
+        location: dropoffLocation,
         address: `${dropoffAddress.street}, ${dropoffAddress.city}, ${dropoffAddress.postalCode}`,
         comment: dropoffAddress.instructions || '',
         contact: {
@@ -358,8 +383,8 @@ export class WoltDriveService {
     };
 
     // Add shipment promise ID if provided (required by Wolt API for proper flow)
-    if (shipmentPromiseId) {
-      request.shipment_promise_id = shipmentPromiseId;
+    if (effectivePromiseId) {
+      request.shipment_promise_id = effectivePromiseId;
     }
 
     let lastError: Error | null = null;
@@ -390,12 +415,27 @@ export class WoltDriveService {
         }
 
         const data = await response.json();
+
+        const feeCents =
+          typeof data?.fee?.amount === 'number' ? data.fee.amount : promiseSnapshot?.feeCents;
+        const etaMinutes =
+          typeof data?.dropoff_eta === 'number' ? data.dropoff_eta : promiseSnapshot?.etaMinutes;
+        const distance =
+          typeof data?.distance === 'number' ? data.distance : promiseSnapshot?.distance;
+        const currency =
+          typeof data?.fee?.currency === 'string' ? data.fee.currency : promiseSnapshot?.currency;
         
         return {
           jobId: data.id,
-          trackingUrl: data.tracking.url,
+          trackingUrl: data?.tracking?.url || null,
           status: data.status,
-          courierEta: data.dropoff_eta,
+          courierEta: etaMinutes,
+          feeCents,
+          etaMinutes,
+          distance,
+          currency,
+          promiseId: request.shipment_promise_id,
+          validUntil: promiseSnapshot?.validUntil,
         };
       } catch (error: any) {
         lastError = error instanceof Error ? error : new Error(String(error));
@@ -493,7 +533,6 @@ export class WoltDriveService {
     throw lastError || new Error('Wolt API cancelDelivery failed');
   }
 }
-
 
 
 
