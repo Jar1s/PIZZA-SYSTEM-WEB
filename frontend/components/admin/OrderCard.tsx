@@ -1,7 +1,7 @@
 'use client';
 
 import { Order, OrderStatus } from '@pizza-ecosystem/shared';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { getFormattedModifierLines } from '@/lib/format-modifiers';
 import { syncOrderToStoryous, createWoltDelivery, checkWoltAvailability } from '@/lib/api';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -104,6 +104,7 @@ export function OrderCard({
     distance?: number;
   } | null>(null);
   const [woltError, setWoltError] = useState<string | null>(null);
+  const [nowMs, setNowMs] = useState(() => Date.now());
   const { success: toastSuccess, error: toastError } = useToastContext();
   
   const customer = order.customer;
@@ -114,6 +115,16 @@ export function OrderCard({
   const isWoltDelivery = order.delivery?.provider === 'wolt';
   const woltDelivery = isWoltDelivery ? order.delivery : null;
   const customizationLabels = (order as any)?.tenant?.theme?.customizationLabels;
+
+  useEffect(() => {
+    if (!isWoltDelivery) return;
+
+    const timer = setInterval(() => {
+      setNowMs(Date.now());
+    }, 30000);
+
+    return () => clearInterval(timer);
+  }, [isWoltDelivery, order.id]);
   
   // Show Storyous/Wolt buttons only while in PAID/PREPARING and not yet created
   const canSyncToStoryous = !isStoryousSynced && (
@@ -174,6 +185,15 @@ export function OrderCard({
   const woltDropoffEtaMinutes =
     parseOptionalNumber(woltQuote?.dropoffEtaMinutes) ??
     parseOptionalNumber(woltQuote?.etaMinutes);
+  const etaReferenceMs = new Date(order.updatedAt as unknown as string | Date).getTime();
+  const woltPickupEtaRemainingMinutes =
+    woltPickupEtaMinutes != null
+      ? Math.max(0, Math.ceil((etaReferenceMs + woltPickupEtaMinutes * 60000 - nowMs) / 60000))
+      : null;
+  const woltDropoffEtaRemainingMinutes =
+    woltDropoffEtaMinutes != null
+      ? Math.max(0, Math.ceil((etaReferenceMs + woltDropoffEtaMinutes * 60000 - nowMs) / 60000))
+      : null;
   const woltFeeCents = parseOptionalNumber(woltQuote?.feeCents);
   const orderDeliveryFeeCents = parseOptionalNumber(order.deliveryFeeCents);
   // Single source of truth for UI: what customer is charged on the order.
@@ -182,8 +202,11 @@ export function OrderCard({
   const modalDeliveryFeeCents =
     orderDeliveryFeeCents ??
     parseOptionalNumber(woltPromise?.feeCents);
-  const woltPickupEtaRounded =
-    woltPickupEtaMinutes != null ? Math.max(0, Math.round(woltPickupEtaMinutes)) : null;
+  const showPickupEtaInAdminHeader =
+    woltPickupEtaRemainingMinutes != null &&
+    woltPickupEtaRemainingMinutes > 0 &&
+    [OrderStatus.PAID, OrderStatus.PREPARING, OrderStatus.READY].includes(order.status);
+  const woltPickupEtaRounded = showPickupEtaInAdminHeader ? woltPickupEtaRemainingMinutes : null;
 
   const timelineSteps = isDeliveryPaymentValue ? DELIVERY_TIMELINE_STEPS : ONLINE_TIMELINE_STEPS;
   const timelineStatus =
@@ -984,8 +1007,8 @@ export function OrderCard({
               </div>
 
               <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-700">
-                {woltDropoffEtaMinutes != null && (
-                  <span>Doručenie zákazníkovi: ~{Math.round(woltDropoffEtaMinutes)} min</span>
+                {woltDropoffEtaRemainingMinutes != null && (
+                  <span>Doručenie zákazníkovi: ~{woltDropoffEtaRemainingMinutes} min</span>
                 )}
                 {displayedDeliveryFeeCents != null && (
                   <span>Delivery fee: {formatEurPrice(displayedDeliveryFeeCents)}</span>
