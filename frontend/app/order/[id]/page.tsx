@@ -431,7 +431,6 @@ export default function OrderTrackingPage() {
   const woltRingCircumference = 2 * Math.PI * woltRingRadius;
   const woltRingDashOffset = woltRingCircumference * (1 - woltEtaRingRatio);
 
-  const woltStatusText = (order.delivery?.status || '').replace(/_/g, ' ').toLowerCase();
   const canRetryPayment =
     orderStatus === OrderStatus.PENDING &&
     order.paymentStatus !== 'success' &&
@@ -585,73 +584,53 @@ export default function OrderTrackingPage() {
             transition={{ delay: 0.15 }}
             className={`${sectionShellClass} mb-8`}
           >
-            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-              <div>
-                <h3 className={`text-xl font-bold ${isDark ? 'text-white' : 'text-gray-800'}`}>
-                  🚚 {language === 'sk' ? 'Wolt doručenie' : 'Wolt delivery'}
-                </h3>
-                {order.delivery?.status && (
-                  <p className={`text-sm mt-1 capitalize ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
-                    {language === 'sk' ? 'Stav kuriéra:' : 'Courier status:'} {woltStatusText}
+            <div className="flex flex-col items-center justify-center gap-4">
+              <div className={`relative h-64 w-64 rounded-full border ${isDark ? 'border-white/10 bg-black/20' : 'border-gray-200 bg-white'}`}>
+                <svg className="absolute inset-0 h-full w-full -rotate-90" viewBox="0 0 240 240">
+                  <circle
+                    cx="120"
+                    cy="120"
+                    r={woltRingRadius}
+                    fill="none"
+                    stroke={isDark ? 'rgba(255,255,255,0.12)' : 'rgba(17,24,39,0.14)'}
+                    strokeWidth="18"
+                  />
+                  <circle
+                    cx="120"
+                    cy="120"
+                    r={woltRingRadius}
+                    fill="none"
+                    stroke={isDark ? '#34D399' : '#059669'}
+                    strokeLinecap="round"
+                    strokeWidth="18"
+                    strokeDasharray={woltRingCircumference}
+                    strokeDashoffset={woltRingDashOffset}
+                    style={{ transition: 'stroke-dashoffset 500ms ease-out' }}
+                  />
+                </svg>
+
+                <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
+                  <p className={`text-6xl font-black leading-none ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                    {woltDropoffEtaRemainingMinutes != null ? woltDropoffEtaRemainingMinutes : '--'}
                   </p>
-                )}
-                {order.delivery?.trackingUrl && (
-                  <a
-                    href={order.delivery.trackingUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-block mt-2 text-sm underline font-semibold"
-                    style={{ color: primaryColor }}
-                  >
-                    {language === 'sk' ? 'Otvoriť live tracking' : 'Open live tracking'}
-                  </a>
-                )}
-              </div>
-
-              <div className="min-w-[240px]">
-                <div className={`relative mx-auto h-56 w-56 rounded-full border ${isDark ? 'border-white/10 bg-black/20' : 'border-gray-200 bg-white'}`}>
-                  <svg className="absolute inset-0 h-full w-full -rotate-90" viewBox="0 0 240 240">
-                    <circle
-                      cx="120"
-                      cy="120"
-                      r={woltRingRadius}
-                      fill="none"
-                      stroke={isDark ? 'rgba(255,255,255,0.12)' : 'rgba(17,24,39,0.14)'}
-                      strokeWidth="18"
-                    />
-                    <circle
-                      cx="120"
-                      cy="120"
-                      r={woltRingRadius}
-                      fill="none"
-                      stroke={isDark ? '#34D399' : '#059669'}
-                      strokeLinecap="round"
-                      strokeWidth="18"
-                      strokeDasharray={woltRingCircumference}
-                      strokeDashoffset={woltRingDashOffset}
-                      style={{ transition: 'stroke-dashoffset 500ms ease-out' }}
-                    />
-                  </svg>
-
-                  <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-6">
-                    <p className={`text-[11px] font-bold uppercase tracking-[0.14em] ${isDark ? 'text-emerald-300' : 'text-emerald-700'}`}>
-                      {language === 'sk' ? 'Est. doručenia' : 'Est. delivery'}
-                    </p>
-                    <p className={`mt-2 text-5xl font-black leading-none ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                      {woltDropoffEtaRemainingMinutes != null ? woltDropoffEtaRemainingMinutes : '--'}
-                    </p>
-                    <p className={`mt-1 text-lg font-semibold ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>
-                      {language === 'sk' ? 'minút do doručenia' : 'minutes until delivery'}
-                    </p>
-                  </div>
+                  <p className={`mt-2 text-lg font-semibold ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>
+                    min
+                  </p>
                 </div>
               </div>
+
+              {order.delivery?.trackingUrl && (
+                <a
+                  href={order.delivery.trackingUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-block text-sm underline font-semibold"
+                  style={{ color: primaryColor }}
+                >
+                  {language === 'sk' ? 'Otvoriť live tracking' : 'Open live tracking'}
+                </a>
+              )}
             </div>
-            <p className={`text-xs mt-3 text-center ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-              {language === 'sk'
-                ? 'Čas sa priebežne aktualizuje počas sledovania objednávky.'
-                : 'Estimated times update continuously while tracking your order.'}
-            </p>
           </motion.div>
         )}
 
