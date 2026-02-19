@@ -20,6 +20,8 @@ interface ShipmentPromiseData {
   promiseId?: string;
   feeCents?: number;
   etaMinutes?: number;
+  pickupEtaMinutes?: number;
+  dropoffEtaMinutes?: number;
   validUntil?: string;
   currency?: string;
   distance?: number;
@@ -470,7 +472,16 @@ export class DeliveryService {
     // Save delivery record
     const quote: Prisma.JsonObject = {};
     const feeCents = woltDelivery?.feeCents ?? promiseData?.feeCents;
-    const etaMinutes = woltDelivery?.etaMinutes ?? woltDelivery?.courierEta ?? promiseData?.etaMinutes;
+    const etaMinutes =
+      woltDelivery?.etaMinutes ??
+      woltDelivery?.dropoffEtaMinutes ??
+      woltDelivery?.courierEta ??
+      promiseData?.etaMinutes ??
+      promiseData?.dropoffEtaMinutes;
+    const pickupEtaMinutes =
+      woltDelivery?.pickupEtaMinutes ?? promiseData?.pickupEtaMinutes;
+    const dropoffEtaMinutes =
+      woltDelivery?.dropoffEtaMinutes ?? promiseData?.dropoffEtaMinutes;
     const distance = woltDelivery?.distance ?? promiseData?.distance;
     const currency = woltDelivery?.currency ?? promiseData?.currency;
     const promiseId = woltDelivery?.promiseId ?? shipmentPromiseId ?? promiseData?.promiseId;
@@ -478,6 +489,8 @@ export class DeliveryService {
 
     if (typeof feeCents === 'number') quote.feeCents = feeCents;
     if (typeof etaMinutes === 'number') quote.etaMinutes = etaMinutes;
+    if (typeof pickupEtaMinutes === 'number') quote.pickupEtaMinutes = pickupEtaMinutes;
+    if (typeof dropoffEtaMinutes === 'number') quote.dropoffEtaMinutes = dropoffEtaMinutes;
     if (typeof distance === 'number') quote.distance = distance;
     if (typeof currency === 'string') quote.currency = currency;
     if (typeof promiseId === 'string') quote.promiseId = promiseId;
@@ -659,7 +672,6 @@ export class DeliveryService {
     }
   }
 }
-
 
 
 

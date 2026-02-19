@@ -614,6 +614,8 @@ export interface WoltShipmentPromise {
   promiseId: string;
   feeCents: number;
   etaMinutes: number;
+  pickupEtaMinutes?: number;
+  dropoffEtaMinutes?: number;
   validUntil: string;
   currency: string;
   distance?: number;
@@ -666,6 +668,8 @@ export async function createWoltDelivery(
             promiseId: promiseData.promiseId,
             feeCents: promiseData.feeCents,
             etaMinutes: promiseData.etaMinutes,
+            pickupEtaMinutes: promiseData.pickupEtaMinutes,
+            dropoffEtaMinutes: promiseData.dropoffEtaMinutes,
             validUntil: promiseData.validUntil,
             currency: promiseData.currency,
             distance: promiseData.distance,

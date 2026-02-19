@@ -97,6 +97,8 @@ export function OrderCard({
     promiseId: string;
     feeCents: number;
     etaMinutes: number;
+    pickupEtaMinutes?: number;
+    dropoffEtaMinutes?: number;
     validUntil: string;
     currency: string;
     distance?: number;
@@ -164,9 +166,13 @@ export function OrderCard({
   };
 
   const woltQuote = (woltDelivery?.quote as Record<string, unknown> | null | undefined) || null;
-  const woltEtaMinutes =
-    parseOptionalNumber(woltQuote?.etaMinutes) ??
+  const woltPickupEtaMinutes =
+    parseOptionalNumber(woltQuote?.pickupEtaMinutes) ??
+    parseOptionalNumber(woltQuote?.courierPickupEta) ??
     parseOptionalNumber(woltQuote?.courierEta);
+  const woltDropoffEtaMinutes =
+    parseOptionalNumber(woltQuote?.dropoffEtaMinutes) ??
+    parseOptionalNumber(woltQuote?.etaMinutes);
   const woltFeeCents = parseOptionalNumber(woltQuote?.feeCents);
 
   const timelineSteps = isDeliveryPaymentValue ? DELIVERY_TIMELINE_STEPS : ONLINE_TIMELINE_STEPS;
@@ -922,8 +928,11 @@ export function OrderCard({
               {woltDelivery.jobId && (
                 <span className="ml-2 text-gray-600">(Job: {woltDelivery.jobId})</span>
               )}
-              {woltEtaMinutes != null && (
-                <span className="ml-2 text-gray-700">ETA: ~{Math.round(woltEtaMinutes)} min</span>
+              {woltPickupEtaMinutes != null && (
+                <span className="ml-2 text-gray-700">ETA kuriér na prevádzku: ~{Math.round(woltPickupEtaMinutes)} min</span>
+              )}
+              {woltDropoffEtaMinutes != null && (
+                <span className="ml-2 text-gray-700">Doručenie zákazníkovi: ~{Math.round(woltDropoffEtaMinutes)} min</span>
               )}
               {woltFeeCents != null && (
                 <span className="ml-2 text-gray-700">Fee: €{(woltFeeCents / 100).toFixed(2)}</span>
@@ -1072,11 +1081,23 @@ export function OrderCard({
                     </div>
                     
                     <div className="flex justify-between items-center">
-                      <span className="text-gray-600">⏱️ Odhadovaný čas:</span>
+                      <span className="text-gray-600">⏱️ ETA kuriér na prevádzku:</span>
                       <span className="text-lg font-semibold text-gray-900">
-                        ~{woltPromise.etaMinutes} minút
+                        ~{Math.round(
+                          parseOptionalNumber(woltPromise.pickupEtaMinutes) ??
+                            parseOptionalNumber(woltPromise.etaMinutes) ??
+                            0,
+                        )} minút
                       </span>
                     </div>
+                    {parseOptionalNumber(woltPromise.dropoffEtaMinutes) != null && (
+                      <div className="flex justify-between items-center">
+                        <span className="text-gray-600">🏁 Doručenie zákazníkovi:</span>
+                        <span className="text-lg font-semibold text-gray-900">
+                          ~{Math.round(parseOptionalNumber(woltPromise.dropoffEtaMinutes) || 0)} minút
+                        </span>
+                      </div>
+                    )}
                   </div>
 
                   <div className="border-t border-gray-200 my-4"></div>

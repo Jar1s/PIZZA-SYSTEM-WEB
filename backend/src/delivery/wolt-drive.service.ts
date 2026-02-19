@@ -10,6 +10,8 @@ interface ShipmentPromiseSnapshot {
   promiseId?: string;
   feeCents?: number;
   etaMinutes?: number;
+  pickupEtaMinutes?: number;
+  dropoffEtaMinutes?: number;
   validUntil?: string;
   currency?: string;
   distance?: number;
@@ -105,6 +107,62 @@ export class WoltDriveService {
     }
 
     return { lat, lon: lng };
+  }
+
+  private parseOptionalNumber(value: unknown): number | undefined {
+    if (typeof value === 'number' && Number.isFinite(value)) {
+      return value;
+    }
+
+    if (typeof value === 'string') {
+      const parsed = Number.parseFloat(value.trim());
+      if (Number.isFinite(parsed)) {
+        return parsed;
+      }
+    }
+
+    return undefined;
+  }
+
+  private firstNumber(...candidates: unknown[]): number | undefined {
+    for (const candidate of candidates) {
+      const parsed = this.parseOptionalNumber(candidate);
+      if (typeof parsed === 'number') {
+        return parsed;
+      }
+    }
+    return undefined;
+  }
+
+  private extractEtaMinutes(data: any): {
+    etaMinutes?: number;
+    pickupEtaMinutes?: number;
+    dropoffEtaMinutes?: number;
+  } {
+    const pickupEtaMinutes = this.firstNumber(
+      data?.pickup?.eta_minutes,
+      data?.pickup?.etaMinutes,
+      data?.pickup_eta,
+      data?.pickup_eta_minutes,
+      data?.courier?.pickup_eta_minutes,
+      data?.courier?.pickup_eta,
+    );
+
+    const dropoffEtaMinutes = this.firstNumber(
+      data?.dropoff?.eta_minutes,
+      data?.dropoff?.etaMinutes,
+      data?.dropoff_eta,
+      data?.dropoff_eta_minutes,
+      data?.courier?.dropoff_eta_minutes,
+      data?.courier?.dropoff_eta,
+    );
+
+    return {
+      // Keep backward compatibility: etaMinutes remains "arrival to customer" by default.
+      etaMinutes: dropoffEtaMinutes ?? pickupEtaMinutes,
+      pickupEtaMinutes,
+      dropoffEtaMinutes,
+    };
   }
   
   /**
@@ -303,10 +361,13 @@ export class WoltDriveService {
         }
 
         const data = await response.json();
+        const eta = this.extractEtaMinutes(data);
         
         return {
           feeCents: data?.price?.amount || data?.fee?.amount || 0,
-          etaMinutes: data?.dropoff?.eta_minutes || data?.dropoff_eta || 0,
+          etaMinutes: eta.etaMinutes || 0,
+          pickupEtaMinutes: eta.pickupEtaMinutes,
+          dropoffEtaMinutes: eta.dropoffEtaMinutes,
           distance: data?.distance || 0,
           currency: data?.price?.currency || data?.fee?.currency || 'EUR',
           promiseId: data?.id,
@@ -398,11 +459,14 @@ export class WoltDriveService {
         }
 
         const data = await response.json();
+        const eta = this.extractEtaMinutes(data);
         
         return {
           promiseId: data.id, // Required for delivery creation
           feeCents: data?.price?.amount || data?.fee?.amount || 0, // Wolt returns in cents
-          etaMinutes: data?.dropoff?.eta_minutes || data?.dropoff_eta || 0,
+          etaMinutes: eta.etaMinutes || 0,
+          pickupEtaMinutes: eta.pickupEtaMinutes,
+          dropoffEtaMinutes: eta.dropoffEtaMinutes,
           validUntil: data.valid_until, // ISO 8601 timestamp
           currency: data?.price?.currency || data?.fee?.currency || 'EUR',
           distance: data.distance,
@@ -543,15 +607,22 @@ export class WoltDriveService {
         }
 
         const data = await response.json();
+        const eta = this.extractEtaMinutes(data);
 
         const feeCents =
           typeof data?.price?.amount === 'number'
             ? data.price.amount
             : promiseSnapshot?.feeCents;
         const etaMinutes =
-          typeof data?.dropoff?.eta_minutes === 'number'
-            ? data.dropoff.eta_minutes
-            : promiseSnapshot?.etaMinutes;
+          typeof eta.etaMinutes === 'number' ? eta.etaMinutes : promiseSnapshot?.etaMinutes;
+        const pickupEtaMinutes =
+          typeof eta.pickupEtaMinutes === 'number'
+            ? eta.pickupEtaMinutes
+            : promiseSnapshot?.pickupEtaMinutes;
+        const dropoffEtaMinutes =
+          typeof eta.dropoffEtaMinutes === 'number'
+            ? eta.dropoffEtaMinutes
+            : promiseSnapshot?.dropoffEtaMinutes;
         const distance =
           typeof data?.distance === 'number' ? data.distance : promiseSnapshot?.distance;
         const currency =
@@ -566,6 +637,8 @@ export class WoltDriveService {
           courierEta: etaMinutes,
           feeCents,
           etaMinutes,
+          pickupEtaMinutes,
+          dropoffEtaMinutes,
           distance,
           currency,
           promiseId: request.shipment_promise_id,
@@ -675,7 +748,6 @@ export class WoltDriveService {
     throw lastError || new Error('Wolt API cancelDelivery failed');
   }
 }
-
 
 
 

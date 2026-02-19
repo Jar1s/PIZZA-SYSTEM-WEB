@@ -14,6 +14,8 @@ interface ShipmentPromiseData {
   promiseId?: string;
   feeCents?: number;
   etaMinutes?: number;
+  pickupEtaMinutes?: number;
+  dropoffEtaMinutes?: number;
   validUntil?: string;
   currency?: string;
   distance?: number;
@@ -72,7 +74,6 @@ export class DeliveryController {
     return this.deliveryService.getDeliveryById(id, req.user);
   }
 }
-
 
 
 
