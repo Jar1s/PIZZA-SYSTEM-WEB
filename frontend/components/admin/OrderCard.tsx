@@ -174,6 +174,8 @@ export function OrderCard({
     parseOptionalNumber(woltQuote?.dropoffEtaMinutes) ??
     parseOptionalNumber(woltQuote?.etaMinutes);
   const woltFeeCents = parseOptionalNumber(woltQuote?.feeCents);
+  const woltPickupEtaRounded =
+    woltPickupEtaMinutes != null ? Math.max(0, Math.round(woltPickupEtaMinutes)) : null;
 
   const timelineSteps = isDeliveryPaymentValue ? DELIVERY_TIMELINE_STEPS : ONLINE_TIMELINE_STEPS;
   const timelineStatus =
@@ -576,6 +578,18 @@ export function OrderCard({
             </span>
           )}
         </div>
+
+        {woltPickupEtaRounded != null && (
+          <div className="rounded-lg border border-orange-300 bg-orange-50 px-3 py-2">
+            <div className="text-[11px] font-semibold uppercase tracking-wide text-orange-700">
+              ETA kuriér na prevádzku
+            </div>
+            <div className="mt-1 text-3xl font-extrabold leading-none text-orange-700">
+              {woltPickupEtaRounded}
+              <span className="ml-1 text-sm font-semibold align-middle">min</span>
+            </div>
+          </div>
+        )}
         
         {/* Customer Info */}
         <div>
@@ -681,16 +695,31 @@ export function OrderCard({
                 {brandLabel}{brandLabel ? ' • ' : ''}{customer.name}
               </div>
             </div>
-            <div className="rounded-xl bg-gray-100 border border-gray-200 px-4 py-3 text-right min-w-[128px]">
-              <div className="text-[10px] uppercase tracking-wide font-bold text-gray-500">
-                {language === 'sk' ? 'Vydanie' : 'Updated'}
+            <div className="flex flex-col gap-2 min-w-[128px]">
+              <div className="rounded-xl bg-gray-100 border border-gray-200 px-4 py-3 text-right">
+                <div className="text-[10px] uppercase tracking-wide font-bold text-gray-500">
+                  {language === 'sk' ? 'Vydanie' : 'Updated'}
+                </div>
+                <div className="text-3xl font-extrabold text-gray-900 leading-none mt-1">
+                  {formatTimelineTime(order.updatedAt)}
+                </div>
+                <div className="text-[11px] font-semibold text-emerald-600 mt-1">
+                  {dispatchElapsed}
+                </div>
               </div>
-              <div className="text-3xl font-extrabold text-gray-900 leading-none mt-1">
-                {formatTimelineTime(order.updatedAt)}
-              </div>
-              <div className="text-[11px] font-semibold text-emerald-600 mt-1">
-                {dispatchElapsed}
-              </div>
+              {woltPickupEtaRounded != null && (
+                <div className="rounded-xl border border-orange-300 bg-orange-50 px-4 py-3 text-right">
+                  <div className="text-[10px] uppercase tracking-wide font-bold text-orange-700">
+                    Kuriér na prevádzku
+                  </div>
+                  <div className="text-3xl font-extrabold leading-none text-orange-700 mt-1">
+                    {woltPickupEtaRounded}
+                  </div>
+                  <div className="text-[11px] font-semibold text-orange-700 mt-1">
+                    min
+                  </div>
+                </div>
+              )}
             </div>
           </div>
           <div className="mt-3 flex items-center gap-2 flex-wrap">
@@ -729,6 +758,17 @@ export function OrderCard({
           </div>
           
           <div className="flex items-center gap-2 ml-4">
+            {woltPickupEtaRounded != null && (
+              <div className="rounded-lg border border-orange-300 bg-orange-50 px-3 py-2 text-center min-w-[96px]">
+                <div className="text-[10px] font-bold uppercase tracking-wide text-orange-700">
+                  Kuriér
+                </div>
+                <div className="text-2xl font-extrabold leading-none text-orange-700 mt-0.5">
+                  {woltPickupEtaRounded}
+                </div>
+                <div className="text-[10px] font-semibold text-orange-700">min</div>
+              </div>
+            )}
             {desktopActionButtons}
           </div>
         </div>
@@ -934,13 +974,13 @@ export function OrderCard({
                   )}
                 </div>
 
-                {woltPickupEtaMinutes != null && (
+                {woltPickupEtaRounded != null && (
                   <div className="shrink-0 rounded-md border border-orange-300 bg-white px-4 py-2 text-center shadow-sm">
                     <div className="text-[11px] font-semibold uppercase tracking-wide text-orange-600">
                       Kuriér na prevádzku
                     </div>
                     <div className="text-3xl font-extrabold leading-none text-orange-700">
-                      {Math.round(woltPickupEtaMinutes)}
+                      {woltPickupEtaRounded}
                     </div>
                     <div className="text-xs font-semibold text-orange-700">min</div>
                   </div>
