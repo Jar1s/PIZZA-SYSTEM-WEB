@@ -1,6 +1,6 @@
 import { Injectable, BadRequestException, Logger, OnModuleInit, OnModuleDestroy, Inject, forwardRef } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { OrderStatus, Order, CustomerInfo, Address } from '@pizza-ecosystem/shared';
+import { OrderStatus, Order, CustomerInfo, Address, DeliveryStatus } from '@pizza-ecosystem/shared';
 import { EmailService } from '../email/email.service';
 import { TenantsService } from '../tenants/tenants.service';
 import { StoryousService } from '../storyous/storyous.service';
@@ -41,6 +41,13 @@ export class OrderStatusService implements OnModuleInit, OnModuleDestroy {
     const order = await this.prisma.order.findUnique({
       where: { id: orderId },
       include: {
+        delivery: {
+          select: {
+            id: true,
+            provider: true,
+            status: true,
+          },
+        },
         tenant: {
           select: {
             id: true,
@@ -63,6 +70,18 @@ export class OrderStatusService implements OnModuleInit, OnModuleDestroy {
     if (!allowedTransitions.includes(newStatus)) {
       throw new BadRequestException(
         `Cannot transition from ${order.status} to ${newStatus}`
+      );
+    }
+
+    // For Wolt deliveries, DELIVERED can only be set after Wolt confirms it.
+    // This prevents false "delivered" status from internal timers/manual clicks.
+    if (
+      newStatus === OrderStatus.DELIVERED &&
+      order.delivery?.provider === 'wolt' &&
+      order.delivery.status !== DeliveryStatus.DELIVERED
+    ) {
+      throw new BadRequestException(
+        `Cannot transition Wolt order to ${newStatus} before Wolt confirms delivery`
       );
     }
 
@@ -214,8 +233,26 @@ export class OrderStatusService implements OnModuleInit, OnModuleDestroy {
           updatedAt: {
             lte: cutoffTime,
           },
+          OR: [
+            { deliveryId: null },
+            {
+              delivery: {
+                is: {
+                  provider: {
+                    not: 'wolt',
+                  },
+                },
+              },
+            },
+          ],
         },
         include: {
+          delivery: {
+            select: {
+              provider: true,
+              status: true,
+            },
+          },
           tenant: {
             select: {
               id: true,
@@ -252,7 +289,6 @@ export class OrderStatusService implements OnModuleInit, OnModuleDestroy {
     }
   }
 }
-
 
 
 
