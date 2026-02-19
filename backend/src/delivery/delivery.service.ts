@@ -38,6 +38,30 @@ export class DeliveryService {
     private tenantsService: TenantsService,
   ) {}
 
+  private assertWoltConfig(tenant: { slug: string; id: string }, woltConfig: any): void {
+    const hasApiKey = Boolean(woltConfig?.apiKey && String(woltConfig.apiKey).trim());
+    const hasVenueId = Boolean(woltConfig?.venueId && String(woltConfig.venueId).trim());
+
+    if (!hasApiKey || !hasVenueId) {
+      const missing = [
+        !hasApiKey ? 'Merchant Key' : null,
+        !hasVenueId ? 'Venue ID' : null,
+      ].filter(Boolean);
+
+      this.logger.warn('Incomplete Wolt config for tenant', {
+        tenantId: tenant.id,
+        tenantSlug: tenant.slug,
+        hasApiKey,
+        hasVenueId,
+        missing,
+      });
+
+      throw new BadRequestException(
+        `Wolt konfigurácia je nekompletná pre tenant ${tenant.slug}. Chýba: ${missing.join(', ')}.`,
+      );
+    }
+  }
+
   private assertTenantAccess(
     tenantId: string,
     user: AuthenticatedUser | undefined,
@@ -124,12 +148,7 @@ export class DeliveryService {
 
     const deliveryConfig = tenant.deliveryConfig as DeliveryConfig;
     const woltConfig = deliveryConfig.woltConfig;
-    
-    if (!woltConfig?.apiKey || !woltConfig?.venueId) {
-      throw new BadRequestException(
-        'Wolt konfigurácia je nekompletná. Vyplň Merchant Key a Venue ID pre tenant.',
-      );
-    }
+    this.assertWoltConfig(tenant, woltConfig);
 
     // Get tenant-specific pickup address
     const pickupAddress = this.getPickupAddress(tenantId, deliveryConfig);
@@ -161,12 +180,7 @@ export class DeliveryService {
 
     const deliveryConfig = tenant.deliveryConfig as DeliveryConfig;
     const woltConfig = deliveryConfig.woltConfig;
-    
-    if (!woltConfig?.apiKey || !woltConfig?.venueId) {
-      throw new BadRequestException(
-        'Wolt konfigurácia je nekompletná. Vyplň Merchant Key a Venue ID pre tenant.',
-      );
-    }
+    this.assertWoltConfig(tenant, woltConfig);
 
     // Get tenant-specific pickup address
     const pickupAddress = this.getPickupAddress(order.tenantId, deliveryConfig);
@@ -233,12 +247,7 @@ export class DeliveryService {
 
     const deliveryConfig = tenant.deliveryConfig as DeliveryConfig;
     const woltConfig = deliveryConfig.woltConfig;
-    
-    if (!woltConfig?.apiKey || !woltConfig?.venueId) {
-      throw new BadRequestException(
-        'Wolt konfigurácia je nekompletná. Vyplň Merchant Key a Venue ID pre tenant.',
-      );
-    }
+    this.assertWoltConfig(tenant, woltConfig);
 
     // Get tenant-specific pickup address
     const pickupAddress = this.getPickupAddress(order.tenantId, deliveryConfig);
@@ -477,7 +486,6 @@ export class DeliveryService {
     }
   }
 }
-
 
 
 
