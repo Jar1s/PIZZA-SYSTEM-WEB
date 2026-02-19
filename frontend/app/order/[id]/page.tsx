@@ -19,6 +19,20 @@ interface Order {
   status: string;
   paymentStatus?: string | null;
   paymentRef?: string | null;
+  deliveryId?: string | null;
+  delivery?: {
+    id: string;
+    provider: string;
+    jobId?: string | null;
+    status?: string;
+    trackingUrl?: string | null;
+    quote?: {
+      courierEta?: number | string;
+      etaMinutes?: number | string;
+      pickupEtaMinutes?: number | string;
+      dropoffEtaMinutes?: number | string;
+    } | null;
+  } | null;
   customer: {
     name: string;
     email: string;
@@ -58,6 +72,7 @@ export default function OrderTrackingPage() {
   const [tenantLoading, setTenantLoading] = useState(true);
   const [tenantLoadError, setTenantLoadError] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [nowMs, setNowMs] = useState(() => Date.now());
   const TRACKING_POLL_INTERVAL_MS = 10000;
   const TRACKING_MIN_FETCH_GAP_MS = 2000;
   const [retryingPayment, setRetryingPayment] = useState(false);
@@ -254,6 +269,15 @@ export default function OrderTrackingPage() {
     };
   }, [currentOrderId, currentOrderStatus, fetchOrder]);
 
+  // Keep ETA display moving between network polls.
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setNowMs(Date.now());
+    }, 30000);
+
+    return () => clearInterval(timer);
+  }, []);
+
   // If we were redirected with GoPay paymentId in pending state, keep resolving it in background.
   useEffect(() => {
     if (!paymentPending || !paymentId) return;
@@ -376,6 +400,36 @@ export default function OrderTrackingPage() {
   });
 
   const orderStatus = order.status as OrderStatus;
+  const parseOptionalNumber = (value: unknown): number | null => {
+    if (typeof value === 'number' && Number.isFinite(value)) return value;
+    if (typeof value === 'string') {
+      const parsed = Number.parseFloat(value);
+      if (Number.isFinite(parsed)) return parsed;
+    }
+    return null;
+  };
+
+  const isWoltDelivery = order.delivery?.provider === 'wolt';
+  const woltQuote = (order.delivery?.quote as Record<string, unknown> | null | undefined) || null;
+  const woltPickupEtaBaseMinutes =
+    parseOptionalNumber(woltQuote?.pickupEtaMinutes) ??
+    parseOptionalNumber(woltQuote?.courierEta);
+  const woltDropoffEtaBaseMinutes =
+    parseOptionalNumber(woltQuote?.dropoffEtaMinutes) ??
+    parseOptionalNumber(woltQuote?.etaMinutes) ??
+    parseOptionalNumber(woltQuote?.courierEta);
+
+  const etaReferenceMs = new Date(order.updatedAt).getTime();
+  const woltPickupEtaRemainingMinutes =
+    woltPickupEtaBaseMinutes != null
+      ? Math.max(0, Math.ceil((etaReferenceMs + woltPickupEtaBaseMinutes * 60000 - nowMs) / 60000))
+      : null;
+  const woltDropoffEtaRemainingMinutes =
+    woltDropoffEtaBaseMinutes != null
+      ? Math.max(0, Math.ceil((etaReferenceMs + woltDropoffEtaBaseMinutes * 60000 - nowMs) / 60000))
+      : null;
+
+  const woltStatusText = (order.delivery?.status || '').replace(/_/g, ' ').toLowerCase();
   const canRetryPayment =
     orderStatus === OrderStatus.PENDING &&
     order.paymentStatus !== 'success' &&
@@ -521,6 +575,70 @@ export default function OrderTrackingPage() {
           </h3>
           <StatusTimeline status={orderStatus} paymentStatus={order.paymentStatus} />
         </motion.div>
+
+        {isWoltDelivery && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.15 }}
+            className={`${sectionShellClass} mb-8`}
+          >
+            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+              <div>
+                <h3 className={`text-xl font-bold ${isDark ? 'text-white' : 'text-gray-800'}`}>
+                  🚚 {language === 'sk' ? 'Wolt doručenie' : 'Wolt delivery'}
+                </h3>
+                {order.delivery?.status && (
+                  <p className={`text-sm mt-1 capitalize ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
+                    {language === 'sk' ? 'Stav kuriéra:' : 'Courier status:'} {woltStatusText}
+                  </p>
+                )}
+                {order.delivery?.trackingUrl && (
+                  <a
+                    href={order.delivery.trackingUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-block mt-2 text-sm underline font-semibold"
+                    style={{ color: primaryColor }}
+                  >
+                    {language === 'sk' ? 'Otvoriť live tracking' : 'Open live tracking'}
+                  </a>
+                )}
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 min-w-[240px]">
+                {woltPickupEtaRemainingMinutes != null && (
+                  <div className={`rounded-xl px-4 py-3 border ${isDark ? 'border-orange-400/40 bg-orange-500/10' : 'border-orange-200 bg-orange-50'}`}>
+                    <div className={`text-xs uppercase tracking-wide font-semibold ${isDark ? 'text-orange-300' : 'text-orange-700'}`}>
+                      {language === 'sk' ? 'Kuriér na prevádzku' : 'Courier to restaurant'}
+                    </div>
+                    <div className={`text-3xl font-extrabold leading-none mt-1 ${isDark ? 'text-orange-200' : 'text-orange-700'}`}>
+                      {woltPickupEtaRemainingMinutes}
+                      <span className="ml-1 text-sm font-semibold">min</span>
+                    </div>
+                  </div>
+                )}
+
+                {woltDropoffEtaRemainingMinutes != null && (
+                  <div className={`rounded-xl px-4 py-3 border ${isDark ? 'border-emerald-400/40 bg-emerald-500/10' : 'border-emerald-200 bg-emerald-50'}`}>
+                    <div className={`text-xs uppercase tracking-wide font-semibold ${isDark ? 'text-emerald-300' : 'text-emerald-700'}`}>
+                      {language === 'sk' ? 'Est. doručenia' : 'Est. delivery'}
+                    </div>
+                    <div className={`text-3xl font-extrabold leading-none mt-1 ${isDark ? 'text-emerald-200' : 'text-emerald-700'}`}>
+                      {woltDropoffEtaRemainingMinutes}
+                      <span className="ml-1 text-sm font-semibold">min</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+            <p className={`text-xs mt-3 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+              {language === 'sk'
+                ? 'Čas sa priebežne aktualizuje počas sledovania objednávky.'
+                : 'Estimated times update continuously while tracking your order.'}
+            </p>
+          </motion.div>
+        )}
 
         {/* Order Details */}
         <motion.div
