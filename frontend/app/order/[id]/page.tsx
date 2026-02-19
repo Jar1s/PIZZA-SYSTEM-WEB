@@ -411,23 +411,25 @@ export default function OrderTrackingPage() {
 
   const isWoltDelivery = order.delivery?.provider === 'wolt';
   const woltQuote = (order.delivery?.quote as Record<string, unknown> | null | undefined) || null;
-  const woltPickupEtaBaseMinutes =
-    parseOptionalNumber(woltQuote?.pickupEtaMinutes) ??
-    parseOptionalNumber(woltQuote?.courierEta);
   const woltDropoffEtaBaseMinutes =
     parseOptionalNumber(woltQuote?.dropoffEtaMinutes) ??
     parseOptionalNumber(woltQuote?.etaMinutes) ??
     parseOptionalNumber(woltQuote?.courierEta);
 
   const etaReferenceMs = new Date(order.updatedAt).getTime();
-  const woltPickupEtaRemainingMinutes =
-    woltPickupEtaBaseMinutes != null
-      ? Math.max(0, Math.ceil((etaReferenceMs + woltPickupEtaBaseMinutes * 60000 - nowMs) / 60000))
-      : null;
   const woltDropoffEtaRemainingMinutes =
     woltDropoffEtaBaseMinutes != null
       ? Math.max(0, Math.ceil((etaReferenceMs + woltDropoffEtaBaseMinutes * 60000 - nowMs) / 60000))
       : null;
+  const woltEtaRingRatio =
+    woltDropoffEtaBaseMinutes != null &&
+    woltDropoffEtaBaseMinutes > 0 &&
+    woltDropoffEtaRemainingMinutes != null
+      ? Math.max(0.08, Math.min(1, woltDropoffEtaRemainingMinutes / woltDropoffEtaBaseMinutes))
+      : 0.35;
+  const woltRingRadius = 92;
+  const woltRingCircumference = 2 * Math.PI * woltRingRadius;
+  const woltRingDashOffset = woltRingCircumference * (1 - woltEtaRingRatio);
 
   const woltStatusText = (order.delivery?.status || '').replace(/_/g, ' ').toLowerCase();
   const canRetryPayment =
@@ -606,33 +608,46 @@ export default function OrderTrackingPage() {
                 )}
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 min-w-[240px]">
-                {woltPickupEtaRemainingMinutes != null && (
-                  <div className={`rounded-xl px-4 py-3 border ${isDark ? 'border-orange-400/40 bg-orange-500/10' : 'border-orange-200 bg-orange-50'}`}>
-                    <div className={`text-xs uppercase tracking-wide font-semibold ${isDark ? 'text-orange-300' : 'text-orange-700'}`}>
-                      {language === 'sk' ? 'Kuriér na prevádzku' : 'Courier to restaurant'}
-                    </div>
-                    <div className={`text-3xl font-extrabold leading-none mt-1 ${isDark ? 'text-orange-200' : 'text-orange-700'}`}>
-                      {woltPickupEtaRemainingMinutes}
-                      <span className="ml-1 text-sm font-semibold">min</span>
-                    </div>
-                  </div>
-                )}
+              <div className="min-w-[240px]">
+                <div className={`relative mx-auto h-56 w-56 rounded-full border ${isDark ? 'border-white/10 bg-black/20' : 'border-gray-200 bg-white'}`}>
+                  <svg className="absolute inset-0 h-full w-full -rotate-90" viewBox="0 0 240 240">
+                    <circle
+                      cx="120"
+                      cy="120"
+                      r={woltRingRadius}
+                      fill="none"
+                      stroke={isDark ? 'rgba(255,255,255,0.12)' : 'rgba(17,24,39,0.14)'}
+                      strokeWidth="18"
+                    />
+                    <circle
+                      cx="120"
+                      cy="120"
+                      r={woltRingRadius}
+                      fill="none"
+                      stroke={isDark ? '#34D399' : '#059669'}
+                      strokeLinecap="round"
+                      strokeWidth="18"
+                      strokeDasharray={woltRingCircumference}
+                      strokeDashoffset={woltRingDashOffset}
+                      style={{ transition: 'stroke-dashoffset 500ms ease-out' }}
+                    />
+                  </svg>
 
-                {woltDropoffEtaRemainingMinutes != null && (
-                  <div className={`rounded-xl px-4 py-3 border ${isDark ? 'border-emerald-400/40 bg-emerald-500/10' : 'border-emerald-200 bg-emerald-50'}`}>
-                    <div className={`text-xs uppercase tracking-wide font-semibold ${isDark ? 'text-emerald-300' : 'text-emerald-700'}`}>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-6">
+                    <p className={`text-[11px] font-bold uppercase tracking-[0.14em] ${isDark ? 'text-emerald-300' : 'text-emerald-700'}`}>
                       {language === 'sk' ? 'Est. doručenia' : 'Est. delivery'}
-                    </div>
-                    <div className={`text-3xl font-extrabold leading-none mt-1 ${isDark ? 'text-emerald-200' : 'text-emerald-700'}`}>
-                      {woltDropoffEtaRemainingMinutes}
-                      <span className="ml-1 text-sm font-semibold">min</span>
-                    </div>
+                    </p>
+                    <p className={`mt-2 text-5xl font-black leading-none ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                      {woltDropoffEtaRemainingMinutes != null ? woltDropoffEtaRemainingMinutes : '--'}
+                    </p>
+                    <p className={`mt-1 text-lg font-semibold ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>
+                      {language === 'sk' ? 'minút do doručenia' : 'minutes until delivery'}
+                    </p>
                   </div>
-                )}
+                </div>
               </div>
             </div>
-            <p className={`text-xs mt-3 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+            <p className={`text-xs mt-3 text-center ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
               {language === 'sk'
                 ? 'Čas sa priebežne aktualizuje počas sledovania objednávky.'
                 : 'Estimated times update continuously while tracking your order.'}
