@@ -174,6 +174,13 @@ export function OrderCard({
     parseOptionalNumber(woltQuote?.dropoffEtaMinutes) ??
     parseOptionalNumber(woltQuote?.etaMinutes);
   const woltFeeCents = parseOptionalNumber(woltQuote?.feeCents);
+  const orderDeliveryFeeCents = parseOptionalNumber(order.deliveryFeeCents);
+  // Single source of truth for UI: what customer is charged on the order.
+  const displayedDeliveryFeeCents = orderDeliveryFeeCents ?? woltFeeCents;
+  // In pre-create Wolt modal fallback to promise fee only if order fee is missing.
+  const modalDeliveryFeeCents =
+    orderDeliveryFeeCents ??
+    parseOptionalNumber(woltPromise?.feeCents);
   const woltPickupEtaRounded =
     woltPickupEtaMinutes != null ? Math.max(0, Math.round(woltPickupEtaMinutes)) : null;
 
@@ -695,8 +702,8 @@ export function OrderCard({
                 {brandLabel}{brandLabel ? ' • ' : ''}{customer.name}
               </div>
             </div>
-            <div className="flex flex-col gap-2 min-w-[128px]">
-              <div className="rounded-xl bg-gray-100 border border-gray-200 px-4 py-3 text-right">
+            <div className="flex items-stretch gap-2 min-w-[128px]">
+              <div className="rounded-xl bg-gray-100 border border-gray-200 px-4 py-3 text-right min-w-[128px]">
                 <div className="text-[10px] uppercase tracking-wide font-bold text-gray-500">
                   {language === 'sk' ? 'Vydanie' : 'Updated'}
                 </div>
@@ -708,7 +715,7 @@ export function OrderCard({
                 </div>
               </div>
               {woltPickupEtaRounded != null && (
-                <div className="rounded-xl border border-orange-300 bg-orange-50 px-4 py-3 text-right">
+                <div className="rounded-xl border border-orange-300 bg-orange-50 px-4 py-3 text-right min-w-[128px]">
                   <div className="text-[10px] uppercase tracking-wide font-bold text-orange-700">
                     Kuriér na prevádzku
                   </div>
@@ -954,7 +961,7 @@ export function OrderCard({
           )}
           {hasWoltDelivery && woltDelivery && (
             <div className="col-span-2 mb-2 rounded-lg border border-orange-200 bg-orange-50 p-3">
-              <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+              <div className="flex flex-col gap-3">
                 <div className="min-w-0">
                   <div className="text-sm font-semibold text-orange-900">
                     🚚 Wolt Delivery: {woltDelivery.status}
@@ -973,26 +980,14 @@ export function OrderCard({
                     </a>
                   )}
                 </div>
-
-                {woltPickupEtaRounded != null && (
-                  <div className="shrink-0 rounded-md border border-orange-300 bg-white px-4 py-2 text-center shadow-sm">
-                    <div className="text-[11px] font-semibold uppercase tracking-wide text-orange-600">
-                      Kuriér na prevádzku
-                    </div>
-                    <div className="text-3xl font-extrabold leading-none text-orange-700">
-                      {woltPickupEtaRounded}
-                    </div>
-                    <div className="text-xs font-semibold text-orange-700">min</div>
-                  </div>
-                )}
               </div>
 
               <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-700">
                 {woltDropoffEtaMinutes != null && (
                   <span>Doručenie zákazníkovi: ~{Math.round(woltDropoffEtaMinutes)} min</span>
                 )}
-                {woltFeeCents != null && (
-                  <span>Fee: €{(woltFeeCents / 100).toFixed(2)}</span>
+                {displayedDeliveryFeeCents != null && (
+                  <span>Delivery fee: {formatEurPrice(displayedDeliveryFeeCents)}</span>
                 )}
               </div>
             </div>
@@ -1055,10 +1050,10 @@ export function OrderCard({
               );
             })}
             
-            {order.deliveryFeeCents != null && (
+            {displayedDeliveryFeeCents != null && (
               <div className="pt-2 flex justify-between text-sm text-gray-600">
                 <span>Delivery fee</span>
-                <span>{formatEurPrice(order.deliveryFeeCents)}</span>
+                <span>{formatEurPrice(displayedDeliveryFeeCents)}</span>
               </div>
             )}
             <div className="mt-2 pt-2 border-t flex justify-between font-semibold">
@@ -1131,12 +1126,14 @@ export function OrderCard({
 
                   {/* Delivery Info */}
                   <div className="space-y-3">
-                    <div className="flex justify-between items-center">
-                      <span className="text-gray-600">💰 Poplatok za doručenie:</span>
-                      <span className="text-xl font-bold text-orange-600">
-                        €{(woltPromise.feeCents / 100).toFixed(2)}
-                      </span>
-                    </div>
+                    {modalDeliveryFeeCents != null && (
+                      <div className="flex justify-between items-center">
+                        <span className="text-gray-600">💰 Poplatok za doručenie:</span>
+                        <span className="text-xl font-bold text-orange-600">
+                          {formatEurPrice(modalDeliveryFeeCents)}
+                        </span>
+                      </div>
+                    )}
                     
                     <div className="flex justify-between items-center">
                       <span className="text-gray-600">⏱️ ETA kuriér na prevádzku:</span>
