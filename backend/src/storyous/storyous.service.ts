@@ -130,6 +130,14 @@ export class StoryousService {
       // #endregion
       const customer = order.customer as any;
       const address = order.address as any;
+      const deliveryAddressParts = this.buildDeliveryAddressParts(address);
+      const customerEmail =
+        String(customer?.email || '').trim() || `unknown+${order.id}@example.com`;
+      const customerPhone =
+        String(customer?.phone || '').trim() || '+421000000000';
+      const isAlreadyPaid =
+        String(order.paymentStatus || '').toLowerCase() === 'paid' ||
+        order.status === OrderStatus.PAID;
       
       this.logger.log('[Storyous] Preparing order', {
         orderId: order.id,
@@ -146,52 +154,37 @@ export class StoryousService {
       // Map order items to Storyous format
       const items = order.items.map(item => {
         const itemData: any = {
-          name: item.productName,
-          quantity: item.quantity,
-          count: item.quantity, // Storyous expects `count`
-          price: item.priceCents / 100, // Convert cents to euros
-          unitPriceWithVat: item.priceCents / 100, // Storyous expects unitPriceWithVat in euros
+          count: item.quantity,
+          unitPriceWithVat: item.priceCents / 100,
         };
 
         // Use explicit Storyous itemId first, then mapping table. Never fall back to internal DB IDs.
         const explicitStoryousItemId = this.getExplicitStoryousItemId(item as any);
         const mappedStoryousItemId = storyousItemIdsByProductName.get(item.productName);
         const storyousItemId = explicitStoryousItemId || mappedStoryousItemId;
-        if (storyousItemId) {
-          itemData.itemId = storyousItemId;
-        }
-        
-        // Add modifiers if available
-        if (item.modifiers) {
-          itemData.modifiers = item.modifiers;
-        }
+        itemData.itemId = storyousItemId || item.productId || item.id;
         
         return itemData;
       });
       
       const orderData = {
-        merchant_id: merchantId,
-        place_id: placeId,
+        externalId: order.id, // Storyous expects camelCase externalId
+        deliveryType: 'delivery',
+        timing: {
+          asSoonAsPossible: true,
+        },
+        alreadyPaid: isAlreadyPaid,
         items: items,
         customer: {
-          name: customer.name,
-          phone: customer.phone,
-          email: customer.email || null,
+          name: String(customer?.name || '').trim() || 'Customer',
+          phoneNumber: customerPhone,
+          email: customerEmail,
+          deliveryAddress: `${deliveryAddressParts.street} ${deliveryAddressParts.streetNumber}, ${deliveryAddressParts.city}, ${deliveryAddressParts.zip}`.trim(),
+          deliveryAddressParts,
         },
-        delivery_address: {
-          street: address.street,
-          city: address.city,
-          postal_code: address.postalCode,
-          country: address.country || 'SK',
-          description: address.description || address.instructions || null,
-        },
-        total: order.totalCents / 100,
-        subtotal: order.subtotalCents / 100,
-        tax: order.taxCents / 100,
-        delivery_fee: order.deliveryFeeCents / 100,
-        externalId: order.id, // Storyous expects camelCase externalId
-        external_id: order.id, // keep legacy snake_case just in case
-        status: this.mapOrderStatus(order.status),
+        deliveryFeeWithVat: order.deliveryFeeCents / 100,
+        note: (order as any)?.notes || null,
+        deliveryNote: address?.instructions || null,
       };
 
       const missingMappedProducts = Array.from(
@@ -215,7 +208,7 @@ export class StoryousService {
 
       this.logger.debug('[Storyous] Payload', { orderId: order.id, payload: orderData });
       // #region agent log
-      fetch('http://127.0.0.1:7244/ingest/c8c401c8-9b71-4e06-9291-444154701c07',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'storyous.service.ts:129',message:'request body prepared',data:{merchantId,placeId,itemsCount:items.length,hasCustomer:!!customer,hasAddress:!!address,total:orderData.total,status:orderData.status},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+      fetch('http://127.0.0.1:7244/ingest/c8c401c8-9b71-4e06-9291-444154701c07',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'storyous.service.ts:129',message:'request body prepared',data:{merchantId,placeId,itemsCount:items.length,hasCustomer:!!customer,hasAddress:!!address,deliveryType:orderData.deliveryType,alreadyPaid:orderData.alreadyPaid},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
       // #endregion
 
       // Storyous Delivery API expects merchantPlaceId in path:
@@ -290,6 +283,83 @@ export class StoryousService {
       this.logger.error(`❌ Failed to update Storyous order status:`, error.message);
       throw error;
     }
+  }
+
+  private buildDeliveryAddressParts(address: Record<string, any>): {
+    street: string;
+    streetNumber: string;
+    city: string;
+    country: string;
+    countryCode: string;
+    zip: string;
+    latitude?: number;
+    longitude?: number;
+  } {
+    const rawStreet = String(address?.street || '').trim();
+    const rawHouseNumber = String(address?.houseNumber || '').trim();
+
+    let street = rawStreet || 'Unknown street';
+    let streetNumber = rawHouseNumber;
+
+    if (!streetNumber && rawStreet) {
+      const trailingNumberMatch = rawStreet.match(/^(.*?)[,\s]+(\d+[A-Za-z0-9/.-]*)$/);
+      if (trailingNumberMatch) {
+        street = trailingNumberMatch[1].trim() || street;
+        streetNumber = trailingNumberMatch[2].trim();
+      }
+    }
+
+    if (!streetNumber) {
+      streetNumber = '1';
+    }
+
+    const country = String(address?.country || 'Slovakia').trim() || 'Slovakia';
+    const countryCode = this.resolveCountryCode(country);
+    const city = String(address?.city || '').trim() || 'Unknown city';
+    const zip = String(address?.postalCode || '').trim() || '00000';
+
+    const latitudeRaw = Number(address?.coordinates?.lat);
+    const longitudeRaw = Number(address?.coordinates?.lng);
+
+    return {
+      street,
+      streetNumber,
+      city,
+      country,
+      countryCode,
+      zip,
+      ...(Number.isFinite(latitudeRaw) && Number.isFinite(longitudeRaw)
+        ? { latitude: latitudeRaw, longitude: longitudeRaw }
+        : {}),
+    };
+  }
+
+  private resolveCountryCode(country: string): string {
+    const normalized = country.trim().toLowerCase();
+    if (!normalized) {
+      return 'SK';
+    }
+
+    if (country.length === 2) {
+      return country.toUpperCase();
+    }
+
+    const map: Record<string, string> = {
+      slovakia: 'SK',
+      slovensko: 'SK',
+      czechia: 'CZ',
+      'czech republic': 'CZ',
+      cesko: 'CZ',
+      'česko': 'CZ',
+      hungary: 'HU',
+      madarsko: 'HU',
+      maďarsko: 'HU',
+      austria: 'AT',
+      rakusko: 'AT',
+      rakúsko: 'AT',
+    };
+
+    return map[normalized] || 'SK';
   }
 
   private getExplicitStoryousItemId(item: Record<string, any>): string | undefined {
