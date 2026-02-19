@@ -3,11 +3,50 @@ import { PrismaService } from '../prisma/prisma.service';
 import { Tenant } from '@pizza-ecosystem/shared';
 import { TenantResponseSchema } from '../common/schemas/tenant.schema';
 
+type CachedTenantEntry = {
+  tenant: Tenant;
+  expiresAt: number;
+};
+
 @Injectable()
 export class TenantsService {
   private readonly logger = new Logger(TenantsService.name);
+  private readonly cacheTtlMs = Number(process.env.TENANT_CACHE_TTL_MS || 30000);
+  private readonly tenantBySlugCache = new Map<string, CachedTenantEntry>();
+  private readonly tenantByDomainCache = new Map<string, CachedTenantEntry>();
+  private readonly inFlightBySlug = new Map<string, Promise<Tenant>>();
+  private readonly inFlightByDomain = new Map<string, Promise<Tenant | null>>();
 
   constructor(private prisma: PrismaService) {}
+
+  private getCachedTenant(
+    cache: Map<string, CachedTenantEntry>,
+    key: string,
+  ): Tenant | null {
+    const cached = cache.get(key);
+    if (!cached) return null;
+    if (cached.expiresAt <= Date.now()) {
+      cache.delete(key);
+      return null;
+    }
+    return cached.tenant;
+  }
+
+  private setCachedTenant(
+    cache: Map<string, CachedTenantEntry>,
+    key: string,
+    tenant: Tenant,
+  ): void {
+    cache.set(key, {
+      tenant,
+      expiresAt: Date.now() + this.cacheTtlMs,
+    });
+  }
+
+  private clearTenantCaches(): void {
+    this.tenantBySlugCache.clear();
+    this.tenantByDomainCache.clear();
+  }
 
   /**
    * Normalize tenant slugs to handle legacy/domain variants.
@@ -53,73 +92,133 @@ export class TenantsService {
 
   async getTenantBySlug(slug: string): Promise<Tenant> {
     const normalizedSlug = this.normalizeTenantSlug(slug);
-    try {
-      this.logger.log(`[getTenantBySlug] Looking for tenant with slug: ${normalizedSlug}`);
-      
-      const tenant = await this.prisma.tenant.findUnique({
-        where: { slug: normalizedSlug },
-      });
-      
-      if (!tenant) {
-        this.logger.warn(`[getTenantBySlug] Tenant ${normalizedSlug} not found in database`);
-        throw new NotFoundException(`Tenant ${normalizedSlug} not found`);
-      }
-      
-      this.logger.log(`[getTenantBySlug] Tenant found: ${tenant.name} (id: ${tenant.id}, isActive: ${tenant.isActive})`);
-      
-      // Check if tenant is active
-      if (!tenant.isActive) {
-        this.logger.warn(`[getTenantBySlug] Tenant ${normalizedSlug} is not active`);
-        throw new NotFoundException(`Tenant ${normalizedSlug} is not active`);
-      }
-      
-      // Validate response with Zod
-      try {
-        return TenantResponseSchema.parse(tenant) as unknown as Tenant;
-      } catch (error) {
-        this.logger.error(`[getTenantBySlug] Tenant response validation failed for ${slug}`, { error, tenant });
-        return tenant as any as Tenant;
-      }
-    } catch (error: any) {
-      // Log Prisma errors with full details
-      if (error.code) {
-        this.logger.error(`[getTenantBySlug] Prisma error (code: ${error.code}): ${error.message}`, {
-          code: error.code,
-          meta: error.meta,
-          stack: error.stack,
-        });
-      } else {
-        this.logger.error(`[getTenantBySlug] Error getting tenant ${slug}:`, error);
-      }
-      throw error;
+
+    const cached = this.getCachedTenant(this.tenantBySlugCache, normalizedSlug);
+    if (cached) {
+      return cached;
     }
+
+    const existingInFlight = this.inFlightBySlug.get(normalizedSlug);
+    if (existingInFlight) {
+      return existingInFlight;
+    }
+
+    const request = (async () => {
+      try {
+        const tenant = await this.prisma.tenant.findUnique({
+          where: { slug: normalizedSlug },
+        });
+
+        if (!tenant) {
+          throw new NotFoundException(`Tenant ${normalizedSlug} not found`);
+        }
+
+        if (!tenant.isActive) {
+          throw new NotFoundException(`Tenant ${normalizedSlug} is not active`);
+        }
+
+        let parsed: Tenant;
+        try {
+          parsed = TenantResponseSchema.parse(tenant) as unknown as Tenant;
+        } catch (error) {
+          this.logger.error(`[getTenantBySlug] Tenant response validation failed for ${normalizedSlug}`, {
+            error,
+            tenantId: tenant.id,
+          });
+          parsed = tenant as any as Tenant;
+        }
+
+        this.setCachedTenant(this.tenantBySlugCache, normalizedSlug, parsed);
+        if (parsed.domain) {
+          this.setCachedTenant(this.tenantByDomainCache, String(parsed.domain).toLowerCase(), parsed);
+        }
+        if (parsed.subdomain) {
+          this.setCachedTenant(this.tenantByDomainCache, String(parsed.subdomain).toLowerCase(), parsed);
+        }
+        return parsed;
+      } catch (error: any) {
+        if (error?.code) {
+          this.logger.error(`[getTenantBySlug] Prisma error (code: ${error.code}): ${error.message}`, {
+            code: error.code,
+            meta: error.meta,
+          });
+        } else if (!(error instanceof NotFoundException)) {
+          this.logger.error(`[getTenantBySlug] Error getting tenant ${normalizedSlug}:`, error);
+        }
+        throw error;
+      } finally {
+        this.inFlightBySlug.delete(normalizedSlug);
+      }
+    })();
+
+    this.inFlightBySlug.set(normalizedSlug, request);
+    return request;
   }
 
   async findTenantByDomain(domain: string): Promise<Tenant | null> {
-    this.logger.log(`[findTenantByDomain] Looking for tenant with domain: ${domain}`);
-    
-    const tenant = await this.prisma.tenant.findFirst({
-      where: {
-        OR: [
-          { domain: domain },
-          { subdomain: domain.split('.')[0] }
-        ],
-        isActive: true
-      }
-    });
-    
-    if (tenant) {
-      this.logger.log(`[findTenantByDomain] Tenant found: ${tenant.name} (slug: ${tenant.slug})`);
-      try {
-        return TenantResponseSchema.parse(tenant) as unknown as Tenant;
-      } catch (error) {
-        this.logger.error(`Tenant response validation failed for domain ${domain}`, { error, tenant });
-        return tenant as any as Tenant;
-      }
+    const normalizedDomain = String(domain || '').toLowerCase().trim();
+    if (!normalizedDomain) {
+      return null;
     }
-    
-    this.logger.warn(`[findTenantByDomain] Tenant not found for domain: ${domain}`);
-    return null;
+
+    const cached = this.getCachedTenant(this.tenantByDomainCache, normalizedDomain);
+    if (cached) {
+      return cached;
+    }
+
+    const existingInFlight = this.inFlightByDomain.get(normalizedDomain);
+    if (existingInFlight) {
+      return existingInFlight;
+    }
+
+    const request = (async () => {
+      try {
+        const tenant = await this.prisma.tenant.findFirst({
+          where: {
+            OR: [
+              { domain: normalizedDomain },
+              { subdomain: normalizedDomain.split('.')[0] },
+            ],
+            isActive: true,
+          },
+        });
+
+        if (!tenant) {
+          return null;
+        }
+
+        let parsed: Tenant;
+        try {
+          parsed = TenantResponseSchema.parse(tenant) as unknown as Tenant;
+        } catch (error) {
+          this.logger.error(`Tenant response validation failed for domain ${normalizedDomain}`, {
+            error,
+            tenantId: tenant.id,
+          });
+          parsed = tenant as any as Tenant;
+        }
+
+        this.setCachedTenant(this.tenantByDomainCache, normalizedDomain, parsed);
+        this.setCachedTenant(this.tenantBySlugCache, parsed.slug, parsed);
+
+        return parsed;
+      } catch (error: any) {
+        if (error?.code) {
+          this.logger.error(`[findTenantByDomain] Prisma error (code: ${error.code}): ${error.message}`, {
+            code: error.code,
+            meta: error.meta,
+          });
+        } else {
+          this.logger.error(`[findTenantByDomain] Error resolving domain ${normalizedDomain}:`, error);
+        }
+        throw error;
+      } finally {
+        this.inFlightByDomain.delete(normalizedDomain);
+      }
+    })();
+
+    this.inFlightByDomain.set(normalizedDomain, request);
+    return request;
   }
 
   async getAllTenants(includeInactive: boolean = false): Promise<Tenant[]> {
@@ -148,6 +247,7 @@ export class TenantsService {
     const tenant = await this.prisma.tenant.create({
       data,
     });
+    this.clearTenantCaches();
     return tenant as any as Tenant;
   }
   
@@ -258,6 +358,7 @@ export class TenantsService {
     }
     
     this.logger.log(`Tenant ${normalizedSlug} updated. isActive: ${tenant.isActive}`);
+    this.clearTenantCaches();
     return tenant as any as Tenant;
   }
 
@@ -384,6 +485,7 @@ export class TenantsService {
         this.logger.log(`[cloneTenant] Cloned ${sourceTenant.productMappings.length} product mappings`);
         this.logger.log(`[cloneTenant] Successfully cloned tenant ${sourceSlug} to ${cloneData.slug}`);
 
+        this.clearTenantCaches();
         return newTenant as any as Tenant;
       });
     } catch (error: any) {
@@ -462,6 +564,7 @@ export class TenantsService {
     }
 
     this.logger.log(`[syncFromMaster] Sync complete. Synced: ${result.synced.length}, Errors: ${result.errors.length}`);
+    this.clearTenantCaches();
     return result;
   }
 
