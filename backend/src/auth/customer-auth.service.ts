@@ -573,6 +573,10 @@ export class CustomerAuthService {
    * Refresh access token using refresh token
    */
   async refreshToken(refreshToken: string): Promise<{ access_token: string; user: CustomerAuthResult['user'] }> {
+    if (!refreshToken || !String(refreshToken).trim()) {
+      throw new UnauthorizedException('Missing refresh token');
+    }
+
     // Find refresh token in database
     const tokenRecord = await this.prisma.refreshToken.findUnique({
       where: { token: refreshToken },

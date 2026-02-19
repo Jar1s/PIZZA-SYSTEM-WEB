@@ -225,9 +225,24 @@ export function OrderList({ todayOnly = false, selectedTenant }: OrderListProps 
   // Ref na uloženie predchádzajúcich order IDs pre detekciu nových objednávok
   const previousOrderIds = useRef<Set<string>>(new Set());
 
+  const handleUnauthorized = useCallback((source: string) => {
+    console.error(`[OrderList] Unauthorized (${source}) - redirecting to login`);
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('auth_token');
+      localStorage.removeItem('refresh_token');
+      localStorage.removeItem('auth_user');
+      sessionStorage.setItem('admin_logged_out', 'true');
+      window.location.replace('/login');
+    }
+  }, []);
+
   // Cache tenant ID to slug mapping
   const fetchTenantMapping = useCallback(async () => {
     const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
+    if (!token) {
+      handleUnauthorized('missing token while loading tenant mapping');
+      return;
+    }
     const headers: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {};
 
     // Determine which tenants to fetch based on current filter
@@ -245,6 +260,9 @@ export function OrderList({ todayOnly = false, selectedTenant }: OrderListProps 
         if (res.ok) {
           const tenantData = await res.json();
           mapping[tenantData.id] = tenantSlug;
+        } else if (res.status === 401 || res.status === 403) {
+          handleUnauthorized(`tenant mapping ${tenantSlug} ${res.status}`);
+          return;
         }
       } catch (e) {
         console.error(`Failed to fetch tenant ${tenantSlug}:`, e);
@@ -252,15 +270,14 @@ export function OrderList({ todayOnly = false, selectedTenant }: OrderListProps 
     }
 
     setTenantIdToSlug(mapping);
-  }, [filters.tenantSlug]);
+  }, [filters.tenantSlug, handleUnauthorized]);
 
   const fetchOrders = useCallback(async () => {
     const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
 
     // If no token, redirect to login immediately
     if (!token) {
-      console.log('No auth token found, redirecting to login');
-      window.location.href = '/login';
+      handleUnauthorized('missing token while fetching orders');
       return;
     }
 
@@ -308,10 +325,11 @@ export function OrderList({ todayOnly = false, selectedTenant }: OrderListProps 
         if (res.ok) {
           const tenantOrders = await res.json();
           allOrders.push(...tenantOrders);
-        } else if (res.status === 401) {
+        } else if (res.status === 401 || res.status === 403) {
           const errorText = await res.text().catch(() => '');
-          console.error('[OrderList] 401 Unauthorized:', errorText);
-          continue;
+          console.error(`[OrderList] ${res.status} Unauthorized:`, errorText);
+          handleUnauthorized(`orders ${tenant} ${res.status}`);
+          return;
         } else {
           console.error(`Failed to fetch orders for ${tenant}:`, res.status, await res.text());
         }
@@ -365,7 +383,7 @@ export function OrderList({ todayOnly = false, selectedTenant }: OrderListProps 
         setLoading(false);
       }
     }
-  }, [filters, tenantIdToSlug, fetchTenantMapping, todayOnly]);
+  }, [filters, tenantIdToSlug, fetchTenantMapping, todayOnly, handleUnauthorized]);
 
   // Sync with top tenant selector only when it actually changes.
   // This keeps brand chip clicks functional inside the dispatch panel.
@@ -475,6 +493,8 @@ export function OrderList({ todayOnly = false, selectedTenant }: OrderListProps 
       if (res.ok) {
         setOrders((prev) => prev.map((item) => (item.id === orderId ? { ...item, status: newStatus } : item)));
         fetchOrders();
+      } else if (res.status === 401 || res.status === 403) {
+        handleUnauthorized(`status update ${orderId} ${res.status}`);
       }
     } catch (error) {
       console.error('Failed to update status:', error);

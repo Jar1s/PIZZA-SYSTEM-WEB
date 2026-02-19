@@ -1,11 +1,31 @@
-import { Controller, Post, Body, UseGuards, Request, Res, BadRequestException } from '@nestjs/common';
+import { Controller, Post, Body, UseGuards, Request, Res, BadRequestException, UnauthorizedException } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
-import { Response } from 'express';
+import { Request as ExpressRequest, Response } from 'express';
 import * as crypto from 'crypto';
 import { AuthService, LoginDto, RefreshTokenDto } from './auth.service';
 import { SmsService } from './sms.service';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { Public } from './decorators/public.decorator';
+
+function extractCookieValue(req: ExpressRequest, cookieName: string): string | undefined {
+  const cookieHeader = req.headers?.cookie;
+  if (!cookieHeader) return undefined;
+
+  const match = cookieHeader
+    .split(';')
+    .map((segment) => segment.trim())
+    .find((segment) => segment.startsWith(`${cookieName}=`));
+
+  if (!match) return undefined;
+  const value = match.slice(cookieName.length + 1);
+  if (!value) return undefined;
+
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
+}
 
 @Controller('auth')
 export class AuthController {
@@ -45,8 +65,20 @@ export class AuthController {
   @Public()
   @Throttle({ default: { limit: 10, ttl: 60000 } }) // 10 refresh attempts per minute
   @Post('refresh')
-  async refresh(@Body() refreshTokenDto: RefreshTokenDto, @Res({ passthrough: true }) res: Response) {
-    const result = await this.authService.refreshToken(refreshTokenDto);
+  async refresh(
+    @Body() refreshTokenDto: RefreshTokenDto,
+    @Request() req: ExpressRequest,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const refreshToken =
+      refreshTokenDto?.refresh_token ||
+      extractCookieValue(req, 'refresh_token');
+
+    if (!refreshToken) {
+      throw new UnauthorizedException('Missing refresh token');
+    }
+
+    const result = await this.authService.refreshToken({ refresh_token: refreshToken });
     
     // Update HttpOnly cookie in production
     if (process.env.NODE_ENV === 'production') {
@@ -64,7 +96,7 @@ export class AuthController {
 
   @UseGuards(JwtAuthGuard)
   @Post('logout')
-  async logout(@Body() body: { refresh_token?: string }, @Request() req: any, @Res({ passthrough: true }) res: Response) {
+  async logout(@Body() body: { refresh_token?: string }, @Request() req: ExpressRequest & { user?: any }, @Res({ passthrough: true }) res: Response) {
     let result;
     
     if (body.refresh_token) {
@@ -240,4 +272,3 @@ export class AuthController {
     return await this.authService.markPhoneAsVerified(req.user.id);
   }
 }
-

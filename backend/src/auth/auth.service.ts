@@ -130,6 +130,9 @@ export class AuthService {
 
   async refreshToken(refreshTokenDto: RefreshTokenDto) {
     const { refresh_token } = refreshTokenDto;
+    if (!refresh_token || !String(refresh_token).trim()) {
+      throw new UnauthorizedException('Missing refresh token');
+    }
 
     // Find refresh token in database
     const tokenRecord = await this.prisma.refreshToken.findUnique({
@@ -327,4 +330,3 @@ export class AuthService {
     };
   }
 }
-

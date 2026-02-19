@@ -64,8 +64,40 @@ export default function AdminLayout({
     
     // If not loading and no user (or logged out), redirect to login
     if (!loading) {
-      if (!user || loggedOut === 'true') {
-        router.push('/login');
+      const token = localStorage.getItem('auth_token');
+
+      if (!user || loggedOut === 'true' || !token) {
+        router.replace('/login');
+        return;
+      }
+
+      // Guard against stale UI state when token is already expired.
+      try {
+        const [, payloadBase64] = token.split('.');
+        if (payloadBase64) {
+          const normalized = payloadBase64.replace(/-/g, '+').replace(/_/g, '/');
+          const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '=');
+          const payload = JSON.parse(atob(padded));
+          const exp = typeof payload?.exp === 'number' ? payload.exp : null;
+          if (exp && Math.floor(Date.now() / 1000) >= exp - 30) {
+            localStorage.removeItem('auth_token');
+            localStorage.removeItem('refresh_token');
+            localStorage.removeItem('auth_user');
+            sessionStorage.setItem('admin_logged_out', 'true');
+            router.replace('/login');
+            return;
+          }
+        }
+      } catch {
+        // Ignore token parse errors and let API checks handle auth.
+      }
+
+      if (user.role !== 'ADMIN' && user.role !== 'OPERATOR') {
+        localStorage.removeItem('auth_token');
+        localStorage.removeItem('refresh_token');
+        localStorage.removeItem('auth_user');
+        sessionStorage.setItem('admin_logged_out', 'true');
+        router.replace('/login');
         return;
       }
     }

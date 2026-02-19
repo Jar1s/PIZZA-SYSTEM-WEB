@@ -1,4 +1,4 @@
-import { ExecutionContext, Injectable, Logger } from '@nestjs/common';
+import { ExecutionContext, Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { AuthGuard } from '@nestjs/passport';
 import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
@@ -32,7 +32,10 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
     
     if (err || !user) {
       this.logger.error(`Auth failed for ${route}: ${err?.message || info?.message || 'No user'}`);
-      throw err || new Error('Unauthorized');
+      if (err instanceof UnauthorizedException) {
+        throw err;
+      }
+      throw new UnauthorizedException(info?.message || err?.message || 'Unauthorized');
     }
     
     return user;

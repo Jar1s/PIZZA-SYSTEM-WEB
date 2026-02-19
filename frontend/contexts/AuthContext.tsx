@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { useCart } from '@/hooks/useCart';
 
@@ -25,10 +25,35 @@ interface AuthContextType {
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+const TOKEN_EXPIRY_SKEW_SECONDS = 30;
+
+function parseJwtExpiration(token: string): number | null {
+  try {
+    const [, payloadBase64] = token.split('.');
+    if (!payloadBase64) return null;
+    const normalized = payloadBase64.replace(/-/g, '+').replace(/_/g, '/');
+    const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '=');
+    const payload = JSON.parse(atob(padded));
+    if (typeof payload?.exp === 'number') {
+      return payload.exp;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+function isJwtExpired(token: string, skewSeconds = TOKEN_EXPIRY_SKEW_SECONDS): boolean {
+  const exp = parseJwtExpiration(token);
+  if (!exp) return false;
+  const nowSeconds = Math.floor(Date.now() / 1000);
+  return nowSeconds >= exp - skewSeconds;
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const refreshIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const router = useRouter();
   const { clearCart } = useCart();
 
@@ -111,55 +136,88 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    // PRODUCTION: Check for stored token on mount
-    const token = localStorage.getItem('auth_token');
-    const refreshToken = localStorage.getItem('refresh_token');
-    const storedUser = localStorage.getItem('auth_user');
-    
-    if (token && storedUser) {
+    // PRODUCTION: Validate stored token/session on mount
+    const initializeAuth = async () => {
+      const token = localStorage.getItem('auth_token');
+      const refreshToken = localStorage.getItem('refresh_token');
+      const storedUser = localStorage.getItem('auth_user');
+
+      if (!token || !storedUser) {
+        setLoading(false);
+        return;
+      }
+
       try {
-        setUser(JSON.parse(storedUser));
-        // Set up automatic token refresh
-        if (refreshToken) {
-          setupTokenRefresh(refreshToken);
+        const parsedUser = JSON.parse(storedUser);
+        setUser(parsedUser);
+
+        // If access token is already expired/near expiry, refresh immediately.
+        if (isJwtExpired(token)) {
+          try {
+            await refreshAccessToken();
+          } catch (error) {
+            console.error('Initial token refresh failed:', error);
+            localStorage.removeItem('auth_token');
+            localStorage.removeItem('refresh_token');
+            localStorage.removeItem('auth_user');
+            setUser(null);
+            setLoading(false);
+            return;
+          }
+        }
+
+        // In production, refresh token can be in HttpOnly cookie.
+        if (refreshToken || process.env.NODE_ENV === 'production') {
+          setupTokenRefresh(refreshToken || 'cookie');
         }
       } catch (e) {
         localStorage.removeItem('auth_token');
         localStorage.removeItem('refresh_token');
         localStorage.removeItem('auth_user');
+        setUser(null);
+      } finally {
+        setLoading(false);
       }
-    }
-    
-    setLoading(false);
+    };
+
+    initializeAuth();
+
+    return () => {
+      if (refreshIntervalRef.current) {
+        clearInterval(refreshIntervalRef.current);
+        refreshIntervalRef.current = null;
+      }
+    };
   }, []);
 
   const setupTokenRefresh = (refreshTokenValue: string) => {
+    if (refreshIntervalRef.current) {
+      clearInterval(refreshIntervalRef.current);
+      refreshIntervalRef.current = null;
+    }
+
     // Refresh token every 50 minutes (before 1h expiration)
-    const interval = setInterval(async () => {
+    refreshIntervalRef.current = setInterval(async () => {
       try {
         await refreshAccessToken();
       } catch (error) {
         console.error('Token refresh failed:', error);
-        clearInterval(interval);
+        if (refreshIntervalRef.current) {
+          clearInterval(refreshIntervalRef.current);
+          refreshIntervalRef.current = null;
+        }
         logout();
       }
     }, 50 * 60 * 1000); // 50 minutes
-
-    // Cleanup on unmount
-    return () => clearInterval(interval);
   };
 
   const refreshAccessToken = async () => {
     const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
-    const isProduction = process.env.NODE_ENV === 'production';
-    
-    // In production, refresh token is in HttpOnly cookie
-    // In development, get it from localStorage
-    const refreshTokenValue = isProduction 
-      ? 'cookie' // Placeholder - actual token is in HttpOnly cookie
-      : localStorage.getItem('refresh_token');
-    
-    if (!refreshTokenValue && !isProduction) {
+    const refreshTokenValue = localStorage.getItem('refresh_token');
+
+    // In development, refresh token must be in localStorage.
+    // In production, fallback to HttpOnly cookie when localStorage token is not present.
+    if (!refreshTokenValue && process.env.NODE_ENV !== 'production') {
       throw new Error('No refresh token available');
     }
 
@@ -167,10 +225,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include', // Include cookies for HttpOnly tokens
-      body: JSON.stringify({ 
-        refresh_token: isProduction 
-          ? undefined // Don't send in body, it's in cookie
-          : refreshTokenValue 
+      body: JSON.stringify({
+        refresh_token: refreshTokenValue || undefined,
       }),
     });
 
@@ -215,21 +271,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       };
     }
     
-    // Store tokens and user
-    // In production, tokens are in HttpOnly cookies, but we still store in localStorage for development
-    const isProduction = process.env.NODE_ENV === 'production';
-    
-    if (!isProduction) {
-      // Development: Store in localStorage
+    // Store access token for Authorization header and refresh token for fallback refresh flow
+    if (data.access_token) {
       localStorage.setItem('auth_token', data.access_token);
-      if (data.refresh_token) {
-        localStorage.setItem('refresh_token', data.refresh_token);
-      }
-    } else {
-      // Production: Tokens are in HttpOnly cookies, but we still need access_token for Authorization header
-      if (data.access_token) {
-        localStorage.setItem('auth_token', data.access_token); // Still needed for Authorization header
-      }
+    }
+    if (data.refresh_token) {
+      localStorage.setItem('refresh_token', data.refresh_token);
     }
     // Check if user changed (for cart clearing)
     const previousUserId = user?.id;
@@ -247,10 +294,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     
     // Set up automatic token refresh
     if (data.refresh_token) {
-      // In production, refresh token is in HttpOnly cookie
-      if (!isProduction) {
-        localStorage.setItem('refresh_token', data.refresh_token);
-      }
       setupTokenRefresh(data.refresh_token || 'cookie'); // Use 'cookie' as placeholder in production
     }
   };
@@ -258,6 +301,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = async () => {
     // Clear cart when logging out
     clearCart();
+
+    if (refreshIntervalRef.current) {
+      clearInterval(refreshIntervalRef.current);
+      refreshIntervalRef.current = null;
+    }
     
     const refreshToken = localStorage.getItem('refresh_token');
     
@@ -357,19 +405,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const data = await response.json();
     
     // Store tokens and user
-    const isProduction = process.env.NODE_ENV === 'production';
-    
-    if (!isProduction) {
-      // Development: Store in localStorage
+    if (data.access_token) {
       localStorage.setItem('auth_token', data.access_token);
-      if (data.refresh_token) {
-        localStorage.setItem('refresh_token', data.refresh_token);
-      }
-    } else {
-      // Production: Tokens are in HttpOnly cookies, but we still need access_token for Authorization header
-      if (data.access_token) {
-        localStorage.setItem('auth_token', data.access_token);
-      }
+    }
+    if (data.refresh_token) {
+      localStorage.setItem('refresh_token', data.refresh_token);
     }
     // Check if user changed (for cart clearing)
     const previousUserId = user?.id;
@@ -384,9 +424,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     
     // Set up automatic token refresh
     if (data.refresh_token) {
-      if (!isProduction) {
-        localStorage.setItem('refresh_token', data.refresh_token);
-      }
       setupTokenRefresh(data.refresh_token || 'cookie');
     }
   };
@@ -418,4 +455,3 @@ export function useAuth() {
   }
   return context;
 }
-

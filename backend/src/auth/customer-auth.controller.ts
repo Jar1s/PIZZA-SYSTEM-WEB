@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Body, Query, Res, BadRequestException, Req } from '@nestjs/common';
+import { Controller, Post, Get, Body, Query, Res, BadRequestException, UnauthorizedException, Req } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { Request, Response } from 'express';
 import { CustomerAuthService, RegisterDto, LoginDto } from './customer-auth.service';
@@ -62,6 +62,26 @@ function decodeState(state?: string): { returnUrl?: string; tenant?: string } {
     return JSON.parse(Buffer.from(state, 'base64').toString());
   } catch (e) {
     return {};
+  }
+}
+
+function extractCookieValue(req: Request, cookieName: string): string | undefined {
+  const cookieHeader = req.headers?.cookie;
+  if (!cookieHeader) return undefined;
+
+  const match = cookieHeader
+    .split(';')
+    .map((segment) => segment.trim())
+    .find((segment) => segment.startsWith(`${cookieName}=`));
+
+  if (!match) return undefined;
+  const value = match.slice(cookieName.length + 1);
+  if (!value) return undefined;
+
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
   }
 }
 
@@ -186,8 +206,13 @@ export class CustomerAuthController {
   @Public()
   @Throttle({ default: { limit: 10, ttl: 60000 } }) // 10 refresh attempts per minute
   @Post('refresh')
-  async refresh(@Body() body: { refresh_token: string }, @Res({ passthrough: true }) res: Response) {
-    const result = await this.customerAuthService.refreshToken(body.refresh_token);
+  async refresh(@Req() req: Request, @Body() body: { refresh_token?: string }, @Res({ passthrough: true }) res: Response) {
+    const refreshToken = body?.refresh_token || extractCookieValue(req, 'refresh_token');
+    if (!refreshToken) {
+      throw new UnauthorizedException('Missing refresh token');
+    }
+
+    const result = await this.customerAuthService.refreshToken(refreshToken);
     
     // Update HttpOnly cookie in production
     if (process.env.NODE_ENV === 'production') {
