@@ -192,22 +192,17 @@ export class WoltDriveService {
     const dropoffLocation = this.getValidatedLocation(dropoffAddress, 'dropoff');
     const { shipmentPromisesUrl } = this.resolveApiEndpoints(apiConfig);
 
+    // Strict payload based on Wolt docs:
+    // POST /v1/venues/{venue_id}/shipment-promises
+    // accepted fields: street, city, post_code, lat, lon, language,
+    // min_preparation_time_minutes, scheduled_dropoff_time (+ optional parcels/cash for fees).
     const request = {
       street: dropoffAddress.street,
       city: dropoffAddress.city,
       post_code: dropoffAddress.postalCode,
-      country: dropoffAddress.country,
       lat: dropoffLocation.lat,
       lon: dropoffLocation.lon,
       min_preparation_time_minutes: 30,
-      order_details: {
-        items: [
-          {
-            quantity: 1,
-            name: 'Order',
-          },
-        ],
-      },
     };
 
     let lastError: Error | null = null;
@@ -298,22 +293,9 @@ export class WoltDriveService {
       street: dropoffAddress.street,
       city: dropoffAddress.city,
       post_code: dropoffAddress.postalCode,
-      country: dropoffAddress.country,
       lat: dropoffLocation.lat,
       lon: dropoffLocation.lon,
       min_preparation_time_minutes: 30,
-      order_details: {
-        customer: {
-          name: customerName,
-          phone_number: customerPhone,
-        },
-        items: [
-          {
-            quantity: 1,
-            name: 'Pizza order',
-          },
-        ],
-      },
     };
 
     let lastError: Error | null = null;
@@ -620,7 +602,6 @@ export class WoltDriveService {
     throw lastError || new Error('Wolt API cancelDelivery failed');
   }
 }
-
 
 
 
