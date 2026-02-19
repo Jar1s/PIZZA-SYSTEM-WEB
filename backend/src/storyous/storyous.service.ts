@@ -404,7 +404,11 @@ export class StoryousService {
         internalProductName: true,
         externalIdentifier: true,
         source: true,
+        updatedAt: true,
       },
+      // Important: when duplicates exist for the same internalProductName,
+      // we want the latest mapping to win.
+      orderBy: [{ updatedAt: 'desc' }],
     });
 
     const byProductName = new Map<string, string>();
@@ -426,6 +430,22 @@ export class StoryousService {
 
       if (!preferredMapping) {
         continue;
+      }
+
+      const storyousCandidatesCount = candidates.filter(
+        (mapping) => mapping.source?.trim().toLowerCase() === 'storyous',
+      ).length;
+      if (storyousCandidatesCount > 1) {
+        this.logger.warn('[Storyous] Duplicate storyous mappings found; using latest updated mapping', {
+          tenantId: order.tenantId,
+          productName,
+          chosenExternalIdentifier: preferredMapping.externalIdentifier,
+          candidates: candidates.map((mapping) => ({
+            externalIdentifier: mapping.externalIdentifier,
+            source: mapping.source,
+            updatedAt: mapping.updatedAt,
+          })),
+        });
       }
 
       byProductName.set(productName, preferredMapping.externalIdentifier.trim());
