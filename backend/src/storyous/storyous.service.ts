@@ -16,6 +16,22 @@ export class StoryousService {
     private prisma: PrismaService,
   ) {}
 
+  private buildMerchantPlaceId(merchantId: string, placeId: string): string {
+    const merchant = String(merchantId || '').trim();
+    const place = String(placeId || '').trim();
+
+    if (!merchant || !place) {
+      throw new Error('Storyous merchantId/placeId missing');
+    }
+
+    // Already combined by admin input (merchant-place format)
+    if (merchant.includes('-') && merchant.endsWith(`-${place}`)) {
+      return merchant;
+    }
+
+    return `${merchant}-${place}`;
+  }
+
   private async getConfig() {
     // Try to get from database first
     const dbConfig = await this.settingsService.getStoryousSettings();
@@ -108,6 +124,7 @@ export class StoryousService {
 
     try {
       const token = await this.getAccessToken();
+      const merchantPlaceId = this.buildMerchantPlaceId(merchantId, placeId);
       // #region agent log
       fetch('http://127.0.0.1:7244/ingest/c8c401c8-9b71-4e06-9291-444154701c07',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'storyous.service.ts:90',message:'access token obtained',data:{hasToken:!!token,tokenLength:token?.length||0},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
       // #endregion
@@ -201,7 +218,9 @@ export class StoryousService {
       fetch('http://127.0.0.1:7244/ingest/c8c401c8-9b71-4e06-9291-444154701c07',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'storyous.service.ts:129',message:'request body prepared',data:{merchantId,placeId,itemsCount:items.length,hasCustomer:!!customer,hasAddress:!!address,total:orderData.total,status:orderData.status},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
       // #endregion
 
-      const requestUrl = `${this.apiBaseUrl}/delivery/orders`;
+      // Storyous Delivery API expects merchantPlaceId in path:
+      // POST /delivery/orders/{merchantPlaceId}
+      const requestUrl = `${this.apiBaseUrl}/delivery/orders/${encodeURIComponent(merchantPlaceId)}`;
       // #region agent log
       fetch('http://127.0.0.1:7244/ingest/c8c401c8-9b71-4e06-9291-444154701c07',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'storyous.service.ts:132',message:'request URL',data:{url:requestUrl,method:'POST'},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
       // #endregion
@@ -227,8 +246,12 @@ export class StoryousService {
       }
 
       const result = await response.json();
-      this.logger.log(`✅ Order ${order.id} sent to Storyous: ${result.id || 'success'}`);
-      return result;
+      const normalizedResult = {
+        ...result,
+        id: result?.id || result?.orderId || undefined,
+      };
+      this.logger.log(`✅ Order ${order.id} sent to Storyous: ${normalizedResult.id || 'success'}`);
+      return normalizedResult;
     } catch (error: any) {
       // #region agent log
       fetch('http://127.0.0.1:7244/ingest/c8c401c8-9b71-4e06-9291-444154701c07',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'storyous.service.ts:152',message:'exception caught',data:{errorMessage:error.message,errorStack:error.stack},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
@@ -342,4 +365,3 @@ export class StoryousService {
     return statusMap[status] || 'pending';
   }
 }
-
