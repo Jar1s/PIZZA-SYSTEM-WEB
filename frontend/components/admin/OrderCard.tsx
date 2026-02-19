@@ -913,30 +913,48 @@ export function OrderCard({
             </div>
           )}
           {hasWoltDelivery && woltDelivery && (
-            <div className="col-span-2 mb-2 p-2 rounded text-xs bg-orange-50 text-orange-800">
-              🚚 Wolt Delivery: {woltDelivery.status}
-              {woltDelivery.trackingUrl && (
-                <a 
-                  href={woltDelivery.trackingUrl} 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="ml-2 text-orange-600 underline"
-                >
-                  Track
-                </a>
-              )}
-              {woltDelivery.jobId && (
-                <span className="ml-2 text-gray-600">(Job: {woltDelivery.jobId})</span>
-              )}
-              {woltPickupEtaMinutes != null && (
-                <span className="ml-2 text-gray-700">ETA kuriér na prevádzku: ~{Math.round(woltPickupEtaMinutes)} min</span>
-              )}
-              {woltDropoffEtaMinutes != null && (
-                <span className="ml-2 text-gray-700">Doručenie zákazníkovi: ~{Math.round(woltDropoffEtaMinutes)} min</span>
-              )}
-              {woltFeeCents != null && (
-                <span className="ml-2 text-gray-700">Fee: €{(woltFeeCents / 100).toFixed(2)}</span>
-              )}
+            <div className="col-span-2 mb-2 rounded-lg border border-orange-200 bg-orange-50 p-3">
+              <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                <div className="min-w-0">
+                  <div className="text-sm font-semibold text-orange-900">
+                    🚚 Wolt Delivery: {woltDelivery.status}
+                    {woltDelivery.jobId && (
+                      <span className="ml-2 font-medium text-gray-600">(Job: {woltDelivery.jobId})</span>
+                    )}
+                  </div>
+                  {woltDelivery.trackingUrl && (
+                    <a
+                      href={woltDelivery.trackingUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mt-1 inline-block text-sm font-semibold text-orange-700 underline"
+                    >
+                      Otvoriť tracking
+                    </a>
+                  )}
+                </div>
+
+                {woltPickupEtaMinutes != null && (
+                  <div className="shrink-0 rounded-md border border-orange-300 bg-white px-4 py-2 text-center shadow-sm">
+                    <div className="text-[11px] font-semibold uppercase tracking-wide text-orange-600">
+                      Kuriér na prevádzku
+                    </div>
+                    <div className="text-3xl font-extrabold leading-none text-orange-700">
+                      {Math.round(woltPickupEtaMinutes)}
+                    </div>
+                    <div className="text-xs font-semibold text-orange-700">min</div>
+                  </div>
+                )}
+              </div>
+
+              <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-700">
+                {woltDropoffEtaMinutes != null && (
+                  <span>Doručenie zákazníkovi: ~{Math.round(woltDropoffEtaMinutes)} min</span>
+                )}
+                {woltFeeCents != null && (
+                  <span>Fee: €{(woltFeeCents / 100).toFixed(2)}</span>
+                )}
+              </div>
             </div>
           )}
           <div>
