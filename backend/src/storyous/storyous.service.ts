@@ -152,20 +152,30 @@ export class StoryousService {
       const storyousItemIdsByProductName = await this.getStoryousItemIdsByProductName(order);
       
       // Map order items to Storyous format
+      const unresolvedItems: Array<{ productName: string; productId: string }> = [];
       const items = order.items.map(item => {
         const itemData: any = {
           count: item.quantity,
           unitPriceWithVat: item.priceCents / 100,
         };
 
-        // Use explicit Storyous itemId first, then mapping table. Never fall back to internal DB IDs.
+        // Use explicit Storyous itemId first, then mapping table.
+        // Never fall back to internal DB IDs - Storyous does not know them.
         const explicitStoryousItemId = this.getExplicitStoryousItemId(item as any);
         const mappedStoryousItemId = storyousItemIdsByProductName.get(item.productName);
         const storyousItemId = explicitStoryousItemId || mappedStoryousItemId;
-        itemData.itemId = storyousItemId || item.productId || item.id;
-        
+
+        if (!storyousItemId) {
+          unresolvedItems.push({
+            productName: item.productName,
+            productId: item.productId,
+          });
+          return null;
+        }
+
+        itemData.itemId = storyousItemId;
         return itemData;
-      });
+      }).filter((item): item is any => item !== null);
       
       const orderData = {
         externalId: order.id, // Storyous expects camelCase externalId
@@ -187,23 +197,26 @@ export class StoryousService {
         deliveryNote: address?.instructions || null,
       };
 
-      const missingMappedProducts = Array.from(
-        new Set(
-          order.items
-            .filter((item) => {
-              const explicitStoryousItemId = this.getExplicitStoryousItemId(item as any);
-              const mappedStoryousItemId = storyousItemIdsByProductName.get(item.productName);
-              return !explicitStoryousItemId && !mappedStoryousItemId;
-            })
-            .map((item) => item.productName),
-        ),
-      );
-      if (missingMappedProducts.length > 0) {
-        this.logger.warn('[Storyous] Missing itemId mapping for some products; sending name-only items', {
+      if (unresolvedItems.length > 0) {
+        const uniqueUnresolved = Array.from(
+          new Map(
+            unresolvedItems.map((item) => [`${item.productId}:${item.productName}`, item]),
+          ).values(),
+        );
+        const unresolvedText = uniqueUnresolved
+          .map((item) => `${item.productName} (${item.productId})`)
+          .join(', ');
+
+        this.logger.error('[Storyous] Missing itemId mapping for products', {
           orderId: order.id,
           tenantId: order.tenantId,
-          products: missingMappedProducts,
+          unresolvedItems: uniqueUnresolved,
         });
+
+        throw new Error(
+          `Storyous mapping missing for products: ${unresolvedText}. ` +
+            'Please add product_mappings.externalIdentifier (Storyous itemId) for this tenant.',
+        );
       }
 
       this.logger.debug('[Storyous] Payload', { orderId: order.id, payload: orderData });
