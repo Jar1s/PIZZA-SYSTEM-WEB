@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Order, OrderStatus } from '@pizza-ecosystem/shared';
 import { SettingsService } from '../settings/settings.service';
+import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
 export class StoryousService {
@@ -12,6 +13,7 @@ export class StoryousService {
   
   constructor(
     private settingsService: SettingsService,
+    private prisma: PrismaService,
   ) {}
 
   private async getConfig() {
@@ -121,6 +123,8 @@ export class StoryousService {
         customerPhone: customer?.phone,
         addressCity: address?.city,
       });
+
+      const storyousItemIdsByProductName = await this.getStoryousItemIdsByProductName(order);
       
       // Map order items to Storyous format
       const items = order.items.map(item => {
@@ -132,14 +136,13 @@ export class StoryousService {
           unitPriceWithVat: item.priceCents / 100, // Storyous expects unitPriceWithVat in euros
         };
 
-        // Map Storyous itemId if available, otherwise fall back to product/id so the field is always present
-        const storyousItemId =
-          (item as any).storyousItemId ||
-          (item as any).storyous_item_id ||
-          (item as any).storyousId ||
-          item.productId ||
-          item.id;
-        itemData.itemId = storyousItemId;
+        // Use explicit Storyous itemId first, then mapping table. Never fall back to internal DB IDs.
+        const explicitStoryousItemId = this.getExplicitStoryousItemId(item as any);
+        const mappedStoryousItemId = storyousItemIdsByProductName.get(item.productName);
+        const storyousItemId = explicitStoryousItemId || mappedStoryousItemId;
+        if (storyousItemId) {
+          itemData.itemId = storyousItemId;
+        }
         
         // Add modifiers if available
         if (item.modifiers) {
@@ -173,6 +176,25 @@ export class StoryousService {
         external_id: order.id, // keep legacy snake_case just in case
         status: this.mapOrderStatus(order.status),
       };
+
+      const missingMappedProducts = Array.from(
+        new Set(
+          order.items
+            .filter((item) => {
+              const explicitStoryousItemId = this.getExplicitStoryousItemId(item as any);
+              const mappedStoryousItemId = storyousItemIdsByProductName.get(item.productName);
+              return !explicitStoryousItemId && !mappedStoryousItemId;
+            })
+            .map((item) => item.productName),
+        ),
+      );
+      if (missingMappedProducts.length > 0) {
+        this.logger.warn('[Storyous] Missing itemId mapping for some products; sending name-only items', {
+          orderId: order.id,
+          tenantId: order.tenantId,
+          products: missingMappedProducts,
+        });
+      }
 
       this.logger.debug('[Storyous] Payload', { orderId: order.id, payload: orderData });
       // #region agent log
@@ -247,6 +269,65 @@ export class StoryousService {
     }
   }
 
+  private getExplicitStoryousItemId(item: Record<string, any>): string | undefined {
+    const rawValue = item.storyousItemId ?? item.storyous_item_id ?? item.storyousId;
+    if (rawValue === undefined || rawValue === null) {
+      return undefined;
+    }
+
+    const normalized = String(rawValue).trim();
+    return normalized.length > 0 ? normalized : undefined;
+  }
+
+  private async getStoryousItemIdsByProductName(order: Order): Promise<Map<string, string>> {
+    const productNames = Array.from(
+      new Set(order.items.map((item) => item.productName).filter((name) => !!name?.trim())),
+    );
+    if (!order.tenantId || productNames.length === 0) {
+      return new Map<string, string>();
+    }
+
+    const mappings = await this.prisma.productMapping.findMany({
+      where: {
+        tenantId: order.tenantId,
+        internalProductName: {
+          in: productNames,
+        },
+      },
+      select: {
+        internalProductName: true,
+        externalIdentifier: true,
+        source: true,
+      },
+    });
+
+    const byProductName = new Map<string, string>();
+    for (const productName of productNames) {
+      const candidates = mappings.filter(
+        (mapping) =>
+          mapping.internalProductName === productName &&
+          typeof mapping.externalIdentifier === 'string' &&
+          mapping.externalIdentifier.trim().length > 0,
+      );
+
+      if (candidates.length === 0) {
+        continue;
+      }
+
+      const preferredMapping =
+        candidates.find((mapping) => mapping.source?.trim().toLowerCase() === 'storyous') ||
+        candidates.find((mapping) => !mapping.source);
+
+      if (!preferredMapping) {
+        continue;
+      }
+
+      byProductName.set(productName, preferredMapping.externalIdentifier.trim());
+    }
+
+    return byProductName;
+  }
+
   private mapOrderStatus(status: OrderStatus): string {
     // Map your order statuses to Storyous statuses
     const statusMap: Record<OrderStatus, string> = {
@@ -261,6 +342,4 @@ export class StoryousService {
     return statusMap[status] || 'pending';
   }
 }
-
-
 
