@@ -616,6 +616,9 @@ export default function OrderTrackingPage() {
                   <p className={`mt-2 text-lg font-semibold ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>
                     min
                   </p>
+                  <p className={`mt-1 text-xs font-medium tracking-wide ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
+                    {language === 'sk' ? 'do doručenia' : 'to delivery'}
+                  </p>
                 </div>
               </div>
 
