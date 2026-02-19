@@ -150,6 +150,7 @@ export class WoltDriveService {
   private formatWoltError(response: Response, errorData: any): string {
     const status = response.status;
     const statusText = response.statusText;
+    const extractedMessage = this.extractApiErrorMessage(errorData);
 
     // Handle specific error cases
     if (status === 401) {
@@ -165,12 +166,7 @@ export class WoltDriveService {
     }
 
     if (status === 400) {
-      const message =
-        errorData?.message ||
-        errorData?.error ||
-        errorData?.detail ||
-        errorData?.title ||
-        'Neplatná požiadavka';
+      const message = extractedMessage || 'Neplatná požiadavka';
       if (message.includes('pickup') || message.includes('dropoff')) {
         return `Neplatná adresa: ${message}`;
       }
@@ -183,8 +179,82 @@ export class WoltDriveService {
     }
 
     // Generic error message with details from API if available
-    const apiMessage = errorData?.message || errorData?.error || statusText;
+    const apiMessage = extractedMessage || statusText;
     return `Wolt API chyba (${status}): ${apiMessage}`;
+  }
+
+  private extractApiErrorMessage(errorData: any): string {
+    const directCandidates = [
+      errorData?.message,
+      errorData?.error,
+      errorData?.detail,
+      errorData?.title,
+      errorData?.reason,
+      errorData?.description,
+    ];
+
+    for (const candidate of directCandidates) {
+      if (typeof candidate === 'string' && candidate.trim()) {
+        return candidate.trim();
+      }
+    }
+
+    const errorsList = Array.isArray(errorData?.errors)
+      ? errorData.errors
+      : Array.isArray(errorData?.validation_errors)
+        ? errorData.validation_errors
+        : null;
+
+    if (errorsList && errorsList.length > 0) {
+      const rendered = errorsList
+        .map((entry: any) => {
+          if (typeof entry === 'string') {
+            return entry.trim();
+          }
+
+          if (entry && typeof entry === 'object') {
+            return (
+              (typeof entry.message === 'string' && entry.message.trim()) ||
+              (typeof entry.detail === 'string' && entry.detail.trim()) ||
+              (typeof entry.error === 'string' && entry.error.trim()) ||
+              JSON.stringify(entry)
+            );
+          }
+
+          return '';
+        })
+        .filter(Boolean)
+        .join('; ');
+
+      if (rendered) {
+        return rendered;
+      }
+    }
+
+    if (typeof errorData?.raw === 'string' && errorData.raw.trim()) {
+      return errorData.raw.trim();
+    }
+
+    return '';
+  }
+
+  private async buildApiError(response: Response): Promise<Error> {
+    const rawBody = await response.text().catch(() => '');
+    let errorData: any = {};
+
+    if (rawBody) {
+      try {
+        errorData = JSON.parse(rawBody);
+      } catch {
+        errorData = { raw: rawBody.slice(0, 1000) };
+      }
+    }
+
+    const userFriendlyMessage = this.formatWoltError(response, errorData);
+    const error = new Error(userFriendlyMessage);
+    (error as any).status = response.status;
+    (error as any).originalError = errorData;
+    return error;
   }
 
   async getQuote(
@@ -224,11 +294,7 @@ export class WoltDriveService {
         });
 
         if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          const userFriendlyMessage = this.formatWoltError(response, errorData);
-          const error = new Error(userFriendlyMessage);
-          (error as any).status = response.status;
-          (error as any).originalError = errorData;
+          const error = await this.buildApiError(response);
           if (!this.isRetryableError(error, response)) {
             throw error;
           }
@@ -251,7 +317,11 @@ export class WoltDriveService {
         
         // Check if error is retryable
         if (!this.isRetryableError(error, undefined)) {
-          this.logger.error('Non-retryable error from Wolt API', { error: lastError.message });
+          this.logger.error('Non-retryable error from Wolt API', {
+            error: lastError.message,
+            status: (error as any)?.status,
+            originalError: (error as any)?.originalError,
+          });
           throw lastError;
         }
         
@@ -318,11 +388,7 @@ export class WoltDriveService {
         });
 
         if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          const userFriendlyMessage = this.formatWoltError(response, errorData);
-          const error = new Error(userFriendlyMessage);
-          (error as any).status = response.status;
-          (error as any).originalError = errorData;
+          const error = await this.buildApiError(response);
           
           if (!this.isRetryableError(error, response)) {
             throw error; // Don't retry 4xx errors
@@ -346,7 +412,11 @@ export class WoltDriveService {
         
         // Check if error is retryable
         if (!this.isRetryableError(error, undefined)) {
-          this.logger.error('Non-retryable error from Wolt API', { error: lastError.message });
+          this.logger.error('Non-retryable error from Wolt API', {
+            error: lastError.message,
+            status: (error as any)?.status,
+            originalError: (error as any)?.originalError,
+          });
           throw lastError;
         }
         
@@ -463,11 +533,7 @@ export class WoltDriveService {
         });
 
         if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          const userFriendlyMessage = this.formatWoltError(response, errorData);
-          const error = new Error(userFriendlyMessage);
-          (error as any).status = response.status;
-          (error as any).originalError = errorData;
+          const error = await this.buildApiError(response);
           
           if (!this.isRetryableError(error, response)) {
             throw error; // Don't retry 4xx errors
@@ -513,6 +579,8 @@ export class WoltDriveService {
           this.logger.error('Non-retryable error from Wolt API', { 
             error: lastError.message,
             orderId,
+            status: (error as any)?.status,
+            originalError: (error as any)?.originalError,
           });
           throw lastError;
         }
@@ -607,7 +675,6 @@ export class WoltDriveService {
     throw lastError || new Error('Wolt API cancelDelivery failed');
   }
 }
-
 
 
 
