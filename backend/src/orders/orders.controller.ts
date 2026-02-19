@@ -63,6 +63,26 @@ export class OrdersController {
     
     return result;
   }
+
+  // Backward-compatible admin sync route with tenant prefix
+  // Some frontend builds call /api/:tenantSlug/orders/:id/sync-storyous
+  @Post(':id/sync-storyous')
+  @UseGuards(RolesGuard)
+  @Roles('ADMIN', 'OPERATOR')
+  async syncToStoryousTenantRoute(
+    @Param('tenantSlug') tenantSlug: string,
+    @Param('id') id: string,
+  ) {
+    const tenant = await this.tenantsService.getTenantBySlug(tenantSlug);
+    const order = await this.ordersService.getOrderById(id);
+    const orderTenantId = (order as any)?.tenantId;
+
+    if (orderTenantId && orderTenantId !== tenant.id) {
+      throw new NotFoundException(`Order ${id} not found for tenant ${tenantSlug}`);
+    }
+
+    return this.ordersService.syncOrderToStoryous(id);
+  }
 }
 
 // Admin endpoints for managing orders
