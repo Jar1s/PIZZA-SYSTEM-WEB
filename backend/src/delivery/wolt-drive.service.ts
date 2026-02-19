@@ -165,7 +165,12 @@ export class WoltDriveService {
     }
 
     if (status === 400) {
-      const message = errorData?.message || errorData?.error || 'Neplatná požiadavka';
+      const message =
+        errorData?.message ||
+        errorData?.error ||
+        errorData?.detail ||
+        errorData?.title ||
+        'Neplatná požiadavka';
       if (message.includes('pickup') || message.includes('dropoff')) {
         return `Neplatná adresa: ${message}`;
       }
@@ -602,7 +607,6 @@ export class WoltDriveService {
     throw lastError || new Error('Wolt API cancelDelivery failed');
   }
 }
-
 
 
 
