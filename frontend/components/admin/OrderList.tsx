@@ -671,6 +671,7 @@ export function OrderList({ todayOnly = false, selectedTenant }: OrderListProps 
                 <OrderCard
                   order={selectedOrder}
                   onStatusUpdate={handleStatusUpdate}
+                  onOrderRefresh={fetchOrders}
                   isExpanded={true}
                   showToggle={false}
                   tenantSlug={tenantIdToSlug[selectedOrder.tenantId]}
@@ -690,6 +691,7 @@ export function OrderList({ todayOnly = false, selectedTenant }: OrderListProps 
                 key={order.id}
                 order={order}
                 onStatusUpdate={handleStatusUpdate}
+                onOrderRefresh={fetchOrders}
                 isExpanded={expandedOrders.has(order.id)}
                 onToggleExpand={(orderId) => {
                   setExpandedOrders((prev) => {

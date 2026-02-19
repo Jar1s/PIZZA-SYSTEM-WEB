@@ -13,6 +13,7 @@ import { useToastContext } from '@/contexts/ToastContext';
 interface OrderCardProps {
   order: Order;
   onStatusUpdate: (orderId: string, status: OrderStatus) => void;
+  onOrderRefresh?: () => void;
   isExpanded?: boolean;
   onToggleExpand?: (orderId: string) => void;
   tenantSlug?: string;
@@ -71,6 +72,7 @@ const BRAND_LABELS: Record<string, string> = {
 export function OrderCard({
   order,
   onStatusUpdate,
+  onOrderRefresh,
   isExpanded = false,
   onToggleExpand,
   tenantSlug,
@@ -151,6 +153,22 @@ export function OrderCard({
   // Desktop already has specialized reject/cancel buttons for some states.
   // Show this backdoor cancel only where a cancel button is otherwise missing.
   const showDesktopBackdoorCancel = canShowCancel && !isPendingDelivery && !isPendingOnline && !isPaidOnline;
+
+  const parseOptionalNumber = (value: unknown): number | null => {
+    if (typeof value === 'number' && Number.isFinite(value)) return value;
+    if (typeof value === 'string') {
+      const parsed = Number.parseFloat(value);
+      if (Number.isFinite(parsed)) return parsed;
+    }
+    return null;
+  };
+
+  const woltQuote = (woltDelivery?.quote as Record<string, unknown> | null | undefined) || null;
+  const woltEtaMinutes =
+    parseOptionalNumber(woltQuote?.etaMinutes) ??
+    parseOptionalNumber(woltQuote?.courierEta);
+  const woltFeeCents = parseOptionalNumber(woltQuote?.feeCents);
+
   const timelineSteps = isDeliveryPaymentValue ? DELIVERY_TIMELINE_STEPS : ONLINE_TIMELINE_STEPS;
   const timelineStatus =
     order.status === OrderStatus.READY ? OrderStatus.OUT_FOR_DELIVERY : order.status;
@@ -271,8 +289,8 @@ export function OrderCard({
       if (woltResult.success) {
         setShowWoltModal(false);
         setWoltMessage(`✅ Wolt delivery created! ${woltResult.trackingUrl ? `Tracking: ${woltResult.trackingUrl}` : ''}`);
-        // Refresh the page to show updated order
-        setTimeout(() => window.location.reload(), 1500);
+        // Refresh orders in parent without forcing full page reload/reset.
+        onOrderRefresh?.();
       } else {
         setWoltError(woltResult.message || 'Nepodarilo sa vytvoriť doručenie');
       }
@@ -903,6 +921,12 @@ export function OrderCard({
               )}
               {woltDelivery.jobId && (
                 <span className="ml-2 text-gray-600">(Job: {woltDelivery.jobId})</span>
+              )}
+              {woltEtaMinutes != null && (
+                <span className="ml-2 text-gray-700">ETA: ~{Math.round(woltEtaMinutes)} min</span>
+              )}
+              {woltFeeCents != null && (
+                <span className="ml-2 text-gray-700">Fee: €{(woltFeeCents / 100).toFixed(2)}</span>
               )}
             </div>
           )}
