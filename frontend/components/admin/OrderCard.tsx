@@ -110,8 +110,9 @@ export function OrderCard({
   const address = order.address;
   const nextStatus = NEXT_STATUS[order.status];
   const isStoryousSynced = !!order.storyousOrderId;
-  const hasWoltDelivery = !!order.deliveryId || !!order.delivery;
-  const woltDelivery = order.delivery;
+  const hasDelivery = !!order.deliveryId || !!order.delivery;
+  const isWoltDelivery = order.delivery?.provider === 'wolt';
+  const woltDelivery = isWoltDelivery ? order.delivery : null;
   const customizationLabels = (order as any)?.tenant?.theme?.customizationLabels;
   
   // Show Storyous/Wolt buttons only while in PAID/PREPARING and not yet created
@@ -148,7 +149,7 @@ export function OrderCard({
   const isPaid = order.status === OrderStatus.PAID;
   const isPending = order.status === OrderStatus.PENDING;
   const canCreateWolt =
-    !hasWoltDelivery &&
+    !hasDelivery &&
     (order.status === OrderStatus.PAID || order.status === OrderStatus.PREPARING || order.status === OrderStatus.READY);
   // Show cancel for anything except delivered/canceled
   const canShowCancel = order.status !== OrderStatus.DELIVERED && order.status !== OrderStatus.CANCELED;
@@ -508,7 +509,7 @@ export function OrderCard({
           {syncingStoryous ? '⏳' : '📦 Storyous'}
         </button>
       )}
-      {!hasWoltDelivery && order.status === OrderStatus.PAID && (
+      {canCreateWolt && (
         <button
           onClick={handleCreateWoltDelivery}
           disabled={creatingWolt}
@@ -579,7 +580,7 @@ export function OrderCard({
               📦 Storyous
             </span>
           )}
-          {hasWoltDelivery && (
+          {isWoltDelivery && (
             <span className="px-2 py-0.5 rounded text-xs font-semibold bg-orange-100 text-orange-800 whitespace-nowrap">
               🚚 Wolt
             </span>
@@ -749,7 +750,7 @@ export function OrderCard({
                   📦 Storyous
                 </span>
               )}
-              {hasWoltDelivery && (
+              {isWoltDelivery && (
                 <span className="px-2 py-1 rounded text-xs font-semibold bg-orange-100 text-orange-800">
                   🚚 Wolt
                 </span>
@@ -959,7 +960,7 @@ export function OrderCard({
               ✅ Synced to Storyous (ID: {order.storyousOrderId})
             </div>
           )}
-          {hasWoltDelivery && woltDelivery && (
+          {isWoltDelivery && woltDelivery && (
             <div className="col-span-2 mb-2 rounded-lg border border-orange-200 bg-orange-50 p-3">
               <div className="flex flex-col gap-3">
                 <div className="min-w-0">
