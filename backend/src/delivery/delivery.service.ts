@@ -4,6 +4,7 @@ import { WoltDriveService } from './wolt-drive.service';
 import { OrdersService } from '../orders/orders.service';
 import { OrderStatusService } from '../orders/order-status.service';
 import { TenantsService } from '../tenants/tenants.service';
+import { DeliveryFeeTierService } from './delivery-fee-tier.service';
 import { OrderStatus, DeliveryStatus, Address } from '@pizza-ecosystem/shared';
 import { DeliveryConfig } from '../types/tenant.types';
 import { Prisma } from '@prisma/client';
@@ -36,6 +37,7 @@ export class DeliveryService {
     @Inject(forwardRef(() => OrderStatusService))
     private orderStatusService: OrderStatusService,
     private tenantsService: TenantsService,
+    private deliveryFeeTierService: DeliveryFeeTierService,
   ) {}
 
   private assertWoltConfig(tenant: { slug: string; id: string }, woltConfig: any): void {
@@ -135,6 +137,162 @@ export class DeliveryService {
     return Object.assign(address, { phone: pickupAddress.phone }) as Address & { phone?: string };
   }
 
+  private parseCoordinate(value: unknown): number | null {
+    if (typeof value === 'number' && Number.isFinite(value)) {
+      return value;
+    }
+
+    if (typeof value === 'string') {
+      const normalized = value.trim().replace(',', '.');
+      if (!normalized) {
+        return null;
+      }
+
+      const parsed = Number.parseFloat(normalized);
+      if (Number.isFinite(parsed)) {
+        return parsed;
+      }
+    }
+
+    return null;
+  }
+
+  private extractCoordinates(address: Record<string, any>): { lat: number; lng: number } | null {
+    const latCandidates = [
+      address?.coordinates?.lat,
+      address?.coordinates?.latitude,
+      address?.lat,
+      address?.latitude,
+      address?.location?.lat,
+      address?.location?.latitude,
+    ];
+    const lngCandidates = [
+      address?.coordinates?.lng,
+      address?.coordinates?.lon,
+      address?.coordinates?.longitude,
+      address?.lng,
+      address?.lon,
+      address?.longitude,
+      address?.location?.lng,
+      address?.location?.lon,
+      address?.location?.longitude,
+    ];
+
+    let lat: number | null = null;
+    for (const candidate of latCandidates) {
+      lat = this.parseCoordinate(candidate);
+      if (lat !== null) {
+        break;
+      }
+    }
+
+    let lng: number | null = null;
+    for (const candidate of lngCandidates) {
+      lng = this.parseCoordinate(candidate);
+      if (lng !== null) {
+        break;
+      }
+    }
+
+    if (lat === null || lng === null) {
+      return null;
+    }
+
+    return { lat, lng };
+  }
+
+  private async persistOrderAddressCoordinates(
+    orderId: string,
+    address: Address,
+    context: string,
+  ): Promise<void> {
+    try {
+      await this.prisma.order.update({
+        where: { id: orderId },
+        data: { address: address as unknown as Prisma.InputJsonValue },
+      });
+    } catch (error: any) {
+      this.logger.warn(`[${context}] Failed to persist geocoded order coordinates`, {
+        orderId,
+        error: error?.message,
+      });
+    }
+  }
+
+  private async normalizeDropoffAddress(
+    tenantId: string,
+    rawAddress: any,
+    context: string,
+    orderId?: string,
+  ): Promise<Address> {
+    const addressObject: Record<string, any> =
+      rawAddress && typeof rawAddress === 'object' ? { ...rawAddress } : {};
+
+    const normalizedCountry =
+      typeof addressObject.country === 'string' && addressObject.country.trim()
+        ? addressObject.country
+        : 'SK';
+    const resolved: Address = {
+      ...addressObject,
+      country: normalizedCountry,
+    } as Address;
+
+    const parsedCoordinates = this.extractCoordinates(addressObject);
+    if (parsedCoordinates) {
+      resolved.coordinates = parsedCoordinates;
+      return resolved;
+    }
+
+    const hasAddressForGeocoding = Boolean(
+      (typeof addressObject.street === 'string' && addressObject.street.trim()) ||
+      (typeof addressObject.city === 'string' && addressObject.city.trim()) ||
+      (typeof addressObject.postalCode === 'string' && addressObject.postalCode.trim()),
+    );
+
+    if (!hasAddressForGeocoding) {
+      throw new BadRequestException(
+        'Missing or invalid dropoff coordinates for Wolt delivery. Please set geolocation first.',
+      );
+    }
+
+    try {
+      const geocoded = await this.deliveryFeeTierService.geocodeAddress({
+        street: addressObject.street,
+        city: addressObject.city,
+        postalCode: addressObject.postalCode,
+        country: normalizedCountry,
+      });
+
+      resolved.coordinates = { lat: geocoded.lat, lng: geocoded.lng };
+
+      this.logger.log(`[${context}] Dropoff coordinates geocoded`, {
+        tenantId,
+        orderId,
+        lat: geocoded.lat,
+        lng: geocoded.lng,
+        city: addressObject.city,
+        postalCode: addressObject.postalCode,
+      });
+
+      if (orderId) {
+        await this.persistOrderAddressCoordinates(orderId, resolved, context);
+      }
+
+      return resolved;
+    } catch (error: any) {
+      this.logger.warn(`[${context}] Failed to geocode dropoff address`, {
+        tenantId,
+        orderId,
+        city: addressObject.city,
+        postalCode: addressObject.postalCode,
+        error: error?.message,
+      });
+      throw new BadRequestException(
+        'Missing or invalid dropoff coordinates for Wolt delivery. Please set geolocation first.',
+      );
+    }
+  }
+
   async getQuote(tenantId: string, dropoffAddress: any, user?: AuthenticatedUser) {
     const tenant = await this.prisma.tenant.findUnique({
       where: { id: tenantId },
@@ -152,11 +310,16 @@ export class DeliveryService {
 
     // Get tenant-specific pickup address
     const pickupAddress = this.getPickupAddress(tenantId, deliveryConfig);
+    const normalizedDropoffAddress = await this.normalizeDropoffAddress(
+      tenantId,
+      dropoffAddress,
+      'getQuote',
+    );
     
     return this.woltDrive.getQuote(
       woltConfig.apiKey,
       pickupAddress,
-      dropoffAddress,
+      normalizedDropoffAddress,
       3,
       woltConfig,
     );
@@ -186,14 +349,19 @@ export class DeliveryService {
     const pickupAddress = this.getPickupAddress(order.tenantId, deliveryConfig);
     
     const customer = order.customer as any;
-    const address = order.address as any;
+    const normalizedDropoffAddress = await this.normalizeDropoffAddress(
+      order.tenantId,
+      order.address as any,
+      'getShipmentPromiseForOrder',
+      order.id,
+    );
 
     // Get shipment promise from Wolt
     try {
       return await this.woltDrive.getShipmentPromise(
         woltConfig.apiKey,
         pickupAddress,
-        address,
+        normalizedDropoffAddress,
         customer.name,
         customer.phone,
         3,
@@ -253,7 +421,12 @@ export class DeliveryService {
     const pickupAddress = this.getPickupAddress(order.tenantId, deliveryConfig);
     
     const customer = order.customer as any;
-    const address = order.address as any;
+    const normalizedDropoffAddress = await this.normalizeDropoffAddress(
+      order.tenantId,
+      order.address as any,
+      'createDeliveryForOrder',
+      order.id,
+    );
 
     // Create Wolt delivery with tenant-specific pickup address
     // If shipmentPromiseId is provided, use it (proper flow according to documentation)
@@ -269,7 +442,7 @@ export class DeliveryService {
         woltConfig.apiKey,
         order.id,
         pickupAddress,
-        address,
+        normalizedDropoffAddress,
         customer.name,
         customer.phone,
         shipmentPromiseId, // Optional: if provided, will use shipment promise ID
@@ -486,7 +659,6 @@ export class DeliveryService {
     }
   }
 }
-
 
 
 
