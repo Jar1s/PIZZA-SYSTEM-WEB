@@ -53,6 +53,14 @@ type ProductWithModifiers = Prisma.ProductGetPayload<{
   };
 }>;
 
+type StoryousSyncOrder = Prisma.OrderGetPayload<{
+  include: {
+    items: true;
+    tenant: true;
+    delivery: true;
+  };
+}>;
+
 @Injectable()
 export class OrdersService {
   private readonly logger = new Logger(OrdersService.name);
@@ -552,6 +560,7 @@ export class OrdersService {
             subdomain: true,
             currency: true, // Currency field added to schema
             theme: true, // Include theme for email colors and logo
+            emailConfig: true, // Include tenant-specific SMTP settings
           } as any, // Type assertion needed until Prisma types are fully regenerated
         },
       },
@@ -869,6 +878,7 @@ export class OrdersService {
       include: {
         items: true,
         tenant: true,
+        delivery: true,
       },
     });
 
@@ -897,9 +907,6 @@ export class OrdersService {
       // Get global Storyous settings
       const storyousSettings = await this.settingsService.getStoryousSettings();
       this.logger.log('[Storyous sync] Starting manual sync', { orderId, tenantId: orderWithStoryous.tenantId, settingsEnabled: storyousSettings?.enabled, merchantId: storyousSettings?.merchantId, placeId: storyousSettings?.placeId });
-      // #region agent log
-      fetch('http://127.0.0.1:7244/ingest/c8c401c8-9b71-4e06-9291-444154701c07',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'orders.service.ts:894',message:'storyous settings loaded',data:{enabled:storyousSettings?.enabled,merchantId:storyousSettings?.merchantId,placeId:storyousSettings?.placeId,hasMerchantId:!!storyousSettings?.merchantId,hasPlaceId:!!storyousSettings?.placeId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-      // #endregion
       
       if (!storyousSettings?.enabled || !storyousSettings?.merchantId || !storyousSettings?.placeId) {
         this.logger.warn('[Storyous sync] Missing Storyous settings', { orderId, tenantId: orderWithStoryous.tenantId, settings: storyousSettings });
@@ -909,18 +916,9 @@ export class OrdersService {
         };
       }
 
-      // Convert Prisma Order to shared Order type for Storyous
-      const orderForStoryous: Order = {
-        ...orderWithStoryous,
-        status: orderWithStoryous.status as OrderStatus,
-        customer: orderWithStoryous.customer as unknown as CustomerInfo,
-        address: orderWithStoryous.address as unknown as Address,
-      } as unknown as Order;
+      const orderForStoryous = await this.buildStoryousOrderPayload(orderWithStoryous as StoryousSyncOrder);
 
       this.logger.debug('[Storyous sync] Payload ready', { orderId, merchantId: storyousSettings.merchantId, placeId: storyousSettings.placeId, totalCents: orderForStoryous.totalCents, items: orderForStoryous.items?.length });
-      // #region agent log
-      fetch('http://127.0.0.1:7244/ingest/c8c401c8-9b71-4e06-9291-444154701c07',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'orders.service.ts:910',message:'calling createOrder',data:{orderId:orderForStoryous.id,merchantId:storyousSettings.merchantId,placeId:storyousSettings.placeId,merchantIdType:typeof storyousSettings.merchantId,placeIdType:typeof storyousSettings.placeId,merchantIdLength:storyousSettings.merchantId?.length,placeIdLength:storyousSettings.placeId?.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-      // #endregion
       const storyousResult = await this.storyousService.createOrder(
         orderForStoryous,
         storyousSettings.merchantId,
@@ -1023,13 +1021,9 @@ export class OrdersService {
 
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
-        // Convert Prisma Order to shared Order type for Storyous
-        const orderForStoryous: Order = {
-          ...order,
-          status: order.status as OrderStatus,
-          customer: order.customer as unknown as CustomerInfo,
-          address: order.address as unknown as Address,
-        } as unknown as Order;
+        const orderForStoryous = await this.buildStoryousOrderPayload(order as unknown as StoryousSyncOrder, {
+          tenantTheme,
+        });
         
         const storyousResult = await this.storyousService.createOrder(
           orderForStoryous,
@@ -1079,6 +1073,157 @@ export class OrdersService {
       }
     }
   }
+
+  private getModifierCategoryOrder(categoryId: string): number {
+    const order: Record<string, number> = {
+      dough: 1,
+      sauce: 2,
+      cheese: 3,
+      edge: 4,
+      toppings: 5,
+      extra: 6,
+    };
+    return order[categoryId] ?? 100;
+  }
+
+  private resolveModifierLines(
+    modifiers: Record<string, any> | null | undefined,
+    productCategory: string = 'PIZZA',
+    tenantTheme?: TenantTheme,
+  ): string[] {
+    if (!modifiers || typeof modifiers !== 'object') {
+      return [];
+    }
+
+    const parsedModifiers = typeof modifiers === 'string'
+      ? (() => {
+          try {
+            return JSON.parse(modifiers);
+          } catch {
+            return {};
+          }
+        })()
+      : modifiers;
+
+    const category = String(productCategory || 'PIZZA').toUpperCase();
+    const customizationOptions = getCustomizationOptions(category);
+    const optionLabelOverrides = tenantTheme?.customizationLabels?.options || {};
+
+    const groups = Object.keys(parsedModifiers).sort((a, b) => {
+      const byPriority = this.getModifierCategoryOrder(a) - this.getModifierCategoryOrder(b);
+      if (byPriority !== 0) return byPriority;
+      return a.localeCompare(b);
+    });
+
+    const lines: string[] = [];
+    for (const groupId of groups) {
+      const selected = Array.isArray(parsedModifiers[groupId])
+        ? parsedModifiers[groupId]
+        : parsedModifiers[groupId] ? [parsedModifiers[groupId]] : [];
+
+      if (selected.length === 0) continue;
+
+      const group = customizationOptions.find((g) => g.id === groupId);
+      for (const optionIdRaw of selected) {
+        const optionId = String(optionIdRaw);
+        const option = group?.options?.find((o) => o.id === optionId);
+        const overrideLabel = optionLabelOverrides[optionId]?.sk;
+        const label = (overrideLabel || option?.name || optionId).trim();
+        if (label) {
+          lines.push(label);
+        }
+      }
+    }
+
+    return lines;
+  }
+
+  private async buildStoryousOrderPayload(
+    order: StoryousSyncOrder,
+    options?: { tenantTheme?: TenantTheme },
+  ): Promise<Order> {
+    if (!Array.isArray(order.items) || order.items.length === 0) {
+      throw new BadRequestException(`Order ${order.id} has no items for Storyous sync`);
+    }
+
+    if (!order.address || !(order.address as any)?.street || !(order.address as any)?.city || !(order.address as any)?.postalCode) {
+      throw new BadRequestException(`Order ${order.id} has no valid delivery address for Storyous sync`);
+    }
+
+    const productIds = Array.from(new Set(order.items.map((item: any) => item.productId).filter(Boolean)));
+    const products = productIds.length > 0
+      ? await this.prisma.product.findMany({
+          where: {
+            tenantId: order.tenantId,
+            id: { in: productIds },
+          },
+          select: {
+            id: true,
+            name: true,
+            category: true,
+          },
+        })
+      : [];
+
+    const productById = new Map(products.map((product) => [product.id, product]));
+    const internalNames = Array.from(
+      new Set(
+        order.items
+          .map((item: any) => productById.get(item.productId)?.name || item.productName)
+          .filter((name): name is string => !!name),
+      ),
+    );
+
+    const mappings = internalNames.length > 0
+      ? await this.prisma.productMapping.findMany({
+          where: {
+            tenantId: order.tenantId,
+            source: 'storyous',
+            internalProductName: { in: internalNames },
+          },
+          orderBy: {
+            updatedAt: 'desc',
+          },
+        })
+      : [];
+
+    const mappingByInternalName = new Map<string, (typeof mappings)[number]>();
+    for (const mapping of mappings) {
+      if (!mappingByInternalName.has(mapping.internalProductName)) {
+        mappingByInternalName.set(mapping.internalProductName, mapping);
+      }
+    }
+
+    const tenantTheme = options?.tenantTheme || (order.tenant?.theme as TenantTheme | undefined);
+    const enrichedItems = order.items.map((item: any) => {
+      const product = productById.get(item.productId);
+      const internalProductName = product?.name || item.productName;
+      const mapping = internalProductName ? mappingByInternalName.get(internalProductName) : undefined;
+
+      if (!mapping?.externalIdentifier) {
+        throw new BadRequestException(
+          `Storyous mapping missing for product "${internalProductName || item.productName}" (${item.productId}) in tenant ${order.tenantId} (order ${order.id}). Please add product_mappings.externalIdentifier for source='storyous'.`,
+        );
+      }
+
+      return {
+        ...item,
+        productName: item.productName || internalProductName,
+        storyousItemId: mapping.externalIdentifier,
+        resolvedModifierLines: this.resolveModifierLines(item.modifiers as any, product?.category || 'PIZZA', tenantTheme),
+      };
+    });
+
+    if (!enrichedItems.some((item) => !!item.storyousItemId)) {
+      throw new BadRequestException(`Order ${order.id} has no valid Storyous item mappings`);
+    }
+
+    return {
+      ...order,
+      status: order.status as OrderStatus,
+      customer: order.customer as unknown as CustomerInfo,
+      address: order.address as unknown as Address,
+      items: enrichedItems,
+    } as unknown as Order;
+  }
 }
-
-

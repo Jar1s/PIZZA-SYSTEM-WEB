@@ -8,6 +8,10 @@ export interface StoryousSettings {
   placeId: string;
   enabled: boolean;
   autoSync: boolean;
+  defaultDeliveryLeadMinutes: number;
+  autoAcceptPrintMode: boolean;
+  receiptIncludeModifierLines: boolean;
+  receiptIncludeOrderNumber: boolean;
 }
 
 @Injectable()
@@ -23,7 +27,19 @@ export class SettingsService {
       return null;
     }
     
-    return settings.storyous as unknown as StoryousSettings;
+    const raw = settings.storyous as unknown as Partial<StoryousSettings>;
+    return {
+      clientId: raw.clientId || '',
+      clientSecret: raw.clientSecret || '',
+      merchantId: raw.merchantId || '',
+      placeId: raw.placeId || '',
+      enabled: raw.enabled ?? false,
+      autoSync: raw.autoSync ?? false,
+      defaultDeliveryLeadMinutes: raw.defaultDeliveryLeadMinutes ?? 45,
+      autoAcceptPrintMode: raw.autoAcceptPrintMode ?? true,
+      receiptIncludeModifierLines: raw.receiptIncludeModifierLines ?? true,
+      receiptIncludeOrderNumber: raw.receiptIncludeOrderNumber ?? true,
+    };
   }
 
   async updateStoryousSettings(data: Partial<StoryousSettings>): Promise<StoryousSettings> {
@@ -31,8 +47,22 @@ export class SettingsService {
       where: { id: 'global' },
     });
     
-    const currentStoryous = (existing?.storyous as unknown as StoryousSettings) || {};
-    const updatedStoryous = { ...currentStoryous, ...data };
+    const currentStoryous = ((existing?.storyous as unknown as Partial<StoryousSettings>) || {});
+    const updatedStoryous: StoryousSettings = {
+      clientId: data.clientId ?? currentStoryous.clientId ?? '',
+      clientSecret: data.clientSecret ?? currentStoryous.clientSecret ?? '',
+      merchantId: data.merchantId ?? currentStoryous.merchantId ?? '',
+      placeId: data.placeId ?? currentStoryous.placeId ?? '',
+      enabled: data.enabled ?? currentStoryous.enabled ?? false,
+      autoSync: data.autoSync ?? currentStoryous.autoSync ?? false,
+      defaultDeliveryLeadMinutes:
+        data.defaultDeliveryLeadMinutes ?? currentStoryous.defaultDeliveryLeadMinutes ?? 45,
+      autoAcceptPrintMode: data.autoAcceptPrintMode ?? currentStoryous.autoAcceptPrintMode ?? true,
+      receiptIncludeModifierLines:
+        data.receiptIncludeModifierLines ?? currentStoryous.receiptIncludeModifierLines ?? true,
+      receiptIncludeOrderNumber:
+        data.receiptIncludeOrderNumber ?? currentStoryous.receiptIncludeOrderNumber ?? true,
+    };
     
     await this.prisma.globalSettings.upsert({
       where: { id: 'global' },

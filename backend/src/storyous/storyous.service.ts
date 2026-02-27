@@ -7,15 +7,27 @@ export class StoryousService {
   private readonly logger = new Logger(StoryousService.name);
   private accessToken: string | null = null;
   private tokenExpiresAt: Date | null = null;
-  
+
   private readonly apiBaseUrl = 'https://api.storyous.com';
-  
-  constructor(
-    private settingsService: SettingsService,
-  ) {}
+
+  constructor(private settingsService: SettingsService) {}
+
+  private buildMerchantPlaceId(merchantId: string, placeId: string): string {
+    const merchant = String(merchantId || '').trim();
+    const place = String(placeId || '').trim();
+
+    if (!merchant || !place) {
+      throw new Error('Storyous merchantId/placeId missing');
+    }
+
+    if (merchant.includes('-') && merchant.endsWith(`-${place}`)) {
+      return merchant;
+    }
+
+    return `${merchant}-${place}`;
+  }
 
   private async getConfig() {
-    // Try to get from database first
     const dbConfig = await this.settingsService.getStoryousSettings();
     if (dbConfig?.clientId && dbConfig?.clientSecret) {
       return {
@@ -24,8 +36,7 @@ export class StoryousService {
         enabled: dbConfig.enabled,
       };
     }
-    
-    // Fallback to environment variables
+
     return {
       clientId: process.env.STORYOUS_CLIENT_ID,
       clientSecret: process.env.STORYOUS_CLIENT_SECRET,
@@ -35,30 +46,18 @@ export class StoryousService {
 
   async getAccessToken(): Promise<string> {
     const config = await this.getConfig();
-    // #region agent log
-    fetch('http://127.0.0.1:7244/ingest/c8c401c8-9b71-4e06-9291-444154701c07',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'storyous.service.ts:37',message:'getAccessToken entry',data:{enabled:config.enabled,hasClientId:!!config.clientId,hasClientSecret:!!config.clientSecret,hasCachedToken:!!this.accessToken},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
-    // #endregion
     if (!config.enabled || !config.clientId || !config.clientSecret) {
       throw new Error('Storyous is not configured');
     }
 
-    // Check if token is still valid (with 5 minute buffer)
     if (this.accessToken && this.tokenExpiresAt) {
-      const bufferTime = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
+      const bufferTime = new Date(Date.now() + 5 * 60 * 1000);
       if (bufferTime < this.tokenExpiresAt) {
-        // #region agent log
-        fetch('http://127.0.0.1:7244/ingest/c8c401c8-9b71-4e06-9291-444154701c07',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'storyous.service.ts:48',message:'using cached token',data:{tokenLength:this.accessToken.length,expiresAt:this.tokenExpiresAt.toISOString()},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
-        // #endregion
         return this.accessToken;
       }
     }
 
-    // Request new token
-    const tokenUrl = 'https://login.storyous.com/api/auth/authorize';
-    // #region agent log
-    fetch('http://127.0.0.1:7244/ingest/c8c401c8-9b71-4e06-9291-444154701c07',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'storyous.service.ts:54',message:'requesting new token',data:{url:tokenUrl,hasClientId:!!config.clientId,hasClientSecret:!!config.clientSecret},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
-    // #endregion
-    const response = await fetch(tokenUrl, {
+    const response = await fetch('https://login.storyous.com/api/auth/authorize', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
@@ -69,151 +68,173 @@ export class StoryousService {
         grant_type: 'client_credentials',
       }),
     });
-    // #region agent log
-    fetch('http://127.0.0.1:7244/ingest/c8c401c8-9b71-4e06-9291-444154701c07',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'storyous.service.ts:66',message:'token response',data:{status:response.status,ok:response.ok},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
-    // #endregion
 
     if (!response.ok) {
       const error = await response.text();
-      // #region agent log
-      fetch('http://127.0.0.1:7244/ingest/c8c401c8-9b71-4e06-9291-444154701c07',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'storyous.service.ts:70',message:'token error',data:{status:response.status,error},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
-      // #endregion
       throw new Error(`Failed to get Storyous token: ${error}`);
     }
 
     const data = await response.json();
     this.accessToken = data.access_token;
     this.tokenExpiresAt = new Date(data.expires_at);
-    // #region agent log
-    fetch('http://127.0.0.1:7244/ingest/c8c401c8-9b71-4e06-9291-444154701c07',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'storyous.service.ts:76',message:'token obtained',data:{hasToken:!!this.accessToken,tokenLength:this.accessToken?.length||0,expiresAt:this.tokenExpiresAt.toISOString()},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
-    // #endregion
+
     this.logger.log('✅ Storyous access token obtained');
     return this.accessToken;
   }
 
+  private getOrderReference(order: Order): string {
+    return order.orderNumber ? `#${order.orderNumber}` : `#${order.id.slice(-6)}`;
+  }
+
+  private computeRequestedDeliveryAt(order: Order, defaultLeadMinutes: number): string {
+    const now = new Date();
+    const tenantTheme = (order as any)?.tenant?.theme as Record<string, any> | undefined;
+    const woltQuote = (order as any)?.delivery?.quote as Record<string, any> | undefined;
+
+    const prepMinutes = Number(
+      tenantTheme?.prepMinutes ?? tenantTheme?.preparationMinutes ?? tenantTheme?.kitchenPrepMinutes,
+    );
+    const deliveryMinutes = Number(
+      woltQuote?.deliveryEta ?? woltQuote?.etaMinutes ?? woltQuote?.courierEta,
+    );
+
+    let totalLead = defaultLeadMinutes;
+    if (Number.isFinite(prepMinutes) && Number.isFinite(deliveryMinutes) && prepMinutes > 0 && deliveryMinutes > 0) {
+      totalLead = prepMinutes + deliveryMinutes;
+    }
+
+    const deliveryAt = new Date(now.getTime() + totalLead * 60_000);
+    return deliveryAt.toISOString();
+  }
+
   async createOrder(order: Order, merchantId: string, placeId: string): Promise<any> {
-    // #region agent log
-    fetch('http://127.0.0.1:7244/ingest/c8c401c8-9b71-4e06-9291-444154701c07',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'storyous.service.ts:78',message:'createOrder entry',data:{orderId:order.id,merchantId,placeId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-    // #endregion
     const config = await this.getConfig();
-    // #region agent log
-    fetch('http://127.0.0.1:7244/ingest/c8c401c8-9b71-4e06-9291-444154701c07',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'storyous.service.ts:81',message:'config loaded',data:{enabled:config.enabled,hasClientId:!!config.clientId,hasClientSecret:!!config.clientSecret},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
-    // #endregion
     if (!config.enabled) {
       this.logger.debug('Storyous integration disabled, skipping');
       return null;
     }
 
-    try {
-      const token = await this.getAccessToken();
-      // #region agent log
-      fetch('http://127.0.0.1:7244/ingest/c8c401c8-9b71-4e06-9291-444154701c07',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'storyous.service.ts:90',message:'access token obtained',data:{hasToken:!!token,tokenLength:token?.length||0},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
-      // #endregion
-      const customer = order.customer as any;
-      const address = order.address as any;
-      
-      this.logger.log('[Storyous] Preparing order', {
-        orderId: order.id,
-        merchantId,
-        placeId,
-        items: order.items?.length || 0,
-        totalEuros: order.totalCents ? order.totalCents / 100 : undefined,
-        customerPhone: customer?.phone,
-        addressCity: address?.city,
-      });
-      
-      // Map order items to Storyous format
-      const items = order.items.map(item => {
-        const itemData: any = {
-          name: item.productName,
-          quantity: item.quantity,
-          count: item.quantity, // Storyous expects `count`
-          price: item.priceCents / 100, // Convert cents to euros
-          unitPriceWithVat: item.priceCents / 100, // Storyous expects unitPriceWithVat in euros
-        };
+    const customer = order.customer as any;
+    const address = order.address as any;
 
-        // Map Storyous itemId if available, otherwise fall back to product/id so the field is always present
-        const storyousItemId =
-          (item as any).storyousItemId ||
-          (item as any).storyous_item_id ||
-          (item as any).storyousId ||
-          item.productId ||
-          item.id;
-        itemData.itemId = storyousItemId;
-        
-        // Add modifiers if available
-        if (item.modifiers) {
-          itemData.modifiers = item.modifiers;
-        }
-        
-        return itemData;
-      });
-      
-      const orderData = {
-        merchant_id: merchantId,
-        place_id: placeId,
-        items: items,
-        customer: {
-          name: customer.name,
-          phone: customer.phone,
-          email: customer.email || null,
-        },
-        delivery_address: {
-          street: address.street,
-          city: address.city,
-          postal_code: address.postalCode,
-          country: address.country || 'SK',
-          description: address.description || address.instructions || null,
-        },
-        total: order.totalCents / 100,
-        subtotal: order.subtotalCents / 100,
-        tax: order.taxCents / 100,
-        delivery_fee: order.deliveryFeeCents / 100,
-        externalId: order.id, // Storyous expects camelCase externalId
-        external_id: order.id, // keep legacy snake_case just in case
-        status: this.mapOrderStatus(order.status),
-      };
+    if (!address?.street || !address?.city || !address?.postalCode) {
+      throw new Error(`Storyous sync failed: missing delivery address for order ${order.id}`);
+    }
 
-      this.logger.debug('[Storyous] Payload', { orderId: order.id, payload: orderData });
-      // #region agent log
-      fetch('http://127.0.0.1:7244/ingest/c8c401c8-9b71-4e06-9291-444154701c07',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'storyous.service.ts:129',message:'request body prepared',data:{merchantId,placeId,itemsCount:items.length,hasCustomer:!!customer,hasAddress:!!address,total:orderData.total,status:orderData.status},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-      // #endregion
+    if (!Array.isArray(order.items) || order.items.length === 0) {
+      throw new Error(`Storyous sync failed: order ${order.id} has no items`);
+    }
 
-      const requestUrl = `${this.apiBaseUrl}/delivery/orders`;
-      // #region agent log
-      fetch('http://127.0.0.1:7244/ingest/c8c401c8-9b71-4e06-9291-444154701c07',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'storyous.service.ts:132',message:'request URL',data:{url:requestUrl,method:'POST'},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-      // #endregion
-      const response = await fetch(requestUrl, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(orderData),
-      });
-      // #region agent log
-      fetch('http://127.0.0.1:7244/ingest/c8c401c8-9b71-4e06-9291-444154701c07',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'storyous.service.ts:141',message:'response received',data:{status:response.status,statusText:response.statusText,ok:response.ok,headers:Object.fromEntries(response.headers.entries())},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-      // #endregion
+    const settings = await this.settingsService.getStoryousSettings();
+    const defaultLeadMinutes = settings?.defaultDeliveryLeadMinutes ?? 45;
+    const requestedDeliveryAt = this.computeRequestedDeliveryAt(order, defaultLeadMinutes);
+    const orderReference = this.getOrderReference(order);
 
-      if (!response.ok) {
-        const error = await response.text();
-        this.logger.error('[Storyous] API error response', { orderId: order.id, status: response.status, body: error });
-        // #region agent log
-        fetch('http://127.0.0.1:7244/ingest/c8c401c8-9b71-4e06-9291-444154701c07',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'storyous.service.ts:145',message:'error response',data:{status:response.status,error,requestUrl,requestBody:orderData},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-        // #endregion
-        throw new Error(`Storyous API error: ${response.status} - ${error}`);
+    const isAlreadyPaid = String((order as any).paymentStatus || '').toLowerCase() !== 'pending';
+
+    const items = order.items.map((item: any) => {
+      const storyousItemId = item.storyousItemId || item.storyous_item_id || item.storyousId;
+      if (!storyousItemId) {
+        throw new Error(
+          `Storyous mapping missing for product "${item.productName}" (${item.productId}) in tenant ${(order as any).tenantId} (order ${order.id})`,
+        );
       }
 
-      const result = await response.json();
-      this.logger.log(`✅ Order ${order.id} sent to Storyous: ${result.id || 'success'}`);
-      return result;
-    } catch (error: any) {
-      // #region agent log
-      fetch('http://127.0.0.1:7244/ingest/c8c401c8-9b71-4e06-9291-444154701c07',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'storyous.service.ts:152',message:'exception caught',data:{errorMessage:error.message,errorStack:error.stack},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-      // #endregion
-      this.logger.error(`❌ Failed to send order ${order.id} to Storyous:`, error.message);
-      throw error; // Re-throw so caller can handle
+      const itemData: any = {
+        itemId: storyousItemId,
+        name: item.productName,
+        quantity: item.quantity,
+        count: item.quantity,
+        price: item.priceCents / 100,
+        unitPriceWithVat: item.priceCents / 100,
+      };
+
+      const resolvedModifierLines = Array.isArray(item.resolvedModifierLines)
+        ? item.resolvedModifierLines.filter((line: string) => typeof line === 'string' && line.trim().length > 0)
+        : [];
+
+      if (resolvedModifierLines.length > 0 && (settings?.receiptIncludeModifierLines ?? true)) {
+        itemData.note = resolvedModifierLines.map((line: string) => `+${line}`).join('\n');
+      }
+
+      return itemData;
+    });
+
+    const orderData: any = {
+      items,
+      customer: {
+        name: customer?.name,
+        phoneNumber: customer?.phone,
+        email: customer?.email || null,
+        deliveryAddress: `${address.street}, ${address.city}, ${address.postalCode}`,
+      },
+      delivery_address: {
+        street: address.street,
+        city: address.city,
+        postal_code: address.postalCode,
+        country: address.country || 'SK',
+        description: address.description || address.instructions || null,
+      },
+      total: order.totalCents / 100,
+      subtotal: order.subtotalCents / 100,
+      tax: order.taxCents / 100,
+      delivery_fee: order.deliveryFeeCents / 100,
+      deliveryFeeWithVat: order.deliveryFeeCents / 100,
+      externalId: (settings?.receiptIncludeOrderNumber ?? true) ? orderReference : order.id,
+      external_id: (settings?.receiptIncludeOrderNumber ?? true) ? orderReference : order.id,
+      reference: orderReference,
+      status: this.mapOrderStatus(order.status),
+      deliveryType: 'delivery',
+      timing: 'scheduled',
+      requestedDeliveryAt,
+      deliveryAt: requestedDeliveryAt,
+      scheduledAt: requestedDeliveryAt,
+      alreadyPaid: isAlreadyPaid,
+      timezone: 'Europe/Bratislava',
+      note: `${orderReference} | ${customer?.name || 'Customer'} | ${address.street}, ${address.city}`,
+    };
+
+    this.logger.log('[Storyous] Sending order', {
+      orderId: order.id,
+      tenantId: (order as any).tenantId,
+      orderReference,
+      itemsCount: items.length,
+      requestedDeliveryAt,
+      deliveryType: orderData.deliveryType,
+      timing: orderData.timing,
+    });
+
+    const token = await this.getAccessToken();
+    const merchantPlaceId = this.buildMerchantPlaceId(merchantId, placeId);
+    const requestUrl = `${this.apiBaseUrl}/delivery/orders/${encodeURIComponent(merchantPlaceId)}`;
+
+    const response = await fetch(requestUrl, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(orderData),
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      this.logger.error('[Storyous] API error response', {
+        orderId: order.id,
+        status: response.status,
+        body: error,
+      });
+      throw new Error(`Storyous API error: ${response.status} - ${error}`);
     }
+
+    const result = await response.json();
+    const normalizedResult = {
+      ...result,
+      id: result?.id || result?.orderId || undefined,
+    };
+
+    this.logger.log(`✅ Order ${order.id} sent to Storyous: ${normalizedResult.id || 'success'}`);
+    return normalizedResult;
   }
 
   async updateOrderStatus(storyousOrderId: string, status: OrderStatus): Promise<void> {
@@ -222,33 +243,27 @@ export class StoryousService {
       return;
     }
 
-    try {
-      const token = await this.getAccessToken();
-      const mappedStatus = this.mapOrderStatus(status);
-      
-      const response = await fetch(`${this.apiBaseUrl}/delivery/orders/${storyousOrderId}/status`, {
-        method: 'PATCH',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ status: mappedStatus }),
-      });
+    const token = await this.getAccessToken();
+    const mappedStatus = this.mapOrderStatus(status);
 
-      if (!response.ok) {
-        const error = await response.text();
-        throw new Error(`Storyous status update error: ${error}`);
-      }
+    const response = await fetch(`${this.apiBaseUrl}/delivery/orders/${storyousOrderId}/status`, {
+      method: 'PATCH',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ status: mappedStatus }),
+    });
 
-      this.logger.log(`✅ Storyous order ${storyousOrderId} status updated to ${mappedStatus}`);
-    } catch (error: any) {
-      this.logger.error(`❌ Failed to update Storyous order status:`, error.message);
-      throw error;
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`Storyous status update error: ${error}`);
     }
+
+    this.logger.log(`✅ Storyous order ${storyousOrderId} status updated to ${mappedStatus}`);
   }
 
   private mapOrderStatus(status: OrderStatus): string {
-    // Map your order statuses to Storyous statuses
     const statusMap: Record<OrderStatus, string> = {
       PENDING: 'pending',
       PAID: 'paid',
@@ -261,6 +276,3 @@ export class StoryousService {
     return statusMap[status] || 'pending';
   }
 }
-
-
-
