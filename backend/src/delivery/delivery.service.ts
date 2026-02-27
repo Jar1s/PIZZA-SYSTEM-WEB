@@ -383,8 +383,7 @@ export class DeliveryService {
   async createDeliveryForOrder(
     orderId: string,
     shipmentPromiseId?: string,
-    promiseData?: ShipmentPromiseData,
-    user?: AuthenticatedUser,
+    minPreparationTimeMinutes?: number,
   ) {
     const order = await this.ordersService.getOrderById(orderId);
     this.assertTenantAccess(order.tenantId, user, 'createDeliveryForOrder');
@@ -430,6 +429,9 @@ export class DeliveryService {
       order.id,
     );
 
+    const minPreparationTimeMinutesUsed =
+      minPreparationTimeMinutes !== undefined ? minPreparationTimeMinutes : 20;
+
     // Create Wolt delivery with tenant-specific pickup address
     // If shipmentPromiseId is provided, use it (proper flow according to documentation)
     let woltDelivery;
@@ -448,16 +450,7 @@ export class DeliveryService {
         customer.name,
         customer.phone,
         shipmentPromiseId, // Optional: if provided, will use shipment promise ID
-        promiseData,
-        3,
-        woltConfig,
-        {
-          parcelPriceCents: order.totalCents,
-          parcelCurrency: (tenant as any).currency || promiseData?.currency || 'EUR',
-          orderNumber: (order as any).orderNumber ?? order.id,
-          supportEmail: (tenant as any).email || process.env.WOLT_SUPPORT_EMAIL,
-          supportUrl: process.env.FRONTEND_URL,
-        },
+        minPreparationTimeMinutesUsed,
       );
     } catch (error: any) {
       // Propagate user-friendly error message from WoltDriveService
@@ -509,7 +502,11 @@ export class DeliveryService {
         jobId: woltDelivery.jobId,
         status: DeliveryStatus.PENDING,
         trackingUrl: woltDelivery.trackingUrl,
-        quote: quoteData,
+        quote: {
+          courierEta: woltDelivery.courierEta,
+          minPreparationTimeMinutesUsed,
+          requestMode: 'asap',
+        },
       },
     });
 
@@ -672,6 +669,14 @@ export class DeliveryService {
     }
   }
 }
+
+
+
+
+
+
+
+
 
 
 

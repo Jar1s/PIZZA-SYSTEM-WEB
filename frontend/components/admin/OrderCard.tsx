@@ -104,7 +104,7 @@ export function OrderCard({
     distance?: number;
   } | null>(null);
   const [woltError, setWoltError] = useState<string | null>(null);
-  const [nowMs, setNowMs] = useState(() => Date.now());
+  const [woltPreparationMinutes, setWoltPreparationMinutes] = useState<number>(20);
   const { success: toastSuccess, error: toastError } = useToastContext();
   
   const customer = order.customer;
@@ -307,6 +307,7 @@ export function OrderCard({
     setWoltError(null);
     setWoltPromise(null);
     setWoltMessage(null);
+    setWoltPreparationMinutes(20);
     
     try {
       const promise = await checkWoltAvailability(order.id);
@@ -324,7 +325,15 @@ export function OrderCard({
     setCreatingWolt(true);
     setWoltError(null);
     try {
-      const woltResult = await createWoltDelivery(order.id, woltPromise.promiseId, woltPromise);
+      const normalizedPreparationMinutes = Number.isFinite(woltPreparationMinutes)
+        ? Math.max(0, Math.min(180, Math.round(woltPreparationMinutes)))
+        : 20;
+
+      const woltResult = await createWoltDelivery(
+        order.id,
+        woltPromise.promiseId,
+        normalizedPreparationMinutes,
+      );
       if (woltResult.success) {
         setShowWoltModal(false);
         setWoltMessage(`✅ Wolt delivery created! ${woltResult.trackingUrl ? `Tracking: ${woltResult.trackingUrl}` : ''}`);
@@ -344,6 +353,7 @@ export function OrderCard({
     setShowWoltModal(false);
     setWoltPromise(null);
     setWoltError(null);
+    setWoltPreparationMinutes(20);
   };
 
   // Format created time
@@ -1169,14 +1179,30 @@ export function OrderCard({
                         )} minút
                       </span>
                     </div>
-                    {parseOptionalNumber(woltPromise.dropoffEtaMinutes) != null && (
-                      <div className="flex justify-between items-center">
-                        <span className="text-gray-600">🏁 Doručenie zákazníkovi:</span>
-                        <span className="text-lg font-semibold text-gray-900">
-                          ~{Math.round(parseOptionalNumber(woltPromise.dropoffEtaMinutes) || 0)} minút
-                        </span>
-                      </div>
-                    )}
+                    <div>
+                      <label className="block text-gray-700 text-sm font-semibold mb-1">
+                        Kuriér na prevádzku za (min)
+                      </label>
+                      <input
+                        type="number"
+                        min={0}
+                        max={180}
+                        step={1}
+                        value={woltPreparationMinutes}
+                        onChange={(e) => {
+                          const next = Number(e.target.value);
+                          if (!Number.isFinite(next)) {
+                            setWoltPreparationMinutes(20);
+                            return;
+                          }
+                          setWoltPreparationMinutes(Math.max(0, Math.min(180, Math.round(next))));
+                        }}
+                        className="w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">
+                        Wolt použije túto prípravu na výpočet pickup času kuriéra.
+                      </p>
+                    </div>
                   </div>
 
                   <div className="border-t border-gray-200 my-4"></div>

@@ -515,7 +515,7 @@ export class WoltDriveService {
     customerName: string,
     customerPhone: string,
     shipmentPromiseId?: string, // Optional: if provided, use shipment promise ID
-    promiseSnapshot?: ShipmentPromiseSnapshot,
+    minPreparationTimeMinutes?: number,
     maxRetries = 3,
     apiConfig?: WoltApiConfig,
     context?: DeliveryCreateContext,
@@ -572,16 +572,16 @@ export class WoltDriveService {
       request.shipment_promise_id = effectivePromiseId;
     }
 
-    const customerSupport: Record<string, unknown> = {
-      phone_number: this.getKitchenPhone(pickupAddress),
-    };
-    if (supportEmail) {
-      customerSupport.email = supportEmail;
+    // ASAP pickup control - lets operator influence courier arrival to pickup
+    if (typeof minPreparationTimeMinutes === 'number' && Number.isFinite(minPreparationTimeMinutes)) {
+      request.min_preparation_time_minutes = minPreparationTimeMinutes;
     }
-    if (supportUrl) {
-      customerSupport.url = supportUrl;
-    }
-    request.customer_support = customerSupport;
+
+    this.logger.log('[Wolt] Creating delivery request', {
+      orderId,
+      shipmentPromiseId: shipmentPromiseId || null,
+      minPreparationTimeMinutes: request.min_preparation_time_minutes ?? null,
+    });
 
     let lastError: Error | null = null;
     
@@ -748,6 +748,18 @@ export class WoltDriveService {
     throw lastError || new Error('Wolt API cancelDelivery failed');
   }
 }
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

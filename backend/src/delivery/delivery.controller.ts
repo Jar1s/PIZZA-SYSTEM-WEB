@@ -1,4 +1,4 @@
-import { Controller, Post, Body, Get, Param, Logger, Request, UseGuards } from '@nestjs/common';
+import { Controller, Post, Body, Get, Param, Logger, BadRequestException } from '@nestjs/common';
 import { DeliveryService } from './delivery.service';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -57,15 +57,19 @@ export class DeliveryController {
   }
 
   @Post('create')
-  async createDelivery(
-    @Body() data: { orderId: string; promiseId?: string; promiseData?: ShipmentPromiseData },
-    @Request() req: { user?: RequestUser },
-  ) {
+  async createDelivery(@Body() data: { orderId: string; promiseId?: string; minPreparationTimeMinutes?: number }) {
+    const { minPreparationTimeMinutes } = data;
+
+    if (minPreparationTimeMinutes !== undefined) {
+      if (!Number.isInteger(minPreparationTimeMinutes) || minPreparationTimeMinutes < 0 || minPreparationTimeMinutes > 180) {
+        throw new BadRequestException('minPreparationTimeMinutes must be integer between 0 and 180');
+      }
+    }
+
     return this.deliveryService.createDeliveryForOrder(
       data.orderId,
       data.promiseId,
-      data.promiseData,
-      req.user,
+      minPreparationTimeMinutes,
     );
   }
 
@@ -74,6 +78,7 @@ export class DeliveryController {
     return this.deliveryService.getDeliveryById(id, req.user);
   }
 }
+
 
 
 
