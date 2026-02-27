@@ -194,6 +194,19 @@ export async function getProducts(tenantSlug: string): Promise<Product[]> {
   }));
 }
 
+export async function getOrder(orderId: string): Promise<Order> {
+  const res = await fetch(`${API_URL}/api/track/${orderId}?t=${Date.now()}`, {
+    cache: 'no-store',
+  });
+
+  if (!res.ok) {
+    throw new Error('Order not found');
+  }
+
+  const data = await res.json();
+  return safeParse(OrderSchema, data, data as any) as Order;
+}
+
 export async function getOrders(
   token: string,
   tenantSlug: string,
@@ -288,6 +301,11 @@ type StoryousSyncResult = {
   message: string;
 };
 
+type SyncFromMasterResult = {
+  synced: string[];
+  errors: string[];
+};
+
 export type StoryousSettings = {
   clientId: string;
   clientSecret: string;
@@ -371,6 +389,22 @@ export async function updateStoryousSettings(
   return res.json();
 }
 
+export async function syncFromMaster(masterSlug: string, targetSlugs?: string[]): Promise<SyncFromMasterResult> {
+  const res = await fetch(`${API_URL}/api/tenants/sync-from-master`, {
+    method: 'POST',
+    headers: buildAuthHeaders(true),
+    credentials: 'include',
+    body: JSON.stringify({ masterSlug, targetSlugs }),
+  });
+
+  if (!res.ok) {
+    const errorText = await res.text().catch(() => '');
+    throw new Error(errorText || 'Failed to sync from master tenant');
+  }
+
+  return res.json();
+}
+
 export async function syncOrderToStoryous(orderId: string, tenantSlug?: string): Promise<StoryousSyncResult> {
   const normalizedTenant = tenantSlug ? normalizeTenantSlug(tenantSlug) : null;
   const urls = [
@@ -419,12 +453,16 @@ export async function checkWoltAvailability(orderId: string): Promise<WoltAvaila
   return res.json();
 }
 
-export async function createWoltDelivery(orderId: string, promiseId?: string): Promise<WoltCreateResult> {
+export async function createWoltDelivery(
+  orderId: string,
+  promiseId?: string,
+  minPreparationTimeMinutes?: number,
+): Promise<WoltCreateResult> {
   const res = await fetch(`${API_URL}/api/delivery/create`, {
     method: 'POST',
     headers: buildAuthHeaders(true),
     credentials: 'include',
-    body: JSON.stringify({ orderId, promiseId }),
+    body: JSON.stringify({ orderId, promiseId, minPreparationTimeMinutes }),
   });
 
   if (!res.ok) {

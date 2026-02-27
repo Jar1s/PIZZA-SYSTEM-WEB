@@ -1,4 +1,4 @@
-import { Controller, Post, Body, Get, Param, Logger } from '@nestjs/common';
+import { Controller, Post, Body, Get, Param, Logger, BadRequestException } from '@nestjs/common';
 import { DeliveryService } from './delivery.service';
 
 @Controller('delivery')
@@ -29,8 +29,20 @@ export class DeliveryController {
   }
 
   @Post('create')
-  async createDelivery(@Body() data: { orderId: string; promiseId?: string }) {
-    return this.deliveryService.createDeliveryForOrder(data.orderId, data.promiseId);
+  async createDelivery(@Body() data: { orderId: string; promiseId?: string; minPreparationTimeMinutes?: number }) {
+    const { minPreparationTimeMinutes } = data;
+
+    if (minPreparationTimeMinutes !== undefined) {
+      if (!Number.isInteger(minPreparationTimeMinutes) || minPreparationTimeMinutes < 0 || minPreparationTimeMinutes > 180) {
+        throw new BadRequestException('minPreparationTimeMinutes must be integer between 0 and 180');
+      }
+    }
+
+    return this.deliveryService.createDeliveryForOrder(
+      data.orderId,
+      data.promiseId,
+      minPreparationTimeMinutes,
+    );
   }
 
   @Get(':id')
@@ -38,7 +50,6 @@ export class DeliveryController {
     return this.deliveryService.getDeliveryById(id);
   }
 }
-
 
 
 

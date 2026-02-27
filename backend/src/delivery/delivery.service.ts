@@ -134,7 +134,11 @@ export class DeliveryService {
     }
   }
 
-  async createDeliveryForOrder(orderId: string, shipmentPromiseId?: string) {
+  async createDeliveryForOrder(
+    orderId: string,
+    shipmentPromiseId?: string,
+    minPreparationTimeMinutes?: number,
+  ) {
     const order = await this.ordersService.getOrderById(orderId);
     
     if (order.status !== OrderStatus.PAID) {
@@ -162,6 +166,9 @@ export class DeliveryService {
     const customer = order.customer as any;
     const address = order.address as any;
 
+    const minPreparationTimeMinutesUsed =
+      minPreparationTimeMinutes !== undefined ? minPreparationTimeMinutes : 20;
+
     // Create Wolt delivery with tenant-specific pickup address
     // If shipmentPromiseId is provided, use it (proper flow according to documentation)
     let woltDelivery;
@@ -174,6 +181,7 @@ export class DeliveryService {
         customer.name,
         customer.phone,
         shipmentPromiseId, // Optional: if provided, will use shipment promise ID
+        minPreparationTimeMinutesUsed,
       );
     } catch (error: any) {
       // Propagate user-friendly error message from WoltDriveService
@@ -195,6 +203,8 @@ export class DeliveryService {
         trackingUrl: woltDelivery.trackingUrl,
         quote: {
           courierEta: woltDelivery.courierEta,
+          minPreparationTimeMinutesUsed,
+          requestMode: 'asap',
         },
       },
     });
@@ -278,7 +288,6 @@ export class DeliveryService {
     }
   }
 }
-
 
 
 
