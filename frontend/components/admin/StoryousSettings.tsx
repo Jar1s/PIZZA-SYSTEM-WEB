@@ -11,6 +11,10 @@ export function StoryousSettings() {
   const [placeId, setPlaceId] = useState('');
   const [enabled, setEnabled] = useState(false);
   const [autoSync, setAutoSync] = useState(false);
+  const [defaultDeliveryLeadMinutes, setDefaultDeliveryLeadMinutes] = useState(45);
+  const [autoAcceptPrintMode, setAutoAcceptPrintMode] = useState(true);
+  const [receiptIncludeModifierLines, setReceiptIncludeModifierLines] = useState(true);
+  const [receiptIncludeOrderNumber, setReceiptIncludeOrderNumber] = useState(true);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
@@ -27,6 +31,10 @@ export function StoryousSettings() {
           setPlaceId(data.placeId || '');
           setEnabled(data.enabled || false);
           setAutoSync(data.autoSync || false);
+          setDefaultDeliveryLeadMinutes(data.defaultDeliveryLeadMinutes ?? 45);
+          setAutoAcceptPrintMode(data.autoAcceptPrintMode ?? true);
+          setReceiptIncludeModifierLines(data.receiptIncludeModifierLines ?? true);
+          setReceiptIncludeOrderNumber(data.receiptIncludeOrderNumber ?? true);
         }
       } catch (error) {
         console.error('Failed to load Storyous settings:', error);
@@ -53,6 +61,10 @@ export function StoryousSettings() {
         placeId: placeId.trim(),
         enabled,
         autoSync,
+        defaultDeliveryLeadMinutes: Math.max(1, Number(defaultDeliveryLeadMinutes) || 45),
+        autoAcceptPrintMode,
+        receiptIncludeModifierLines,
+        receiptIncludeOrderNumber,
       });
       
       setSettings(updated);
@@ -96,16 +108,21 @@ export function StoryousSettings() {
             </span>
           </div>
           {enabled && (
-            <div className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={autoSync}
-                onChange={(e) => setAutoSync(e.target.checked)}
-                disabled={saving}
-                className="rounded"
-              />
-              <span className="text-xs text-gray-700">Automatické posielanie</span>
-            </div>
+            <>
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={autoSync}
+                  onChange={(e) => setAutoSync(e.target.checked)}
+                  disabled={saving}
+                  className="rounded"
+                />
+                <span className="text-xs text-gray-700">Automatické posielanie</span>
+              </div>
+              <div className="text-xs text-gray-600">
+                Delivery lead: <span className="font-semibold">{defaultDeliveryLeadMinutes} min</span>
+              </div>
+            </>
           )}
         </div>
       ) : (
@@ -173,6 +190,48 @@ export function StoryousSettings() {
               className="rounded"
             />
             <span className="text-xs text-gray-700">Automatické posielanie</span>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">Default delivery lead (min)</label>
+            <input
+              type="number"
+              min={1}
+              max={240}
+              value={defaultDeliveryLeadMinutes}
+              onChange={(e) => setDefaultDeliveryLeadMinutes(Number(e.target.value))}
+              disabled={saving}
+              className="w-full px-2 py-1 text-xs border rounded"
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={autoAcceptPrintMode}
+              onChange={(e) => setAutoAcceptPrintMode(e.target.checked)}
+              disabled={saving || !enabled}
+              className="rounded"
+            />
+            <span className="text-xs text-gray-700">Auto-accept/print mode (POS)</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={receiptIncludeModifierLines}
+              onChange={(e) => setReceiptIncludeModifierLines(e.target.checked)}
+              disabled={saving || !enabled}
+              className="rounded"
+            />
+            <span className="text-xs text-gray-700">Tlačiť + modifikátory na bloček</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={receiptIncludeOrderNumber}
+              onChange={(e) => setReceiptIncludeOrderNumber(e.target.checked)}
+              disabled={saving || !enabled}
+              className="rounded"
+            />
+            <span className="text-xs text-gray-700">Tlačiť číslo objednávky</span>
           </div>
           <button
             onClick={handleSave}
