@@ -52,8 +52,9 @@ export function isCurrentlyOpen(openingHours: OpeningHours | null | undefined): 
     return true; // No config means we can't decide -> stay open
   }
 
-  if (openingHours.enabled === false) {
-    return false; // Explicitly disabled => closed
+  // Opening-hours automation disabled => do not auto-close ordering
+  if (openingHours.enabled !== true) {
+    return true;
   }
 
   const currentDay = getCurrentDayName(openingHours.timezone);
