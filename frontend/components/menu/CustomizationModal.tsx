@@ -4,7 +4,13 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Product } from '@pizza-ecosystem/shared';
-import { pizzaCustomizations, stangleCustomizations, CustomizationOption, CustomizationCategory, getCustomizationOptions } from '@pizza-ecosystem/shared';
+import {
+  pizzaCustomizations,
+  stangleCustomizations,
+  CustomizationOption,
+  CustomizationCategory,
+  getCustomizationOptions,
+} from '@/shared/types/customization-options';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { getProductTranslation, getAllergenDescription, getProductDisplayName, getLocalizedDescription } from '@/lib/product-translations';
 import { getProductDisplayImage } from '@/lib/product-images';

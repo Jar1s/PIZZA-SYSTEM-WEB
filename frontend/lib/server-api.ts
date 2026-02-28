@@ -9,7 +9,63 @@ import { TenantSchema, ProductSchema, safeParse } from '@/lib/schemas/api.schema
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
 
+const normalizeTenantSlug = (slug?: string): string => {
+  const s = (slug || '').trim().toLowerCase();
+  if (!s) return 'pornopizza';
+  if (s === 'p0rnopizza') return 'pornopizza';
+  if (s === 'pizzaparty' || s === 'partypizza') return 'partypizza';
+  return s;
+};
+
+/**
+ * Check if we should skip API fetch (e.g., during build/export when backend is not available)
+ * This should ONLY be used during build/export, NEVER in production runtime
+ */
+function shouldSkipApiFetch(): boolean {
+  // Skip if explicitly disabled
+  if (process.env.SKIP_API_FETCH_DURING_BUILD === 'true') {
+    return true;
+  }
+  
+  // ONLY skip during build/export phase when API is localhost
+  // In production runtime, we ALWAYS try to fetch from API (even if it's localhost)
+  const isLocalhost = API_URL.includes('localhost') || API_URL.includes('127.0.0.1');
+  const isBuildPhase = process.env.NEXT_PHASE === 'phase-production-build' || 
+                       process.env.NEXT_PHASE === 'phase-export';
+  
+  // During build/export with localhost API, skip fetch to avoid 404 errors
+  // But in production runtime, we always try to fetch (even from localhost)
+  if (isLocalhost && isBuildPhase) {
+    console.log('[server-api] Skipping API fetch during build/export phase (localhost API)');
+    return true;
+  }
+  
+  return false;
+}
+
+/**
+ * Get fallback tenant data when API is unavailable
+ */
+function getFallbackTenant(slug: string): Tenant {
+  return {
+    slug,
+    name: slug === 'pornopizza' ? 'PornoPizza' : slug === 'pizzavnudzi' ? 'Pizza v Nudzi' : 'Pizza Ordering',
+    isActive: true,
+    theme: {
+      primaryColor: '#E91E63',
+      secondaryColor: '#0F141A',
+      favicon: '/favicon.ico',
+    },
+  } as Tenant;
+}
+
 export async function getTenantServer(slug: string): Promise<Tenant | null> {
+  // Skip API fetch during build/export if backend is not available
+  if (shouldSkipApiFetch()) {
+    console.log(`[getTenantServer] Using fallback tenant for: ${slug}`);
+    return withTenantThemeDefaults(getFallbackTenant(slug));
+  }
+  
   const maxRetries = 3;
   const retryDelay = 1000; // 1 second base delay
   
@@ -57,6 +113,7 @@ export async function getTenantServer(slug: string): Promise<Tenant | null> {
         }
         
         // Don't retry on client errors (4xx)
+        // In production, we return null (not fallback) - let the UI handle the error
         return null;
       }
       
@@ -97,12 +154,13 @@ export async function getTenantServer(slug: string): Promise<Tenant | null> {
         } else if (error.message?.includes('fetch failed')) {
           console.error('[getTenantServer] Network error - check NEXT_PUBLIC_API_URL:', API_URL);
           console.error('[getTenantServer] This might be a DNS or connection issue');
-        } else if (error.message?.includes('ECONNREFUSED')) {
+        } else         if (error.message?.includes('ECONNREFUSED')) {
           console.error('[getTenantServer] Connection refused - backend is not running or not accessible');
         }
       }
       
-      // Last attempt failed
+      // Last attempt failed - return null (not fallback) in production
+      // Fallback is only used during build/export via shouldSkipApiFetch()
       if (attempt === maxRetries) {
         return null;
       }
@@ -113,6 +171,12 @@ export async function getTenantServer(slug: string): Promise<Tenant | null> {
 }
 
 export async function getProductsServer(tenantSlug: string): Promise<Product[]> {
+  // Skip API fetch during build/export if backend is not available
+  if (shouldSkipApiFetch()) {
+    console.log(`[getProductsServer] Skipping API fetch during build/export - returning empty array`);
+    return [];
+  }
+  
   const maxRetries = 3;
   const retryDelay = 1000; // 1 second base delay
   
@@ -157,6 +221,7 @@ export async function getProductsServer(tenantSlug: string): Promise<Product[]> 
         }
         
         // Don't retry on client errors (4xx) - return empty array
+        // In production, return empty array (products are optional, UI will show skeleton)
         return [];
       }
       
@@ -196,7 +261,8 @@ export async function getProductsServer(tenantSlug: string): Promise<Product[]> 
         }
       }
       
-      // Last attempt failed - return empty array to show skeleton
+      // Last attempt failed - return empty array (products are optional)
+      // Fallback is only used during build/export via shouldSkipApiFetch()
       if (attempt === maxRetries) {
         return [];
       }
@@ -210,13 +276,13 @@ export async function getProductsServer(tenantSlug: string): Promise<Product[]> 
  * Get tenant slug from headers (for Server Components)
  */
 export function getTenantSlugFromHeaders(headers: Headers): string {
-  const hostname = headers.get('host') || '';
-  const referer = headers.get('referer') || '';
+  const hostname = (headers.get('host') || '').toLowerCase();
+  const referer = (headers.get('referer') || '').toLowerCase();
   const xTenant = headers.get('x-tenant'); // Set by middleware
   
   // First check x-tenant header (set by middleware) - highest priority
-  if (xTenant && (xTenant === 'pornopizza' || xTenant === 'pizzavnudzi')) {
-    return xTenant;
+  if (xTenant) {
+    return normalizeTenantSlug(xTenant);
   }
   
   // For Vercel URLs, NEVER extract from hostname - always use default or query param
@@ -225,8 +291,8 @@ export function getTenantSlugFromHeaders(headers: Headers): string {
     try {
       const url = new URL(referer || 'http://localhost:3001');
       const tenantParam = url.searchParams.get('tenant');
-      if (tenantParam && (tenantParam === 'pornopizza' || tenantParam === 'pizzavnudzi')) {
-        return tenantParam;
+      if (tenantParam) {
+        return normalizeTenantSlug(tenantParam);
       }
     } catch {
       // Ignore URL parsing errors
@@ -236,20 +302,24 @@ export function getTenantSlugFromHeaders(headers: Headers): string {
   }
   
   // Check hostname for known production domains (only for real domains, not Vercel)
-  if (hostname.includes('pornopizza.sk') || hostname.includes('p0rnopizza.sk')) {
+  if (hostname.includes('pizzaparty') || hostname.includes('partypizza')) {
+    return 'partypizza';
+  }
+  if (hostname.includes('pornopizza.sk') || hostname.includes('p0rnopizza.sk') || hostname.includes('pornopizza')) {
     return 'pornopizza';
-  } else if (hostname.includes('pizzavnudzi.sk')) {
-    return 'pizzavnudzi';
-  } else if ((hostname.includes('pornopizza') || hostname.includes('p0rnopizza')) && !hostname.includes('vercel.app')) {
-    return 'pornopizza';
-  } else if (hostname.includes('pizzavnudzi') && !hostname.includes('vercel.app')) {
+  }
+  if (hostname.includes('pizzavnudzi.sk') || hostname.includes('pizzavnudzi')) {
     return 'pizzavnudzi';
   }
   
   // Check referer as fallback
-  if (referer.includes('pornopizza') && !referer.includes('vercel.app')) {
+  if (referer.includes('pizzaparty') || referer.includes('partypizza')) {
+    return 'partypizza';
+  }
+  if (referer.includes('pornopizza') || referer.includes('p0rnopizza')) {
     return 'pornopizza';
-  } else if (referer.includes('pizzavnudzi') && !referer.includes('vercel.app')) {
+  }
+  if (referer.includes('pizzavnudzi')) {
     return 'pizzavnudzi';
   }
   
@@ -257,8 +327,8 @@ export function getTenantSlugFromHeaders(headers: Headers): string {
   try {
     const url = new URL(referer || 'http://localhost:3001');
     const tenantParam = url.searchParams.get('tenant');
-    if (tenantParam && (tenantParam === 'pornopizza' || tenantParam === 'pizzavnudzi')) {
-      return tenantParam;
+    if (tenantParam) {
+      return normalizeTenantSlug(tenantParam);
     }
   } catch {
     // Ignore URL parsing errors

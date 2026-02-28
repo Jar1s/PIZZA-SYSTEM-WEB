@@ -52,7 +52,7 @@ export default function AccountPage() {
   // Update active section when section query param changes
   useEffect(() => {
     const section = searchParams.get('section') as AccountSection | null;
-    if (section && ['orders', 'address', 'settings'].includes(section)) {
+    if (section && ['orders', 'address', 'settings'].indexOf(section) !== -1) {
       setActiveSection(section);
     }
   }, [searchParams]);

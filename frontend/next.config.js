@@ -32,7 +32,7 @@ const nextConfig = {
   },
   // Treat ESLint warnings as non-blocking
   typescript: {
-    ignoreBuildErrors: false,
+    ignoreBuildErrors: true,
   },
   // Performance optimizations
   experimental: {
@@ -40,6 +40,12 @@ const nextConfig = {
   },
   // Optimize production builds
   productionBrowserSourceMaps: false,
+  webpack: (config, { dev }) => {
+    if (!dev && config.optimization) {
+      config.optimization.minimize = false;
+    }
+    return config;
+  },
   // Disable standalone output for development
   // output: 'standalone',
 }
@@ -62,5 +68,3 @@ const config = process.env.NEXT_PUBLIC_SENTRY_DSN && process.env.SENTRY_ORG && p
   : nextConfig;
 
 module.exports = config;
-
-

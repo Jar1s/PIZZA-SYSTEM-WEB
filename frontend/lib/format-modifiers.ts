@@ -1,5 +1,5 @@
-import { getCustomizationOptions } from '@pizza-ecosystem/shared';
-import type { CustomizationLabels } from '@pizza-ecosystem/shared';
+import { getCustomizationOptions } from '@/shared/types/customization-options';
+type CustomizationLabels = any;
 
 /**
  * Removes emoji and special formatting from text

@@ -67,6 +67,14 @@ export function EditBrandModal({
   const [pickupPhone, setPickupPhone] = useState('');
   const [pickupInstructions, setPickupInstructions] = useState('');
 
+  // Email / SMTP settings
+  const [fromEmail, setFromEmail] = useState('');
+  const [smtpHost, setSmtpHost] = useState('');
+  const [smtpPort, setSmtpPort] = useState('587');
+  const [smtpUser, setSmtpUser] = useState('');
+  const [smtpPassword, setSmtpPassword] = useState('');
+  const [smtpSecure, setSmtpSecure] = useState(false);
+
   // Analytics & Tracking settings
   const [analyticsConfig, setAnalyticsConfig] = useState({
     googleAnalytics: { measurementId: '', enabled: false },
@@ -87,6 +95,7 @@ export function EditBrandModal({
       const deliveryConfig = (tenant.deliveryConfig as any) || {};
       const woltConfig = deliveryConfig.woltConfig || {};
       const pickupAddress = deliveryConfig.pickupAddress || {};
+      const emailConfig = (tenant.emailConfig as any) || {};
       
       setFormData({
         name: tenant.name || '',
@@ -176,6 +185,22 @@ export function EditBrandModal({
       setPickupLng(pickupAddress.coordinates?.lng?.toString() || '');
       setPickupPhone(pickupAddress.phone || '');
       setPickupInstructions(pickupAddress.instructions || '');
+      // Email / SMTP
+      setFromEmail(emailConfig.fromEmail || '');
+      setSmtpHost(emailConfig.smtpHost || emailConfig.host || '');
+      setSmtpPort(
+        emailConfig.smtpPort?.toString() ||
+        emailConfig.port?.toString() ||
+        '587'
+      );
+      setSmtpUser(emailConfig.smtpUser || emailConfig.user || '');
+      setSmtpPassword(''); // never prefill passwords
+      setSmtpSecure(
+        emailConfig.smtpSecure === true ||
+        emailConfig.smtpSecure === 'true' ||
+        emailConfig.secure === true ||
+        emailConfig.secure === 'true'
+      );
       
       // Load analytics config
       const analytics = theme.analyticsConfig || {};
@@ -273,7 +298,25 @@ export function EditBrandModal({
         isActive: formData.isActive,
         paymentConfig: paymentConfig,
       };
-      
+      const hasEmailConfig =
+        fromEmail.trim() ||
+        smtpHost.trim() ||
+        smtpPort.trim() ||
+        smtpUser.trim() ||
+        smtpPassword.trim() ||
+        smtpSecure;
+
+      if (hasEmailConfig) {
+        updateData.emailConfig = {
+          fromEmail: fromEmail.trim() || undefined,
+          smtpHost: smtpHost.trim() || undefined,
+          smtpPort: smtpPort.trim() ? parseInt(smtpPort, 10) : undefined,
+          smtpUser: smtpUser.trim() || undefined,
+          smtpPassword: smtpPassword.trim() || undefined,
+          smtpSecure,
+        };
+      }
+
       // Only include deliveryConfig if it has content
       if (Object.keys(deliveryConfig).length > 0 || Object.keys(existingDeliveryConfig).length > 0) {
         updateData.deliveryConfig = deliveryConfig;
@@ -576,6 +619,309 @@ export function EditBrandModal({
                       </div>
                     </div>
                   ))}
+                </div>
+
+                {/* Email / SMTP */}
+                <div className="border border-gray-200 rounded-md p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="text-sm font-semibold text-gray-900">Email & SMTP</h4>
+                      <p className="text-xs text-gray-500">Brand-specific odosielateľ a SMTP server (prepíše globálne env).</p>
+                    </div>
+                    <span className="text-xs text-gray-500">Nechaj prázdne, ak chceš ponechať globálne SMTP.</span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="sm:col-span-2">
+                      <label className="block text-xs font-semibold text-gray-600 mb-1">From email</label>
+                      <input
+                        type="email"
+                        value={fromEmail}
+                        onChange={(e) => setFromEmail(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm"
+                        placeholder="orders@brand.sk"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-600 mb-1">SMTP host</label>
+                      <input
+                        type="text"
+                        value={smtpHost}
+                        onChange={(e) => setSmtpHost(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm"
+                        placeholder="smtp.brand.sk"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-600 mb-1">SMTP port</label>
+                      <input
+                        type="number"
+                        value={smtpPort}
+                        onChange={(e) => setSmtpPort(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm"
+                        placeholder="587"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-600 mb-1">SMTP user</label>
+                      <input
+                        type="text"
+                        value={smtpUser}
+                        onChange={(e) => setSmtpUser(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm"
+                        placeholder="orders@brand.sk"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-600 mb-1">SMTP password</label>
+                      <input
+                        type="password"
+                        value={smtpPassword}
+                        onChange={(e) => setSmtpPassword(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm"
+                        placeholder="••••••••"
+                      />
+                      <p className="text-[11px] text-gray-500 mt-1">Nechaj prázdne, ak nechceš zmeniť.</p>
+                    </div>
+                    <div className="flex items-center gap-2 sm:col-span-2">
+                      <input
+                        id="smtpSecure"
+                        type="checkbox"
+                        checked={smtpSecure}
+                        onChange={(e) => setSmtpSecure(e.target.checked)}
+                        className="h-4 w-4 text-blue-600 border-gray-300 rounded"
+                      />
+                      <label htmlFor="smtpSecure" className="text-sm text-gray-700">
+                        Secure (SSL/TLS)
+                      </label>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Email / SMTP */}
+                <div className="border border-gray-200 rounded-md p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="text-sm font-semibold text-gray-900">Email & SMTP</h4>
+                      <p className="text-xs text-gray-500">Brand-specific odosielateľ a SMTP server (prepíše globálne env).</p>
+                    </div>
+                    <span className="text-xs text-gray-500">Nechaj prázdne, ak chceš ponechať globálne SMTP.</span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="sm:col-span-2">
+                      <label className="block text-xs font-semibold text-gray-600 mb-1">From email</label>
+                      <input
+                        type="email"
+                        value={fromEmail}
+                        onChange={(e) => setFromEmail(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm"
+                        placeholder="orders@brand.sk"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-600 mb-1">SMTP host</label>
+                      <input
+                        type="text"
+                        value={smtpHost}
+                        onChange={(e) => setSmtpHost(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm"
+                        placeholder="smtp.brand.sk"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-600 mb-1">SMTP port</label>
+                      <input
+                        type="number"
+                        value={smtpPort}
+                        onChange={(e) => setSmtpPort(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm"
+                        placeholder="587"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-600 mb-1">SMTP user</label>
+                      <input
+                        type="text"
+                        value={smtpUser}
+                        onChange={(e) => setSmtpUser(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus-border-blue-500 text-sm"
+                        placeholder="orders@brand.sk"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-600 mb-1">SMTP password</label>
+                      <input
+                        type="password"
+                        value={smtpPassword}
+                        onChange={(e) => setSmtpPassword(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm"
+                        placeholder="••••••••"
+                      />
+                      <p className="text-[11px] text-gray-500 mt-1">Nechaj prázdne, ak nechceš zmeniť.</p>
+                    </div>
+                    <div className="flex items-center gap-2 sm:col-span-2">
+                      <input
+                        id="smtpSecure"
+                        type="checkbox"
+                        checked={smtpSecure}
+                        onChange={(e) => setSmtpSecure(e.target.checked)}
+                        className="h-4 w-4 text-blue-600 border-gray-300 rounded"
+                      />
+                      <label htmlFor="smtpSecure" className="text-sm text-gray-700">
+                        Secure (SSL/TLS)
+                      </label>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Email / SMTP */}
+                <div className="border border-gray-200 rounded-md p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="text-sm font-semibold text-gray-900">Email & SMTP</h4>
+                      <p className="text-xs text-gray-500">Brand-specific odosielateľ a SMTP server (prepíše globálne env).</p>
+                    </div>
+                    <span className="text-xs text-gray-500">Nechaj prázdne, ak chceš ponechať globálne SMTP.</span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="sm:col-span-2">
+                      <label className="block text-xs font-semibold text-gray-600 mb-1">From email</label>
+                      <input
+                        type="email"
+                        value={fromEmail}
+                        onChange={(e) => setFromEmail(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm"
+                        placeholder="orders@brand.sk"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-600 mb-1">SMTP host</label>
+                      <input
+                        type="text"
+                        value={smtpHost}
+                        onChange={(e) => setSmtpHost(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm"
+                        placeholder="smtp.brand.sk"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-600 mb-1">SMTP port</label>
+                      <input
+                        type="number"
+                        value={smtpPort}
+                        onChange={(e) => setSmtpPort(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm"
+                        placeholder="587"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-600 mb-1">SMTP user</label>
+                      <input
+                        type="text"
+                        value={smtpUser}
+                        onChange={(e) => setSmtpUser(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm"
+                        placeholder="orders@brand.sk"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-600 mb-1">SMTP password</label>
+                      <input
+                        type="password"
+                        value={smtpPassword}
+                        onChange={(e) => setSmtpPassword(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm"
+                        placeholder="••••••••"
+                      />
+                      <p className="text-[11px] text-gray-500 mt-1">Nechaj prázdne, ak nechceš zmeniť.</p>
+                    </div>
+                    <div className="flex items-center gap-2 sm:col-span-2">
+                      <input
+                        id="smtpSecure"
+                        type="checkbox"
+                        checked={smtpSecure}
+                        onChange={(e) => setSmtpSecure(e.target.checked)}
+                        className="h-4 w-4 text-blue-600 border-gray-300 rounded"
+                      />
+                      <label htmlFor="smtpSecure" className="text-sm text-gray-700">
+                        Secure (SSL/TLS)
+                      </label>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Email / SMTP Settings */}
+                <div className="border-t pt-4 mt-4">
+                  <h4 className="text-md font-semibold mb-3 text-gray-900">
+                    📧 Email & SMTP
+                  </h4>
+                  <p className="text-sm text-gray-600 mb-4">
+                    Nastav odosielateľa a SMTP server pre tento brand (prepíše globálne env). Nechaj prázdne, ak chceš použiť globálne nastavenia.
+                  </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="sm:col-span-2">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">From email</label>
+                      <input
+                        type="email"
+                        value={fromEmail}
+                        onChange={(e) => setFromEmail(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="orders@brand.sk"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">SMTP host</label>
+                      <input
+                        type="text"
+                        value={smtpHost}
+                        onChange={(e) => setSmtpHost(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="smtp.brand.sk"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">SMTP port</label>
+                      <input
+                        type="number"
+                        value={smtpPort}
+                        onChange={(e) => setSmtpPort(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="587"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">SMTP user</label>
+                      <input
+                        type="text"
+                        value={smtpUser}
+                        onChange={(e) => setSmtpUser(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="orders@brand.sk"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">SMTP password</label>
+                      <input
+                        type="password"
+                        value={smtpPassword}
+                        onChange={(e) => setSmtpPassword(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="••••••••"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">Nechaj prázdne, ak nechceš zmeniť.</p>
+                    </div>
+                    <div className="flex items-center gap-2 sm:col-span-2">
+                      <input
+                        id="smtpSecure"
+                        type="checkbox"
+                        checked={smtpSecure}
+                        onChange={(e) => setSmtpSecure(e.target.checked)}
+                        className="h-4 w-4 text-blue-600 border-gray-300 rounded"
+                      />
+                      <label htmlFor="smtpSecure" className="text-sm text-gray-700">
+                        Secure (SSL/TLS)
+                      </label>
+                    </div>
+                  </div>
                 </div>
 
                 {/* Google OAuth Settings */}
@@ -945,6 +1291,356 @@ export function EditBrandModal({
                           </p>
                         </div>
                       </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Email / SMTP Settings */}
+                <div className="border-t pt-4 mt-4">
+                  <h4 className="text-md font-semibold mb-3 text-gray-900">
+                    📧 Email & SMTP
+                  </h4>
+                  <p className="text-sm text-gray-600 mb-4">
+                    Nastav odosielateľa a SMTP server pre tento brand (prepíše globálne env). Nechaj prázdne, ak chceš použiť globálne nastavenia.
+                  </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="sm:col-span-2">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">From email</label>
+                      <input
+                        type="email"
+                        value={fromEmail}
+                        onChange={(e) => setFromEmail(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="orders@brand.sk"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">SMTP host</label>
+                      <input
+                        type="text"
+                        value={smtpHost}
+                        onChange={(e) => setSmtpHost(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="smtp.brand.sk"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">SMTP port</label>
+                      <input
+                        type="number"
+                        value={smtpPort}
+                        onChange={(e) => setSmtpPort(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="587"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">SMTP user</label>
+                      <input
+                        type="text"
+                        value={smtpUser}
+                        onChange={(e) => setSmtpUser(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="orders@brand.sk"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">SMTP password</label>
+                      <input
+                        type="password"
+                        value={smtpPassword}
+                        onChange={(e) => setSmtpPassword(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="••••••••"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">Nechaj prázdne, ak nechceš zmeniť.</p>
+                    </div>
+                    <div className="flex items-center gap-2 sm:col-span-2">
+                      <input
+                        id="smtpSecure"
+                        type="checkbox"
+                        checked={smtpSecure}
+                        onChange={(e) => setSmtpSecure(e.target.checked)}
+                        className="h-4 w-4 text-blue-600 border-gray-300 rounded"
+                      />
+                      <label htmlFor="smtpSecure" className="text-sm text-gray-700">
+                        Secure (SSL/TLS)
+                      </label>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Email / SMTP Settings */}
+                <div className="border-t pt-4 mt-4">
+                  <h4 className="text-md font-semibold mb-3 text-gray-900">
+                    📧 Email & SMTP
+                  </h4>
+                  <p className="text-sm text-gray-600 mb-4">
+                    Nastav odosielateľa a SMTP server pre tento brand (prepíše globálne env). Nechaj prázdne, ak chceš použiť globálne nastavenia.
+                  </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="sm:col-span-2">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">From email</label>
+                      <input
+                        type="email"
+                        value={fromEmail}
+                        onChange={(e) => setFromEmail(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="orders@brand.sk"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">SMTP host</label>
+                      <input
+                        type="text"
+                        value={smtpHost}
+                        onChange={(e) => setSmtpHost(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="smtp.brand.sk"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">SMTP port</label>
+                      <input
+                        type="number"
+                        value={smtpPort}
+                        onChange={(e) => setSmtpPort(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="587"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">SMTP user</label>
+                      <input
+                        type="text"
+                        value={smtpUser}
+                        onChange={(e) => setSmtpUser(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="orders@brand.sk"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">SMTP password</label>
+                      <input
+                        type="password"
+                        value={smtpPassword}
+                        onChange={(e) => setSmtpPassword(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="••••••••"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">Nechaj prázdne, ak nechceš zmeniť.</p>
+                    </div>
+                    <div className="flex items-center gap-2 sm:col-span-2">
+                      <input
+                        id="smtpSecure"
+                        type="checkbox"
+                        checked={smtpSecure}
+                        onChange={(e) => setSmtpSecure(e.target.checked)}
+                        className="h-4 w-4 text-blue-600 border-gray-300 rounded"
+                      />
+                      <label htmlFor="smtpSecure" className="text-sm text-gray-700">
+                        Secure (SSL/TLS)
+                      </label>
+                    </div>
+                </div>
+              </div>
+
+                {/* Email / SMTP Settings */}
+                <div className="border-t pt-4 mt-4">
+                  <h4 className="text-md font-semibold mb-3 text-gray-900">
+                    📧 Email / SMTP
+                  </h4>
+                  <p className="text-sm text-gray-600 mb-4">
+                    Nastav odosielateľa a SMTP pripojenie pre tento tenant. Ak necháš prázdne, použije sa default z prostredia.
+                  </p>
+
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        From email
+                      </label>
+                      <input
+                        type="email"
+                        value={fromEmail}
+                        onChange={(e) => setFromEmail(e.target.value)}
+                        placeholder="noreply@brand.sk"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                      />
+                      <p className="mt-1 text-xs text-gray-500">
+                        Adresa odosielateľa, ktorú budú vidieť zákazníci.
+                      </p>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          SMTP host
+                        </label>
+                        <input
+                          type="text"
+                          value={smtpHost}
+                          onChange={(e) => setSmtpHost(e.target.value)}
+                          placeholder="smtp.your-provider.com"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          SMTP port
+                        </label>
+                        <input
+                          type="text"
+                          value={smtpPort}
+                          onChange={(e) => setSmtpPort(e.target.value)}
+                          placeholder="587"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          SMTP user
+                        </label>
+                        <input
+                          type="text"
+                          value={smtpUser}
+                          onChange={(e) => setSmtpUser(e.target.value)}
+                          placeholder="user@your-provider.com"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          SMTP password
+                        </label>
+                        <input
+                          type="password"
+                          value={smtpPassword}
+                          onChange={(e) => setSmtpPassword(e.target.value)}
+                          placeholder="********"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                        />
+                        <p className="mt-1 text-xs text-gray-500">
+                          Heslo sa nepredvyplní; ulož znova pri každej zmene.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between border border-gray-200 rounded-md p-3">
+                      <div>
+                        <p className="text-sm font-medium text-gray-800">SMTP secure</p>
+                        <p className="text-xs text-gray-500">
+                          Zapni pre TLS/SSL (typicky port 465). Pre STARTTLS na 587 nechaj vypnuté.
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setSmtpSecure(!smtpSecure)}
+                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${smtpSecure ? 'bg-green-600' : 'bg-gray-300'}`}
+                      >
+                        <span
+                          className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${smtpSecure ? 'translate-x-6' : 'translate-x-1'}`}
+                        />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Email / SMTP Settings */}
+                <div className="border-t pt-4 mt-4">
+                  <h4 className="text-md font-semibold mb-3 text-gray-900">
+                    📧 Email / SMTP
+                  </h4>
+                  <p className="text-sm text-gray-600 mb-4">
+                    Nastav odosielateľa a SMTP pripojenie pre tento tenant. Ak necháš prázdne, použije sa default z prostredia.
+                  </p>
+
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        From email
+                      </label>
+                      <input
+                        type="email"
+                        value={fromEmail}
+                        onChange={(e) => setFromEmail(e.target.value)}
+                        placeholder="noreply@brand.sk"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                      />
+                      <p className="mt-1 text-xs text-gray-500">
+                        Adresa odosielateľa, ktorú budú vidieť zákazníci.
+                      </p>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          SMTP host
+                        </label>
+                        <input
+                          type="text"
+                          value={smtpHost}
+                          onChange={(e) => setSmtpHost(e.target.value)}
+                          placeholder="smtp.your-provider.com"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          SMTP port
+                        </label>
+                        <input
+                          type="text"
+                          value={smtpPort}
+                          onChange={(e) => setSmtpPort(e.target.value)}
+                          placeholder="587"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          SMTP user
+                        </label>
+                        <input
+                          type="text"
+                          value={smtpUser}
+                          onChange={(e) => setSmtpUser(e.target.value)}
+                          placeholder="user@your-provider.com"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          SMTP password
+                        </label>
+                        <input
+                          type="password"
+                          value={smtpPassword}
+                          onChange={(e) => setSmtpPassword(e.target.value)}
+                          placeholder="********"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                        />
+                        <p className="mt-1 text-xs text-gray-500">
+                          Heslo sa nepredvyplní; ulož znova pri každej zmene.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between border border-gray-200 rounded-md p-3">
+                      <div>
+                        <p className="text-sm font-medium text-gray-800">SMTP secure</p>
+                        <p className="text-xs text-gray-500">
+                          Zapni pre TLS/SSL (typicky port 465). Pre STARTTLS na 587 nechaj vypnuté.
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setSmtpSecure(!smtpSecure)}
+                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${smtpSecure ? 'bg-green-600' : 'bg-gray-300'}`}
+                      >
+                        <span
+                          className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${smtpSecure ? 'translate-x-6' : 'translate-x-1'}`}
+                        />
+                      </button>
                     </div>
                   </div>
                 </div>

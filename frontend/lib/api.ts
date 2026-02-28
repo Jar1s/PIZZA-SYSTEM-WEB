@@ -194,6 +194,97 @@ export async function getProducts(tenantSlug: string): Promise<Product[]> {
   }));
 }
 
+export type ProductMapping = {
+  id: string;
+  tenantId: string;
+  externalIdentifier: string;
+  internalProductName: string;
+  source?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
+type ProductInput = {
+  name: string;
+  description?: string | null;
+  subHeader?: string | null;
+  priceCents: number;
+  category: string;
+  image?: string | null;
+  isActive?: boolean;
+  isBestSeller?: boolean;
+  displayName?: string | null;
+};
+
+export async function createProduct(tenantSlug: string, data: ProductInput): Promise<Product> {
+  const normalizedSlug = normalizeTenantSlug(tenantSlug);
+  const res = await fetch(`${API_URL}/api/${normalizedSlug}/products`, {
+    method: 'POST',
+    headers: buildAuthHeaders(true),
+    credentials: 'include',
+    body: JSON.stringify(data),
+  });
+
+  if (!res.ok) {
+    const errorText = await res.text().catch(() => '');
+    throw new Error(errorText || 'Failed to create product');
+  }
+
+  const created = await res.json();
+  return safeParse(ProductSchema, created, created as any);
+}
+
+export async function updateProduct(
+  tenantSlug: string,
+  productId: string,
+  data: Partial<ProductInput>
+): Promise<Product> {
+  const normalizedSlug = normalizeTenantSlug(tenantSlug);
+  const res = await fetch(`${API_URL}/api/${normalizedSlug}/products/${productId}`, {
+    method: 'PATCH',
+    headers: buildAuthHeaders(true),
+    credentials: 'include',
+    body: JSON.stringify(data),
+  });
+
+  if (!res.ok) {
+    const errorText = await res.text().catch(() => '');
+    throw new Error(errorText || 'Failed to update product');
+  }
+
+  const updated = await res.json();
+  return safeParse(ProductSchema, updated, updated as any);
+}
+
+export async function deleteProduct(tenantSlug: string, productId: string): Promise<void> {
+  const normalizedSlug = normalizeTenantSlug(tenantSlug);
+  const res = await fetch(`${API_URL}/api/${normalizedSlug}/products/${productId}`, {
+    method: 'DELETE',
+    headers: buildAuthHeaders(),
+    credentials: 'include',
+  });
+
+  if (!res.ok) {
+    const errorText = await res.text().catch(() => '');
+    throw new Error(errorText || 'Failed to delete product');
+  }
+}
+
+export async function getProductMappings(tenantSlug: string, productId: string): Promise<ProductMapping[]> {
+  const normalizedSlug = normalizeTenantSlug(tenantSlug);
+  const res = await fetch(`${API_URL}/api/${normalizedSlug}/products/${productId}/mappings`, {
+    headers: buildAuthHeaders(),
+    credentials: 'include',
+  });
+
+  if (!res.ok) {
+    const errorText = await res.text().catch(() => '');
+    throw new Error(errorText || 'Failed to fetch product mappings');
+  }
+
+  return res.json();
+}
+
 export async function getOrder(orderId: string): Promise<Order> {
   const res = await fetch(`${API_URL}/api/track/${orderId}?t=${Date.now()}`, {
     cache: 'no-store',
@@ -205,6 +296,168 @@ export async function getOrder(orderId: string): Promise<Order> {
 
   const data = await res.json();
   return safeParse(OrderSchema, data, data as any) as Order;
+}
+
+type CreateOrderPayload = {
+  customer: {
+    name: string;
+    email: string;
+    phone: string;
+  };
+  address: {
+    street: string;
+    city: string;
+    postalCode: string;
+    country?: string;
+    houseNumber?: string;
+    instructions?: string;
+    coordinates?: { lat: number; lng: number };
+  };
+  items: Array<{
+    productId: string;
+    quantity: number;
+    modifiers?: Record<string, string[]>;
+  }>;
+  userId?: string;
+  paymentMethod?: string | null;
+  saveAccount?: boolean;
+  deliveryFeeCents?: number;
+};
+
+type CreateOrderResult = Order | {
+  order: Order;
+  authToken?: string;
+  refreshToken?: string;
+  user?: any;
+};
+
+export async function createOrder(tenantSlug: string, data: CreateOrderPayload): Promise<CreateOrderResult> {
+  const normalizedSlug = normalizeTenantSlug(tenantSlug);
+  const res = await fetch(`${API_URL}/api/${normalizedSlug}/orders`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify(data),
+  });
+
+  if (!res.ok) {
+    const errorText = await res.text().catch(() => '');
+    throw new Error(errorText || 'Failed to create order');
+  }
+
+  return res.json();
+}
+
+export async function createPaymentSession(orderId: string): Promise<{ redirectUrl?: string; [key: string]: any }> {
+  const customerToken = typeof window !== 'undefined' ? localStorage.getItem('customer_auth_token') : null;
+  const headers: HeadersInit = { 'Content-Type': 'application/json' };
+  if (customerToken) {
+    headers['Authorization'] = `Bearer ${customerToken}`;
+  }
+
+  const res = await fetch(`${API_URL}/api/payments/session`, {
+    method: 'POST',
+    headers,
+    credentials: 'include',
+    body: JSON.stringify({ orderId }),
+  });
+
+  if (!res.ok) {
+    const errorText = await res.text().catch(() => '');
+    throw new Error(errorText || 'Failed to create payment session');
+  }
+
+  return res.json();
+}
+
+export type DeliveryFeeRequest = {
+  address: {
+    street?: string;
+    postalCode: string;
+    city: string;
+    cityPart?: string;
+    coordinates?: { lat: number; lng: number };
+  };
+};
+
+type DeliveryFeeResponse = {
+  available: boolean;
+  deliveryFeeCents?: number;
+  minOrderCents?: number | null;
+  zoneName?: string | null;
+  message?: string | null;
+  [key: string]: any;
+};
+
+export async function calculateDeliveryFee(
+  tenantSlug: string,
+  address: DeliveryFeeRequest['address']
+): Promise<DeliveryFeeResponse> {
+  const normalizedSlug = normalizeTenantSlug(tenantSlug);
+  const res = await fetch(`${API_URL}/api/delivery-zones/${normalizedSlug}/calculate-fee`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ address }),
+  });
+
+  if (!res.ok) {
+    const errorText = await res.text().catch(() => '');
+    throw new Error(errorText || 'Failed to calculate delivery fee');
+  }
+
+  return res.json();
+}
+
+export async function validateMinOrder(
+  tenantSlug: string,
+  address: DeliveryFeeRequest['address'],
+  orderTotalCents: number
+): Promise<{ valid: boolean; minOrderCents?: number | null; zoneName?: string | null; message?: string | null }> {
+  const normalizedSlug = normalizeTenantSlug(tenantSlug);
+  const res = await fetch(`${API_URL}/api/delivery-zones/${normalizedSlug}/validate-min-order`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ address, orderTotalCents }),
+  });
+
+  if (!res.ok) {
+    const errorText = await res.text().catch(() => '');
+    throw new Error(errorText || 'Failed to validate minimum order');
+  }
+
+  return res.json();
+}
+
+export async function checkEmailExists(email: string): Promise<boolean> {
+  const res = await fetch(`${API_URL}/api/auth/customer/check-email`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email }),
+  });
+
+  if (!res.ok) {
+    const errorText = await res.text().catch(() => '');
+    throw new Error(errorText || 'Failed to check email');
+  }
+
+  const data = await res.json();
+  return !!data?.exists;
+}
+
+export async function sendCustomerSmsCode(phone: string, userId: string): Promise<any> {
+  const res = await fetch(`${API_URL}/api/auth/customer/send-sms-code`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify({ phone, userId }),
+  });
+
+  if (!res.ok) {
+    const errorText = await res.text().catch(() => '');
+    throw new Error(errorText || 'Failed to send SMS code');
+  }
+
+  return res.json();
 }
 
 export async function getOrders(
@@ -267,14 +520,73 @@ export async function updateOrderStatus(orderId: string, status: OrderStatus, to
   }
 }
 
-export async function getProductOverrides(tenantSlug: string): Promise<Record<string, ProductTenantOverride>> {
+export async function getProductOverrides(
+  tenantSlug: string,
+  productId: string,
+  targetTenantSlug: string
+): Promise<ProductTenantOverride | null> {
   const normalizedSlug = normalizeTenantSlug(tenantSlug);
-  const res = await fetch(`${API_URL}/api/product-overrides/${normalizedSlug}`);
+  const normalizedTarget = normalizeTenantSlug(targetTenantSlug);
+  const res = await fetch(
+    `${API_URL}/api/${normalizedSlug}/products/${productId}/overrides/${normalizedTarget}`,
+    {
+      headers: buildAuthHeaders(),
+      credentials: 'include',
+    }
+  );
   if (!res.ok) {
-    return {};
+    if (res.status === 404) {
+      return null;
+    }
+    const errorText = await res.text().catch(() => '');
+    throw new Error(errorText || 'Failed to fetch product overrides');
   }
+  return res.json();
+}
+
+export async function updateProductOverrides(
+  tenantSlug: string,
+  productId: string,
+  targetTenantSlug: string,
+  overrides: ProductTenantOverride
+): Promise<ProductTenantOverride> {
+  const normalizedSlug = normalizeTenantSlug(tenantSlug);
+  const normalizedTarget = normalizeTenantSlug(targetTenantSlug);
+  const res = await fetch(
+    `${API_URL}/api/${normalizedSlug}/products/${productId}/overrides/${normalizedTarget}`,
+    {
+      method: 'PATCH',
+      headers: buildAuthHeaders(true),
+      credentials: 'include',
+      body: JSON.stringify(overrides),
+    }
+  );
+
+  if (!res.ok) {
+    const errorText = await res.text().catch(() => '');
+    throw new Error(errorText || 'Failed to update product overrides');
+  }
+
+  return res.json();
+}
+
+export async function cloneTenant(sourceSlug: string, cloneData: any): Promise<Tenant> {
+  const normalizedSlug = normalizeTenantSlug(sourceSlug);
+  const res = await fetch(`${API_URL}/api/tenants/${normalizedSlug}/clone`, {
+    method: 'POST',
+    headers: buildAuthHeaders(true),
+    credentials: 'include',
+    body: JSON.stringify(cloneData),
+  });
+
+  if (!res.ok) {
+    const errorText = await res.text().catch(() => '');
+    throw new Error(errorText || 'Failed to clone tenant');
+  }
+
   const data = await res.json();
-  return data || {};
+  const validated = safeParse(TenantSchema, data, data as any);
+  return withTenantThemeDefaults(validated) as Tenant;
 }
 
 export function getTenantSlugFromHeaders(hostHeader?: string): string | null {

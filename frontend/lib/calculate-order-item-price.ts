@@ -1,5 +1,5 @@
-import { calculateModifierPrice } from '@pizza-ecosystem/shared';
 import { OrderItem } from '@pizza-ecosystem/shared';
+import { calculateModifierPrice } from '@/lib/calculate-modifier-price';
 
 /**
  * Calculates the correct price for an order item
@@ -53,4 +53,3 @@ export function getOrderItemPricePerUnit(
     ? storedPricePerUnit + modifierPrice
     : storedPricePerUnit;
 }
-

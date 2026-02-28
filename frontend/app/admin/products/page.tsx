@@ -23,6 +23,7 @@ const AddProductModal = dynamic(() => import('@/components/admin/AddProductModal
 
 interface ProductWithTenant extends Product {
   tenantSlug?: string;
+  displayName?: string | null;
 }
 
 export default function ProductsPage() {

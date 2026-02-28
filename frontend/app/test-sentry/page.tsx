@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import * as Sentry from '@sentry/nextjs';
 
 export default function TestSentryPage() {
   const [results, setResults] = useState<string[]>([]);
@@ -19,39 +18,8 @@ export default function TestSentryPage() {
 
       newResults.push('✅ Sentry DSN configured');
       newResults.push(`📊 DSN: ${process.env.NEXT_PUBLIC_SENTRY_DSN.substring(0, 50)}...`);
-
-      // Test 1: Capture message
-      try {
-        Sentry.captureMessage('Frontend Sentry test message', 'info');
-        newResults.push('✅ Test 1: Message sent to Sentry');
-      } catch (error) {
-        newResults.push(`❌ Test 1 failed: ${error}`);
-      }
-
-      // Test 2: Capture exception
-      try {
-        Sentry.captureException(new Error('Frontend test error for Sentry'));
-        newResults.push('✅ Test 2: Exception sent to Sentry');
-      } catch (error) {
-        newResults.push(`❌ Test 2 failed: ${error}`);
-      }
-
-      // Test 3: Capture with context
-      try {
-        Sentry.withScope((scope) => {
-          scope.setTag('test', 'frontend-verification');
-          scope.setContext('test-context', {
-            testId: 'frontend-12345',
-            timestamp: new Date().toISOString(),
-          });
-          Sentry.captureException(new Error('Frontend test error with context'));
-        });
-        newResults.push('✅ Test 3: Exception with context sent to Sentry');
-      } catch (error) {
-        newResults.push(`❌ Test 3 failed: ${error}`);
-      }
-
-      newResults.push('\n📊 Check your Sentry dashboard to see the events');
+      newResults.push('⚠️ Sentry client import is currently disabled in this build.');
+      newResults.push('ℹ️ This page now only verifies env wiring.');
       setResults(newResults);
     };
 
@@ -91,7 +59,6 @@ export default function TestSentryPage() {
     </div>
   );
 }
-
 
 
 

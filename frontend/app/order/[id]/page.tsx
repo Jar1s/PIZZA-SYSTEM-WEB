@@ -35,8 +35,100 @@ interface Order {
   taxCents: number;
   deliveryFeeCents: number;
   totalCents: number;
+  delivery?: {
+    id: string;
+    provider?: string | null;
+    jobId?: string | null;
+    status?: string | null;
+    trackingUrl?: string | null;
+    quote?: {
+      courierEta?: number | string | null;
+      courierEtaMinutes?: number | string | null;
+      dropoffEta?: number | string | null;
+      dropoffEtaMinutes?: number | string | null;
+      etaMinutes?: number | string | null;
+      eta?: number | string | null;
+    } | null;
+    createdAt?: string | null;
+    updatedAt?: string | null;
+  } | null;
   createdAt: string;
   updatedAt: string;
+}
+
+function toFiniteNumber(value: unknown): number | null {
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  if (typeof value === 'string') {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  return null;
+}
+
+function pickFirstNumber(values: unknown[]): number | null {
+  for (const value of values) {
+    const parsed = toFiniteNumber(value);
+    if (parsed !== null) return parsed;
+  }
+  return null;
+}
+
+function getWoltDropoffEtaMinutes(order: Order): number | null {
+  const quote = order.delivery?.quote;
+  return pickFirstNumber([
+    quote?.dropoffEtaMinutes,
+    quote?.dropoffEta,
+    quote?.etaMinutes,
+    quote?.eta,
+    quote?.courierEtaMinutes,
+    quote?.courierEta,
+  ]);
+}
+
+function getWoltReferenceTimestamp(order: Order): number {
+  const deliveryUpdatedAt = order.delivery?.updatedAt ? new Date(order.delivery.updatedAt).getTime() : NaN;
+  if (Number.isFinite(deliveryUpdatedAt)) return deliveryUpdatedAt;
+
+  const orderUpdatedAt = order.updatedAt ? new Date(order.updatedAt).getTime() : NaN;
+  if (Number.isFinite(orderUpdatedAt)) return orderUpdatedAt;
+
+  const orderCreatedAt = order.createdAt ? new Date(order.createdAt).getTime() : NaN;
+  if (Number.isFinite(orderCreatedAt)) return orderCreatedAt;
+
+  return Date.now();
+}
+
+function getRemainingEtaMinutes(etaMinutes: number | null, referenceTimestamp: number, nowTimestamp: number): number | null {
+  if (etaMinutes === null) return null;
+  const elapsedMinutes = Math.max(0, (nowTimestamp - referenceTimestamp) / 60000);
+  return Math.max(1, Math.ceil(etaMinutes - elapsedMinutes));
+}
+
+function formatWoltStatus(status: string | null | undefined, language: string): string {
+  const normalized = (status || '').toLowerCase();
+  if (language === 'sk') {
+    const labels: Record<string, string> = {
+      pending: 'Čaká na kuriéra',
+      courier_assigned: 'Kuriér priradený',
+      picked_up: 'Vyzdvihnuté kuriérom',
+      in_transit: 'Na ceste',
+      delivered: 'Doručené',
+      failed: 'Neúspešné doručenie',
+      cancelled: 'Zrušené',
+    };
+    return labels[normalized] || 'Spracováva sa';
+  }
+
+  const labels: Record<string, string> = {
+    pending: 'Waiting for courier',
+    courier_assigned: 'Courier assigned',
+    picked_up: 'Picked up',
+    in_transit: 'On the way',
+    delivered: 'Delivered',
+    failed: 'Delivery failed',
+    cancelled: 'Canceled',
+  };
+  return labels[normalized] || 'Processing';
 }
 
 export default function OrderTrackingPage() {
@@ -52,6 +144,7 @@ export default function OrderTrackingPage() {
   const [error, setError] = useState<string | null>(null);
   const [tenant, setTenant] = useState<Tenant | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [etaTickMs, setEtaTickMs] = useState(() => Date.now());
   
   // Refs to prevent concurrent requests and track polling
   const isFetchingRef = useRef(false);
@@ -199,6 +292,19 @@ export default function OrderTrackingPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [order?.id, order?.status, fetchOrder]); // Only depend on order.id and order.status to prevent interval reset on every order update
 
+  useEffect(() => {
+    if (order?.delivery?.provider !== 'wolt') return;
+    if (!order?.status || ['CANCELED', 'DELIVERED'].includes(order.status)) return;
+
+    const interval = setInterval(() => {
+      setEtaTickMs(Date.now());
+    }, 30000);
+
+    return () => {
+      clearInterval(interval);
+    };
+  }, [order?.delivery?.provider, order?.delivery?.id]);
+
   // Get tenant theme - Force dark theme for tracking page
   const normalizedTenant = withTenantThemeDefaults(tenant);
   const customizationLabels = normalizedTenant?.theme?.customizationLabels;
@@ -265,6 +371,17 @@ export default function OrderTrackingPage() {
   });
 
   const orderStatus = order.status as OrderStatus;
+  const hasWoltDelivery = order.delivery?.provider === 'wolt';
+  const isOrderCanceled = orderStatus === 'CANCELED';
+  const woltStatusRaw = (order.delivery?.status || '').toLowerCase();
+  const woltFinalStates = ['delivered', 'failed', 'cancelled'];
+  const isWoltFinalState = hasWoltDelivery && woltFinalStates.includes(woltStatusRaw);
+  const dropoffEtaMinutes = hasWoltDelivery ? getWoltDropoffEtaMinutes(order) : null;
+  const etaReferenceTimestamp = hasWoltDelivery ? getWoltReferenceTimestamp(order) : Date.now();
+  const liveDropoffEtaMinutes = hasWoltDelivery && !isWoltFinalState
+    ? getRemainingEtaMinutes(dropoffEtaMinutes, etaReferenceTimestamp, etaTickMs)
+    : null;
+  const woltStatusLabel = hasWoltDelivery ? formatWoltStatus(order.delivery?.status, language) : null;
 
   return (
     <div className={`min-h-screen ${backgroundClass}`}>
@@ -327,6 +444,54 @@ export default function OrderTrackingPage() {
           <StatusTimeline status={orderStatus} paymentStatus={order.paymentStatus} />
         </motion.div>
 
+        {hasWoltDelivery && !isOrderCanceled && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.15 }}
+            className={`${sectionShellClass} mb-8 border border-orange-400/40 bg-orange-500/5`}
+          >
+            <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
+              <div>
+                <h3 className="text-xl font-bold text-orange-300">
+                  🚚 {language === 'sk' ? 'Wolt doručenie' : 'Wolt delivery'}
+                </h3>
+                <p className={`mt-1 text-sm ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
+                  {language === 'sk' ? 'Stav:' : 'Status:'}{' '}
+                  <span className="font-semibold text-white">{woltStatusLabel}</span>
+                </p>
+                {order.delivery?.trackingUrl && (
+                  <a
+                    href={order.delivery.trackingUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-3 inline-flex items-center gap-2 text-orange-300 underline underline-offset-2 hover:text-orange-200"
+                  >
+                    {language === 'sk' ? 'Otvoriť tracking' : 'Open tracking'}
+                  </a>
+                )}
+              </div>
+
+              <div className="rounded-2xl border border-orange-400/50 bg-black/20 px-6 py-4 text-center min-w-[190px]">
+                <p className="text-xs font-bold uppercase tracking-wide text-orange-200">
+                  {language === 'sk' ? 'Odhad doručenia' : 'Estimated delivery'}
+                </p>
+                <p className="mt-1 text-4xl font-extrabold leading-none text-orange-300">
+                  {isWoltFinalState
+                    ? (language === 'sk' ? 'Hotovo' : 'Done')
+                    : (liveDropoffEtaMinutes !== null ? liveDropoffEtaMinutes : '—')}
+                </p>
+                {!isWoltFinalState && (
+                  <p className="text-sm font-semibold text-orange-200">min</p>
+                )}
+                <p className={`mt-1 text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                  {language === 'sk' ? 'Automaticky sa aktualizuje' : 'Updates automatically'}
+                </p>
+              </div>
+            </div>
+          </motion.div>
+        )}
+
         {/* Order Details */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -343,13 +508,14 @@ export default function OrderTrackingPage() {
             {order.items.map((item) => {
               // Use centralized function: for orders (string), uses static mapping
               // Use displayName from DB if available, otherwise use centralized function
+              const itemDisplayName = (item as any).displayName as string | undefined;
               console.log('[Order Detail] Item displayName check:', {
                 itemId: item.id,
                 productName: item.productName,
-                displayName: item.displayName,
-                hasDisplayName: !!item.displayName,
+                displayName: itemDisplayName,
+                hasDisplayName: !!itemDisplayName,
               });
-              const displayName = item.displayName || getProductDisplayName(item.productName, language);
+              const displayName = itemDisplayName || getProductDisplayName(item.productName, language);
               
               const modifiers = formatModifiers(item.modifiers, false, language, customizationLabels);
               
