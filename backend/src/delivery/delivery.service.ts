@@ -384,6 +384,7 @@ export class DeliveryService {
     orderId: string,
     shipmentPromiseId?: string,
     minPreparationTimeMinutes?: number,
+    user?: AuthenticatedUser,
   ) {
     const order = await this.ordersService.getOrderById(orderId);
     this.assertTenantAccess(order.tenantId, user, 'createDeliveryForOrder');
@@ -432,9 +433,6 @@ export class DeliveryService {
     const minPreparationTimeMinutesUsed =
       minPreparationTimeMinutes !== undefined ? minPreparationTimeMinutes : 20;
 
-    const minPreparationTimeMinutesUsed =
-      minPreparationTimeMinutes !== undefined ? minPreparationTimeMinutes : 20;
-
     // Create Wolt delivery with tenant-specific pickup address
     // If shipmentPromiseId is provided, use it (proper flow according to documentation)
     let woltDelivery;
@@ -467,21 +465,17 @@ export class DeliveryService {
 
     // Save delivery record
     const quote: Prisma.JsonObject = {};
-    const feeCents = woltDelivery?.feeCents ?? promiseData?.feeCents;
+    const feeCents = woltDelivery?.feeCents;
     const etaMinutes =
       woltDelivery?.etaMinutes ??
       woltDelivery?.dropoffEtaMinutes ??
-      woltDelivery?.courierEta ??
-      promiseData?.etaMinutes ??
-      promiseData?.dropoffEtaMinutes;
-    const pickupEtaMinutes =
-      woltDelivery?.pickupEtaMinutes ?? promiseData?.pickupEtaMinutes;
-    const dropoffEtaMinutes =
-      woltDelivery?.dropoffEtaMinutes ?? promiseData?.dropoffEtaMinutes;
-    const distance = woltDelivery?.distance ?? promiseData?.distance;
-    const currency = woltDelivery?.currency ?? promiseData?.currency;
-    const promiseId = woltDelivery?.promiseId ?? shipmentPromiseId ?? promiseData?.promiseId;
-    const validUntil = woltDelivery?.validUntil ?? promiseData?.validUntil;
+      woltDelivery?.courierEta;
+    const pickupEtaMinutes = woltDelivery?.pickupEtaMinutes;
+    const dropoffEtaMinutes = woltDelivery?.dropoffEtaMinutes;
+    const distance = woltDelivery?.distance;
+    const currency = woltDelivery?.currency;
+    const promiseId = woltDelivery?.promiseId ?? shipmentPromiseId;
+    const validUntil = woltDelivery?.validUntil;
 
     if (typeof feeCents === 'number') quote.feeCents = feeCents;
     if (typeof etaMinutes === 'number') quote.etaMinutes = etaMinutes;
@@ -492,11 +486,8 @@ export class DeliveryService {
     if (typeof promiseId === 'string') quote.promiseId = promiseId;
     if (typeof validUntil === 'string') quote.validUntil = validUntil;
 
-    const fallbackQuote: Prisma.JsonObject = {
-      courierEta: woltDelivery?.courierEta ?? null,
-    };
-    const quoteData: Prisma.InputJsonValue =
-      Object.keys(quote).length > 0 ? quote : fallbackQuote;
+    const fallbackQuote: Prisma.JsonObject = { courierEta: woltDelivery?.courierEta ?? null };
+    const finalQuote: Prisma.InputJsonValue = Object.keys(quote).length > 0 ? quote : fallbackQuote;
 
     const delivery = await this.prisma.delivery.create({
       data: {
@@ -506,10 +497,10 @@ export class DeliveryService {
         status: DeliveryStatus.PENDING,
         trackingUrl: woltDelivery.trackingUrl,
         quote: {
-          courierEta: woltDelivery.courierEta,
+          ...(finalQuote as Prisma.JsonObject),
           minPreparationTimeMinutesUsed,
           requestMode: 'asap',
-        },
+        } as Prisma.InputJsonValue,
       },
     });
 
@@ -672,7 +663,6 @@ export class DeliveryService {
     }
   }
 }
-
 
 
 

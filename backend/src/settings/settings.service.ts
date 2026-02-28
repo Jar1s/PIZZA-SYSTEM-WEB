@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 
 export interface StoryousSettings {
@@ -68,10 +69,10 @@ export class SettingsService {
       where: { id: 'global' },
       create: {
         id: 'global',
-        storyous: updatedStoryous,
+        storyous: updatedStoryous as unknown as Prisma.InputJsonValue,
       },
       update: {
-        storyous: updatedStoryous,
+        storyous: updatedStoryous as unknown as Prisma.InputJsonValue,
       },
     });
     

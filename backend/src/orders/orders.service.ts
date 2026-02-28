@@ -549,54 +549,36 @@ export class OrdersService {
       firstItemModifiersStringified: JSON.stringify(orderItems[0]?.modifiers),
     });
     
-    let order: any;
-    try {
-      order = await this.prisma.order.create({
-        data: {
-          tenantId,
-          orderNumber,
-          userId: userId || null, // Can be null for guest orders
-          status: OrderStatus.PENDING,
-          paymentStatus: data.paymentMethod ? 'pending' : null, // For cash on delivery
-          customer: data.customer as unknown as Prisma.InputJsonValue,
-          address: {
-            ...data.address,
-            houseNumber: data.address.houseNumber, // Include houseNumber
-          } as unknown as Prisma.InputJsonValue,
-          subtotalCents,
-          taxCents,
-          deliveryFeeCents,
-          totalCents,
-          items: {
-            create: orderItems,
-          },
-          statusHistory: {
-            create: [{ status: OrderStatus.PENDING }],
-          },
-        } as any, // Type assertion needed until Prisma types are fully regenerated
-        include: {
-          items: true,
-          statusHistory: {
-            orderBy: {
-              createdAt: 'asc',
-            },
-          },
-          tenant: {
-            select: {
-              id: true,
-              name: true,
-              slug: true,
-              domain: true,
-              subdomain: true,
-              currency: true, // Currency field added to schema
-              theme: true, // Include theme for email colors and logo
-              emailConfig: true, // Include tenant-specific SMTP settings
-            } as any, // Type assertion needed until Prisma types are fully regenerated
-          },
+    const order: any = await this.prisma.order.create({
+      data: {
+        tenantId,
+        orderNumber,
+        userId: userId || null, // Can be null for guest orders
+        status: OrderStatus.PENDING,
+        paymentStatus: data.paymentMethod ? 'pending' : null, // For cash on delivery
+        customer: data.customer as unknown as Prisma.InputJsonValue,
+        address: {
+          ...data.address,
+          houseNumber: data.address.houseNumber, // Include houseNumber
+        } as unknown as Prisma.InputJsonValue,
+        subtotalCents,
+        taxCents,
+        deliveryFeeCents,
+        totalCents,
+        items: {
+          create: orderItems,
+        },
+        statusHistory: {
+          create: [{ status: OrderStatus.PENDING }],
         },
       } as any, // Type assertion needed until Prisma types are fully regenerated
       include: {
         items: true,
+        statusHistory: {
+          orderBy: {
+            createdAt: 'asc',
+          },
+        },
         tenant: {
           select: {
             id: true,
@@ -609,8 +591,8 @@ export class OrdersService {
             emailConfig: true, // Include tenant-specific SMTP settings
           } as any, // Type assertion needed until Prisma types are fully regenerated
         },
-      });
-    }
+      },
+    } as any);
 
     // Log what was actually saved to database
     this.logger.log('Order created in Prisma, checking saved items', {

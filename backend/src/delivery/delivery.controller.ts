@@ -1,4 +1,4 @@
-import { Controller, Post, Body, Get, Param, Logger, BadRequestException } from '@nestjs/common';
+import { Controller, Post, Body, Get, Param, Logger, BadRequestException, UseGuards, Req } from '@nestjs/common';
 import { DeliveryService } from './delivery.service';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -32,7 +32,7 @@ export class DeliveryController {
   @Post('quote')
   async getQuote(
     @Body() data: { tenantId: string; dropoffAddress: any },
-    @Request() req: { user?: RequestUser },
+    @Req() req: { user?: RequestUser },
   ) {
     return this.deliveryService.getQuote(data.tenantId, data.dropoffAddress, req.user);
   }
@@ -40,7 +40,7 @@ export class DeliveryController {
   @Post('check-availability')
   async checkAvailability(
     @Body() data: { orderId: string },
-    @Request() req: { user?: RequestUser },
+    @Req() req: { user?: RequestUser },
   ) {
     this.logger.log(`[checkAvailability] Request for order: ${data.orderId}`);
     try {
@@ -57,7 +57,10 @@ export class DeliveryController {
   }
 
   @Post('create')
-  async createDelivery(@Body() data: { orderId: string; promiseId?: string; minPreparationTimeMinutes?: number }) {
+  async createDelivery(
+    @Body() data: { orderId: string; promiseId?: string; minPreparationTimeMinutes?: number },
+    @Req() req: { user?: RequestUser },
+  ) {
     const { minPreparationTimeMinutes } = data;
 
     if (minPreparationTimeMinutes !== undefined) {
@@ -70,15 +73,15 @@ export class DeliveryController {
       data.orderId,
       data.promiseId,
       minPreparationTimeMinutes,
+      req.user,
     );
   }
 
   @Get(':id')
-  async getDelivery(@Param('id') id: string, @Request() req: { user?: RequestUser }) {
+  async getDelivery(@Param('id') id: string, @Req() req: { user?: RequestUser }) {
     return this.deliveryService.getDeliveryById(id, req.user);
   }
 }
-
 
 
 

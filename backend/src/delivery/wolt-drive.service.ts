@@ -522,6 +522,7 @@ export class WoltDriveService {
   ) {
     const dropoffLocation = this.getValidatedLocation(dropoffAddress, 'dropoff');
     const { deliveriesUrl } = this.resolveApiEndpoints(apiConfig);
+    const promiseSnapshot = (context as any)?.promiseSnapshot as ShipmentPromiseSnapshot | undefined;
 
     const effectivePromiseId = shipmentPromiseId || promiseSnapshot?.promiseId;
     const parcelCurrency =
@@ -748,7 +749,6 @@ export class WoltDriveService {
     throw lastError || new Error('Wolt API cancelDelivery failed');
   }
 }
-
 
 
 
