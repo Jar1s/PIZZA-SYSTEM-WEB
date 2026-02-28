@@ -116,6 +116,7 @@ describe('AuthService Integration Tests', () => {
           email: testUser.email,
           role: 'CUSTOMER',
           isActive: true,
+          tenantId: testTenantId,
         },
       });
 
@@ -138,6 +139,7 @@ describe('AuthService Integration Tests', () => {
             email: `another_${Date.now()}@example.com`,
             role: 'CUSTOMER',
             isActive: true,
+            tenantId: testTenantId,
           },
         })
       ).rejects.toThrow(); // Should throw Prisma unique constraint error
@@ -156,6 +158,7 @@ describe('AuthService Integration Tests', () => {
             email: testUser.email, // Duplicate email
             role: 'CUSTOMER',
             isActive: true,
+            tenantId: testTenantId,
           },
         })
       ).rejects.toThrow(); // Should throw Prisma unique constraint error

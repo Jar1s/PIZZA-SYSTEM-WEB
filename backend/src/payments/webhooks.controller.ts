@@ -1,4 +1,4 @@
-import { Controller, Post, Body, Headers, Req, Res, HttpCode, UnauthorizedException, Logger } from '@nestjs/common';
+import { Controller, Post, Get, Query, Body, Headers, Req, Res, HttpCode, NotFoundException, Logger } from '@nestjs/common';
 import { Request, Response } from 'express';
 import { PaymentsService } from './payments.service';
 import { AdyenService } from './adyen.service';
@@ -95,12 +95,31 @@ export class WebhooksController {
       return res.status(401).send('Missing signature');
     }
     
-    // Get client secret from env (GoPay uses client secret for webhook verification)
-    const clientSecret = process.env.GOPAY_CLIENT_SECRET;
-    
     // Use raw body as string for signature verification
     const rawBodyString = rawBody.toString('utf8');
-    if (!this.gopayService.verifyWebhook(webhookSignature, rawBodyString, clientSecret)) {
+    const orderNumber = body?.order_number ? String(body.order_number) : '';
+
+    const candidateSecrets: string[] = [];
+    const defaultSecret = (process.env.GOPAY_CLIENT_SECRET || '').trim();
+    if (defaultSecret) {
+      candidateSecrets.push(defaultSecret);
+    }
+
+    if (orderNumber) {
+      const tenantSecret = await this.paymentsService.getGopayClientSecretForOrder(orderNumber);
+      if (tenantSecret && !candidateSecrets.includes(tenantSecret)) {
+        candidateSecrets.push(tenantSecret);
+      }
+    }
+
+    const isSignatureValid = candidateSecrets.some((secret) =>
+      this.gopayService.verifyWebhook(webhookSignature, rawBodyString, secret)
+    );
+
+    if (!isSignatureValid) {
+      if (candidateSecrets.length === 0) {
+        this.logger.error('No GoPay webhook secret available (neither GOPAY_CLIENT_SECRET nor tenant secret)');
+      }
       this.logger.error('Invalid GoPay webhook signature');
       return res.status(401).send('Invalid signature');
     }
@@ -120,6 +139,41 @@ export class WebhooksController {
     }
 
     return res.status(200).send('OK');
+  }
+
+  @Public()
+  @Get('gopay')
+  @HttpCode(200)
+  async handleGopayNotification(
+    @Query('id') paymentId: string,
+    @Res() res: Response,
+  ) {
+    const normalizedPaymentId = (paymentId || '').trim();
+    if (!normalizedPaymentId) {
+      this.logger.error('GoPay notification missing id query param');
+      return res.status(400).send('Missing id');
+    }
+
+    try {
+      await this.paymentsService.syncGopayPaymentById(normalizedPaymentId);
+      return res.status(200).send('OK');
+    } catch (error) {
+      if (error instanceof NotFoundException) {
+        // Keep retrying if order/payment reference has not been persisted yet.
+        this.logger.warn('GoPay GET notification arrived before payment reference was resolvable, requesting retry');
+        return res.status(500).send('Order not found yet');
+      }
+
+      const isTransientError = this.isTransientError(error);
+      if (isTransientError) {
+        this.logger.error('Transient error processing GoPay GET notification (will retry):', error);
+        return res.status(500).send('Internal server error');
+      }
+
+      // For fatal errors return 200 to prevent endless retries from gateway.
+      this.logger.error('Fatal error processing GoPay GET notification (no retry):', error);
+      return res.status(200).send('OK');
+    }
   }
 
   @Public()
@@ -207,10 +261,6 @@ export class WebhooksController {
     return false;
   }
 }
-
-
-
-
 
 
 

@@ -16,6 +16,8 @@ import { getProductTranslation, getAllergenDescription, getProductDisplayName, g
 import { getProductDisplayImage } from '@/lib/product-images';
 import Image from 'next/image';
 
+const BLUR_DATA_URL = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjIyNSIgdmlld0JveD0iMCAwIDQwMCAyMjUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjQwMCIgaGVpZ2h0PSIyMjUiIGZpbGw9IiNlMWUxZTEiLz48L3N2Zz4=';
+
 interface CustomizationModalProps {
   product: Product;
   isOpen: boolean;

@@ -144,6 +144,37 @@ export function HomePageClient({ products, tenant }: HomePageClientProps) {
     console.log('[HomePageClient] Will show SOUPS category?', categoryCounts.SOUPS > 0);
   }, [products, categoryCounts, productsByCategory]);
 
+  // Per-tenant subcategory labels (editable in admin)
+  const subCategoryLabels = useMemo(() => {
+    return (tenant.theme as any)?.subCategoryLabels || {};
+  }, [tenant.theme]);
+  const defaultSubCategoryText = useMemo(() => ({
+    foreplay: { title: t.foreplay, desc: t.foreplayDesc },
+    mainAction: { title: t.mainAction, desc: t.mainActionDesc },
+    deluxeFetish: { title: t.deluxeFetish, desc: t.deluxeFetishDesc },
+    premiumSins: { title: t.premiumSins, desc: t.premiumSinsDesc },
+    stangle: { title: t.stangleTitle, desc: t.stangleSubtitle },
+    soups: { title: t.soupsTitle, desc: t.soupsSubtitle },
+    drinks: { title: t.drinksTitle, desc: t.drinksSubtitle },
+    desserts: { title: t.dessertsTitle, desc: t.dessertsSubtitle },
+  }), [t]);
+
+  type SubLabelKey = keyof typeof defaultSubCategoryText;
+
+  const getSubCategoryTitle = useCallback((key: SubLabelKey) => {
+    const label = subCategoryLabels?.[key];
+    const value = language === 'sk' ? label?.titleSk : label?.titleEn;
+    return (value?.trim() || defaultSubCategoryText[key].title);
+  }, [subCategoryLabels, language, defaultSubCategoryText]);
+
+  const getSubCategoryDesc = useCallback((key: SubLabelKey) => {
+    const label = subCategoryLabels?.[key];
+    const showDescription = label?.showDescription !== false;
+    if (!showDescription) return '';
+    const value = language === 'sk' ? label?.descSk : label?.descEn;
+    return (value?.trim() || defaultSubCategoryText[key].desc);
+  }, [subCategoryLabels, language, defaultSubCategoryText]);
+
   // Pizza sub-category mapping - moved inside useMemo to fix dependency warning
   const productsBySubCategory = useMemo(() => {
     const pizzaSubCategoryMap: Record<string, 'FOREPLAY' | 'MAIN_ACTION' | 'DELUXE_FETISH' | 'PREMIUM_SINS'> = {
@@ -526,9 +557,14 @@ export function HomePageClient({ products, tenant }: HomePageClientProps) {
                         letterSpacing: '-0.02em'
                       }}
                     >
-                      🔥 {t.foreplay}
+                      🔥 {getSubCategoryTitle('foreplay')}
                     </h3>
-                    <p className={`mb-4 text-lg ${isDarkTheme ? 'text-gray-400' : ''}`} style={{ color: isDarkTheme ? '#999' : '#666666' }}>{t.foreplayDesc}</p>
+                    {(() => {
+                      const desc = getSubCategoryDesc('foreplay');
+                      return desc ? (
+                        <p className={`mb-4 text-lg ${isDarkTheme ? 'text-gray-400' : ''}`} style={{ color: isDarkTheme ? '#999' : '#666666' }}>{desc}</p>
+                      ) : null;
+                    })()}
                     <div className="h-1 w-32 rounded mx-auto" style={{ backgroundColor: primaryColor }}></div>
                   </motion.div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5 md:gap-6">
@@ -558,9 +594,14 @@ export function HomePageClient({ products, tenant }: HomePageClientProps) {
                         letterSpacing: '-0.02em'
                       }}
                     >
-                      😈 {t.mainAction}
+                      😈 {getSubCategoryTitle('mainAction')}
                     </h3>
-                    <p className={`mb-4 text-lg ${isDarkTheme ? 'text-gray-400' : ''}`} style={{ color: isDarkTheme ? '#999' : '#666666' }}>{t.mainActionDesc}</p>
+                    {(() => {
+                      const desc = getSubCategoryDesc('mainAction');
+                      return desc ? (
+                        <p className={`mb-4 text-lg ${isDarkTheme ? 'text-gray-400' : ''}`} style={{ color: isDarkTheme ? '#999' : '#666666' }}>{desc}</p>
+                      ) : null;
+                    })()}
                     <div className="h-1 w-32 rounded mx-auto" style={{ backgroundColor: primaryColor }}></div>
                   </motion.div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5 md:gap-6">
@@ -590,9 +631,14 @@ export function HomePageClient({ products, tenant }: HomePageClientProps) {
                         letterSpacing: '-0.02em'
                       }}
                     >
-                      💋 {t.deluxeFetish}
+                      💋 {getSubCategoryTitle('deluxeFetish')}
                     </h3>
-                    <p className={`mb-4 text-lg ${isDarkTheme ? 'text-gray-400' : ''}`} style={{ color: isDarkTheme ? '#999' : '#666666' }}>{t.deluxeFetishDesc}</p>
+                    {(() => {
+                      const desc = getSubCategoryDesc('deluxeFetish');
+                      return desc ? (
+                        <p className={`mb-4 text-lg ${isDarkTheme ? 'text-gray-400' : ''}`} style={{ color: isDarkTheme ? '#999' : '#666666' }}>{desc}</p>
+                      ) : null;
+                    })()}
                     <div className="h-1 w-32 rounded mx-auto" style={{ backgroundColor: primaryColor }}></div>
                   </motion.div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5 md:gap-6">
@@ -622,9 +668,14 @@ export function HomePageClient({ products, tenant }: HomePageClientProps) {
                         letterSpacing: '-0.02em'
                       }}
                     >
-                      🍑 {t.premiumSins}
+                      🍑 {getSubCategoryTitle('premiumSins')}
                     </h3>
-                    <p className={`mb-4 text-lg ${isDarkTheme ? 'text-gray-400' : ''}`} style={{ color: isDarkTheme ? '#999' : '#666666' }}>{t.premiumSinsDesc}</p>
+                    {(() => {
+                      const desc = getSubCategoryDesc('premiumSins');
+                      return desc ? (
+                        <p className={`mb-4 text-lg ${isDarkTheme ? 'text-gray-400' : ''}`} style={{ color: isDarkTheme ? '#999' : '#666666' }}>{desc}</p>
+                      ) : null;
+                    })()}
                     <div className="h-1 w-32 rounded mx-auto" style={{ backgroundColor: primaryColor }}></div>
                   </motion.div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5 md:gap-6">
@@ -655,11 +706,16 @@ export function HomePageClient({ products, tenant }: HomePageClientProps) {
                       letterSpacing: '-0.02em'
                     }}
                   >
-                    {t.drinksTitle}
+                    {getSubCategoryTitle('drinks')}
                   </h3>
-                  <p className={`mb-2 text-lg ${isDarkTheme ? 'text-gray-400' : ''}`} style={{ color: isDarkTheme ? '#999' : '#666666' }}>
-                    {t.drinksSubtitle}
-                  </p>
+                  {(() => {
+                    const desc = getSubCategoryDesc('drinks');
+                    return desc ? (
+                      <p className={`mb-2 text-lg ${isDarkTheme ? 'text-gray-400' : ''}`} style={{ color: isDarkTheme ? '#999' : '#666666' }}>
+                        {desc}
+                      </p>
+                    ) : null;
+                  })()}
                   <p className={`text-sm ${isDarkTheme ? 'text-gray-500' : 'text-gray-600'}`}>
                     {t.drinksDeposit}
                   </p>
@@ -685,11 +741,16 @@ export function HomePageClient({ products, tenant }: HomePageClientProps) {
                       letterSpacing: '-0.02em'
                     }}
                   >
-                    🥖 {t.stangleTitle}
+                    🥖 {getSubCategoryTitle('stangle')}
                   </h3>
-                  <p className={`mb-2 text-lg ${isDarkTheme ? 'text-gray-400' : ''}`} style={{ color: isDarkTheme ? '#999' : '#666666' }}>
-                    💬 {t.stangleSubtitle}
-                  </p>
+                  {(() => {
+                    const desc = getSubCategoryDesc('stangle');
+                    return desc ? (
+                      <p className={`mb-2 text-lg ${isDarkTheme ? 'text-gray-400' : ''}`} style={{ color: isDarkTheme ? '#999' : '#666666' }}>
+                        💬 {desc}
+                      </p>
+                    ) : null;
+                  })()}
                   <div className="h-1 w-32 rounded mx-auto mt-4" style={{ backgroundColor: primaryColor }}></div>
                 </motion.div>
               )}
@@ -712,11 +773,16 @@ export function HomePageClient({ products, tenant }: HomePageClientProps) {
                       letterSpacing: '-0.02em'
                     }}
                   >
-                    🥴 {t.soupsTitle}
+                    🥴 {getSubCategoryTitle('soups')}
                   </h3>
-                  <p className={`mb-2 text-lg ${isDarkTheme ? 'text-gray-400' : ''}`} style={{ color: isDarkTheme ? '#999' : '#666666' }}>
-                    {t.soupsSubtitle}
-                  </p>
+                  {(() => {
+                    const desc = getSubCategoryDesc('soups');
+                    return desc ? (
+                      <p className={`mb-2 text-lg ${isDarkTheme ? 'text-gray-400' : ''}`} style={{ color: isDarkTheme ? '#999' : '#666666' }}>
+                        {desc}
+                      </p>
+                    ) : null;
+                  })()}
                   <div className="h-1 w-32 rounded mx-auto mt-4" style={{ backgroundColor: primaryColor }}></div>
                 </motion.div>
               )}
@@ -739,11 +805,16 @@ export function HomePageClient({ products, tenant }: HomePageClientProps) {
                       letterSpacing: '-0.02em'
                     }}
                   >
-                    {t.dessertsTitle}
+                    {getSubCategoryTitle('desserts')}
                   </h3>
-                  <p className={`mb-2 text-lg ${isDarkTheme ? 'text-gray-400' : ''}`} style={{ color: isDarkTheme ? '#999' : '#666666' }}>
-                    {t.dessertsSubtitle}
-                  </p>
+                  {(() => {
+                    const desc = getSubCategoryDesc('desserts');
+                    return desc ? (
+                      <p className={`mb-2 text-lg ${isDarkTheme ? 'text-gray-400' : ''}`} style={{ color: isDarkTheme ? '#999' : '#666666' }}>
+                        {desc}
+                      </p>
+                    ) : null;
+                  })()}
                   <div className="h-1 w-32 rounded mx-auto mt-4" style={{ backgroundColor: primaryColor }}></div>
                 </motion.div>
               )}

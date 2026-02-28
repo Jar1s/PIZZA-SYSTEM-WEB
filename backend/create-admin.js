@@ -20,6 +20,15 @@ async function createAdmin() {
     // Hash password
     const adminPassword = await bcrypt.hash('admin123', 10);
 
+    const defaultTenant = await prisma.tenant.findFirst({ where: { slug: 'pornopizza' } })
+      || await prisma.tenant.findFirst();
+
+    if (!defaultTenant) {
+      throw new Error('No tenant found to assign admin users');
+    }
+
+    const tenantId = defaultTenant.id;
+
     // Create or update admin user
     const admin = await prisma.user.upsert({
       where: { username: 'admin' },
@@ -28,6 +37,7 @@ async function createAdmin() {
         name: 'Admin User',
         role: UserRole.ADMIN,
         isActive: true,
+        tenantId,
       },
       create: {
         username: 'admin',
@@ -35,6 +45,7 @@ async function createAdmin() {
         name: 'Admin User',
         role: UserRole.ADMIN,
         isActive: true,
+        tenantId,
       },
     });
 
@@ -53,6 +64,7 @@ async function createAdmin() {
         name: 'Operator User',
         role: UserRole.OPERATOR,
         isActive: true,
+        tenantId,
       },
       create: {
         username: 'operator',
@@ -60,6 +72,7 @@ async function createAdmin() {
         name: 'Operator User',
         role: UserRole.OPERATOR,
         isActive: true,
+        tenantId,
       },
     });
 

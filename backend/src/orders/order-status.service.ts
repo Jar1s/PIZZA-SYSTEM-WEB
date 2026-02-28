@@ -1,6 +1,6 @@
 import { Injectable, BadRequestException, Logger, OnModuleInit, OnModuleDestroy, Inject, forwardRef } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { OrderStatus, Order, CustomerInfo, Address } from '@pizza-ecosystem/shared';
+import { OrderStatus, Order, CustomerInfo, Address, DeliveryStatus } from '@pizza-ecosystem/shared';
 import { EmailService } from '../email/email.service';
 import { TenantsService } from '../tenants/tenants.service';
 import { StoryousService } from '../storyous/storyous.service';
@@ -41,7 +41,23 @@ export class OrderStatusService implements OnModuleInit, OnModuleDestroy {
     const order = await this.prisma.order.findUnique({
       where: { id: orderId },
       include: {
-        tenant: true,
+        delivery: {
+          select: {
+            id: true,
+            provider: true,
+            status: true,
+          },
+        },
+        tenant: {
+          select: {
+            id: true,
+            name: true,
+            domain: true,
+            subdomain: true,
+            slug: true,
+            emailConfig: true,
+          },
+        },
       },
     });
 
@@ -57,10 +73,30 @@ export class OrderStatusService implements OnModuleInit, OnModuleDestroy {
       );
     }
 
-    await this.prisma.order.update({
-      where: { id: orderId },
-      data: { status: newStatus },
-    });
+    // For Wolt deliveries, DELIVERED can only be set after Wolt confirms it.
+    // This prevents false "delivered" status from internal timers/manual clicks.
+    if (
+      newStatus === OrderStatus.DELIVERED &&
+      order.delivery?.provider === 'wolt' &&
+      order.delivery.status !== DeliveryStatus.DELIVERED
+    ) {
+      throw new BadRequestException(
+        `Cannot transition Wolt order to ${newStatus} before Wolt confirms delivery`
+      );
+    }
+
+    await this.prisma.$transaction([
+      this.prisma.order.update({
+        where: { id: orderId },
+        data: { status: newStatus },
+      }),
+      this.prisma.orderStatusHistory.create({
+        data: {
+          orderId,
+          status: newStatus,
+        },
+      }),
+    ]);
 
     // Auto-sync to Storyous when order is confirmed (PREPARING) and autoSync is enabled
     // This runs ONLY ONCE when status changes to PREPARING, not on subsequent status changes
@@ -118,13 +154,14 @@ export class OrderStatusService implements OnModuleInit, OnModuleDestroy {
       const tenant = order.tenant as any;
       const paymentProvider = tenant.paymentProvider;
       const paymentRef = (order as any).paymentRef;
-      const paymentStatus = (order as any).paymentStatus;
+      const paymentStatus = String((order as any).paymentStatus || '').toLowerCase();
       
-      // Check if order was paid via GoPay and has payment reference
+      // Auto-refund for paid GoPay orders on admin cancellation/rejection.
+      // We intentionally do not gate by order.status here, because payment webhooks can arrive
+      // slightly before/after manual status actions.
       if (paymentProvider === 'gopay' && 
           paymentRef && 
-          paymentStatus === 'success' &&
-          (order.status === OrderStatus.PAID || order.status === OrderStatus.PREPARING || order.status === OrderStatus.OUT_FOR_DELIVERY)) {
+          paymentStatus === 'success') {
         try {
           await this.paymentsService.refundGopayPayment(orderId);
           this.logger.log(`✅ GoPay refund initiated for order ${orderId}`);
@@ -150,6 +187,7 @@ export class OrderStatusService implements OnModuleInit, OnModuleDestroy {
         newStatus,
         tenant.name,
         tenantDomain,
+        tenant.emailConfig,
       );
     } catch (error) {
       this.logger.error(`Failed to send status notifications for order ${order.id}:`, error);
@@ -195,9 +233,36 @@ export class OrderStatusService implements OnModuleInit, OnModuleDestroy {
           updatedAt: {
             lte: cutoffTime,
           },
+          OR: [
+            { deliveryId: null },
+            {
+              delivery: {
+                is: {
+                  provider: {
+                    not: 'wolt',
+                  },
+                },
+              },
+            },
+          ],
         },
         include: {
-          tenant: true,
+          delivery: {
+            select: {
+              provider: true,
+              status: true,
+            },
+          },
+          tenant: {
+            select: {
+              id: true,
+              name: true,
+              domain: true,
+              subdomain: true,
+              slug: true,
+              emailConfig: true,
+            },
+          },
         },
       });
 
@@ -224,9 +289,6 @@ export class OrderStatusService implements OnModuleInit, OnModuleDestroy {
     }
   }
 }
-
-
-
 
 
 

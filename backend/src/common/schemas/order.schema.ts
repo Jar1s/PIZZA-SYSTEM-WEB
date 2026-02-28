@@ -18,6 +18,12 @@ export const OrderItemSchema = z.object({
   ]).optional(),
 });
 
+const OrderStatusHistorySchema = z.object({
+  id: z.string(),
+  status: z.enum(['PENDING', 'PAID', 'PREPARING', 'READY', 'OUT_FOR_DELIVERY', 'DELIVERED', 'CANCELED']),
+  createdAt: z.date().or(z.string()),
+});
+
 export const OrderResponseSchema = z.object({
   id: z.string(),
   tenantId: z.string(),
@@ -30,13 +36,22 @@ export const OrderResponseSchema = z.object({
   totalCents: z.number().int().nonnegative(),
   customer: z.record(z.string(), z.unknown()),
   address: z.record(z.string(), z.unknown()),
+  deliveryId: z.string().nullable().optional(),
+  delivery: z.object({
+    id: z.string(),
+    provider: z.string(),
+    jobId: z.string().nullable().optional(),
+    status: z.string(),
+    trackingUrl: z.string().nullable().optional(),
+    quote: z.unknown().nullable().optional(),
+  }).nullable().optional(),
   items: z.array(OrderItemSchema).optional(),
   paymentRef: z.string().nullable().optional(),
   paymentStatus: z.string().nullable().optional(),
   storyousOrderId: z.string().nullable().optional(),
+  statusHistory: z.array(OrderStatusHistorySchema).optional(),
   createdAt: z.date().or(z.string()),
   updatedAt: z.date().or(z.string()),
 });
 
 export type OrderResponse = z.infer<typeof OrderResponseSchema>;
-

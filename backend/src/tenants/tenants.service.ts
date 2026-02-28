@@ -3,11 +3,68 @@ import { PrismaService } from '../prisma/prisma.service';
 import { Tenant } from '@pizza-ecosystem/shared';
 import { TenantResponseSchema } from '../common/schemas/tenant.schema';
 
+type CachedTenantEntry = {
+  tenant: Tenant;
+  expiresAt: number;
+};
+
 @Injectable()
 export class TenantsService {
   private readonly logger = new Logger(TenantsService.name);
+  private readonly cacheTtlMs = Number(process.env.TENANT_CACHE_TTL_MS || 30000);
+  private readonly tenantBySlugCache = new Map<string, CachedTenantEntry>();
+  private readonly tenantByDomainCache = new Map<string, CachedTenantEntry>();
+  private readonly inFlightBySlug = new Map<string, Promise<Tenant>>();
+  private readonly inFlightByDomain = new Map<string, Promise<Tenant | null>>();
 
   constructor(private prisma: PrismaService) {}
+
+  private getCachedTenant(
+    cache: Map<string, CachedTenantEntry>,
+    key: string,
+  ): Tenant | null {
+    const cached = cache.get(key);
+    if (!cached) return null;
+    if (cached.expiresAt <= Date.now()) {
+      cache.delete(key);
+      return null;
+    }
+    return cached.tenant;
+  }
+
+  private setCachedTenant(
+    cache: Map<string, CachedTenantEntry>,
+    key: string,
+    tenant: Tenant,
+  ): void {
+    cache.set(key, {
+      tenant,
+      expiresAt: Date.now() + this.cacheTtlMs,
+    });
+  }
+
+  private clearTenantCaches(): void {
+    this.tenantBySlugCache.clear();
+    this.tenantByDomainCache.clear();
+  }
+
+  /**
+   * Normalize tenant slugs to handle legacy/domain variants.
+   */
+  private normalizeTenantSlug(slug: string): string {
+    const raw = (slug || '').toLowerCase();
+    if (raw === 'pizzaparty' || raw === 'partypizza') return 'partypizza';
+    if (raw === 'p0rnopizza' || raw === 'pornopizza') return 'pornopizza';
+    if (raw === 'pizzavnudzi') return 'pizzavnudzi';
+    return raw;
+  }
+
+  /**
+   * Backward-compatible helper to fetch tenant by id.
+   */
+  async findById(id: string): Promise<Tenant> {
+    return this.getTenantById(id);
+  }
 
   async getTenantById(id: string): Promise<Tenant> {
     const tenant = await this.prisma.tenant.findUnique({
@@ -34,73 +91,134 @@ export class TenantsService {
   }
 
   async getTenantBySlug(slug: string): Promise<Tenant> {
-    try {
-      this.logger.log(`[getTenantBySlug] Looking for tenant with slug: ${slug}`);
-      
-      const tenant = await this.prisma.tenant.findUnique({
-        where: { slug },
-      });
-      
-      if (!tenant) {
-        this.logger.warn(`[getTenantBySlug] Tenant ${slug} not found in database`);
-        throw new NotFoundException(`Tenant ${slug} not found`);
-      }
-      
-      this.logger.log(`[getTenantBySlug] Tenant found: ${tenant.name} (id: ${tenant.id}, isActive: ${tenant.isActive})`);
-      
-      // Check if tenant is active
-      if (!tenant.isActive) {
-        this.logger.warn(`[getTenantBySlug] Tenant ${slug} is not active`);
-        throw new NotFoundException(`Tenant ${slug} is not active`);
-      }
-      
-      // Validate response with Zod
-      try {
-        return TenantResponseSchema.parse(tenant) as unknown as Tenant;
-      } catch (error) {
-        this.logger.error(`[getTenantBySlug] Tenant response validation failed for ${slug}`, { error, tenant });
-        return tenant as any as Tenant;
-      }
-    } catch (error: any) {
-      // Log Prisma errors with full details
-      if (error.code) {
-        this.logger.error(`[getTenantBySlug] Prisma error (code: ${error.code}): ${error.message}`, {
-          code: error.code,
-          meta: error.meta,
-          stack: error.stack,
-        });
-      } else {
-        this.logger.error(`[getTenantBySlug] Error getting tenant ${slug}:`, error);
-      }
-      throw error;
+    const normalizedSlug = this.normalizeTenantSlug(slug);
+
+    const cached = this.getCachedTenant(this.tenantBySlugCache, normalizedSlug);
+    if (cached) {
+      return cached;
     }
+
+    const existingInFlight = this.inFlightBySlug.get(normalizedSlug);
+    if (existingInFlight) {
+      return existingInFlight;
+    }
+
+    const request = (async () => {
+      try {
+        const tenant = await this.prisma.tenant.findUnique({
+          where: { slug: normalizedSlug },
+        });
+
+        if (!tenant) {
+          throw new NotFoundException(`Tenant ${normalizedSlug} not found`);
+        }
+
+        if (!tenant.isActive) {
+          throw new NotFoundException(`Tenant ${normalizedSlug} is not active`);
+        }
+
+        let parsed: Tenant;
+        try {
+          parsed = TenantResponseSchema.parse(tenant) as unknown as Tenant;
+        } catch (error) {
+          this.logger.error(`[getTenantBySlug] Tenant response validation failed for ${normalizedSlug}`, {
+            error,
+            tenantId: tenant.id,
+          });
+          parsed = tenant as any as Tenant;
+        }
+
+        this.setCachedTenant(this.tenantBySlugCache, normalizedSlug, parsed);
+        if (parsed.domain) {
+          this.setCachedTenant(this.tenantByDomainCache, String(parsed.domain).toLowerCase(), parsed);
+        }
+        if (parsed.subdomain) {
+          this.setCachedTenant(this.tenantByDomainCache, String(parsed.subdomain).toLowerCase(), parsed);
+        }
+        return parsed;
+      } catch (error: any) {
+        if (error?.code) {
+          this.logger.error(`[getTenantBySlug] Prisma error (code: ${error.code}): ${error.message}`, {
+            code: error.code,
+            meta: error.meta,
+          });
+        } else if (!(error instanceof NotFoundException)) {
+          this.logger.error(`[getTenantBySlug] Error getting tenant ${normalizedSlug}:`, error);
+        }
+        throw error;
+      } finally {
+        this.inFlightBySlug.delete(normalizedSlug);
+      }
+    })();
+
+    this.inFlightBySlug.set(normalizedSlug, request);
+    return request;
   }
 
   async findTenantByDomain(domain: string): Promise<Tenant | null> {
-    this.logger.log(`[findTenantByDomain] Looking for tenant with domain: ${domain}`);
-    
-    const tenant = await this.prisma.tenant.findFirst({
-      where: {
-        OR: [
-          { domain: domain },
-          { subdomain: domain.split('.')[0] }
-        ],
-        isActive: true
-      }
-    });
-    
-    if (tenant) {
-      this.logger.log(`[findTenantByDomain] Tenant found: ${tenant.name} (slug: ${tenant.slug})`);
-      try {
-        return TenantResponseSchema.parse(tenant) as unknown as Tenant;
-      } catch (error) {
-        this.logger.error(`Tenant response validation failed for domain ${domain}`, { error, tenant });
-        return tenant as any as Tenant;
-      }
+    const normalizedDomain = String(domain || '').toLowerCase().trim();
+    if (!normalizedDomain) {
+      return null;
     }
-    
-    this.logger.warn(`[findTenantByDomain] Tenant not found for domain: ${domain}`);
-    return null;
+
+    const cached = this.getCachedTenant(this.tenantByDomainCache, normalizedDomain);
+    if (cached) {
+      return cached;
+    }
+
+    const existingInFlight = this.inFlightByDomain.get(normalizedDomain);
+    if (existingInFlight) {
+      return existingInFlight;
+    }
+
+    const request = (async () => {
+      try {
+        const tenant = await this.prisma.tenant.findFirst({
+          where: {
+            OR: [
+              { domain: normalizedDomain },
+              { subdomain: normalizedDomain.split('.')[0] },
+            ],
+            isActive: true,
+          },
+        });
+
+        if (!tenant) {
+          return null;
+        }
+
+        let parsed: Tenant;
+        try {
+          parsed = TenantResponseSchema.parse(tenant) as unknown as Tenant;
+        } catch (error) {
+          this.logger.error(`Tenant response validation failed for domain ${normalizedDomain}`, {
+            error,
+            tenantId: tenant.id,
+          });
+          parsed = tenant as any as Tenant;
+        }
+
+        this.setCachedTenant(this.tenantByDomainCache, normalizedDomain, parsed);
+        this.setCachedTenant(this.tenantBySlugCache, parsed.slug, parsed);
+
+        return parsed;
+      } catch (error: any) {
+        if (error?.code) {
+          this.logger.error(`[findTenantByDomain] Prisma error (code: ${error.code}): ${error.message}`, {
+            code: error.code,
+            meta: error.meta,
+          });
+        } else {
+          this.logger.error(`[findTenantByDomain] Error resolving domain ${normalizedDomain}:`, error);
+        }
+        throw error;
+      } finally {
+        this.inFlightByDomain.delete(normalizedDomain);
+      }
+    })();
+
+    this.inFlightByDomain.set(normalizedDomain, request);
+    return request;
   }
 
   async getAllTenants(includeInactive: boolean = false): Promise<Tenant[]> {
@@ -129,10 +247,12 @@ export class TenantsService {
     const tenant = await this.prisma.tenant.create({
       data,
     });
+    this.clearTenantCaches();
     return tenant as any as Tenant;
   }
   
   async updateTenant(slug: string, data: any): Promise<Tenant> {
+    const normalizedSlug = this.normalizeTenantSlug(slug);
     // IMPORTANT: This method only UPDATES existing tenants, it never DELETES them
     // When isActive is set to false, the tenant is just disabled, not removed
     // All tenant data (products, orders, etc.) remains intact
@@ -141,11 +261,11 @@ export class TenantsService {
     const existingTenant = await this.prisma.tenant.findFirst({
       where: {
         OR: [
-          { slug },
-          { subdomain: slug },
+          { slug: normalizedSlug },
+          { subdomain: normalizedSlug },
         ],
       },
-      select: { id: true, slug: true, subdomain: true, theme: true, paymentConfig: true, deliveryConfig: true },
+      select: { id: true, slug: true, subdomain: true, theme: true, paymentConfig: true, deliveryConfig: true, emailConfig: true },
     });
     
     if (!existingTenant) {
@@ -157,16 +277,27 @@ export class TenantsService {
       if (existingTenant.theme) {
         const existingTheme = existingTenant.theme as any;
         
-        // Special handling for openingHours - if it's provided, replace it entirely (don't deep merge)
+        // Special handling for openingHours - merge with existing to avoid losing days/timezone on partial payloads
         if (data.theme.openingHours !== undefined) {
+          const existingOpeningHours = (existingTheme as any).openingHours || {};
+          const incomingOpeningHours = data.theme.openingHours || {};
+
+          const mergedOpeningHours = {
+            ...existingOpeningHours,
+            ...incomingOpeningHours,
+            days: incomingOpeningHours.days ?? existingOpeningHours.days,
+            timezone: incomingOpeningHours.timezone ?? existingOpeningHours.timezone,
+          };
+
           data.theme = {
             ...existingTheme,
             ...data.theme,
-            openingHours: data.theme.openingHours, // Replace entirely, don't merge
+            openingHours: mergedOpeningHours,
           };
-          this.logger.log(`[updateTenant] Updating openingHours for ${slug}:`, {
-            enabled: data.theme.openingHours?.enabled,
-            hasDays: !!data.theme.openingHours?.days,
+
+          this.logger.log(`[updateTenant] Updating openingHours for ${normalizedSlug}:`, {
+            enabled: mergedOpeningHours?.enabled,
+            hasDays: !!mergedOpeningHours?.days,
           });
         } else {
           // Normal merge for other theme properties
@@ -200,6 +331,17 @@ export class TenantsService {
       }
     }
     
+    // If emailConfig is being updated, merge it with existing emailConfig
+    if (data.emailConfig && typeof data.emailConfig === 'object') {
+      if (existingTenant.emailConfig) {
+        const existingEmailConfig = existingTenant.emailConfig as any;
+        data.emailConfig = {
+          ...existingEmailConfig,
+          ...data.emailConfig,
+        };
+      }
+    }
+    
     // Update tenant - this only modifies the record, never deletes it
     const tenant = await this.prisma.tenant.update({
       where: { id: existingTenant.id },
@@ -209,13 +351,14 @@ export class TenantsService {
     // Log openingHours state after update for debugging
     const updatedTheme = tenant.theme as any;
     if (updatedTheme?.openingHours) {
-      this.logger.log(`[updateTenant] OpeningHours after update for ${slug}:`, {
+      this.logger.log(`[updateTenant] OpeningHours after update for ${normalizedSlug}:`, {
         enabled: updatedTheme.openingHours.enabled,
         timezone: updatedTheme.openingHours.timezone,
       });
     }
     
-    this.logger.log(`Tenant ${slug} updated. isActive: ${tenant.isActive}`);
+    this.logger.log(`Tenant ${normalizedSlug} updated. isActive: ${tenant.isActive}`);
+    this.clearTenantCaches();
     return tenant as any as Tenant;
   }
 
@@ -342,6 +485,7 @@ export class TenantsService {
         this.logger.log(`[cloneTenant] Cloned ${sourceTenant.productMappings.length} product mappings`);
         this.logger.log(`[cloneTenant] Successfully cloned tenant ${sourceSlug} to ${cloneData.slug}`);
 
+        this.clearTenantCaches();
         return newTenant as any as Tenant;
       });
     } catch (error: any) {
@@ -420,6 +564,7 @@ export class TenantsService {
     }
 
     this.logger.log(`[syncFromMaster] Sync complete. Synced: ${result.synced.length}, Errors: ${result.errors.length}`);
+    this.clearTenantCaches();
     return result;
   }
 

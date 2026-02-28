@@ -13,13 +13,44 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { CustomerService } from './customer.service';
+import { TenantsService } from '../tenants/tenants.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
 @Controller('customer/account')
 @UseGuards(JwtAuthGuard)
 export class CustomerController {
-  constructor(private customerService: CustomerService) {}
+  constructor(
+    private customerService: CustomerService,
+    private tenantsService: TenantsService,
+  ) {}
 
+
+  private async resolveTenant(req: any) {
+    const headerTenant = (req.headers?.['x-tenant'] as string | undefined)?.toString();
+    const host = (req.headers?.['host'] || '').toString().split(':')[0];
+    const hostTenant = host ? await this.tenantsService.findTenantByDomain(host) : null;
+
+    if (headerTenant) {
+      try {
+        const tenant = await this.tenantsService.getTenantBySlug(headerTenant);
+        return tenant;
+      } catch (e) {
+        // fall back to host
+      }
+    }
+
+    if (hostTenant) {
+      return hostTenant;
+    }
+
+    throw new BadRequestException('Tenant not provided');
+  }
+
+  private assertTenantMatch(user: any, tenant: any) {
+    if (!tenant || !user?.tenantId || user.tenantId !== tenant.id) {
+      throw new UnauthorizedException('Unauthorized');
+    }
+  }
   /**
    * Get customer orders
    */
@@ -35,11 +66,14 @@ export class CustomerController {
     if (!user.email) {
       throw new UnauthorizedException('Customer email not found');
     }
-    
+
+    const tenant = await this.resolveTenant(req);
+    this.assertTenantMatch(user, tenant);
+
     // Normalize email for consistent matching (lowercase, trim)
     const normalizedEmail = user.email.toLowerCase().trim();
     console.log('[CustomerController] Fetching orders for email:', normalizedEmail);
-    const orders = await this.customerService.getCustomerOrders(normalizedEmail);
+    const orders = await this.customerService.getCustomerOrders(user.id, tenant.id, normalizedEmail);
     console.log('[CustomerController] Found orders:', orders.length);
     return { orders };
   }
@@ -53,6 +87,9 @@ export class CustomerController {
     if (!user || user.role !== 'CUSTOMER') {
       throw new UnauthorizedException('Unauthorized');
     }
+
+    const tenant = await this.resolveTenant(req);
+    this.assertTenantMatch(user, tenant);
 
     return this.customerService.getCustomerProfile(user.id);
   }
@@ -68,7 +105,10 @@ export class CustomerController {
       throw new UnauthorizedException('Unauthorized');
     }
 
-      return await this.customerService.updateCustomerProfile(user.id, data);
+      const tenant = await this.resolveTenant(req);
+      this.assertTenantMatch(user, tenant);
+
+      return await this.customerService.updateCustomerProfile(user.id, tenant.id, data);
     } catch (error: any) {
       console.error('[CustomerController] updateProfile error:', error);
       // Re-throw known exceptions
@@ -92,6 +132,9 @@ export class CustomerController {
       console.error('[CustomerController] getAddresses - Unauthorized:', { user: !!user, role: user?.role });
       throw new UnauthorizedException('Unauthorized');
     }
+
+      const tenant = await this.resolveTenant(req);
+      this.assertTenantMatch(user, tenant);
 
       const result = await this.customerService.getCustomerAddresses(user.id);
       return result;
@@ -131,6 +174,9 @@ export class CustomerController {
         console.error('[CustomerController] createAddress - Unauthorized:', { user: !!user, role: user?.role });
         throw new UnauthorizedException('Unauthorized');
       }
+
+      const tenant = await this.resolveTenant(req);
+      this.assertTenantMatch(user, tenant);
 
       // Validate required fields
       if (!data.street || !data.street.trim()) {
@@ -186,6 +232,9 @@ export class CustomerController {
       throw new UnauthorizedException('Unauthorized');
     }
 
+    const tenant = await this.resolveTenant(req);
+    this.assertTenantMatch(user, tenant);
+
     return this.customerService.updateCustomerAddress(user.id, addressId, data);
   }
 
@@ -198,6 +247,9 @@ export class CustomerController {
     if (!user || user.role !== 'CUSTOMER') {
       throw new UnauthorizedException('Unauthorized');
     }
+
+    const tenant = await this.resolveTenant(req);
+    this.assertTenantMatch(user, tenant);
 
     return this.customerService.deleteCustomerAddress(user.id, addressId);
   }

@@ -1,9 +1,11 @@
-import { Controller, Get, Param, Query, Post, Body, Patch, NotFoundException } from '@nestjs/common';
+import { Controller, Get, Param, Query, Post, Body, Patch, NotFoundException, Logger } from '@nestjs/common';
 import { TenantsService } from './tenants.service';
 import { Public } from '../auth/decorators/public.decorator';
 
 @Controller('tenants')
 export class TenantsController {
+  private readonly logger = new Logger(TenantsController.name);
+
   constructor(private tenantsService: TenantsService) {}
 
   @Public()
@@ -38,17 +40,14 @@ export class TenantsController {
   @Public()
   @Get(':slug')
   async getTenant(@Param('slug') slug: string) {
-    console.log('[TenantsController] getTenant called with slug:', slug);
     try {
-      const tenant = await this.tenantsService.getTenantBySlug(slug);
-      console.log('[TenantsController] Tenant found:', tenant?.name);
-      return tenant;
+      return await this.tenantsService.getTenantBySlug(slug);
     } catch (error: any) {
-      console.error('[TenantsController] Error getting tenant:', {
+      this.logger.error('[getTenant] Error resolving tenant', {
+        slug,
         message: error.message,
         code: error.code,
         meta: error.meta,
-        stack: error.stack,
       });
       throw error;
     }
@@ -100,7 +99,6 @@ export class TenantsController {
     return this.tenantsService.syncFromMaster(data.masterSlug, data.targetSlugs);
   }
 }
-
 
 
 

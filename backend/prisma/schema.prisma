@@ -30,6 +30,7 @@ model Tenant {
   orders          Order[]
   productMappings ProductMapping[]
   products        Product[]
+  users           User[]
 
   @@map("tenants")
 }
@@ -83,6 +84,7 @@ model Order {
   storyousOrderId  String?
   userId           String?
   items            OrderItem[]
+  statusHistory    OrderStatusHistory[]
   delivery         Delivery?   @relation(fields: [deliveryId], references: [id])
   tenant           Tenant      @relation(fields: [tenantId], references: [id])
   user             User?       @relation(fields: [userId], references: [id])
@@ -94,6 +96,18 @@ model Order {
   @@index([paymentRef])
   @@index([userId])
   @@map("orders")
+}
+
+model OrderStatusHistory {
+  id        String      @id @default(cuid())
+  orderId   String
+  status    OrderStatus
+  createdAt DateTime    @default(now())
+  order     Order       @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId, createdAt])
+  @@index([orderId, status])
+  @@map("order_status_history")
 }
 
 model OrderItem {
@@ -129,6 +143,7 @@ model Delivery {
 
 model User {
   id                   String                @id @default(cuid())
+  tenantId             String
   password             String?
   name                 String
   role                 UserRole              @default(OPERATOR)
@@ -136,11 +151,11 @@ model User {
   createdAt            DateTime              @default(now())
   updatedAt            DateTime              @updatedAt
   username             String?               @unique
-  phone                String?               @unique
+  phone                String?
   phoneVerified        Boolean               @default(false)
-  appleId              String?               @unique
-  email                String?               @unique
-  googleId             String?               @unique
+  appleId              String?
+  email                String?
+  googleId             String?
   passwordResetExpires DateTime?
   passwordResetToken   String?               @unique
   addresses            Address[]
@@ -148,9 +163,17 @@ model User {
   refreshTokens        RefreshToken[]
   smsVerificationCodes SmsVerificationCode[]
 
+  tenant               Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  @@unique([tenantId, email])
+  @@unique([tenantId, phone])
+  @@unique([tenantId, googleId])
+  @@unique([tenantId, appleId])
+  @@index([tenantId])
+  @@index([tenantId, email])
+  @@index([tenantId, phone])
+  @@index([tenantId, googleId])
+  @@index([tenantId, appleId])
   @@index([username])
-  @@index([email])
-  @@index([phone])
   @@index([passwordResetToken])
   @@map("users")
 }

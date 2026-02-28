@@ -10,11 +10,21 @@ async function seedUsers() {
   const adminPassword = await bcrypt.hash('admin123', 10);
   const operatorPassword = await bcrypt.hash('operator123', 10);
 
+  const defaultTenant = await prisma.tenant.findFirst({ where: { slug: 'pornopizza' } })
+    || await prisma.tenant.findFirst();
+
+  if (!defaultTenant) {
+    throw new Error('No tenant found to assign admin users');
+  }
+
+  const tenantId = defaultTenant.id;
+
   // Create admin user
   const admin = await prisma.user.upsert({
     where: { username: 'admin' },
-    update: {},
+    update: { tenantId },
     create: {
+      tenantId,
       username: 'admin',
       password: adminPassword,
       name: 'Admin User',
@@ -28,8 +38,9 @@ async function seedUsers() {
   // Create operator user
   const operator = await prisma.user.upsert({
     where: { username: 'operator' },
-    update: {},
+    update: { tenantId },
     create: {
+      tenantId,
       username: 'operator',
       password: operatorPassword,
       name: 'Operator User',

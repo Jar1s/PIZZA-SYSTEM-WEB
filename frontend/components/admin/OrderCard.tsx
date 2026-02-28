@@ -1,8 +1,8 @@
 'use client';
 
 import { Order, OrderStatus } from '@pizza-ecosystem/shared';
-import { useState } from 'react';
-import { formatModifiers } from '@/lib/format-modifiers';
+import { useEffect, useState } from 'react';
+import { getFormattedModifierLines } from '@/lib/format-modifiers';
 import { syncOrderToStoryous, createWoltDelivery, checkWoltAvailability } from '@/lib/api';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { calculateOrderItemPrice } from '@/lib/calculate-order-item-price';
@@ -13,9 +13,11 @@ import { useToastContext } from '@/contexts/ToastContext';
 interface OrderCardProps {
   order: Order;
   onStatusUpdate: (orderId: string, status: OrderStatus) => void;
+  onOrderRefresh?: () => void;
   isExpanded?: boolean;
   onToggleExpand?: (orderId: string) => void;
   tenantSlug?: string;
+  showToggle?: boolean;
 }
 
 const STATUS_COLORS: Record<OrderStatus, string> = {
@@ -40,12 +42,47 @@ const NEXT_STATUS: Record<OrderStatus, OrderStatus | null> = {
   CANCELED: null,
 };
 
-export function OrderCard({ order, onStatusUpdate, isExpanded = false, onToggleExpand }: OrderCardProps) {
+interface TimelineStepConfig {
+  key: OrderStatus;
+  icon: string;
+}
+
+const ONLINE_TIMELINE_STEPS: TimelineStepConfig[] = [
+  { key: OrderStatus.PENDING, icon: '💳' },
+  { key: OrderStatus.PAID, icon: '💰' },
+  { key: OrderStatus.PREPARING, icon: '👨‍🍳' },
+  { key: OrderStatus.OUT_FOR_DELIVERY, icon: '🚗' },
+  { key: OrderStatus.DELIVERED, icon: '🎉' },
+];
+
+const DELIVERY_TIMELINE_STEPS: TimelineStepConfig[] = [
+  { key: OrderStatus.PENDING, icon: '⏳' },
+  { key: OrderStatus.PAID, icon: '✅' },
+  { key: OrderStatus.PREPARING, icon: '👨‍🍳' },
+  { key: OrderStatus.OUT_FOR_DELIVERY, icon: '🚗' },
+  { key: OrderStatus.DELIVERED, icon: '🎉' },
+];
+
+const BRAND_LABELS: Record<string, string> = {
+  pornopizza: 'Porno Pizza',
+  partypizza: 'Party Pizza',
+  pizzavnudzi: 'Pizza v Nudzi',
+};
+
+export function OrderCard({
+  order,
+  onStatusUpdate,
+  onOrderRefresh,
+  isExpanded = false,
+  onToggleExpand,
+  tenantSlug,
+  showToggle = true,
+}: OrderCardProps) {
   const { language } = useLanguage();
   const t = getTranslations(language);
   // Use prop if provided, otherwise fall back to local state for backward compatibility
   const [localExpanded, setLocalExpanded] = useState(false);
-  const expanded = onToggleExpand ? isExpanded : localExpanded;
+  const expanded = onToggleExpand ? isExpanded : isExpanded || localExpanded;
   const handleToggle = onToggleExpand 
     ? () => onToggleExpand(order.id)
     : () => setLocalExpanded(!localExpanded);
@@ -60,8 +97,11 @@ export function OrderCard({ order, onStatusUpdate, isExpanded = false, onToggleE
     promiseId: string;
     feeCents: number;
     etaMinutes: number;
+    pickupEtaMinutes?: number;
+    dropoffEtaMinutes?: number;
     validUntil: string;
     currency: string;
+    distance?: number;
   } | null>(null);
   const [woltError, setWoltError] = useState<string | null>(null);
   const [woltPreparationMinutes, setWoltPreparationMinutes] = useState<number>(20);
@@ -71,9 +111,20 @@ export function OrderCard({ order, onStatusUpdate, isExpanded = false, onToggleE
   const address = order.address;
   const nextStatus = NEXT_STATUS[order.status];
   const isStoryousSynced = !!order.storyousOrderId;
-  const hasWoltDelivery = !!order.deliveryId || !!order.delivery;
-  const woltDelivery = order.delivery;
+  const hasDelivery = !!order.deliveryId || !!order.delivery;
+  const isWoltDelivery = order.delivery?.provider === 'wolt';
+  const woltDelivery = isWoltDelivery ? order.delivery : null;
   const customizationLabels = (order as any)?.tenant?.theme?.customizationLabels;
+
+  useEffect(() => {
+    if (!isWoltDelivery) return;
+
+    const timer = setInterval(() => {
+      setNowMs(Date.now());
+    }, 30000);
+
+    return () => clearInterval(timer);
+  }, [isWoltDelivery, order.id]);
   
   // Show Storyous/Wolt buttons only while in PAID/PREPARING and not yet created
   const canSyncToStoryous = !isStoryousSynced && (
@@ -109,10 +160,65 @@ export function OrderCard({ order, onStatusUpdate, isExpanded = false, onToggleE
   const isPaid = order.status === OrderStatus.PAID;
   const isPending = order.status === OrderStatus.PENDING;
   const canCreateWolt =
-    !hasWoltDelivery &&
+    !hasDelivery &&
     (order.status === OrderStatus.PAID || order.status === OrderStatus.PREPARING || order.status === OrderStatus.READY);
   // Show cancel for anything except delivered/canceled
   const canShowCancel = order.status !== OrderStatus.DELIVERED && order.status !== OrderStatus.CANCELED;
+  // Desktop already has specialized reject/cancel buttons for some states.
+  // Show this backdoor cancel only where a cancel button is otherwise missing.
+  const showDesktopBackdoorCancel = canShowCancel && !isPendingDelivery && !isPendingOnline && !isPaidOnline;
+
+  const parseOptionalNumber = (value: unknown): number | null => {
+    if (typeof value === 'number' && Number.isFinite(value)) return value;
+    if (typeof value === 'string') {
+      const parsed = Number.parseFloat(value);
+      if (Number.isFinite(parsed)) return parsed;
+    }
+    return null;
+  };
+
+  const woltQuote = (woltDelivery?.quote as Record<string, unknown> | null | undefined) || null;
+  const woltPickupEtaMinutes =
+    parseOptionalNumber(woltQuote?.pickupEtaMinutes) ??
+    parseOptionalNumber(woltQuote?.courierPickupEta) ??
+    parseOptionalNumber(woltQuote?.courierEta);
+  const woltDropoffEtaMinutes =
+    parseOptionalNumber(woltQuote?.dropoffEtaMinutes) ??
+    parseOptionalNumber(woltQuote?.etaMinutes);
+  const etaReferenceMs = new Date(order.updatedAt as unknown as string | Date).getTime();
+  const woltPickupEtaRemainingMinutes =
+    woltPickupEtaMinutes != null
+      ? Math.max(0, Math.ceil((etaReferenceMs + woltPickupEtaMinutes * 60000 - nowMs) / 60000))
+      : null;
+  const woltDropoffEtaRemainingMinutes =
+    woltDropoffEtaMinutes != null
+      ? Math.max(0, Math.ceil((etaReferenceMs + woltDropoffEtaMinutes * 60000 - nowMs) / 60000))
+      : null;
+  const woltFeeCents = parseOptionalNumber(woltQuote?.feeCents);
+  const orderDeliveryFeeCents = parseOptionalNumber(order.deliveryFeeCents);
+  // Single source of truth for UI: what customer is charged on the order.
+  const displayedDeliveryFeeCents = orderDeliveryFeeCents ?? woltFeeCents;
+  // In pre-create Wolt modal fallback to promise fee only if order fee is missing.
+  const modalDeliveryFeeCents =
+    orderDeliveryFeeCents ??
+    parseOptionalNumber(woltPromise?.feeCents);
+  const showPickupEtaInAdminHeader =
+    woltPickupEtaRemainingMinutes != null &&
+    woltPickupEtaRemainingMinutes > 0 &&
+    [OrderStatus.PAID, OrderStatus.PREPARING, OrderStatus.READY].includes(order.status);
+  const woltPickupEtaRounded = showPickupEtaInAdminHeader ? woltPickupEtaRemainingMinutes : null;
+
+  const timelineSteps = isDeliveryPaymentValue ? DELIVERY_TIMELINE_STEPS : ONLINE_TIMELINE_STEPS;
+  const timelineStatus =
+    order.status === OrderStatus.READY ? OrderStatus.OUT_FOR_DELIVERY : order.status;
+  const currentTimelineIndex = Math.max(
+    timelineSteps.findIndex((step) => step.key === timelineStatus),
+    0,
+  );
+  const timelineProgressWidth =
+    timelineSteps.length > 1
+      ? `${(currentTimelineIndex / (timelineSteps.length - 1)) * 100}%`
+      : '0%';
   
   // Get translated status label
   const getStatusLabel = (status: OrderStatus): string => {
@@ -135,6 +241,30 @@ export function OrderCard({ order, onStatusUpdate, isExpanded = false, onToggleE
       [OrderStatus.CANCELED]: t.orderStatusCanceled,
     };
     return statusMap[status] || status;
+  };
+
+  const getTimelineDescription = (status: OrderStatus): string => {
+    if (status === OrderStatus.PENDING && isDeliveryPayment()) {
+      return language === 'sk'
+        ? 'Objednávka čaká na potvrdenie operátora'
+        : 'Order is waiting for operator confirmation';
+    }
+    if (status === OrderStatus.PAID && isDeliveryPayment()) {
+      return language === 'sk' ? 'Objednávka potvrdená' : 'Order confirmed';
+    }
+
+    const descriptionMap: Record<OrderStatus, string> = {
+      [OrderStatus.PENDING]: t.orderStatusPendingDesc,
+      [OrderStatus.PAID]: t.orderStatusPaidDesc,
+      [OrderStatus.PREPARING]: t.orderStatusPreparingDesc,
+      [OrderStatus.READY]: t.orderStatusOutForDeliveryDesc,
+      [OrderStatus.OUT_FOR_DELIVERY]: t.orderStatusOutForDeliveryDesc,
+      [OrderStatus.DELIVERED]: t.orderStatusDeliveredDesc,
+      [OrderStatus.CANCELED]:
+        language === 'sk' ? 'Objednávka bola zrušená' : 'Order was canceled',
+    };
+
+    return descriptionMap[status];
   };
   
   const getNextStatusLabel = (status: OrderStatus): string => {
@@ -207,8 +337,8 @@ export function OrderCard({ order, onStatusUpdate, isExpanded = false, onToggleE
       if (woltResult.success) {
         setShowWoltModal(false);
         setWoltMessage(`✅ Wolt delivery created! ${woltResult.trackingUrl ? `Tracking: ${woltResult.trackingUrl}` : ''}`);
-        // Refresh the page to show updated order
-        setTimeout(() => window.location.reload(), 1500);
+        // Refresh orders in parent without forcing full page reload/reset.
+        onOrderRefresh?.();
       } else {
         setWoltError(woltResult.message || 'Nepodarilo sa vytvoriť doručenie');
       }
@@ -252,6 +382,203 @@ export function OrderCard({ order, onStatusUpdate, isExpanded = false, onToggleE
     const dateStr = orderDate.toLocaleDateString('sk-SK', { day: '2-digit', month: '2-digit' });
     return `${dateStr} o ${time}`;
   };
+
+  const formatTimelineTime = (date: Date): string =>
+    new Date(date).toLocaleTimeString(language === 'sk' ? 'sk-SK' : 'en-US', {
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+
+  const formatEurPrice = (priceCents: number): string => {
+    const value = priceCents / 100;
+    if (Number.isInteger(value)) {
+      return `${value} EUR`;
+    }
+    return `${value.toFixed(2)} EUR`;
+  };
+
+  const formatDuration = (milliseconds: number): string => {
+    const totalSeconds = Math.max(0, Math.floor(milliseconds / 1000));
+    if (totalSeconds < 60) {
+      return `${totalSeconds}s`;
+    }
+
+    const totalMinutes = Math.floor(totalSeconds / 60);
+    if (totalMinutes < 60) {
+      return `${totalMinutes}m`;
+    }
+
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+    if (hours < 24) {
+      return minutes > 0 ? `${hours}h ${minutes}m` : `${hours}h`;
+    }
+
+    const days = Math.floor(hours / 24);
+    const remainingHours = hours % 24;
+    return remainingHours > 0 ? `${days}d ${remainingHours}h` : `${days}d`;
+  };
+
+  const createdAtDate = new Date(order.createdAt);
+  const updatedAtDate = new Date(order.updatedAt);
+  const normalizedHistory = [...(order.statusHistory || [])]
+    .map((entry) => ({
+      ...entry,
+      createdAt: new Date(entry.createdAt),
+    }))
+    .filter((entry) => !Number.isNaN(entry.createdAt.getTime()))
+    .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+
+  const getStepTimestamp = (status: OrderStatus): Date | null => {
+    if (status === OrderStatus.PENDING) {
+      const pendingEntry = normalizedHistory.find((entry) => entry.status === OrderStatus.PENDING);
+      return pendingEntry?.createdAt || createdAtDate;
+    }
+
+    const exactEntry = normalizedHistory.find((entry) => entry.status === status);
+    if (exactEntry) {
+      return exactEntry.createdAt;
+    }
+
+    // Legacy flow stored READY before OUT_FOR_DELIVERY.
+    if (status === OrderStatus.OUT_FOR_DELIVERY) {
+      const readyEntry = normalizedHistory.find((entry) => entry.status === OrderStatus.READY);
+      if (readyEntry) {
+        return readyEntry.createdAt;
+      }
+    }
+
+    const currentStatusForTimeline =
+      order.status === OrderStatus.READY ? OrderStatus.OUT_FOR_DELIVERY : order.status;
+    if (status === currentStatusForTimeline) {
+      return updatedAtDate;
+    }
+
+    return null;
+  };
+
+  const timelineEntries = timelineSteps.map((step, index) => {
+    const timestamp = getStepTimestamp(step.key);
+    const previousTimestamp = index > 0 ? getStepTimestamp(timelineSteps[index - 1].key) : null;
+    const durationFromPrevious =
+      timestamp && previousTimestamp
+        ? formatDuration(timestamp.getTime() - previousTimestamp.getTime())
+        : null;
+
+    return {
+      ...step,
+      timestamp,
+      durationFromPrevious,
+    };
+  });
+
+  const isDispatchDetailMode = !showToggle;
+  const orderDisplayNumber =
+    order.orderNumber != null && order.orderNumber > 0
+      ? `#${order.orderNumber.toString().padStart(4, '0')}`
+      : `#${order.id.slice(0, 8).toUpperCase()}`;
+  const brandLabel = tenantSlug ? BRAND_LABELS[tenantSlug] || tenantSlug : '';
+  const dispatchHeadline =
+    language === 'sk'
+      ? order.status === OrderStatus.DELIVERED
+        ? `Doručenie ${orderDisplayNumber}`
+        : `Objednávka ${orderDisplayNumber}`
+      : order.status === OrderStatus.DELIVERED
+        ? `Delivery ${orderDisplayNumber}`
+        : `Order ${orderDisplayNumber}`;
+  const dispatchStatusLabel = getStatusLabel(order.status).toUpperCase();
+  const dispatchElapsed = formatDuration(updatedAtDate.getTime() - createdAtDate.getTime());
+
+  const desktopActionButtons = (
+    <>
+      {isPendingDelivery && (
+        <>
+          <button
+            onClick={() => onStatusUpdate(order.id, OrderStatus.PAID)}
+            className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 text-sm font-semibold"
+          >
+            ✅ Prijať
+          </button>
+          <button
+            onClick={() => onStatusUpdate(order.id, OrderStatus.CANCELED)}
+            className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 text-sm font-semibold"
+          >
+            ❌ Zrušiť
+          </button>
+        </>
+      )}
+      {isPendingOnline && (
+        <button
+          onClick={() => onStatusUpdate(order.id, OrderStatus.CANCELED)}
+          className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 text-sm font-semibold"
+        >
+          ❌ Zrušiť
+        </button>
+      )}
+      {isPaidOnline && (
+        <>
+          <button
+            onClick={() => onStatusUpdate(order.id, OrderStatus.PREPARING)}
+            className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 text-sm font-semibold"
+          >
+            ✅ Potvrdiť
+          </button>
+          <button
+            onClick={() => onStatusUpdate(order.id, OrderStatus.CANCELED)}
+            className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 text-sm font-semibold"
+            title="Odmietnuť objednávku (refund bude spracovaný neskôr)"
+          >
+            ❌ Odmietnuť
+          </button>
+        </>
+      )}
+      {canSyncToStoryous && (
+        <button
+          onClick={handleSyncStoryous}
+          disabled={syncingStoryous}
+          className="px-3 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+          title="Send to Storyous"
+        >
+          {syncingStoryous ? '⏳' : '📦 Storyous'}
+        </button>
+      )}
+      {canCreateWolt && (
+        <button
+          onClick={handleCreateWoltDelivery}
+          disabled={creatingWolt}
+          className="px-3 py-2 bg-orange-600 text-white rounded hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+          title="Create Wolt delivery"
+        >
+          {creatingWolt ? '⏳' : '🚚 Wolt'}
+        </button>
+      )}
+      {shouldShowNextStatusButton() && nextStatus && (
+        <button
+          onClick={() => onStatusUpdate(order.id, nextStatus!)}
+          className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+        >
+          → {getNextStatusLabel(order.status)}
+        </button>
+      )}
+      {showDesktopBackdoorCancel && (
+        <button
+          onClick={() => onStatusUpdate(order.id, OrderStatus.CANCELED)}
+          className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+          title="Backdoor zrusenie objednavky"
+        >
+          ❌ Zrušiť
+        </button>
+      )}
+      {showToggle && (
+        <button
+          onClick={handleToggle}
+          className="px-4 py-2 border rounded hover:bg-gray-100"
+        >
+          {expanded ? 'Hide' : 'Details'}
+        </button>
+      )}
+    </>
+  );
   
   return (
     <div className="p-3 sm:p-4 hover:bg-gray-50">
@@ -286,12 +613,24 @@ export function OrderCard({ order, onStatusUpdate, isExpanded = false, onToggleE
               📦 Storyous
             </span>
           )}
-          {hasWoltDelivery && (
+          {isWoltDelivery && (
             <span className="px-2 py-0.5 rounded text-xs font-semibold bg-orange-100 text-orange-800 whitespace-nowrap">
               🚚 Wolt
             </span>
           )}
         </div>
+
+        {woltPickupEtaRounded != null && (
+          <div className="rounded-lg border border-orange-300 bg-orange-50 px-3 py-2">
+            <div className="text-[11px] font-semibold uppercase tracking-wide text-orange-700">
+              ETA kuriér na prevádzku
+            </div>
+            <div className="mt-1 text-3xl font-extrabold leading-none text-orange-700">
+              {woltPickupEtaRounded}
+              <span className="ml-1 text-sm font-semibold align-middle">min</span>
+            </div>
+          </div>
+        )}
         
         {/* Customer Info */}
         <div>
@@ -371,135 +710,268 @@ export function OrderCard({ order, onStatusUpdate, isExpanded = false, onToggleE
               </button>
             )}
           </div>
-          <button
-            onClick={handleToggle}
-            className="w-full px-4 py-2 border border-gray-300 rounded hover:bg-gray-100 text-sm font-semibold"
-          >
-            {expanded ? 'Hide Details' : 'Show Details'}
-          </button>
+          {showToggle && (
+            <button
+              onClick={handleToggle}
+              className="w-full px-4 py-2 border border-gray-300 rounded hover:bg-gray-100 text-sm font-semibold"
+            >
+              {expanded ? 'Hide Details' : 'Show Details'}
+            </button>
+          )}
         </div>
       </div>
 
       {/* Desktop Layout */}
-      <div className="hidden md:flex items-center justify-between">
-        <div className="flex-1">
-          <div className="flex items-center gap-3 flex-wrap">
-            <span className="font-mono text-sm text-gray-500">
-              {order.orderNumber != null && order.orderNumber > 0
-                ? `#${order.orderNumber.toString().padStart(4, '0')}`
-                : `#${order.id.slice(0, 8).toUpperCase()}`}
-            </span>
-            <span className="text-xs text-gray-500">
-              {formatCreatedTime(order.createdAt)}
-            </span>
-            <span className={`px-2 py-1 rounded text-xs font-semibold ${STATUS_COLORS[order.status]}`}>
-              {getStatusLabel(order.status)}
-            </span>
-            {isStoryousSynced && (
-              <span className="px-2 py-1 rounded text-xs font-semibold bg-green-100 text-green-800">
-                📦 Storyous
-              </span>
-            )}
-            {hasWoltDelivery && (
-              <span className="px-2 py-1 rounded text-xs font-semibold bg-orange-100 text-orange-800">
-                🚚 Wolt
-              </span>
-            )}
-            <span className="text-sm text-gray-600">
-              {customer.name} • {customer.phone}
-            </span>
+      {isDispatchDetailMode ? (
+        <div className="hidden md:block border-l-2 border-red-500 pl-3 pb-4 mb-4 border-b border-gray-200">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <div className="text-[11px] uppercase tracking-wide font-extrabold text-emerald-600">
+                {dispatchStatusLabel}
+              </div>
+              <div className="text-3xl font-extrabold text-gray-900 leading-tight mt-1">
+                {dispatchHeadline}
+              </div>
+              <div className="text-sm font-semibold text-emerald-700 mt-1">
+                {brandLabel}{brandLabel ? ' • ' : ''}{customer.name}
+              </div>
+            </div>
+            <div className="flex items-stretch gap-2 min-w-[128px]">
+              <div className="rounded-xl bg-gray-100 border border-gray-200 px-4 py-3 text-right min-w-[128px]">
+                <div className="text-[10px] uppercase tracking-wide font-bold text-gray-500">
+                  {language === 'sk' ? 'Vydanie' : 'Updated'}
+                </div>
+                <div className="text-3xl font-extrabold text-gray-900 leading-none mt-1">
+                  {formatTimelineTime(order.updatedAt)}
+                </div>
+                <div className="text-[11px] font-semibold text-emerald-600 mt-1">
+                  {dispatchElapsed}
+                </div>
+              </div>
+              {woltPickupEtaRounded != null && (
+                <div className="rounded-xl border border-orange-300 bg-orange-50 px-4 py-3 text-right min-w-[128px]">
+                  <div className="text-[10px] uppercase tracking-wide font-bold text-orange-700">
+                    Kuriér na prevádzku
+                  </div>
+                  <div className="text-3xl font-extrabold leading-none text-orange-700 mt-1">
+                    {woltPickupEtaRounded}
+                  </div>
+                  <div className="text-[11px] font-semibold text-orange-700 mt-1">
+                    min
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
-          
-          <div className="mt-2 text-sm text-gray-600">
-            {order.items.length} items • €{(order.totalCents / 100).toFixed(2)}
+          <div className="mt-3 flex items-center gap-2 flex-wrap">
+            {desktopActionButtons}
           </div>
         </div>
-        
-        <div className="flex items-center gap-2 ml-4">
-          {/* PENDING with delivery payment - Accept/Cancel buttons */}
-          {isPendingDelivery && (
-            <>
-              <button
-                onClick={() => onStatusUpdate(order.id, OrderStatus.PAID)}
-                className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 text-sm font-semibold"
-              >
-                ✅ Prijať
-              </button>
-              <button
-                onClick={() => onStatusUpdate(order.id, OrderStatus.CANCELED)}
-                className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 text-sm font-semibold"
-              >
-                ❌ Zrušiť
-              </button>
-            </>
-          )}
-          {/* PENDING with online payment - Cancel button only (waiting for customer payment) */}
-          {isPendingOnline && (
-            <button
-              onClick={() => onStatusUpdate(order.id, OrderStatus.CANCELED)}
-              className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 text-sm font-semibold"
-            >
-              ❌ Zrušiť
-            </button>
-          )}
-          {/* PAID online payment - Confirm/Reject buttons (after payment, operator must confirm) */}
-          {isPaidOnline && (
-            <>
-              <button
-                onClick={() => onStatusUpdate(order.id, OrderStatus.PREPARING)}
-                className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 text-sm font-semibold"
-              >
-                ✅ Potvrdiť
-              </button>
-              <button
-                onClick={() => onStatusUpdate(order.id, OrderStatus.CANCELED)}
-                className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 text-sm font-semibold"
-                title="Odmietnuť objednávku (refund bude spracovaný neskôr)"
-              >
-                ❌ Odmietnuť
-              </button>
-            </>
-          )}
-          {canSyncToStoryous && (
-            <button
-              onClick={handleSyncStoryous}
-              disabled={syncingStoryous}
-              className="px-3 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
-              title="Send to Storyous"
-            >
-              {syncingStoryous ? '⏳' : '📦 Storyous'}
-            </button>
-          )}
-          {!hasWoltDelivery && order.status === OrderStatus.PAID && (
-            <button
-              onClick={handleCreateWoltDelivery}
-              disabled={creatingWolt}
-              className="px-3 py-2 bg-orange-600 text-white rounded hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
-              title="Create Wolt delivery"
-            >
-              {creatingWolt ? '⏳' : '🚚 Wolt'}
-            </button>
-          )}
-          {shouldShowNextStatusButton() && nextStatus && (
-            <button
-              onClick={() => onStatusUpdate(order.id, nextStatus!)}
-              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-            >
-              → {getNextStatusLabel(order.status)}
-            </button>
-          )}
+      ) : (
+        <div className="hidden md:flex items-center justify-between">
+          <div className="flex-1">
+            <div className="flex items-center gap-3 flex-wrap">
+              <span className="font-mono text-sm text-gray-500">{orderDisplayNumber}</span>
+              <span className="text-xs text-gray-500">
+                {formatCreatedTime(order.createdAt)}
+              </span>
+              <span className={`px-2 py-1 rounded text-xs font-semibold ${STATUS_COLORS[order.status]}`}>
+                {getStatusLabel(order.status)}
+              </span>
+              {isStoryousSynced && (
+                <span className="px-2 py-1 rounded text-xs font-semibold bg-green-100 text-green-800">
+                  📦 Storyous
+                </span>
+              )}
+              {isWoltDelivery && (
+                <span className="px-2 py-1 rounded text-xs font-semibold bg-orange-100 text-orange-800">
+                  🚚 Wolt
+                </span>
+              )}
+              <span className="text-sm text-gray-600">
+                {customer.name} • {customer.phone}
+              </span>
+            </div>
+            
+            <div className="mt-2 text-sm text-gray-600">
+              {order.items.length} items • €{(order.totalCents / 100).toFixed(2)}
+            </div>
+          </div>
           
-          <button
-            onClick={handleToggle}
-            className="px-4 py-2 border rounded hover:bg-gray-100"
-          >
-            {expanded ? 'Hide' : 'Details'}
-          </button>
+          <div className="flex items-center gap-2 ml-4">
+            {woltPickupEtaRounded != null && (
+              <div className="rounded-lg border border-orange-300 bg-orange-50 px-3 py-2 text-center min-w-[96px]">
+                <div className="text-[10px] font-bold uppercase tracking-wide text-orange-700">
+                  Kuriér
+                </div>
+                <div className="text-2xl font-extrabold leading-none text-orange-700 mt-0.5">
+                  {woltPickupEtaRounded}
+                </div>
+                <div className="text-[10px] font-semibold text-orange-700">min</div>
+              </div>
+            )}
+            {desktopActionButtons}
+          </div>
         </div>
-      </div>
+      )}
       
       {expanded && (
-        <div className="mt-4 pt-4 border-t grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+        <div className={`${isDispatchDetailMode ? 'grid grid-cols-1 md:grid-cols-2 gap-4 text-sm border-l-2 border-red-500 pl-3' : 'mt-4 pt-4 border-t grid grid-cols-1 md:grid-cols-2 gap-4 text-sm'}`}>
+          <div className={`col-span-2 border border-gray-200 ${isDispatchDetailMode ? 'rounded-lg bg-white overflow-hidden' : 'rounded-xl bg-gray-50 p-4'}`}>
+            <div className={`flex items-center justify-between gap-2 ${isDispatchDetailMode ? 'px-4 py-3 border-b border-gray-200 bg-gray-50/60' : 'mb-4'}`}>
+              <div className="font-semibold text-gray-900">
+                {language === 'sk' ? 'Časová os objednávky' : 'Order timeline'}
+              </div>
+              {isDispatchDetailMode ? (
+                <button
+                  type="button"
+                  className="text-[11px] uppercase tracking-wide font-bold text-orange-600 hover:text-orange-700"
+                >
+                  {language === 'sk' ? 'Zobrazit denniky' : 'Show logs'}
+                </button>
+              ) : (
+                <div className="text-xs text-gray-500">
+                  {formatTimelineTime(order.createdAt)} to {formatTimelineTime(order.updatedAt)}
+                </div>
+              )}
+            </div>
+
+            {order.status === OrderStatus.CANCELED ? (
+              <div className={`${isDispatchDetailMode ? 'm-4 rounded-lg border border-red-200 bg-red-50 px-3 py-3 text-sm text-red-700' : 'rounded-lg border border-red-200 bg-red-50 px-3 py-3 text-sm text-red-700'}`}>
+                {language === 'sk'
+                  ? 'Objednávka bola zrušená.'
+                  : 'This order has been canceled.'}
+              </div>
+            ) : (
+              <>
+                {isDispatchDetailMode ? (
+                  <div className="hidden lg:grid gap-2 p-4" style={{ gridTemplateColumns: `repeat(${timelineEntries.length}, minmax(0, 1fr))` }}>
+                    {timelineEntries.map((step, index) => {
+                      const isComplete = index <= currentTimelineIndex;
+                      const isCurrent = index === currentTimelineIndex;
+
+                      return (
+                        <div
+                          key={step.key}
+                          className={`rounded-md border px-2.5 py-2 min-h-[72px] ${
+                            isCurrent
+                              ? 'border-emerald-400 bg-emerald-50'
+                              : isComplete
+                                ? 'border-gray-200 bg-white'
+                                : 'border-gray-200 bg-gray-50'
+                          }`}
+                        >
+                          <div className="text-[12px] font-bold text-gray-900">
+                            {step.timestamp ? formatTimelineTime(step.timestamp) : '--:--'}
+                          </div>
+                          <div className={`text-[12px] font-semibold mt-0.5 ${isComplete ? 'text-gray-900' : 'text-gray-500'}`}>
+                            {getStatusLabel(step.key)}
+                          </div>
+                          {step.durationFromPrevious && (
+                            <div className="text-[11px] font-bold text-emerald-600 mt-1">
+                              {step.durationFromPrevious}
+                            </div>
+                          )}
+                          {!step.durationFromPrevious && (
+                            <div className="text-[11px] text-gray-400 mt-1">--</div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="hidden lg:block relative">
+                    <div className="absolute left-0 right-0 top-5 h-1 bg-gray-200 rounded-full" />
+                    <div
+                      className="absolute left-0 top-5 h-1 bg-emerald-500 rounded-full transition-all duration-300"
+                      style={{ width: timelineProgressWidth }}
+                    />
+
+                    <div
+                      className="relative grid gap-2"
+                      style={{ gridTemplateColumns: `repeat(${timelineEntries.length}, minmax(0, 1fr))` }}
+                    >
+                      {timelineEntries.map((step, index) => {
+                        const isComplete = index <= currentTimelineIndex;
+                        const isCurrent = index === currentTimelineIndex;
+
+                        return (
+                          <div key={step.key} className="text-center">
+                            <div className="text-[11px] font-semibold text-gray-500 mb-1">
+                              {step.timestamp ? formatTimelineTime(step.timestamp) : '--:--'}
+                            </div>
+                            <div
+                              className={`mx-auto h-10 w-10 rounded-full flex items-center justify-center text-lg transition-all ${
+                                isComplete
+                                  ? 'bg-emerald-500 text-white'
+                                  : 'bg-gray-200 text-gray-500'
+                              } ${isCurrent ? 'ring-4 ring-emerald-200' : ''}`}
+                            >
+                              {step.icon}
+                            </div>
+                            <div className={`mt-2 text-xs font-semibold ${isComplete ? 'text-gray-900' : 'text-gray-500'}`}>
+                              {getStatusLabel(step.key)}
+                            </div>
+                            <div className={`mt-1 text-[11px] leading-tight ${isComplete ? 'text-gray-600' : 'text-gray-400'}`}>
+                              {getTimelineDescription(step.key)}
+                            </div>
+                            {step.durationFromPrevious && (
+                              <div className="mt-1 text-[11px] font-semibold text-emerald-600">
+                                {step.durationFromPrevious}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                <div className="lg:hidden space-y-3">
+                  {timelineEntries.map((step, index) => {
+                    const isComplete = index <= currentTimelineIndex;
+                    const isCurrent = index === currentTimelineIndex;
+
+                    return (
+                      <div key={step.key} className="flex items-start gap-3">
+                        <div
+                          className={`h-9 w-9 mt-0.5 rounded-full flex items-center justify-center text-sm ${
+                            isComplete ? 'bg-emerald-500 text-white' : 'bg-gray-200 text-gray-500'
+                          }`}
+                        >
+                          {step.icon}
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <div className={`text-sm font-semibold ${isComplete ? 'text-gray-900' : 'text-gray-500'}`}>
+                              {getStatusLabel(step.key)}
+                            </div>
+                            <div className="text-[11px] text-gray-500">
+                              {step.timestamp ? formatTimelineTime(step.timestamp) : '--:--'}
+                            </div>
+                          </div>
+                          <div className={`text-xs ${isComplete ? 'text-gray-600' : 'text-gray-400'}`}>
+                            {getTimelineDescription(step.key)}
+                          </div>
+                          {step.durationFromPrevious && (
+                            <div className="text-[11px] text-emerald-600 font-semibold mt-1">
+                              {step.durationFromPrevious}
+                            </div>
+                          )}
+                          {isCurrent && (
+                            <div className="text-[11px] text-emerald-600 font-semibold mt-1">
+                              {language === 'sk' ? 'Aktuálny krok' : 'Current step'}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
+            )}
+          </div>
+
           {storyousMessage && (
             <div
               className={`col-span-2 mb-2 p-2 rounded text-xs border ${
@@ -521,22 +993,37 @@ export function OrderCard({ order, onStatusUpdate, isExpanded = false, onToggleE
               ✅ Synced to Storyous (ID: {order.storyousOrderId})
             </div>
           )}
-          {hasWoltDelivery && woltDelivery && (
-            <div className="col-span-2 mb-2 p-2 rounded text-xs bg-orange-50 text-orange-800">
-              🚚 Wolt Delivery: {woltDelivery.status}
-              {woltDelivery.trackingUrl && (
-                <a 
-                  href={woltDelivery.trackingUrl} 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="ml-2 text-orange-600 underline"
-                >
-                  Track
-                </a>
-              )}
-              {woltDelivery.jobId && (
-                <span className="ml-2 text-gray-600">(Job: {woltDelivery.jobId})</span>
-              )}
+          {isWoltDelivery && woltDelivery && (
+            <div className="col-span-2 mb-2 rounded-lg border border-orange-200 bg-orange-50 p-3">
+              <div className="flex flex-col gap-3">
+                <div className="min-w-0">
+                  <div className="text-sm font-semibold text-orange-900">
+                    🚚 Wolt Delivery: {woltDelivery.status}
+                    {woltDelivery.jobId && (
+                      <span className="ml-2 font-medium text-gray-600">(Job: {woltDelivery.jobId})</span>
+                    )}
+                  </div>
+                  {woltDelivery.trackingUrl && (
+                    <a
+                      href={woltDelivery.trackingUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mt-1 inline-block text-sm font-semibold text-orange-700 underline"
+                    >
+                      Otvoriť tracking
+                    </a>
+                  )}
+                </div>
+              </div>
+
+              <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-700">
+                {woltDropoffEtaRemainingMinutes != null && (
+                  <span>Doručenie zákazníkovi: ~{woltDropoffEtaRemainingMinutes} min</span>
+                )}
+                {displayedDeliveryFeeCents != null && (
+                  <span>Delivery fee: {formatEurPrice(displayedDeliveryFeeCents)}</span>
+                )}
+              </div>
             </div>
           )}
           <div>
@@ -558,38 +1045,54 @@ export function OrderCard({ order, onStatusUpdate, isExpanded = false, onToggleE
           <div className="col-span-2">
             <div className="font-semibold mb-2">Items</div>
             {order.items.map((item, i) => {
-              const modifiers = formatModifiers(item.modifiers, true, language, customizationLabels); // Use defaults for admin
+              const modifierLines = getFormattedModifierLines(
+                item.modifiers,
+                true,
+                language,
+                customizationLabels,
+              );
               // Calculate correct price (handles both old and new orders)
               const itemTotal = calculateOrderItemPrice(item, 'PIZZA');
               // In admin, show the database product name (internal name), not the web display name
               const displayName = item.productName;
               
               return (
-                <div key={i} className="mb-3 pb-3 border-b last:border-b-0">
-                  <div className="flex justify-between">
-                    <span className="font-medium">{item.quantity}x {displayName}</span>
-                    <span>€{(itemTotal / 100).toFixed(2)}</span>
+                <div key={i} className="mb-4 pb-3 border-b border-gray-200 last:border-b-0">
+                  <div className="flex justify-between gap-3 text-[15px] leading-6">
+                    <span className="font-semibold text-gray-900 truncate">
+                      <span className="text-red-500 font-bold mr-1">{item.quantity}x</span>
+                      {displayName}
+                    </span>
+                    <span className="font-semibold text-gray-800 whitespace-nowrap">{formatEurPrice(itemTotal)}</span>
                   </div>
-                  {modifiers.length > 0 && (
-                    <div className="text-xs text-gray-500 mt-1 ml-4 space-y-0.5">
-                      {modifiers.map((mod, idx) => (
-                        <div key={idx}>• {mod}</div>
-                      ))}
+                  {modifierLines.length > 0 && (
+                    <div className="mt-1.5 ml-5 space-y-1">
+                      {modifierLines.map((modifier, idx) => {
+                        return (
+                          <div key={idx} className="flex justify-between gap-3 text-[14px] text-gray-700 leading-5">
+                            <span className="truncate">
+                              <span className="text-red-500 font-semibold mr-1">1x</span>
+                              {modifier.label}
+                            </span>
+                            <span className="text-gray-700 whitespace-nowrap">{formatEurPrice(modifier.priceCents)}</span>
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
                 </div>
               );
             })}
             
-            {order.deliveryFeeCents != null && (
+            {displayedDeliveryFeeCents != null && (
               <div className="pt-2 flex justify-between text-sm text-gray-600">
                 <span>Delivery fee</span>
-                <span>€{(order.deliveryFeeCents / 100).toFixed(2)}</span>
+                <span>{formatEurPrice(displayedDeliveryFeeCents)}</span>
               </div>
             )}
             <div className="mt-2 pt-2 border-t flex justify-between font-semibold">
               <span>Total</span>
-              <span>€{(order.totalCents / 100).toFixed(2)}</span>
+              <span>{formatEurPrice(order.totalCents)}</span>
             </div>
           </div>
         </div>
@@ -657,17 +1160,23 @@ export function OrderCard({ order, onStatusUpdate, isExpanded = false, onToggleE
 
                   {/* Delivery Info */}
                   <div className="space-y-3">
-                    <div className="flex justify-between items-center">
-                      <span className="text-gray-600">💰 Poplatok za doručenie:</span>
-                      <span className="text-xl font-bold text-orange-600">
-                        €{(woltPromise.feeCents / 100).toFixed(2)}
-                      </span>
-                    </div>
+                    {modalDeliveryFeeCents != null && (
+                      <div className="flex justify-between items-center">
+                        <span className="text-gray-600">💰 Poplatok za doručenie:</span>
+                        <span className="text-xl font-bold text-orange-600">
+                          {formatEurPrice(modalDeliveryFeeCents)}
+                        </span>
+                      </div>
+                    )}
                     
                     <div className="flex justify-between items-center">
-                      <span className="text-gray-600">⏱️ Odhadovaný čas:</span>
+                      <span className="text-gray-600">⏱️ ETA kuriér na prevádzku:</span>
                       <span className="text-lg font-semibold text-gray-900">
-                        ~{woltPromise.etaMinutes} minút
+                        ~{Math.round(
+                          parseOptionalNumber(woltPromise.pickupEtaMinutes) ??
+                            parseOptionalNumber(woltPromise.etaMinutes) ??
+                            0,
+                        )} minút
                       </span>
                     </div>
                     <div>

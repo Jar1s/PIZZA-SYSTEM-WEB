@@ -6,26 +6,68 @@ interface WoltLocation {
   lon: number;
 }
 
-interface WoltQuoteRequest {
-  pickup: {
-    location: WoltLocation;
-    comment?: string;
-  };
-  dropoff: {
-    location: WoltLocation;
-    comment?: string;
-    contact: {
-      name: string;
-      phone: string;
-    };
-  };
+interface ShipmentPromiseSnapshot {
+  promiseId?: string;
+  feeCents?: number;
+  etaMinutes?: number;
+  pickupEtaMinutes?: number;
+  dropoffEtaMinutes?: number;
+  validUntil?: string;
+  currency?: string;
+  distance?: number;
+}
+
+interface WoltApiConfig {
+  apiUrl?: string;
+  merchantId?: string;
+  venueId?: string;
+}
+
+interface WoltApiEndpoints {
+  deliveriesUrl: string;
+  shipmentPromisesUrl: string;
+  orderStatusUrl: string;
+}
+
+interface DeliveryCreateContext {
+  parcelPriceCents?: number;
+  parcelCurrency?: string;
+  orderNumber?: string | number | null;
+  supportEmail?: string;
+  supportUrl?: string;
 }
 
 @Injectable()
 export class WoltDriveService {
   private readonly logger = new Logger(WoltDriveService.name);
-  private apiUrl = 'https://daas-public-api.wolt.com/merchants/v1/deliveries';
-  private shipmentPromisesUrl = 'https://daas-public-api.wolt.com/merchants/v1/shipment-promises';
+  private readonly defaultApiBaseUrl = 'https://daas-public-api.wolt.com/v1';
+
+  private resolveApiEndpoints(apiConfig?: WoltApiConfig): WoltApiEndpoints {
+    const venueId = apiConfig?.venueId?.trim();
+    if (!venueId) {
+      throw new BadRequestException('Wolt Venue ID nie je nastavené pre tento tenant.');
+    }
+
+    const rawApiUrl = apiConfig?.apiUrl?.trim();
+    const rootUrl = rawApiUrl || 'https://daas-public-api.wolt.com';
+    const normalized = rootUrl.replace(/\/+$/, '');
+
+    let apiBase = this.defaultApiBaseUrl;
+    const v1Index = normalized.indexOf('/v1');
+    if (v1Index >= 0) {
+      apiBase = normalized.slice(0, v1Index + 3);
+    } else if (normalized) {
+      apiBase = `${normalized}/v1`;
+    }
+
+    const venuePath = `${apiBase}/venues/${encodeURIComponent(venueId)}`;
+
+    return {
+      deliveriesUrl: `${venuePath}/deliveries`,
+      shipmentPromisesUrl: `${venuePath}/shipment-promises`,
+      orderStatusUrl: `${venuePath}/order`,
+    };
+  }
   
   /**
    * Get kitchen phone number with validation
@@ -43,6 +85,84 @@ export class WoltDriveService {
     }
     
     return phone;
+  }
+
+  /**
+   * Coordinates are mandatory for Wolt requests.
+   * Never silently fallback to 0,0 because that creates invalid jobs.
+   */
+  private getValidatedLocation(address: Address, label: 'pickup' | 'dropoff'): WoltLocation {
+    const lat = address.coordinates?.lat;
+    const lng = address.coordinates?.lng;
+
+    if (
+      typeof lat !== 'number' ||
+      Number.isNaN(lat) ||
+      typeof lng !== 'number' ||
+      Number.isNaN(lng)
+    ) {
+      throw new BadRequestException(
+        `Missing or invalid ${label} coordinates for Wolt delivery. Please set geolocation first.`,
+      );
+    }
+
+    return { lat, lon: lng };
+  }
+
+  private parseOptionalNumber(value: unknown): number | undefined {
+    if (typeof value === 'number' && Number.isFinite(value)) {
+      return value;
+    }
+
+    if (typeof value === 'string') {
+      const parsed = Number.parseFloat(value.trim());
+      if (Number.isFinite(parsed)) {
+        return parsed;
+      }
+    }
+
+    return undefined;
+  }
+
+  private firstNumber(...candidates: unknown[]): number | undefined {
+    for (const candidate of candidates) {
+      const parsed = this.parseOptionalNumber(candidate);
+      if (typeof parsed === 'number') {
+        return parsed;
+      }
+    }
+    return undefined;
+  }
+
+  private extractEtaMinutes(data: any): {
+    etaMinutes?: number;
+    pickupEtaMinutes?: number;
+    dropoffEtaMinutes?: number;
+  } {
+    const pickupEtaMinutes = this.firstNumber(
+      data?.pickup?.eta_minutes,
+      data?.pickup?.etaMinutes,
+      data?.pickup_eta,
+      data?.pickup_eta_minutes,
+      data?.courier?.pickup_eta_minutes,
+      data?.courier?.pickup_eta,
+    );
+
+    const dropoffEtaMinutes = this.firstNumber(
+      data?.dropoff?.eta_minutes,
+      data?.dropoff?.etaMinutes,
+      data?.dropoff_eta,
+      data?.dropoff_eta_minutes,
+      data?.courier?.dropoff_eta_minutes,
+      data?.courier?.dropoff_eta,
+    );
+
+    return {
+      // Keep backward compatibility: etaMinutes remains "arrival to customer" by default.
+      etaMinutes: dropoffEtaMinutes ?? pickupEtaMinutes,
+      pickupEtaMinutes,
+      dropoffEtaMinutes,
+    };
   }
   
   /**
@@ -88,6 +208,7 @@ export class WoltDriveService {
   private formatWoltError(response: Response, errorData: any): string {
     const status = response.status;
     const statusText = response.statusText;
+    const extractedMessage = this.extractApiErrorMessage(errorData);
 
     // Handle specific error cases
     if (status === 401) {
@@ -103,7 +224,7 @@ export class WoltDriveService {
     }
 
     if (status === 400) {
-      const message = errorData?.message || errorData?.error || 'Neplatná požiadavka';
+      const message = extractedMessage || 'Neplatná požiadavka';
       if (message.includes('pickup') || message.includes('dropoff')) {
         return `Neplatná adresa: ${message}`;
       }
@@ -116,42 +237,112 @@ export class WoltDriveService {
     }
 
     // Generic error message with details from API if available
-    const apiMessage = errorData?.message || errorData?.error || statusText;
+    const apiMessage = extractedMessage || statusText;
     return `Wolt API chyba (${status}): ${apiMessage}`;
+  }
+
+  private extractApiErrorMessage(errorData: any): string {
+    const directCandidates = [
+      errorData?.message,
+      errorData?.error,
+      errorData?.detail,
+      errorData?.title,
+      errorData?.reason,
+      errorData?.description,
+    ];
+
+    for (const candidate of directCandidates) {
+      if (typeof candidate === 'string' && candidate.trim()) {
+        return candidate.trim();
+      }
+    }
+
+    const errorsList = Array.isArray(errorData?.errors)
+      ? errorData.errors
+      : Array.isArray(errorData?.validation_errors)
+        ? errorData.validation_errors
+        : null;
+
+    if (errorsList && errorsList.length > 0) {
+      const rendered = errorsList
+        .map((entry: any) => {
+          if (typeof entry === 'string') {
+            return entry.trim();
+          }
+
+          if (entry && typeof entry === 'object') {
+            return (
+              (typeof entry.message === 'string' && entry.message.trim()) ||
+              (typeof entry.detail === 'string' && entry.detail.trim()) ||
+              (typeof entry.error === 'string' && entry.error.trim()) ||
+              JSON.stringify(entry)
+            );
+          }
+
+          return '';
+        })
+        .filter(Boolean)
+        .join('; ');
+
+      if (rendered) {
+        return rendered;
+      }
+    }
+
+    if (typeof errorData?.raw === 'string' && errorData.raw.trim()) {
+      return errorData.raw.trim();
+    }
+
+    return '';
+  }
+
+  private async buildApiError(response: Response): Promise<Error> {
+    const rawBody = await response.text().catch(() => '');
+    let errorData: any = {};
+
+    if (rawBody) {
+      try {
+        errorData = JSON.parse(rawBody);
+      } catch {
+        errorData = { raw: rawBody.slice(0, 1000) };
+      }
+    }
+
+    const userFriendlyMessage = this.formatWoltError(response, errorData);
+    const error = new Error(userFriendlyMessage);
+    (error as any).status = response.status;
+    (error as any).originalError = errorData;
+    return error;
   }
 
   async getQuote(
     apiKey: string,
-    pickupAddress: Address,
+    _pickupAddress: Address,
     dropoffAddress: Address,
     maxRetries = 3,
+    apiConfig?: WoltApiConfig,
   ) {
-    const request: WoltQuoteRequest = {
-      pickup: {
-        location: {
-          lat: pickupAddress.coordinates?.lat || 0,
-          lon: pickupAddress.coordinates?.lng || 0,
-        },
-        comment: 'Kitchen entrance',
-      },
-      dropoff: {
-        location: {
-          lat: dropoffAddress.coordinates?.lat || 0,
-          lon: dropoffAddress.coordinates?.lng || 0,
-        },
-        comment: dropoffAddress.instructions || '',
-        contact: {
-          name: 'Customer', // Will be replaced with actual customer name
-          phone: '+421900000000', // Will be replaced
-        },
-      },
+    const dropoffLocation = this.getValidatedLocation(dropoffAddress, 'dropoff');
+    const { shipmentPromisesUrl } = this.resolveApiEndpoints(apiConfig);
+
+    // Strict payload based on Wolt docs:
+    // POST /v1/venues/{venue_id}/shipment-promises
+    // accepted fields: street, city, post_code, lat, lon, language,
+    // min_preparation_time_minutes, scheduled_dropoff_time (+ optional parcels/cash for fees).
+    const request = {
+      street: dropoffAddress.street,
+      city: dropoffAddress.city,
+      post_code: dropoffAddress.postalCode,
+      lat: dropoffLocation.lat,
+      lon: dropoffLocation.lon,
+      min_preparation_time_minutes: 30,
     };
 
     let lastError: Error | null = null;
     
     for (let attempt = 0; attempt < maxRetries; attempt++) {
       try {
-        const response = await fetch(`${this.apiUrl}/quote`, {
+        const response = await fetch(shipmentPromisesUrl, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${apiKey}`,
@@ -161,28 +352,37 @@ export class WoltDriveService {
         });
 
         if (!response.ok) {
-          const error = new Error(`Wolt API error: ${response.statusText}`);
+          const error = await this.buildApiError(response);
           if (!this.isRetryableError(error, response)) {
-            throw error; // Don't retry 4xx errors
+            throw error;
           }
           lastError = error;
           throw error;
         }
 
         const data = await response.json();
+        const eta = this.extractEtaMinutes(data);
         
         return {
-          feeCents: data.fee.amount, // Wolt returns in cents
-          etaMinutes: data.dropoff_eta,
-          distance: data.distance,
-          currency: data.fee.currency,
+          feeCents: data?.price?.amount || data?.fee?.amount || 0,
+          etaMinutes: eta.etaMinutes || 0,
+          pickupEtaMinutes: eta.pickupEtaMinutes,
+          dropoffEtaMinutes: eta.dropoffEtaMinutes,
+          distance: data?.distance || 0,
+          currency: data?.price?.currency || data?.fee?.currency || 'EUR',
+          promiseId: data?.id,
+          validUntil: data?.valid_until,
         };
       } catch (error: any) {
         lastError = error instanceof Error ? error : new Error(String(error));
         
         // Check if error is retryable
         if (!this.isRetryableError(error, undefined)) {
-          this.logger.error('Non-retryable error from Wolt API', { error: lastError.message });
+          this.logger.error('Non-retryable error from Wolt API', {
+            error: lastError.message,
+            status: (error as any)?.status,
+            originalError: (error as any)?.originalError,
+          });
           throw lastError;
         }
         
@@ -215,31 +415,23 @@ export class WoltDriveService {
    */
   async getShipmentPromise(
     apiKey: string,
-    pickupAddress: Address,
+    _pickupAddress: Address,
     dropoffAddress: Address,
     customerName: string,
     customerPhone: string,
     maxRetries = 3,
+    apiConfig?: WoltApiConfig,
   ) {
+    const dropoffLocation = this.getValidatedLocation(dropoffAddress, 'dropoff');
+    const { shipmentPromisesUrl } = this.resolveApiEndpoints(apiConfig);
+
     const request = {
-      pickup: {
-        location: {
-          lat: pickupAddress.coordinates?.lat || 0,
-          lon: pickupAddress.coordinates?.lng || 0,
-        },
-        comment: pickupAddress.instructions || 'Kitchen entrance',
-      },
-      dropoff: {
-        location: {
-          lat: dropoffAddress.coordinates?.lat || 0,
-          lon: dropoffAddress.coordinates?.lng || 0,
-        },
-        comment: dropoffAddress.instructions || '',
-        contact: {
-          name: customerName,
-          phone: customerPhone,
-        },
-      },
+      street: dropoffAddress.street,
+      city: dropoffAddress.city,
+      post_code: dropoffAddress.postalCode,
+      lat: dropoffLocation.lat,
+      lon: dropoffLocation.lon,
+      min_preparation_time_minutes: 30,
     };
 
     let lastError: Error | null = null;
@@ -247,7 +439,7 @@ export class WoltDriveService {
     for (let attempt = 0; attempt < maxRetries; attempt++) {
       try {
         // Use correct endpoint: /shipment-promises (not /deliveries/quote)
-        const response = await fetch(this.shipmentPromisesUrl, {
+        const response = await fetch(shipmentPromisesUrl, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${apiKey}`,
@@ -257,11 +449,7 @@ export class WoltDriveService {
         });
 
         if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          const userFriendlyMessage = this.formatWoltError(response, errorData);
-          const error = new Error(userFriendlyMessage);
-          (error as any).status = response.status;
-          (error as any).originalError = errorData;
+          const error = await this.buildApiError(response);
           
           if (!this.isRetryableError(error, response)) {
             throw error; // Don't retry 4xx errors
@@ -271,13 +459,16 @@ export class WoltDriveService {
         }
 
         const data = await response.json();
+        const eta = this.extractEtaMinutes(data);
         
         return {
           promiseId: data.id, // Required for delivery creation
-          feeCents: data.fee.amount, // Wolt returns in cents
-          etaMinutes: data.dropoff_eta,
+          feeCents: data?.price?.amount || data?.fee?.amount || 0, // Wolt returns in cents
+          etaMinutes: eta.etaMinutes || 0,
+          pickupEtaMinutes: eta.pickupEtaMinutes,
+          dropoffEtaMinutes: eta.dropoffEtaMinutes,
           validUntil: data.valid_until, // ISO 8601 timestamp
-          currency: data.fee.currency,
+          currency: data?.price?.currency || data?.fee?.currency || 'EUR',
           distance: data.distance,
         };
       } catch (error: any) {
@@ -285,7 +476,11 @@ export class WoltDriveService {
         
         // Check if error is retryable
         if (!this.isRetryableError(error, undefined)) {
-          this.logger.error('Non-retryable error from Wolt API', { error: lastError.message });
+          this.logger.error('Non-retryable error from Wolt API', {
+            error: lastError.message,
+            status: (error as any)?.status,
+            originalError: (error as any)?.originalError,
+          });
           throw lastError;
         }
         
@@ -322,45 +517,59 @@ export class WoltDriveService {
     shipmentPromiseId?: string, // Optional: if provided, use shipment promise ID
     minPreparationTimeMinutes?: number,
     maxRetries = 3,
+    apiConfig?: WoltApiConfig,
+    context?: DeliveryCreateContext,
   ) {
-    const request: any = {
+    const dropoffLocation = this.getValidatedLocation(dropoffAddress, 'dropoff');
+    const { deliveriesUrl } = this.resolveApiEndpoints(apiConfig);
+
+    const effectivePromiseId = shipmentPromiseId || promiseSnapshot?.promiseId;
+    const parcelCurrency =
+      context?.parcelCurrency || promiseSnapshot?.currency || 'EUR';
+    const parcelPriceCents =
+      typeof context?.parcelPriceCents === 'number' ? context.parcelPriceCents : 0;
+    const supportEmail = context?.supportEmail || process.env.WOLT_SUPPORT_EMAIL;
+    const supportUrl = context?.supportUrl || process.env.FRONTEND_URL;
+    const orderNumber = context?.orderNumber != null ? String(context.orderNumber) : orderId;
+
+    const request: Record<string, unknown> = {
       pickup: {
-        location: {
-          lat: pickupAddress.coordinates?.lat || 0,
-          lon: pickupAddress.coordinates?.lng || 0,
-        },
-        address: `${pickupAddress.street}, ${pickupAddress.city}`,
         comment: pickupAddress.instructions || 'Kitchen entrance - call on arrival',
-        contact: {
-          name: 'Kitchen Staff',
-          phone: this.getKitchenPhone(pickupAddress),
-        },
       },
       dropoff: {
         location: {
-          lat: dropoffAddress.coordinates?.lat || 0,
-          lon: dropoffAddress.coordinates?.lng || 0,
+          coordinates: {
+            lat: dropoffLocation.lat,
+            lon: dropoffLocation.lon,
+          },
         },
-        address: `${dropoffAddress.street}, ${dropoffAddress.city}, ${dropoffAddress.postalCode}`,
         comment: dropoffAddress.instructions || '',
-        contact: {
-          name: customerName,
-          phone: customerPhone,
+        options: {
+          is_no_contact: false,
         },
       },
-      merchant_order_reference: orderId,
-      contents: [
+      recipient: {
+        name: customerName,
+        phone_number: customerPhone,
+      },
+      parcels: [
         {
-          description: 'Pizza delivery',
+          description: 'Pizza order',
           identifier: orderId,
           count: 1,
+          price: {
+            amount: parcelPriceCents,
+            currency: parcelCurrency,
+          },
         },
       ],
+      merchant_order_reference_id: orderId,
+      order_number: orderNumber,
     };
 
     // Add shipment promise ID if provided (required by Wolt API for proper flow)
-    if (shipmentPromiseId) {
-      request.shipment_promise_id = shipmentPromiseId;
+    if (effectivePromiseId) {
+      request.shipment_promise_id = effectivePromiseId;
     }
 
     // ASAP pickup control - lets operator influence courier arrival to pickup
@@ -378,7 +587,7 @@ export class WoltDriveService {
     
     for (let attempt = 0; attempt < maxRetries; attempt++) {
       try {
-        const response = await fetch(`${this.apiUrl}`, {
+        const response = await fetch(deliveriesUrl, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${apiKey}`,
@@ -388,11 +597,7 @@ export class WoltDriveService {
         });
 
         if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          const userFriendlyMessage = this.formatWoltError(response, errorData);
-          const error = new Error(userFriendlyMessage);
-          (error as any).status = response.status;
-          (error as any).originalError = errorData;
+          const error = await this.buildApiError(response);
           
           if (!this.isRetryableError(error, response)) {
             throw error; // Don't retry 4xx errors
@@ -402,12 +607,42 @@ export class WoltDriveService {
         }
 
         const data = await response.json();
+        const eta = this.extractEtaMinutes(data);
+
+        const feeCents =
+          typeof data?.price?.amount === 'number'
+            ? data.price.amount
+            : promiseSnapshot?.feeCents;
+        const etaMinutes =
+          typeof eta.etaMinutes === 'number' ? eta.etaMinutes : promiseSnapshot?.etaMinutes;
+        const pickupEtaMinutes =
+          typeof eta.pickupEtaMinutes === 'number'
+            ? eta.pickupEtaMinutes
+            : promiseSnapshot?.pickupEtaMinutes;
+        const dropoffEtaMinutes =
+          typeof eta.dropoffEtaMinutes === 'number'
+            ? eta.dropoffEtaMinutes
+            : promiseSnapshot?.dropoffEtaMinutes;
+        const distance =
+          typeof data?.distance === 'number' ? data.distance : promiseSnapshot?.distance;
+        const currency =
+          typeof data?.price?.currency === 'string'
+            ? data.price.currency
+            : promiseSnapshot?.currency;
         
         return {
-          jobId: data.id,
-          trackingUrl: data.tracking.url,
-          status: data.status,
-          courierEta: data.dropoff_eta,
+          jobId: data.wolt_order_reference_id || data.id || null,
+          trackingUrl: data?.tracking?.url || null,
+          status: data?.status || 'INFO_RECEIVED',
+          courierEta: etaMinutes,
+          feeCents,
+          etaMinutes,
+          pickupEtaMinutes,
+          dropoffEtaMinutes,
+          distance,
+          currency,
+          promiseId: request.shipment_promise_id,
+          validUntil: promiseSnapshot?.validUntil,
         };
       } catch (error: any) {
         lastError = error instanceof Error ? error : new Error(String(error));
@@ -417,6 +652,8 @@ export class WoltDriveService {
           this.logger.error('Non-retryable error from Wolt API', { 
             error: lastError.message,
             orderId,
+            status: (error as any)?.status,
+            originalError: (error as any)?.originalError,
           });
           throw lastError;
         }
@@ -446,16 +683,22 @@ export class WoltDriveService {
     throw lastError || new Error('Wolt API createDelivery failed');
   }
 
-  async cancelDelivery(apiKey: string, jobId: string, maxRetries = 3) {
+  async cancelDelivery(apiKey: string, jobId: string, maxRetries = 3, apiConfig?: WoltApiConfig) {
     let lastError: Error | null = null;
+    const { orderStatusUrl } = this.resolveApiEndpoints(apiConfig);
     
     for (let attempt = 0; attempt < maxRetries; attempt++) {
       try {
-        const response = await fetch(`${this.apiUrl}/${jobId}/cancel`, {
-          method: 'POST',
+        const response = await fetch(`${orderStatusUrl}/${encodeURIComponent(jobId)}/status/cancel`, {
+          method: 'PATCH',
           headers: {
             'Authorization': `Bearer ${apiKey}`,
+            'Content-Type': 'application/json',
           },
+          body: JSON.stringify({
+            reject_reason: 'OTHER',
+            reject_details: 'Cancelled by merchant',
+          }),
         });
 
         if (!response.ok) {

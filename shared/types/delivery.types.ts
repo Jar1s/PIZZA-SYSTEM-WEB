@@ -24,19 +24,23 @@ export interface DeliveryQuote {
   etaMinutes: number;
   distance: number;          // km
   currency: string;
+  promiseId?: string;
+  validUntil?: string;
+}
+
+export interface WoltWebhookRequest {
+  token: string;
 }
 
 export interface WoltWebhook {
-  job_id: string;
-  status: string;
-  courier?: {
-    name: string;
-    phone: string;
+  event?: string;
+  event_ts?: number;
+  order?: {
+    status?: string;
+    merchant_order_reference_id?: string;
+    wolt_order_reference_id?: string;
   };
-  eta?: string;
 }
-
-
 
 
 

@@ -3,7 +3,7 @@
  */
 
 // OpeningHours type - defined locally since it's not exported from shared
-interface OpeningHours {
+export interface OpeningHours {
   enabled: boolean;
   timezone?: string;
   days: {
@@ -18,9 +18,12 @@ interface OpeningHours {
 /**
  * Get current day name in lowercase (monday, tuesday, etc.)
  */
-export function getCurrentDayName(): string {
+export function getCurrentDayName(timezone?: string): string {
+  const now = timezone
+    ? new Date(new Date().toLocaleString('en-US', { timeZone: timezone }))
+    : new Date();
   const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-  return days[new Date().getDay()];
+  return days[now.getDay()];
 }
 
 /**
@@ -53,7 +56,7 @@ export function isCurrentlyOpen(openingHours: OpeningHours | null | undefined): 
     return false; // Explicitly disabled => closed
   }
 
-  const currentDay = getCurrentDayName();
+  const currentDay = getCurrentDayName(openingHours.timezone);
   const daySchedule = openingHours.days[currentDay];
 
   if (!daySchedule || daySchedule.closed) {
@@ -82,7 +85,7 @@ export function getNextOpeningTime(openingHours: OpeningHours | null | undefined
     return null;
   }
 
-  const currentDay = getCurrentDayName();
+  const currentDay = getCurrentDayName(openingHours.timezone);
   const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
   const currentDayIndex = days.indexOf(currentDay);
 

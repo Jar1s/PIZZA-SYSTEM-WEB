@@ -155,13 +155,6 @@ export function EditProductModal({
     }
   }, [isTenantSpecific, selectedBrand]);
 
-  // Prevent selecting overrides for tenant-specific products
-  useEffect(() => {
-    if (isTenantSpecific && selectedBrand !== 'master') {
-      setSelectedBrand('master');
-    }
-  }, [isTenantSpecific, selectedBrand]);
-
   useEffect(() => {
     if (product) {
       // Get current web name with fallback: DB value → translation → name
@@ -296,14 +289,10 @@ export function EditProductModal({
           return;
         }
 
-        const payload: ProductTenantOverride = {
-          ...(overrideData.displayName?.trim()
-            ? { displayName: overrideData.displayName.trim() }
-            : {}),
-          ...(overrideData.image?.trim()
-            ? { image: overrideData.image.trim() }
-            : {}),
-        };
+        const payload: ProductTenantOverride = {};
+        if (overrideData.displayName?.trim()) {
+          payload.displayName = overrideData.displayName.trim();
+        }
         const normalizedDescription = normalizeOverrideFieldForSave(overrideData.description);
         if (normalizedDescription) {
           payload.description = normalizedDescription;
@@ -311,6 +300,9 @@ export function EditProductModal({
         const normalizedSubHeader = normalizeOverrideFieldForSave(overrideData.subHeader);
         if (normalizedSubHeader) {
           payload.subHeader = normalizedSubHeader;
+        }
+        if (overrideData.image?.trim()) {
+          payload.image = overrideData.image.trim();
         }
 
         await updateProductOverrides(

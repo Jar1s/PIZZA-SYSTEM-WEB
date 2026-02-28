@@ -1,5 +1,5 @@
-import { Controller, Post, Body, Headers, Req, Res, Logger } from '@nestjs/common';
-import { Request, Response } from 'express';
+import { Controller, Post, Body, Res, Logger } from '@nestjs/common';
+import { Response } from 'express';
 import * as crypto from 'crypto';
 import { DeliveryService } from './delivery.service';
 import { Public } from '../auth/decorators/public.decorator';
@@ -11,57 +11,99 @@ export class WebhooksController {
   
   constructor(private deliveryService: DeliveryService) {}
 
+  private decodeBase64Url(value: string): string {
+    const normalized = value.replace(/-/g, '+').replace(/_/g, '/');
+    const padding = normalized.length % 4 === 0 ? '' : '='.repeat(4 - (normalized.length % 4));
+    return Buffer.from(`${normalized}${padding}`, 'base64').toString('utf8');
+  }
+
+  private decodePayloadWithoutVerification(token: string): any {
+    const parts = token.split('.');
+    if (parts.length !== 3) {
+      throw new Error('Invalid JWT token format');
+    }
+    return JSON.parse(this.decodeBase64Url(parts[1]));
+  }
+
+  private verifyAndDecodeToken(token: string, secret: string): any {
+    const parts = token.split('.');
+    if (parts.length !== 3) {
+      throw new Error('Invalid JWT token format');
+    }
+
+    const [headerPart, payloadPart, signaturePart] = parts;
+    const header = JSON.parse(this.decodeBase64Url(headerPart));
+    if (header?.alg !== 'HS256') {
+      throw new Error(`Unsupported JWT alg: ${header?.alg || 'unknown'}`);
+    }
+    const expectedSignature = crypto
+      .createHmac('sha256', secret)
+      .update(`${headerPart}.${payloadPart}`)
+      .digest('base64url');
+
+    const providedBuffer = Buffer.from(signaturePart, 'utf8');
+    const expectedBuffer = Buffer.from(expectedSignature, 'utf8');
+    if (
+      providedBuffer.length !== expectedBuffer.length ||
+      !crypto.timingSafeEqual(providedBuffer, expectedBuffer)
+    ) {
+      throw new Error('Invalid webhook token signature');
+    }
+
+    const payload = JSON.parse(this.decodeBase64Url(payloadPart));
+    if (typeof payload?.exp === 'number') {
+      const now = Math.floor(Date.now() / 1000);
+      if (payload.exp < now) {
+        throw new Error('Webhook token expired');
+      }
+    }
+
+    return payload;
+  }
+
   @Public()
   @Post('wolt')
   async handleWoltWebhook(
     @Body() body: any,
-    @Headers('x-wolt-signature') signature: string,
-    @Req() req: Request,
     @Res() res: Response,
   ) {
-    // SECURITY FIX: Use raw body for signature verification
-    const rawBody = (req as any).rawBody;
-    if (!rawBody) {
-      this.logger.error('Raw body not available for Wolt webhook');
-      return res.status(500).send('Server configuration error');
+    const token = body?.token;
+    if (!token || typeof token !== 'string') {
+      this.logger.warn('Wolt webhook payload missing token');
+      return res.status(400).send('Webhook token required');
     }
-    
-    // SECURITY: Always verify signature unless explicitly skipped via env variable
-    // This prevents security issues if NODE_ENV is misconfigured
-    if (!appConfig.skipWebhookVerification && signature) {
+
+    let webhookPayload: any;
+
+    if (!appConfig.skipWebhookVerification) {
       const secret = process.env.WOLT_WEBHOOK_SECRET;
       if (!secret) {
         this.logger.error('Wolt webhook secret not configured');
         return res.status(500).send('Webhook secret not configured');
       }
-      
-      // Use raw body as string for signature verification
-      const rawBodyString = rawBody.toString('utf8');
-      const expectedSignature = crypto
-        .createHmac('sha256', secret)
-        .update(rawBodyString)
-        .digest('hex');
-      
-      // Constant-time comparison to prevent timing attacks
-      if (!crypto.timingSafeEqual(
-        Buffer.from(signature),
-        Buffer.from(expectedSignature)
-      )) {
-        this.logger.error('Invalid Wolt webhook signature');
-        return res.status(401).send('Invalid webhook signature');
+
+      try {
+        webhookPayload = this.verifyAndDecodeToken(token, secret);
+      } catch (error: any) {
+        this.logger.error('Invalid Wolt webhook token signature', {
+          error: error?.message || String(error),
+        });
+        return res.status(401).send('Invalid webhook token');
       }
-    } else if (appConfig.skipWebhookVerification) {
+    } else {
       this.logger.warn('⚠️  SECURITY WARNING: Wolt webhook verification is DISABLED via SKIP_WEBHOOK_VERIFICATION');
-    } else if (!signature) {
-      this.logger.warn('⚠️  Wolt webhook missing signature header');
-      // In production, reject webhooks without signature
-      if (process.env.NODE_ENV === 'production') {
-        return res.status(401).send('Webhook signature required');
+      try {
+        webhookPayload = this.decodePayloadWithoutVerification(token);
+      } catch (error: any) {
+        this.logger.error('Failed to decode Wolt webhook token', {
+          error: error?.message || String(error),
+        });
+        return res.status(400).send('Invalid webhook token payload');
       }
     }
     
     try {
-      await this.deliveryService.handleWoltWebhook(body);
+      await this.deliveryService.handleWoltWebhook(webhookPayload);
       return res.status(200).send('OK');
     } catch (error) {
       // Distinguish between fatal and transient errors
@@ -113,5 +155,3 @@ export class WebhooksController {
     return false;
   }
 }
-
-

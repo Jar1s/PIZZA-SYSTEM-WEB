@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Body, Query, Res, BadRequestException, Req } from '@nestjs/common';
+import { Controller, Post, Get, Body, Query, Res, BadRequestException, UnauthorizedException, Req } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { Request, Response } from 'express';
 import { CustomerAuthService, RegisterDto, LoginDto } from './customer-auth.service';
@@ -65,6 +65,26 @@ function decodeState(state?: string): { returnUrl?: string; tenant?: string } {
   }
 }
 
+function extractCookieValue(req: Request, cookieName: string): string | undefined {
+  const cookieHeader = req.headers?.cookie;
+  if (!cookieHeader) return undefined;
+
+  const match = cookieHeader
+    .split(';')
+    .map((segment) => segment.trim())
+    .find((segment) => segment.startsWith(`${cookieName}=`));
+
+  if (!match) return undefined;
+  const value = match.slice(cookieName.length + 1);
+  if (!value) return undefined;
+
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
+}
+
 @Controller('auth/customer')
 export class CustomerAuthController {
   constructor(
@@ -81,12 +101,7 @@ export class CustomerAuthController {
 
     if (candidateSlug) {
       try {
-        const tenant = await this.tenantsService.getTenantBySlug(candidateSlug);
-        // If host maps to a different tenant, prefer host-based routing to avoid cross-tenant login
-        if (hostTenant && hostTenant.slug !== tenant.slug) {
-          return hostTenant;
-        }
-        return tenant;
+        return await this.tenantsService.getTenantBySlug(candidateSlug);
       } catch (e) {
         // fallthrough to domain
       }
@@ -105,12 +120,13 @@ export class CustomerAuthController {
   @Public()
   @Throttle({ default: { limit: 10, ttl: 60000 } }) // 10 checks per minute
   @Post('check-email')
-  async checkEmail(@Body() body: { email: string }) {
+  async checkEmail(@Req() req: Request, @Body() body: { email: string }) {
     try {
       if (!body?.email) {
         return { exists: false };
       }
-      const exists = await this.customerAuthService.checkEmailExists(body.email);
+      const tenantData = await this.resolveTenant(req);
+      const exists = await this.customerAuthService.checkEmailExists(body.email, tenantData.id);
       return { exists };
     } catch (error: unknown) {
       console.error('[CustomerAuthController] Error checking email:', error);
@@ -126,8 +142,9 @@ export class CustomerAuthController {
   @Public()
   @Throttle({ default: { limit: 3, ttl: 60000 } }) // 3 registrations per minute
   @Post('register')
-  async register(@Body() registerDto: RegisterDto, @Res({ passthrough: true }) res: Response) {
-    const result = await this.customerAuthService.registerWithEmail(registerDto);
+  async register(@Req() req: Request, @Body() registerDto: RegisterDto, @Res({ passthrough: true }) res: Response) {
+    const tenantData = await this.resolveTenant(req);
+    const result = await this.customerAuthService.registerWithEmail(registerDto, tenantData.id);
 
     // Set HttpOnly cookies in production
     if (process.env.NODE_ENV === 'production') {
@@ -157,8 +174,9 @@ export class CustomerAuthController {
   @Public()
   @Throttle({ default: { limit: 3, ttl: 60000 } }) // 3 login attempts per minute
   @Post('login')
-  async login(@Body() loginDto: LoginDto, @Res({ passthrough: true }) res: Response) {
-    const result = await this.customerAuthService.loginWithEmail(loginDto);
+  async login(@Req() req: Request, @Body() loginDto: LoginDto, @Res({ passthrough: true }) res: Response) {
+    const tenantData = await this.resolveTenant(req);
+    const result = await this.customerAuthService.loginWithEmail(loginDto, tenantData.id);
 
     // Set HttpOnly cookies in production
     if (process.env.NODE_ENV === 'production') {
@@ -188,8 +206,13 @@ export class CustomerAuthController {
   @Public()
   @Throttle({ default: { limit: 10, ttl: 60000 } }) // 10 refresh attempts per minute
   @Post('refresh')
-  async refresh(@Body() body: { refresh_token: string }, @Res({ passthrough: true }) res: Response) {
-    const result = await this.customerAuthService.refreshToken(body.refresh_token);
+  async refresh(@Req() req: Request, @Body() body: { refresh_token?: string }, @Res({ passthrough: true }) res: Response) {
+    const refreshToken = body?.refresh_token || extractCookieValue(req, 'refresh_token');
+    if (!refreshToken) {
+      throw new UnauthorizedException('Missing refresh token');
+    }
+
+    const result = await this.customerAuthService.refreshToken(refreshToken);
     
     // Update HttpOnly cookie in production
     if (process.env.NODE_ENV === 'production') {
@@ -354,7 +377,7 @@ export class CustomerAuthController {
       }
 
       // Login with Google (reuse existing service method)
-      const result = await this.customerAuthService.loginWithGoogle(idToken, googleCfg.clientId);
+      const result = await this.customerAuthService.loginWithGoogle(idToken, googleCfg.clientId, tenantData.id);
 
       // Return tokens to frontend
       return res.json({
@@ -434,7 +457,7 @@ export class CustomerAuthController {
       }
 
       // Login with Google
-      const result = await this.customerAuthService.loginWithGoogle(idToken, googleCfg.clientId);
+      const result = await this.customerAuthService.loginWithGoogle(idToken, googleCfg.clientId, tenantData.id);
 
       // Set HttpOnly cookies in production
       if (process.env.NODE_ENV === 'production') {
@@ -653,6 +676,7 @@ export class CustomerAuthController {
   @Public()
   @Post('apple/callback')
   async appleCallback(
+    @Req() req: Request,
     @Body() body: { code?: string; state?: string; user?: string; id_token?: string },
     @Res() res: Response,
   ) {
@@ -736,8 +760,11 @@ export class CustomerAuthController {
         }
       }
 
+      const stateData = decodeState(stateParam);
+      const tenantData = await this.resolveTenant(req, { stateTenant: stateData.tenant });
+
       // Login with Apple using id_token and user info
-      const result = await this.customerAuthService.loginWithApple(idToken, userInfo);
+      const result = await this.customerAuthService.loginWithApple(idToken, tenantData.id, userInfo);
 
       // Parse returnUrl from state if provided
       let returnUrl: string | undefined;

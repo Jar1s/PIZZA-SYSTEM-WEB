@@ -21,6 +21,7 @@ describe('CustomerAuthController', () => {
   };
   const mockTenantsService = {
     getTenantBySlug: jest.fn().mockResolvedValue({
+      id: 'tenant-1',
       slug: 'pornopizza',
       theme: {},
       subdomain: 'pornopizza',
@@ -61,11 +62,13 @@ describe('CustomerAuthController', () => {
     it('should check if email exists', async () => {
       mockCustomerAuthService.checkEmailExists.mockResolvedValue(true);
 
-      const result = await controller.checkEmail({ email: 'test@example.com' });
+      const req = { headers: { 'x-tenant': 'pornopizza' } } as any;
+      const result = await controller.checkEmail(req, { email: 'test@example.com' });
 
       expect(result).toEqual({ exists: true });
       expect(mockCustomerAuthService.checkEmailExists).toHaveBeenCalledWith(
         'test@example.com',
+        'tenant-1',
       );
     });
   });
@@ -96,11 +99,13 @@ describe('CustomerAuthController', () => {
         cookie: jest.fn(),
       } as any;
 
-      const result = await controller.register(registerDto, res);
+      const req = { headers: { 'x-tenant': 'pornopizza' } } as any;
+      const result = await controller.register(req, registerDto, res);
 
       expect(result).toEqual(mockResult);
       expect(mockCustomerAuthService.registerWithEmail).toHaveBeenCalledWith(
         registerDto,
+        'tenant-1',
       );
     });
   });
@@ -130,11 +135,13 @@ describe('CustomerAuthController', () => {
         cookie: jest.fn(),
       } as any;
 
-      const result = await controller.login(loginDto, res);
+      const req = { headers: { 'x-tenant': 'pornopizza' } } as any;
+      const result = await controller.login(req, loginDto, res);
 
       expect(result).toEqual(mockResult);
       expect(mockCustomerAuthService.loginWithEmail).toHaveBeenCalledWith(
         loginDto,
+        'tenant-1',
       );
     });
   });

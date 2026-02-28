@@ -437,13 +437,13 @@ export function CloneBrandModal({
                   <>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Wolt API Key
+                        Merchant Key (Bearer token)
                       </label>
                       <input
                         type="password"
                         value={woltApiKey}
                         onChange={(e) => setWoltApiKey(e.target.value)}
-                        placeholder="wolt_api_key_..."
+                        placeholder="Bearer token z Wolt Drive dashboardu"
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
                       />
                     </div>

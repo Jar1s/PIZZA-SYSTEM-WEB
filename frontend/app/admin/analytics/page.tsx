@@ -40,6 +40,18 @@ interface AnalyticsData {
     revenue: number;
   }>;
   ordersByStatus: Record<string, number>;
+  timingMetrics?: TimingMetrics;
+}
+
+interface TimingMetrics {
+  avgConfirmSeconds: number;
+  avgPreparingSeconds: number;
+  avgDeliveredSeconds: number;
+  avgLastMileSeconds: number;
+  confirmSamples: number;
+  preparingSamples: number;
+  deliveredSamples: number;
+  lastMileSamples: number;
 }
 
 // Color mapping for order statuses - vibrant and meaningful colors
@@ -59,13 +71,24 @@ const STATUS_COLORS: Record<string, string> = {
 // Fallback colors for other data
 const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', '#06B6D4', '#84CC16'];
 
+const EMPTY_TIMING_METRICS: TimingMetrics = {
+  avgConfirmSeconds: 0,
+  avgPreparingSeconds: 0,
+  avgDeliveredSeconds: 0,
+  avgLastMileSeconds: 0,
+  confirmSamples: 0,
+  preparingSamples: 0,
+  deliveredSamples: 0,
+  lastMileSamples: 0,
+};
+
 export default function AnalyticsPage() {
   const { selectedTenant: contextTenant } = useAdminContext();
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [timeRange, setTimeRange] = useState<'7' | '30' | '90'>('30');
   // Use contextTenant directly - no local state needed
-  const selectedTenant: 'all' | 'pornopizza' | 'pizzavnudzi' = contextTenant === 'all' ? 'all' : contextTenant as 'pornopizza' | 'pizzavnudzi';
+  const selectedTenant: 'all' | string = contextTenant || 'all';
 
   const fetchAnalytics = useCallback(async () => {
     try {
@@ -90,7 +113,13 @@ export default function AnalyticsPage() {
       const res = await fetch(endpoint, { headers });
       if (res.ok) {
         const data = await res.json();
-        setAnalytics(data);
+        setAnalytics({
+          ...data,
+          timingMetrics: {
+            ...EMPTY_TIMING_METRICS,
+            ...(data?.timingMetrics || {}),
+          },
+        });
       } else {
         if (res.status === 401) {
           // Unauthorized - redirect to login
@@ -179,6 +208,20 @@ export default function AnalyticsPage() {
         color: color,
       };
     });
+
+  const timingMetrics = analytics.timingMetrics || EMPTY_TIMING_METRICS;
+
+  const formatDurationMetric = (seconds: number, samples: number): string => {
+    if (samples <= 0 || seconds <= 0) return '—';
+
+    const mins = Math.round(seconds / 60);
+    if (mins < 60) return `${mins} min`;
+
+    const hours = Math.floor(mins / 60);
+    const remainingMins = mins % 60;
+    if (remainingMins === 0) return `${hours} h`;
+    return `${hours}h ${remainingMins}m`;
+  };
 
   return (
     // <ProtectedRoute requiredRole="ADMIN"> // Disabled for development
@@ -305,6 +348,58 @@ export default function AnalyticsPage() {
               <p>No orders data available</p>
             </div>
           )}
+        </div>
+      </div>
+
+      {/* Order Timing Metrics */}
+      <div className="bg-white rounded-lg shadow p-6 mb-8">
+        <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+          <h2 className="text-xl font-bold">Order Timing (Average)</h2>
+          <div className="text-xs text-gray-500">
+            based on tracked status transitions
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+          <div className="rounded-lg border border-blue-100 bg-blue-50/60 p-4">
+            <div className="text-sm text-blue-700 mb-1">To Confirmation</div>
+            <div className="text-2xl font-bold text-blue-900">
+              {formatDurationMetric(timingMetrics.avgConfirmSeconds, timingMetrics.confirmSamples)}
+            </div>
+            <div className="text-xs text-blue-700 mt-1">
+              {timingMetrics.confirmSamples} orders
+            </div>
+          </div>
+
+          <div className="rounded-lg border border-amber-100 bg-amber-50/60 p-4">
+            <div className="text-sm text-amber-700 mb-1">To Preparing</div>
+            <div className="text-2xl font-bold text-amber-900">
+              {formatDurationMetric(timingMetrics.avgPreparingSeconds, timingMetrics.preparingSamples)}
+            </div>
+            <div className="text-xs text-amber-700 mt-1">
+              {timingMetrics.preparingSamples} orders
+            </div>
+          </div>
+
+          <div className="rounded-lg border border-emerald-100 bg-emerald-50/60 p-4">
+            <div className="text-sm text-emerald-700 mb-1">Full Cycle</div>
+            <div className="text-2xl font-bold text-emerald-900">
+              {formatDurationMetric(timingMetrics.avgDeliveredSeconds, timingMetrics.deliveredSamples)}
+            </div>
+            <div className="text-xs text-emerald-700 mt-1">
+              {timingMetrics.deliveredSamples} delivered
+            </div>
+          </div>
+
+          <div className="rounded-lg border border-violet-100 bg-violet-50/60 p-4">
+            <div className="text-sm text-violet-700 mb-1">Last Mile</div>
+            <div className="text-2xl font-bold text-violet-900">
+              {formatDurationMetric(timingMetrics.avgLastMileSeconds, timingMetrics.lastMileSamples)}
+            </div>
+            <div className="text-xs text-violet-700 mt-1">
+              {timingMetrics.lastMileSamples} delivered
+            </div>
+          </div>
         </div>
       </div>
 

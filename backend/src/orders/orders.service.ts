@@ -64,6 +64,17 @@ type StoryousSyncOrder = Prisma.OrderGetPayload<{
 @Injectable()
 export class OrdersService {
   private readonly logger = new Logger(OrdersService.name);
+
+  private collectUniqueProductIds(rawProductIds: unknown[]): string[] {
+    return [
+      ...new Set(
+        rawProductIds
+          .filter((productId): productId is string => typeof productId === 'string')
+          .map((productId) => productId.trim())
+          .filter((productId) => productId.length > 0),
+      ),
+    ];
+  }
   
   constructor(
     private prisma: PrismaService,
@@ -75,6 +86,15 @@ export class OrdersService {
     private orderNumberService: OrderNumberService,
     private jwtService: JwtService,
   ) {}
+
+  private isStatusHistoryUnavailable(error: unknown): boolean {
+    const message = error instanceof Error ? error.message : String(error);
+    return (
+      message.includes('order_status_history') ||
+      message.includes('statusHistory') ||
+      message.includes('orderStatusHistory')
+    );
+  }
 
   async createOrder(tenantId: string, data: CreateOrderDto): Promise<Order | { order: Order; authToken?: string; refreshToken?: string; user?: any }> {
     // Log incoming data to see what we receive
@@ -103,9 +123,9 @@ export class OrdersService {
     if (data.paymentMethod || (data.saveAccount && !userId)) {
       const normalizedEmail = data.customer.email.toLowerCase().trim();
       
-      // Find existing user by email
-      let user = await this.prisma.user.findUnique({
-        where: { email: normalizedEmail },
+      // Find existing user by email scoped to tenant
+      let user = await this.prisma.user.findFirst({
+        where: { email: normalizedEmail, tenantId, role: UserRole.CUSTOMER },
       });
 
       if (!user) {
@@ -117,13 +137,13 @@ export class OrdersService {
         // Create new user (without password - user will set it later)
         user = await this.prisma.user.create({
           data: {
+            tenantId,
             name: data.customer.name,
             email: normalizedEmail,
             phone: data.customer.phone || null,
             phoneVerified: false, // SMS verification disabled
             role: UserRole.CUSTOMER,
             password: null, // User will set password later
-            username: normalizedEmail,
             isActive: true,
             passwordResetToken: passwordResetToken,
             passwordResetExpires: passwordResetExpires,
@@ -529,24 +549,50 @@ export class OrdersService {
       firstItemModifiersStringified: JSON.stringify(orderItems[0]?.modifiers),
     });
     
-    const order = await this.prisma.order.create({
-      data: {
-        tenantId,
-        orderNumber,
-        userId: userId || null, // Can be null for guest orders
-        status: OrderStatus.PENDING,
-        paymentStatus: data.paymentMethod ? 'pending' : null, // For cash on delivery
-        customer: data.customer as unknown as Prisma.InputJsonValue,
-        address: {
-          ...data.address,
-          houseNumber: data.address.houseNumber, // Include houseNumber
-        } as unknown as Prisma.InputJsonValue,
-        subtotalCents,
-        taxCents,
-        deliveryFeeCents,
-        totalCents,
-        items: {
-          create: orderItems,
+    let order: any;
+    try {
+      order = await this.prisma.order.create({
+        data: {
+          tenantId,
+          orderNumber,
+          userId: userId || null, // Can be null for guest orders
+          status: OrderStatus.PENDING,
+          paymentStatus: data.paymentMethod ? 'pending' : null, // For cash on delivery
+          customer: data.customer as unknown as Prisma.InputJsonValue,
+          address: {
+            ...data.address,
+            houseNumber: data.address.houseNumber, // Include houseNumber
+          } as unknown as Prisma.InputJsonValue,
+          subtotalCents,
+          taxCents,
+          deliveryFeeCents,
+          totalCents,
+          items: {
+            create: orderItems,
+          },
+          statusHistory: {
+            create: [{ status: OrderStatus.PENDING }],
+          },
+        } as any, // Type assertion needed until Prisma types are fully regenerated
+        include: {
+          items: true,
+          statusHistory: {
+            orderBy: {
+              createdAt: 'asc',
+            },
+          },
+          tenant: {
+            select: {
+              id: true,
+              name: true,
+              slug: true,
+              domain: true,
+              subdomain: true,
+              currency: true, // Currency field added to schema
+              theme: true, // Include theme for email colors and logo
+              emailConfig: true, // Include tenant-specific SMTP settings
+            } as any, // Type assertion needed until Prisma types are fully regenerated
+          },
         },
       } as any, // Type assertion needed until Prisma types are fully regenerated
       include: {
@@ -563,8 +609,8 @@ export class OrdersService {
             emailConfig: true, // Include tenant-specific SMTP settings
           } as any, // Type assertion needed until Prisma types are fully regenerated
         },
-      },
-    });
+      });
+    }
 
     // Log what was actually saved to database
     this.logger.log('Order created in Prisma, checking saved items', {
@@ -719,24 +765,46 @@ export class OrdersService {
   }
 
   async getOrderById(id: string): Promise<Order> {
-    const order = await this.prisma.order.findUnique({
-      where: { id },
-      include: {
-        items: true,
-        delivery: true,
-      },
-    });
+    let order: any;
+    try {
+      order = await this.prisma.order.findUnique({
+        where: { id },
+        include: {
+          items: true,
+          delivery: true,
+          statusHistory: {
+            orderBy: {
+              createdAt: 'asc',
+            },
+          },
+        },
+      });
+    } catch (error) {
+      if (!this.isStatusHistoryUnavailable(error)) {
+        throw error;
+      }
+      this.logger.warn(
+        '[getOrderById] statusHistory relation not available, falling back to legacy query',
+      );
+      order = await this.prisma.order.findUnique({
+        where: { id },
+        include: {
+          items: true,
+          delivery: true,
+        },
+      });
+    }
 
     if (!order) {
       throw new NotFoundException(`Order ${id} not found`);
     }
 
     // Load products to get displayName
-    const productIds = [...new Set(order.items.map(item => item.productId))];
+    const productIds = this.collectUniqueProductIds(order.items.map(item => item.productId));
     const products = await Promise.all(
-      productIds.map(id =>
+      productIds.map((productId: string) =>
         this.prisma.product.findUnique({
-          where: { id },
+          where: { id: productId },
           select: { id: true, name: true, displayName: true } as any,
         })
       )
@@ -745,10 +813,11 @@ export class OrdersService {
       (products.filter(p => p) as any[]).map((p: any) => [p.id, p])
     );
 
-    // Explicitly map items to ensure productName and displayName are included
-    const orderWithItems = {
-      ...order,
-      items: order.items.map(item => {
+      // Explicitly map items to ensure productName and displayName are included
+      const orderWithItems = {
+        ...order,
+        statusHistory: order.statusHistory || [],
+        items: order.items.map(item => {
         const product = productMap.get(item.productId) as any;
         const productNameForMapping = (product?.name || item.productName || '') as string;
         const displayName = product?.displayName 
@@ -801,27 +870,58 @@ export class OrdersService {
       createdAtFilter.lte = filters.endDate;
     }
 
-    const orders = await this.prisma.order.findMany({
-      where: {
-        tenantId,
-        ...(filters?.status && { status: filters.status }),
-        ...(Object.keys(createdAtFilter).length > 0 && { createdAt: createdAtFilter }),
-      },
-      include: {
-        items: true,
-        delivery: true,
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
-    });
+    let orders: any[];
+    try {
+      orders = await this.prisma.order.findMany({
+        where: {
+          tenantId,
+          ...(filters?.status && { status: filters.status }),
+          ...(Object.keys(createdAtFilter).length > 0 && { createdAt: createdAtFilter }),
+        },
+        include: {
+          items: true,
+          delivery: true,
+          statusHistory: {
+            orderBy: {
+              createdAt: 'asc',
+            },
+          },
+        },
+        orderBy: {
+          createdAt: 'desc',
+        },
+      });
+    } catch (error) {
+      if (!this.isStatusHistoryUnavailable(error)) {
+        throw error;
+      }
+      this.logger.warn(
+        '[getOrders] statusHistory relation not available, falling back to legacy query',
+      );
+      orders = await this.prisma.order.findMany({
+        where: {
+          tenantId,
+          ...(filters?.status && { status: filters.status }),
+          ...(Object.keys(createdAtFilter).length > 0 && { createdAt: createdAtFilter }),
+        },
+        include: {
+          items: true,
+          delivery: true,
+        },
+        orderBy: {
+          createdAt: 'desc',
+        },
+      });
+    }
 
     // Load all products for all orders to get displayName
-    const allProductIds = [...new Set(orders.flatMap(order => order.items.map(item => item.productId)))];
+    const allProductIds = this.collectUniqueProductIds(
+      orders.flatMap(order => order.items.map(item => item.productId))
+    );
     const products = await Promise.all(
-      allProductIds.map(id =>
+      allProductIds.map((productId: string) =>
         this.prisma.product.findUnique({
-          where: { id },
+          where: { id: productId },
           select: { id: true, name: true, displayName: true } as any,
         })
       )
@@ -835,6 +935,7 @@ export class OrdersService {
       // Explicitly map items to ensure productName and displayName are included
       const orderWithItems = {
         ...order,
+        statusHistory: order.statusHistory || [],
         items: order.items.map(item => {
           const product = productMap.get(item.productId) as any;
           const productNameForMapping = (product?.name || item.productName || '') as string;

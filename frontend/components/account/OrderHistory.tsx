@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useCustomerAuth } from '@/contexts/CustomerAuthContext';
 import { Order } from '@pizza-ecosystem/shared';
+import { getTenantSlug } from '@/lib/tenant-utils';
 
 interface OrderHistoryProps {
   tenant: string;
@@ -22,6 +23,7 @@ export default function OrderHistory({ tenant, isDark = false }: OrderHistoryPro
     try {
       const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
       const token = localStorage.getItem('customer_auth_token');
+      const tenantSlug = tenant || getTenantSlug();
       
       if (!token || !user) {
         setLoading(false);
@@ -32,6 +34,7 @@ export default function OrderHistory({ tenant, isDark = false }: OrderHistoryPro
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
+          'x-tenant': tenantSlug,
         },
       });
 
@@ -52,7 +55,7 @@ export default function OrderHistory({ tenant, isDark = false }: OrderHistoryPro
     } finally {
       setLoading(false);
     }
-  }, [user]);
+  }, [user, tenant]);
 
   useEffect(() => {
     // Wait for auth to load and user to be available before fetching orders
