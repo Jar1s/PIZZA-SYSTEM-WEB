@@ -77,12 +77,23 @@ export class DeliveryController {
     );
   }
 
+  @Post('cancel')
+  async cancelDelivery(
+    @Body() data: { orderId: string },
+    @Req() req: { user?: RequestUser },
+  ) {
+    if (!data?.orderId || typeof data.orderId !== 'string') {
+      throw new BadRequestException('orderId is required');
+    }
+
+    return this.deliveryService.cancelDeliveryForOrder(data.orderId, req.user);
+  }
+
   @Get(':id')
   async getDelivery(@Param('id') id: string, @Req() req: { user?: RequestUser }) {
     return this.deliveryService.getDeliveryById(id, req.user);
   }
 }
-
 
 
 

@@ -225,6 +225,9 @@ export class WoltDriveService {
 
     if (status === 400) {
       const message = extractedMessage || 'Neplatná požiadavka';
+      if (message.toLowerCase().includes('outside of the delivery area')) {
+        return 'Adresa zákazníka je mimo doručovacej zóny Wolt pre túto prevádzku.';
+      }
       if (message.includes('pickup') || message.includes('dropoff')) {
         return `Neplatná adresa: ${message}`;
       }
@@ -703,7 +706,7 @@ export class WoltDriveService {
         });
 
         if (!response.ok) {
-          const error = new Error(`Wolt API error: ${response.statusText}`);
+          const error = await this.buildApiError(response);
           if (!this.isRetryableError(error, response)) {
             throw error; // Don't retry 4xx errors
           }
@@ -749,8 +752,6 @@ export class WoltDriveService {
     throw lastError || new Error('Wolt API cancelDelivery failed');
   }
 }
-
-
 
 
 

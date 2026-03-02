@@ -100,6 +100,31 @@ export class DeliveryService {
     return latestOrder.delivery;
   }
 
+  private getQuoteObject(quote: Prisma.JsonValue | null | undefined): Prisma.JsonObject {
+    if (quote && typeof quote === 'object' && !Array.isArray(quote)) {
+      return quote as Prisma.JsonObject;
+    }
+    return {};
+  }
+
+  private getWoltApiConfigFromQuote(quote: Prisma.JsonValue | null | undefined): {
+    apiUrl?: string;
+    venueId?: string;
+    merchantId?: string;
+  } {
+    const quoteObj = this.getQuoteObject(quote);
+    const apiUrlRaw = quoteObj.woltApiUrlUsed;
+    const venueIdRaw = quoteObj.woltVenueIdUsed;
+    const merchantIdRaw = quoteObj.woltMerchantIdUsed;
+
+    return {
+      apiUrl: typeof apiUrlRaw === 'string' && apiUrlRaw.trim() ? apiUrlRaw.trim() : undefined,
+      venueId: typeof venueIdRaw === 'string' && venueIdRaw.trim() ? venueIdRaw.trim() : undefined,
+      merchantId:
+        typeof merchantIdRaw === 'string' && merchantIdRaw.trim() ? merchantIdRaw.trim() : undefined,
+    };
+  }
+
   /**
    * Get pickup address from tenant configuration
    * Throws error if not configured
@@ -433,6 +458,32 @@ export class DeliveryService {
     const minPreparationTimeMinutesUsed =
       minPreparationTimeMinutes !== undefined ? minPreparationTimeMinutes : 20;
 
+    let promiseData: ShipmentPromiseData | undefined;
+    let effectivePromiseId = shipmentPromiseId;
+
+    // Wolt recommended flow: create shipment promise first, then create delivery with promise ID.
+    if (!effectivePromiseId) {
+      try {
+        promiseData = await this.woltDrive.getShipmentPromise(
+          woltConfig.apiKey,
+          pickupAddress,
+          normalizedDropoffAddress,
+          customer.name,
+          customer.phone,
+          3,
+          woltConfig,
+        );
+        effectivePromiseId = promiseData?.promiseId;
+      } catch (error: any) {
+        this.logger.error('Failed to get shipment promise before create delivery', {
+          orderId,
+          error: error.message,
+          status: error.status,
+        });
+        throw new BadRequestException(error.message || 'Nepodarilo sa overiť dostupnosť Wolt doručenia');
+      }
+    }
+
     // Create Wolt delivery with tenant-specific pickup address
     // If shipmentPromiseId is provided, use it (proper flow according to documentation)
     let woltDelivery;
@@ -450,8 +501,15 @@ export class DeliveryService {
         normalizedDropoffAddress,
         customer.name,
         customer.phone,
-        shipmentPromiseId, // Optional: if provided, will use shipment promise ID
+        effectivePromiseId, // Optional: if provided, will use shipment promise ID
         minPreparationTimeMinutesUsed,
+        3,
+        woltConfig,
+        {
+          promiseSnapshot: promiseData,
+          parcelCurrency: promiseData?.currency,
+          orderNumber: order.orderNumber,
+        },
       );
     } catch (error: any) {
       // Propagate user-friendly error message from WoltDriveService
@@ -465,17 +523,19 @@ export class DeliveryService {
 
     // Save delivery record
     const quote: Prisma.JsonObject = {};
-    const feeCents = woltDelivery?.feeCents;
+    const feeCents = woltDelivery?.feeCents ?? promiseData?.feeCents;
     const etaMinutes =
       woltDelivery?.etaMinutes ??
       woltDelivery?.dropoffEtaMinutes ??
-      woltDelivery?.courierEta;
-    const pickupEtaMinutes = woltDelivery?.pickupEtaMinutes;
-    const dropoffEtaMinutes = woltDelivery?.dropoffEtaMinutes;
-    const distance = woltDelivery?.distance;
-    const currency = woltDelivery?.currency;
-    const promiseId = woltDelivery?.promiseId ?? shipmentPromiseId;
-    const validUntil = woltDelivery?.validUntil;
+      woltDelivery?.courierEta ??
+      promiseData?.etaMinutes ??
+      promiseData?.dropoffEtaMinutes;
+    const pickupEtaMinutes = woltDelivery?.pickupEtaMinutes ?? promiseData?.pickupEtaMinutes;
+    const dropoffEtaMinutes = woltDelivery?.dropoffEtaMinutes ?? promiseData?.dropoffEtaMinutes;
+    const distance = woltDelivery?.distance ?? promiseData?.distance;
+    const currency = woltDelivery?.currency ?? promiseData?.currency;
+    const promiseId = woltDelivery?.promiseId ?? effectivePromiseId ?? promiseData?.promiseId;
+    const validUntil = woltDelivery?.validUntil ?? promiseData?.validUntil;
 
     if (typeof feeCents === 'number') quote.feeCents = feeCents;
     if (typeof etaMinutes === 'number') quote.etaMinutes = etaMinutes;
@@ -500,6 +560,9 @@ export class DeliveryService {
           ...(finalQuote as Prisma.JsonObject),
           minPreparationTimeMinutesUsed,
           requestMode: 'asap',
+          woltApiUrlUsed: woltConfig?.apiUrl ?? null,
+          woltVenueIdUsed: woltConfig?.venueId ?? null,
+          woltMerchantIdUsed: woltConfig?.merchantId ?? null,
         } as Prisma.InputJsonValue,
       },
     });
@@ -525,7 +588,12 @@ export class DeliveryService {
       // Best effort cleanup of duplicate local record and external Wolt job.
       try {
         if (delivery.jobId) {
-          await this.woltDrive.cancelDelivery(woltConfig.apiKey, delivery.jobId, 3, woltConfig);
+          const createdDeliveryQuote = this.getQuoteObject(delivery.quote);
+          const snapshotConfig = this.getWoltApiConfigFromQuote(createdDeliveryQuote);
+          const cancelConfig =
+            snapshotConfig.venueId || snapshotConfig.apiUrl ? snapshotConfig : woltConfig;
+
+          await this.woltDrive.cancelDelivery(woltConfig.apiKey, delivery.jobId, 3, cancelConfig);
         }
       } catch (cancelError: any) {
         this.logger.warn('[createDeliveryForOrder] Failed to cancel duplicate Wolt job', {
@@ -557,6 +625,84 @@ export class DeliveryService {
     }
 
     return delivery;
+  }
+
+  async cancelDeliveryForOrder(orderId: string, user?: AuthenticatedUser) {
+    const order = await this.prisma.order.findUnique({
+      where: { id: orderId },
+      include: { delivery: true },
+    });
+
+    if (!order) {
+      throw new BadRequestException(`Order ${orderId} not found`);
+    }
+
+    this.assertTenantAccess(order.tenantId, user, 'cancelDeliveryForOrder');
+
+    if (!order.delivery) {
+      throw new BadRequestException('Order has no active delivery to cancel');
+    }
+
+    if (order.delivery.provider !== 'wolt') {
+      throw new BadRequestException('Cancel endpoint currently supports only Wolt deliveries');
+    }
+
+    if (!order.delivery.jobId) {
+      throw new BadRequestException('Missing Wolt jobId on delivery record');
+    }
+
+    const tenant = await this.prisma.tenant.findUnique({ where: { id: order.tenantId } });
+    if (!tenant) {
+      throw new BadRequestException('Tenant not found');
+    }
+
+    const deliveryConfig = tenant.deliveryConfig as DeliveryConfig;
+    const woltConfig = deliveryConfig?.woltConfig;
+    const apiKey = woltConfig?.apiKey ? String(woltConfig.apiKey).trim() : '';
+
+    if (!apiKey) {
+      throw new BadRequestException('Wolt Merchant Key nie je nastavený pre tento tenant.');
+    }
+
+    const snapshotConfig = this.getWoltApiConfigFromQuote(order.delivery.quote);
+    const cancelConfig = snapshotConfig.venueId || snapshotConfig.apiUrl ? snapshotConfig : woltConfig;
+
+    try {
+      await this.woltDrive.cancelDelivery(apiKey, order.delivery.jobId, 3, cancelConfig);
+    } catch (error: any) {
+      this.logger.error('[cancelDeliveryForOrder] Wolt cancel failed', {
+        orderId,
+        deliveryId: order.delivery.id,
+        jobId: order.delivery.jobId,
+        error: error?.message,
+        status: error?.status,
+      });
+      throw new BadRequestException(error?.message || 'Nepodarilo sa zrušiť Wolt doručenie');
+    }
+
+    const existingQuote = this.getQuoteObject(order.delivery.quote);
+    await this.prisma.delivery.update({
+      where: { id: order.delivery.id },
+      data: {
+        status: DeliveryStatus.FAILED,
+        quote: {
+          ...existingQuote,
+          canceledAt: new Date().toISOString(),
+          cancelSource: 'admin',
+        } as Prisma.InputJsonValue,
+      },
+    });
+
+    if (order.status !== OrderStatus.CANCELED && order.status !== OrderStatus.DELIVERED) {
+      await this.orderStatusService.updateStatus(order.id, OrderStatus.CANCELED);
+    }
+
+    return {
+      success: true,
+      orderId: order.id,
+      deliveryId: order.delivery.id,
+      jobId: order.delivery.jobId,
+    };
   }
 
   async getDeliveryById(id: string, user?: AuthenticatedUser) {
@@ -663,8 +809,6 @@ export class DeliveryService {
     }
   }
 }
-
-
 
 
 

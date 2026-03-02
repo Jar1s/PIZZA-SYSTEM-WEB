@@ -105,6 +105,7 @@ export function OrderCard({
   } | null>(null);
   const [woltError, setWoltError] = useState<string | null>(null);
   const [woltPreparationMinutes, setWoltPreparationMinutes] = useState<number>(20);
+  const woltPreparationQuickOptions = [10, 15, 20, 25, 30, 40];
   const { success: toastSuccess, error: toastError } = useToastContext();
   
   const customer = order.customer;
@@ -818,18 +819,11 @@ export function OrderCard({
       {expanded && (
         <div className={`${isDispatchDetailMode ? 'grid grid-cols-1 md:grid-cols-2 gap-4 text-sm border-l-2 border-red-500 pl-3' : 'mt-4 pt-4 border-t grid grid-cols-1 md:grid-cols-2 gap-4 text-sm'}`}>
           <div className={`col-span-2 border border-gray-200 ${isDispatchDetailMode ? 'rounded-lg bg-white overflow-hidden' : 'rounded-xl bg-gray-50 p-4'}`}>
-            <div className={`flex items-center justify-between gap-2 ${isDispatchDetailMode ? 'px-4 py-3 border-b border-gray-200 bg-gray-50/60' : 'mb-4'}`}>
+            <div className={`flex items-center gap-2 ${isDispatchDetailMode ? 'px-4 py-3 border-b border-gray-200 bg-gray-50/60' : 'justify-between mb-4'}`}>
               <div className="font-semibold text-gray-900">
                 {language === 'sk' ? 'Časová os objednávky' : 'Order timeline'}
               </div>
-              {isDispatchDetailMode ? (
-                <button
-                  type="button"
-                  className="text-[11px] uppercase tracking-wide font-bold text-orange-600 hover:text-orange-700"
-                >
-                  {language === 'sk' ? 'Zobrazit denniky' : 'Show logs'}
-                </button>
-              ) : (
+              {!isDispatchDetailMode && (
                 <div className="text-xs text-gray-500">
                   {formatTimelineTime(order.createdAt)} to {formatTimelineTime(order.updatedAt)}
                 </div>
@@ -1183,6 +1177,26 @@ export function OrderCard({
                       <label className="block text-gray-700 text-sm font-semibold mb-1">
                         Kuriér na prevádzku za (min)
                       </label>
+                      <div className="flex flex-wrap gap-2 mb-2">
+                        {woltPreparationQuickOptions.map((minutes) => {
+                          const isActive = woltPreparationMinutes === minutes;
+                          return (
+                            <button
+                              key={minutes}
+                              type="button"
+                              onClick={() => setWoltPreparationMinutes(minutes)}
+                              className={`px-3 py-1.5 rounded-md border text-sm font-semibold transition-colors ${
+                                isActive
+                                  ? 'bg-orange-600 text-white border-orange-600'
+                                  : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                              }`}
+                              aria-pressed={isActive}
+                            >
+                              {minutes}
+                            </button>
+                          );
+                        })}
+                      </div>
                       <input
                         type="number"
                         min={0}
