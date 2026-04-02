@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback, Suspense } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import { useAdminContext } from '@/app/admin/admin-context';
 
@@ -18,6 +18,10 @@ const CartesianGrid = dynamic(() => import('recharts').then(mod => mod.Cartesian
 const Tooltip = dynamic(() => import('recharts').then(mod => mod.Tooltip), { ssr: false });
 const Legend = dynamic(() => import('recharts').then(mod => mod.Legend), { ssr: false });
 const ResponsiveContainer = dynamic(() => import('recharts').then(mod => mod.ResponsiveContainer), { ssr: false });
+const KPICards = dynamic(() => import('@/components/admin/KPICards').then(mod => ({ default: mod.KPICards })), {
+  loading: () => <div className="animate-pulse bg-gray-200 h-32 rounded-lg mb-8" />,
+  ssr: false,
+});
 
 // import { ProtectedRoute } from '@/components/admin/ProtectedRoute'; // Disabled for development
 
@@ -266,6 +270,8 @@ export default function AnalyticsPage() {
           </div>
         </div>
       </div>
+
+      <KPICards selectedTenant={selectedTenant} />
 
       {/* Key Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">

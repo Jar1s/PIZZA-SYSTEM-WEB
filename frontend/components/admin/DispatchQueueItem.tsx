@@ -38,21 +38,21 @@ export function DispatchQueueItem({
       onClick={onSelect}
       className={`group relative w-full text-left transition-all duration-200 ${
         isSelected
-          ? 'bg-orange-50/80 shadow-[inset_3px_0_0_0_#f97316]'
+          ? 'bg-orange-50/90 shadow-[inset_4px_0_0_0_#f97316]'
           : 'bg-transparent hover:bg-white'
       }`}
     >
-      <div className="flex min-h-[102px] items-stretch">
+      <div className="flex min-h-[76px] items-stretch">
         <div
-          className={`flex w-12 shrink-0 items-center justify-center text-[10px] font-black tracking-[0.2em] text-white ${accentClassName}`}
+          className={`flex w-9 shrink-0 items-center justify-center text-[8px] font-black tracking-[0.18em] text-white ${accentClassName}`}
         >
           <span className="-rotate-90">{brandInitials}</span>
         </div>
 
-        <div className="flex min-w-0 flex-1 items-center gap-3 px-4 py-3">
+        <div className="flex min-w-0 flex-1 items-center gap-2 px-2.5 py-2">
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
-              <p className="truncate text-[17px] font-black leading-tight text-zinc-950">{headline}</p>
+              <p className="truncate text-[13px] font-black leading-tight text-zinc-950">{headline}</p>
               {isFinished && (
                 <span className="inline-flex shrink-0 items-center rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.18em] text-emerald-700">
                   Hotovo
@@ -65,22 +65,22 @@ export function DispatchQueueItem({
               )}
             </div>
 
-            <p className="mt-1 truncate text-[13px] font-semibold text-zinc-600">{metaLine}</p>
-            <p className="mt-2 text-[12px] font-medium text-zinc-500">{createdLabel}</p>
+            <p className="mt-0.5 truncate text-[11px] font-semibold text-zinc-600">{metaLine}</p>
+            <p className="mt-1 text-[10px] font-medium text-zinc-500">{createdLabel}</p>
           </div>
 
-          <div className="flex w-[74px] shrink-0 items-center justify-center">
+          <div className="flex w-[56px] shrink-0 items-center justify-center">
             {isFinished ? (
-              <span className="inline-flex h-12 w-12 items-center justify-center rounded-full border-2 border-emerald-500 bg-white text-lg font-black text-emerald-600">
+              <span className="inline-flex h-9 w-9 items-center justify-center rounded-full border-2 border-emerald-500 bg-white text-sm font-black text-emerald-600">
                 ✓
               </span>
             ) : isCanceled ? (
-              <span className="inline-flex h-12 w-12 items-center justify-center rounded-full border-2 border-rose-500 bg-white text-lg font-black text-rose-600">
+              <span className="inline-flex h-9 w-9 items-center justify-center rounded-full border-2 border-rose-500 bg-white text-sm font-black text-rose-600">
                 ✕
               </span>
             ) : (
               <span
-                className={`inline-flex h-14 min-w-[56px] items-center justify-center rounded-full border-2 px-2 text-[15px] font-black ${TIMER_TONE_CLASSNAME[timerTone]}`}
+                className={`inline-flex h-11 min-w-[46px] items-center justify-center rounded-full border-2 px-2 text-[12px] font-black ${TIMER_TONE_CLASSNAME[timerTone]}`}
               >
                 {timerLabel}
               </span>

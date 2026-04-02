@@ -48,11 +48,6 @@ const OrderList = dynamic(() => import('@/components/admin/OrderList').then(mod 
   ssr: false,
 });
 
-const KPICards = dynamic(() => import('@/components/admin/KPICards').then(mod => ({ default: mod.KPICards })), {
-  loading: () => <div className="animate-pulse bg-gray-200 h-32 rounded-lg mb-6" />,
-  ssr: false,
-});
-
 const MaintenanceBanner = dynamic(() => import('@/components/admin/MaintenanceBanner').then(mod => ({ default: mod.MaintenanceBanner })), {
   loading: () => null,
   ssr: false,
@@ -89,10 +84,10 @@ export default function AdminDashboard() {
   
   return (
     <div className="text-gray-900">
-      <h1 className="text-2xl lg:text-3xl font-bold mb-4 lg:mb-6 text-gray-900">Dashboard</h1>
+      <h1 className="text-xl lg:text-2xl font-bold mb-3 lg:mb-4 text-gray-900">Dashboard</h1>
       
       {/* Compact Settings Grid - Top Section */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2 sm:gap-3 mb-4 lg:mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2 mb-3 lg:mb-4">
         {/* Maintenance Banner with Toggle - Compact */}
         <ErrorBoundary>
           <Suspense fallback={null}>
@@ -129,13 +124,6 @@ export default function AdminDashboard() {
         </ErrorBoundary>
       </div>
 
-      {/* Main Content */}
-      <ErrorBoundary>
-        <Suspense fallback={<div className="animate-pulse bg-gray-200 h-32 rounded-lg mb-6" />}>
-          <KPICards selectedTenant={selectedTenant} />
-        </Suspense>
-      </ErrorBoundary>
-      
       <ErrorBoundary>
         <Suspense fallback={<div className="animate-pulse bg-gray-200 h-64 rounded-lg" />}>
           <OrderList todayOnly={true} selectedTenant={selectedTenant} variant="dashboard" />
