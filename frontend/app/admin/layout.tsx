@@ -1,0 +1,165 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/contexts/AuthContext';
+import { Sidebar } from '@/components/admin/Sidebar';
+import { Header } from '@/components/admin/Header';
+import { AdminContextProvider } from '@/app/admin/admin-context';
+import { getTenantSlug } from '@/lib/tenant-utils';
+
+export default function AdminLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const { user, loading } = useAuth();
+  const router = useRouter();
+  const [selectedTenant, setSelectedTenant] = useState<'all' | string>('all');
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const savedTenant = localStorage.getItem('admin_selected_tenant') as 'all' | string | null;
+    const fallbackTenant = getTenantSlug();
+    setSelectedTenant(savedTenant || fallbackTenant || 'all');
+
+    const savedSidebarState = localStorage.getItem('admin_sidebar_collapsed');
+    setSidebarCollapsed(savedSidebarState === 'true');
+  }, []);
+
+  const handleTenantChange = (tenant: 'all' | string) => {
+    setSelectedTenant(tenant);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('admin_selected_tenant', tenant);
+    }
+  };
+
+  const handleToggleSidebarCollapse = () => {
+    setSidebarCollapsed(prev => {
+      const next = !prev;
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('admin_sidebar_collapsed', String(next));
+      }
+      return next;
+    });
+  };
+
+  useEffect(() => {
+    // Remove dark theme classes from body for admin dashboard
+    document.body.classList.remove('bg-porno-vibe');
+    document.body.style.backgroundColor = '#f3f4f6';
+    document.body.style.color = '#111827';
+    
+    // Cleanup: restore theme when component unmounts (optional)
+    return () => {
+      // Don't restore theme automatically - let other pages handle their own themes
+    };
+  }, []);
+
+  useEffect(() => {
+    // Check if user explicitly logged out
+    const loggedOut = sessionStorage.getItem('admin_logged_out');
+    
+    // If not loading and no user (or logged out), redirect to login
+    if (!loading) {
+      const token = localStorage.getItem('auth_token');
+
+      if (!user || loggedOut === 'true' || !token) {
+        router.replace('/login');
+        return;
+      }
+
+      // Guard against stale UI state when token is already expired.
+      try {
+        const [, payloadBase64] = token.split('.');
+        if (payloadBase64) {
+          const normalized = payloadBase64.replace(/-/g, '+').replace(/_/g, '/');
+          const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '=');
+          const payload = JSON.parse(atob(padded));
+          const exp = typeof payload?.exp === 'number' ? payload.exp : null;
+          if (exp && Math.floor(Date.now() / 1000) >= exp - 30) {
+            localStorage.removeItem('auth_token');
+            localStorage.removeItem('refresh_token');
+            localStorage.removeItem('auth_user');
+            sessionStorage.setItem('admin_logged_out', 'true');
+            router.replace('/login');
+            return;
+          }
+        }
+      } catch {
+        // Ignore token parse errors and let API checks handle auth.
+      }
+
+      if (user.role !== 'ADMIN' && user.role !== 'OPERATOR') {
+        localStorage.removeItem('auth_token');
+        localStorage.removeItem('refresh_token');
+        localStorage.removeItem('auth_user');
+        sessionStorage.setItem('admin_logged_out', 'true');
+        router.replace('/login');
+        return;
+      }
+    }
+  }, [user, loading, router]);
+
+  // Show loading state
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-600"></div>
+          <p className="mt-4 text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // If no user or logged out, don't render admin layout
+  const loggedOut = sessionStorage.getItem('admin_logged_out');
+  if (!user || loggedOut === 'true') {
+    return null;
+  }
+
+  return (
+    <AdminContextProvider selectedTenant={selectedTenant}>
+      <div className="flex h-screen bg-gray-100 text-gray-900" style={{ backgroundColor: '#f3f4f6', color: '#111827' }}>
+        {/* Mobile sidebar overlay */}
+        {sidebarOpen && (
+          <div 
+            className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
+            onClick={() => setSidebarOpen(false)}
+          />
+        )}
+        
+        {/* Sidebar */}
+        <aside 
+          className={`
+            fixed lg:static inset-y-0 left-0 z-50
+            transform transition-all duration-300 ease-in-out
+            w-64 ${sidebarCollapsed ? 'lg:w-20' : 'lg:w-64'}
+            ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
+            lg:translate-x-0
+          `}
+        >
+          <Sidebar
+            onClose={() => setSidebarOpen(false)}
+            collapsed={sidebarCollapsed && !sidebarOpen}
+            onToggleCollapse={handleToggleSidebarCollapse}
+          />
+        </aside>
+        
+        <div className="flex-1 flex flex-col overflow-hidden lg:ml-0">
+          <Header 
+            onMenuClick={() => setSidebarOpen(!sidebarOpen)} 
+            selectedTenant={selectedTenant}
+            onTenantChange={handleTenantChange}
+          />
+          <main className="flex-1 overflow-y-auto p-4 lg:p-6 bg-gray-50 text-gray-900" style={{ backgroundColor: '#f9fafb', color: '#111827' }}>
+            {children}
+          </main>
+        </div>
+      </div>
+    </AdminContextProvider>
+  );
+}
