@@ -102,6 +102,10 @@ export class CreateOrderDto {
   @IsNumber()
   deliveryFeeCents?: number;
 
+  @IsOptional()
+  @IsString()
+  addressId?: string; // For logged-in customer checkout with saved address
+
   // Guest checkout fields
   @IsOptional()
   @IsString()
@@ -114,7 +118,6 @@ export class CreateOrderDto {
   @IsString()
   paymentMethod?: 'cash' | 'card'; // For cash on delivery
 }
-
 
 
 

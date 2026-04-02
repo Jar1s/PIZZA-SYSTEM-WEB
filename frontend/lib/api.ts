@@ -318,6 +318,7 @@ type CreateOrderPayload = {
     quantity: number;
     modifiers?: Record<string, string[]>;
   }>;
+  addressId?: string;
   userId?: string;
   paymentMethod?: string | null;
   saveAccount?: boolean;
@@ -610,6 +611,7 @@ export function getTenantSlugFromHeaders(hostHeader?: string): string | null {
 type StoryousSyncResult = {
   success: boolean;
   storyousOrderId?: string;
+  storyousState?: string | null;
   message: string;
 };
 
@@ -631,6 +633,20 @@ export type StoryousSettings = {
   receiptIncludeOrderNumber: boolean;
 };
 
+export type StoryousAutoPrintReadiness = {
+  ready: boolean;
+  blockers: string[];
+  warnings: string[];
+  checks: {
+    enabled: boolean;
+    credentialsConfigured: boolean;
+    merchantPlaceConfigured: boolean;
+    autoAcceptPrintMode: boolean;
+    receiptIncludeModifierLines: boolean;
+    receiptIncludeOrderNumber: boolean;
+  };
+};
+
 type WoltAvailabilityResult = {
   promiseId: string;
   feeCents: number;
@@ -644,6 +660,13 @@ type WoltCreateResult = {
   message?: string;
   trackingUrl?: string;
   [key: string]: any;
+};
+
+export type WoltAreaCheckResult = {
+  insideArea: boolean | null;
+  source: 'cache' | 'live' | 'fallback';
+  reason: string | null;
+  fetchedAt?: string;
 };
 
 function getAuthToken(): string | null {
@@ -701,6 +724,21 @@ export async function updateStoryousSettings(
   return res.json();
 }
 
+export async function getStoryousAutoPrintReadiness(): Promise<StoryousAutoPrintReadiness> {
+  const res = await fetch(`${API_URL}/api/settings/storyous/auto-print-readiness`, {
+    method: 'GET',
+    headers: buildAuthHeaders(),
+    credentials: 'include',
+  });
+
+  if (!res.ok) {
+    const errorText = await res.text().catch(() => '');
+    throw new Error(errorText || 'Failed to fetch Storyous auto-print readiness');
+  }
+
+  return res.json();
+}
+
 export async function syncFromMaster(masterSlug: string, targetSlugs?: string[]): Promise<SyncFromMasterResult> {
   const res = await fetch(`${API_URL}/api/tenants/sync-from-master`, {
     method: 'POST',
@@ -749,6 +787,39 @@ export async function syncOrderToStoryous(orderId: string, tenantSlug?: string):
   throw new Error(lastErrorText || 'Failed to sync order to Storyous');
 }
 
+export type StoryousReceiptPreviewItem = {
+  quantity: number;
+  name: string;
+  modifierLines: string[];
+};
+
+export type StoryousReceiptPreview = {
+  printedTime: string;
+  printedDate: string;
+  title: string | null;
+  orderReference: string;
+  website: string;
+  noteLines: string[];
+  customerName: string;
+  customerDetailLines: string[];
+  items: StoryousReceiptPreviewItem[];
+};
+
+export async function getStoryousReceiptPreview(orderId: string): Promise<StoryousReceiptPreview> {
+  const res = await fetch(`${API_URL}/api/orders/${orderId}/storyous-preview`, {
+    method: 'GET',
+    headers: buildAuthHeaders(),
+    credentials: 'include',
+  });
+
+  if (!res.ok) {
+    const errorText = await res.text().catch(() => '');
+    throw new Error(errorText || 'Failed to load Storyous receipt preview');
+  }
+
+  return res.json();
+}
+
 export async function checkWoltAvailability(orderId: string): Promise<WoltAvailabilityResult> {
   const res = await fetch(`${API_URL}/api/delivery/check-availability`, {
     method: 'POST',
@@ -787,4 +858,63 @@ export async function createWoltDelivery(
     success: true,
     ...data,
   };
+}
+
+export async function cancelWoltDelivery(orderId: string): Promise<WoltCreateResult> {
+  const res = await fetch(`${API_URL}/api/delivery/cancel`, {
+    method: 'POST',
+    headers: buildAuthHeaders(true),
+    credentials: 'include',
+    body: JSON.stringify({ orderId }),
+  });
+
+  if (!res.ok) {
+    const errorText = await res.text().catch(() => '');
+    throw new Error(errorText || 'Failed to cancel Wolt delivery');
+  }
+
+  const data = await res.json();
+  return {
+    success: true,
+    ...data,
+  };
+}
+
+export async function checkWoltDeliveryArea(
+  tenantSlug: string,
+  dropoffAddress: Record<string, any>,
+): Promise<WoltAreaCheckResult> {
+  const res = await fetch(`${API_URL}/api/delivery/check-area`, {
+    method: 'POST',
+    headers: buildAuthHeaders(true),
+    credentials: 'include',
+    body: JSON.stringify({ tenantSlug, dropoffAddress }),
+  });
+
+  if (!res.ok) {
+    const errorText = await res.text().catch(() => '');
+    throw new Error(errorText || 'Failed to check Wolt delivery area');
+  }
+
+  return res.json();
+}
+
+export async function refreshWoltDeliveryAreas(tenantSlug: string): Promise<{
+  ok: boolean;
+  polygons: number;
+  fetchedAt: string;
+}> {
+  const res = await fetch(`${API_URL}/api/delivery/areas/refresh`, {
+    method: 'POST',
+    headers: buildAuthHeaders(true),
+    credentials: 'include',
+    body: JSON.stringify({ tenantSlug }),
+  });
+
+  if (!res.ok) {
+    const errorText = await res.text().catch(() => '');
+    throw new Error(errorText || 'Failed to refresh Wolt delivery areas');
+  }
+
+  return res.json();
 }

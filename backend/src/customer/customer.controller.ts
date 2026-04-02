@@ -163,6 +163,10 @@ export class CustomerController {
       city?: string;
       postalCode?: string;
       country?: string;
+      coordinates?: {
+        lat: number;
+        lng: number;
+      } | null;
       isPrimary?: boolean;
     },
   ) {
@@ -224,6 +228,10 @@ export class CustomerController {
       city?: string;
       postalCode?: string;
       country?: string;
+      coordinates?: {
+        lat: number;
+        lng: number;
+      } | null;
       isPrimary?: boolean;
     },
   ) {
@@ -254,4 +262,3 @@ export class CustomerController {
     return this.customerService.deleteCustomerAddress(user.id, addressId);
   }
 }
-

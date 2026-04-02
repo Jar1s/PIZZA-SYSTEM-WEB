@@ -5,7 +5,10 @@ import { Prisma, User, UserRole, Order as PrismaOrder } from '@prisma/client';
 import { Order, OrderStatus, CustomerInfo, Address, getCustomizationOptions, calculateModifierPrice as calculateModifierPriceShared } from '@pizza-ecosystem/shared';
 import { CreateOrderDto } from './dto';
 import { EmailService } from '../email/email.service';
-import { StoryousService } from '../storyous/storyous.service';
+import {
+  StoryousReceiptPreview,
+  StoryousService,
+} from '../storyous/storyous.service';
 import { SettingsService } from '../settings/settings.service';
 import { ProductMappingService } from '../products/product-mapping.service';
 import { DeliveryFeeTierService } from '../delivery/delivery-fee-tier.service';
@@ -19,6 +22,13 @@ import * as crypto from 'crypto';
 // Type definitions for Prisma JSON fields
 type UserWithPasswordReset = User & {
   passwordResetToken?: string | null;
+};
+
+type StoryousSyncResult = {
+  success: boolean;
+  storyousOrderId?: string;
+  storyousState?: string | null;
+  message: string;
 };
 
 type OrderWithRelations = Prisma.OrderGetPayload<{
@@ -36,6 +46,31 @@ type OrderWithRelations = Prisma.OrderGetPayload<{
     };
   };
 }>;
+
+const isStoryousAcceptedState = (state: string | null | undefined): boolean =>
+  state === 'CONFIRMED' || state === 'SCHEDULING_DELIVERY' || state === 'DISPATCHED';
+
+const buildStoryousSyncMessage = (
+  state: string | null | undefined,
+  storyousOrderId?: string,
+): string => {
+  if (isStoryousAcceptedState(state)) {
+    return `Order confirmed in Storyous successfully (${storyousOrderId || 'ID neznáme'})`;
+  }
+  if (state === 'NEW') {
+    return 'Storyous order was created, but it still requires manual acceptance in Storyous.';
+  }
+  if (state === 'DECLINED') {
+    return 'Storyous order was declined and will not continue without intervention.';
+  }
+  if (state === 'VERIFICATION_FAILED') {
+    return 'Storyous order was created, but confirmation could not be verified.';
+  }
+  if (storyousOrderId) {
+    return `Storyous order exists (${storyousOrderId}), but its acceptance state is unknown.`;
+  }
+  return 'Storyous API did not return order ID';
+};
 
 type OrderWithItems = Prisma.OrderGetPayload<{
   include: {
@@ -94,6 +129,155 @@ export class OrdersService {
       message.includes('statusHistory') ||
       message.includes('orderStatusHistory')
     );
+  }
+
+  private normalizeCoordinates(
+    coordinates?: { lat?: number | null; lng?: number | null } | null,
+  ): { lat: number; lng: number } | undefined {
+    if (coordinates?.lat == null || coordinates?.lng == null) {
+      return undefined;
+    }
+
+    const lat = Number(coordinates.lat);
+    const lng = Number(coordinates.lng);
+
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+      return undefined;
+    }
+
+    return { lat, lng };
+  }
+
+  private async persistSavedAddressCoordinates(
+    addressId: string,
+    coordinates: { lat: number; lng: number },
+  ): Promise<void> {
+    await (this.prisma as any).address.update({
+      where: { id: addressId },
+      data: {
+        latitude: coordinates.lat,
+        longitude: coordinates.lng,
+      },
+    });
+  }
+
+  private async resolveOrderAddressForCreation(
+    userId: string | undefined,
+    data: CreateOrderDto,
+  ): Promise<CreateOrderDto['address']> {
+    const normalizedInputCoordinates = this.normalizeCoordinates((data.address as any)?.coordinates);
+    const resolvedAddress: CreateOrderDto['address'] = {
+      ...data.address,
+      country: data.address.country || 'SK',
+      ...(normalizedInputCoordinates ? { coordinates: normalizedInputCoordinates } : {}),
+    };
+
+    const addressId = typeof data.addressId === 'string' ? data.addressId.trim() : '';
+    if (!userId || !addressId) {
+      return resolvedAddress;
+    }
+
+    try {
+      const savedAddress = await (this.prisma as any).address.findFirst({
+        where: {
+          id: addressId,
+          userId,
+        },
+        select: {
+          id: true,
+          street: true,
+          description: true,
+          city: true,
+          postalCode: true,
+          country: true,
+          latitude: true,
+          longitude: true,
+        },
+      });
+
+      if (!savedAddress) {
+        this.logger.warn('Saved customer address not found during order creation fallback', {
+          userId,
+          addressId,
+        });
+        return resolvedAddress;
+      }
+
+      const savedCoordinates = this.normalizeCoordinates({
+        lat: savedAddress.latitude,
+        lng: savedAddress.longitude,
+      });
+
+      const canonicalAddress: CreateOrderDto['address'] = {
+        ...resolvedAddress,
+        street: savedAddress.street || resolvedAddress.street,
+        city: savedAddress.city || resolvedAddress.city,
+        postalCode: savedAddress.postalCode || resolvedAddress.postalCode,
+        country: savedAddress.country || resolvedAddress.country || 'SK',
+        instructions: resolvedAddress.instructions || savedAddress.description || undefined,
+        ...(savedCoordinates
+          ? { coordinates: savedCoordinates }
+          : normalizedInputCoordinates
+            ? { coordinates: normalizedInputCoordinates }
+            : {}),
+      };
+
+      if (!savedCoordinates && normalizedInputCoordinates) {
+        try {
+          await this.persistSavedAddressCoordinates(savedAddress.id, normalizedInputCoordinates);
+          this.logger.log('Persisted checkout coordinates to saved customer address', {
+            userId,
+            addressId: savedAddress.id,
+          });
+        } catch (persistError) {
+          this.logger.warn('Failed to persist checkout coordinates to saved customer address', {
+            userId,
+            addressId: savedAddress.id,
+            error: persistError instanceof Error ? persistError.message : String(persistError),
+          });
+        }
+        return canonicalAddress;
+      }
+
+      if (!savedCoordinates && !normalizedInputCoordinates) {
+        try {
+          const geocoded = await this.deliveryFeeTierService.geocodeAddress({
+            street: canonicalAddress.street,
+            city: canonicalAddress.city,
+            postalCode: canonicalAddress.postalCode,
+            country: canonicalAddress.country || 'SK',
+          });
+
+          const geocodedCoordinates = {
+            lat: geocoded.lat,
+            lng: geocoded.lng,
+          };
+
+          canonicalAddress.coordinates = geocodedCoordinates;
+          await this.persistSavedAddressCoordinates(savedAddress.id, geocodedCoordinates);
+
+          this.logger.log('Backfilled saved customer address coordinates during order creation', {
+            userId,
+            addressId: savedAddress.id,
+          });
+        } catch (geocodeError) {
+          this.logger.warn('Unable to backfill saved customer address coordinates during order creation', {
+            userId,
+            addressId: savedAddress.id,
+            error: geocodeError instanceof Error ? geocodeError.message : String(geocodeError),
+          });
+        }
+      }
+
+      return canonicalAddress;
+    } catch (error) {
+      this.logger.warn('Saved address fallback failed during order creation', {
+        userId,
+        addressId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      return resolvedAddress;
+    }
   }
 
   async createOrder(tenantId: string, data: CreateOrderDto): Promise<Order | { order: Order; authToken?: string; refreshToken?: string; user?: any }> {
@@ -162,6 +346,8 @@ export class OrdersService {
 
       userId = user.id;
     }
+
+    const resolvedAddress = await this.resolveOrderAddressForCreation(userId, data);
 
     // Resolve products - podporuje productId alebo externalProductIdentifier
     const products = await Promise.all(
@@ -458,11 +644,11 @@ export class OrdersService {
       const distanceResult = await this.deliveryFeeTierService.getDeliveryFeeByDistance(
         tenantId,
         {
-          street: data.address.street,
-          city: data.address.city,
-          postalCode: data.address.postalCode,
-          country: data.address.country || 'SK',
-          coordinates: (data.address as any).coordinates,
+          street: resolvedAddress.street,
+          city: resolvedAddress.city,
+          postalCode: resolvedAddress.postalCode,
+          country: resolvedAddress.country || 'SK',
+          coordinates: (resolvedAddress as any).coordinates,
         }
       );
 
@@ -484,7 +670,7 @@ export class OrdersService {
         } else {
           this.logger.warn('No delivery tier found for distance', {
             tenantId,
-            address: data.address,
+            address: resolvedAddress,
           });
           throw new BadRequestException(
             'Delivery is not available to this address. Please check the delivery distance.'
@@ -495,7 +681,7 @@ export class OrdersService {
         this.logger.warn('Address is outside delivery range', {
           tenantId,
           distanceMeters: distanceResult.distanceMeters,
-          address: data.address,
+          address: resolvedAddress,
         });
         throw new BadRequestException(
           'Adresa je mimo dosahu doručovania. Delivery is not available to this address.'
@@ -515,7 +701,7 @@ export class OrdersService {
       this.logger.error('Error calculating delivery fee', {
         error: error instanceof Error ? error.message : String(error),
         tenantId,
-        address: data.address,
+        address: resolvedAddress,
       });
       throw new BadRequestException('Failed to calculate delivery fee. Please try again.');
     }
@@ -558,8 +744,8 @@ export class OrdersService {
         paymentStatus: data.paymentMethod ? 'pending' : null, // For cash on delivery
         customer: data.customer as unknown as Prisma.InputJsonValue,
         address: {
-          ...data.address,
-          houseNumber: data.address.houseNumber, // Include houseNumber
+          ...resolvedAddress,
+          houseNumber: resolvedAddress.houseNumber, // Include houseNumber
         } as unknown as Prisma.InputJsonValue,
         subtotalCents,
         taxCents,
@@ -955,7 +1141,7 @@ export class OrdersService {
     });
   }
 
-  async syncOrderToStoryous(orderId: string): Promise<{ success: boolean; storyousOrderId?: string; message: string }> {
+  async syncOrderToStoryous(orderId: string): Promise<StoryousSyncResult> {
     const order = await this.prisma.order.findUnique({
       where: { id: orderId },
       include: {
@@ -979,10 +1165,12 @@ export class OrdersService {
     
     const orderWithStoryous = order as OrderWithStoryous;
     if (orderWithStoryous.storyousOrderId) {
+      const existingState = String((orderWithStoryous as any).storyousOrderState || '').trim().toUpperCase() || null;
       return {
-        success: true,
+        success: isStoryousAcceptedState(existingState),
         storyousOrderId: orderWithStoryous.storyousOrderId,
-        message: 'Order already synced to Storyous',
+        storyousState: existingState,
+        message: buildStoryousSyncMessage(existingState, orderWithStoryous.storyousOrderId),
       };
     }
 
@@ -1000,6 +1188,7 @@ export class OrdersService {
       }
 
       const orderForStoryous = await this.buildStoryousOrderPayload(orderWithStoryous as StoryousSyncOrder);
+      const autoPrintReadiness = await this.settingsService.getStoryousAutoPrintReadiness();
 
       this.logger.debug('[Storyous sync] Payload ready', { orderId, merchantId: storyousSettings.merchantId, placeId: storyousSettings.placeId, totalCents: orderForStoryous.totalCents, items: orderForStoryous.items?.length });
       const storyousResult = await this.storyousService.createOrder(
@@ -1009,22 +1198,55 @@ export class OrdersService {
       );
       
       if (storyousResult?.id) {
+        const storyousState = storyousResult.storyousState || null;
         await this.prisma.order.update({
           where: { id: orderId },
-          data: { storyousOrderId: storyousResult.id },
+          data: {
+            storyousOrderId: storyousResult.id,
+            storyousOrderState: storyousState,
+          },
         });
-        this.logger.log('[Storyous sync] Success', { orderId, storyousOrderId: storyousResult.id, tenantId: orderWithStoryous.tenantId });
-        this.logger.log(`✅ Order ${orderId} manually synced to Storyous: ${storyousResult.id}`, { orderId, storyousOrderId: storyousResult.id, tenantId: orderWithStoryous.tenantId });
+        const syncSuccess = isStoryousAcceptedState(storyousState);
+        const readinessSuffix =
+          autoPrintReadiness.ready && autoPrintReadiness.warnings.length === 0
+            ? ''
+            : ` (Auto-confirm readiness: ${autoPrintReadiness.ready ? 'warning' : 'not ready'})`;
+        const message = `${buildStoryousSyncMessage(storyousState, storyousResult.id)}${readinessSuffix}`;
+
+        if (syncSuccess) {
+          this.logger.log('[Storyous sync] Success', {
+            orderId,
+            storyousOrderId: storyousResult.id,
+            storyousState,
+            tenantId: orderWithStoryous.tenantId,
+          });
+          this.logger.log(`✅ Order ${orderId} manually synced to Storyous: ${storyousResult.id}`, {
+            orderId,
+            storyousOrderId: storyousResult.id,
+            storyousState,
+            tenantId: orderWithStoryous.tenantId,
+          });
+        } else {
+          this.logger.warn('[Storyous sync] Order created but auto-confirm goal was not achieved', {
+            orderId,
+            storyousOrderId: storyousResult.id,
+            storyousState,
+            tenantId: orderWithStoryous.tenantId,
+          });
+        }
+
         return {
-          success: true,
+          success: syncSuccess,
           storyousOrderId: storyousResult.id,
-          message: 'Order synced to Storyous successfully',
+          storyousState,
+          message,
         };
       }
 
       this.logger.error('[Storyous sync] Missing Storyous order ID', { orderId, tenantId: orderWithStoryous.tenantId });
       return {
         success: false,
+        storyousState: storyousResult?.storyousState || null,
         message: 'Storyous API did not return order ID',
       };
     } catch (error: any) {
@@ -1034,6 +1256,24 @@ export class OrdersService {
         message: error.message || 'Failed to sync order to Storyous',
       };
     }
+  }
+
+  async getStoryousReceiptPreview(orderId: string): Promise<StoryousReceiptPreview> {
+    const order = await this.prisma.order.findUnique({
+      where: { id: orderId },
+      include: {
+        items: true,
+        tenant: true,
+        delivery: true,
+      },
+    });
+
+    if (!order) {
+      throw new NotFoundException(`Order ${orderId} not found`);
+    }
+
+    const orderForStoryous = await this.buildStoryousOrderPayload(order as StoryousSyncOrder);
+    return this.storyousService.getReceiptPreview(orderForStoryous);
   }
 
   async updatePaymentRef(orderId: string, paymentRef: string, paymentStatus: string): Promise<Order> {
@@ -1116,11 +1356,29 @@ export class OrdersService {
         
         // Save Storyous order ID
         if (storyousResult?.id) {
+          const storyousState = storyousResult.storyousState || null;
           await this.prisma.order.update({
             where: { id: order.id },
-            data: { storyousOrderId: storyousResult.id },
+            data: {
+              storyousOrderId: storyousResult.id,
+              storyousOrderState: storyousState,
+            },
           });
-          this.logger.log(`✅ Order ${order.id} synchronized to Storyous: ${storyousResult.id}`, { orderId: order.id, storyousOrderId: storyousResult.id, tenantId });
+          if (isStoryousAcceptedState(storyousState)) {
+            this.logger.log(`✅ Order ${order.id} synchronized to Storyous: ${storyousResult.id}`, {
+              orderId: order.id,
+              storyousOrderId: storyousResult.id,
+              storyousState,
+              tenantId,
+            });
+          } else {
+            this.logger.warn(`⚠️ Order ${order.id} created in Storyous without automatic confirmation`, {
+              orderId: order.id,
+              storyousOrderId: storyousResult.id,
+              storyousState,
+              tenantId,
+            });
+          }
           return; // Success, exit
         } else {
           // API didn't return order ID - treat as error
@@ -1212,6 +1470,7 @@ export class OrdersService {
         const option = group?.options?.find((o) => o.id === optionId);
         const overrideLabel = optionLabelOverrides[optionId]?.sk;
         const label = (overrideLabel || option?.name || optionId).trim();
+
         if (label) {
           lines.push(label);
         }

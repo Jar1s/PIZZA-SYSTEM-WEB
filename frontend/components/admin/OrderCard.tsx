@@ -3,12 +3,23 @@
 import { Order, OrderStatus } from '@pizza-ecosystem/shared';
 import { useEffect, useState } from 'react';
 import { getFormattedModifierLines } from '@/lib/format-modifiers';
-import { syncOrderToStoryous, createWoltDelivery, checkWoltAvailability } from '@/lib/api';
+import {
+  syncOrderToStoryous,
+  createWoltDelivery,
+  checkWoltAvailability,
+  cancelWoltDelivery,
+  checkWoltDeliveryArea,
+  WoltAreaCheckResult,
+} from '@/lib/api';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { calculateOrderItemPrice } from '@/lib/calculate-order-item-price';
 import { getTranslations } from '@/lib/translations';
-import { getProductDisplayName } from '@/lib/product-translations';
 import { useToastContext } from '@/contexts/ToastContext';
+import {
+  InspectorAccordion,
+  InspectorSection,
+  InspectorStatTile,
+} from './OrderInspectorPrimitives';
 
 interface OrderCardProps {
   order: Order;
@@ -30,13 +41,13 @@ const STATUS_COLORS: Record<OrderStatus, string> = {
   CANCELED: 'bg-red-200 text-red-800',
 };
 
-// Updated flow: PENDING → PAID (automatic) → PREPARING → OUT_FOR_DELIVERY → DELIVERED (automatic)
+// Active flow: PENDING → PAID (automatic) → PREPARING → READY → OUT_FOR_DELIVERY → DELIVERED (automatic)
 // PAID is automatic via webhook, DELIVERED is automatic via Wolt webhook or time-based
 const NEXT_STATUS: Record<OrderStatus, OrderStatus | null> = {
   PENDING: null, // PAID is automatic via payment webhook
   PAID: OrderStatus.PREPARING,
-  PREPARING: OrderStatus.OUT_FOR_DELIVERY, // Skip READY
-  READY: OrderStatus.OUT_FOR_DELIVERY, // Backward compatibility
+  PREPARING: OrderStatus.READY,
+  READY: OrderStatus.OUT_FOR_DELIVERY,
   OUT_FOR_DELIVERY: null, // DELIVERED is automatic
   DELIVERED: null,
   CANCELED: null,
@@ -51,6 +62,7 @@ const ONLINE_TIMELINE_STEPS: TimelineStepConfig[] = [
   { key: OrderStatus.PENDING, icon: '💳' },
   { key: OrderStatus.PAID, icon: '💰' },
   { key: OrderStatus.PREPARING, icon: '👨‍🍳' },
+  { key: OrderStatus.READY, icon: '📦' },
   { key: OrderStatus.OUT_FOR_DELIVERY, icon: '🚗' },
   { key: OrderStatus.DELIVERED, icon: '🎉' },
 ];
@@ -59,6 +71,7 @@ const DELIVERY_TIMELINE_STEPS: TimelineStepConfig[] = [
   { key: OrderStatus.PENDING, icon: '⏳' },
   { key: OrderStatus.PAID, icon: '✅' },
   { key: OrderStatus.PREPARING, icon: '👨‍🍳' },
+  { key: OrderStatus.READY, icon: '📦' },
   { key: OrderStatus.OUT_FOR_DELIVERY, icon: '🚗' },
   { key: OrderStatus.DELIVERED, icon: '🎉' },
 ];
@@ -67,6 +80,75 @@ const BRAND_LABELS: Record<string, string> = {
   pornopizza: 'Porno Pizza',
   partypizza: 'Party Pizza',
   pizzavnudzi: 'Pizza v Nudzi',
+};
+
+type StoryousMessageTone = 'success' | 'warning' | 'error';
+
+type StoryousStatusMeta = {
+  badgeClassName: string;
+  badgeLabel: string;
+  detailClassName: string;
+  detailText: string;
+};
+
+type DispatchActionConfig = {
+  label: string;
+  onClick: () => void;
+  icon?: string;
+  title?: string;
+};
+
+const normalizeStoryousState = (state: string | null | undefined): string | null => {
+  const normalized = String(state || '').trim().toUpperCase();
+  return normalized || null;
+};
+
+const isAcceptedStoryousState = (state: string | null | undefined): boolean =>
+  state === 'CONFIRMED' || state === 'SCHEDULING_DELIVERY' || state === 'DISPATCHED';
+
+const getStoryousStatusMeta = (order: Order): StoryousStatusMeta | null => {
+  if (!order.storyousOrderId) {
+    return null;
+  }
+
+  const storyousState = normalizeStoryousState(order.storyousOrderState);
+
+  if (isAcceptedStoryousState(storyousState)) {
+    return {
+      badgeClassName: 'bg-green-100 text-green-800',
+      badgeLabel: '📦 Storyous',
+      detailClassName: 'bg-green-50 text-green-800',
+      detailText: `✅ Storyous confirmed (ID: ${order.storyousOrderId})`,
+    };
+  }
+
+  if (storyousState === 'NEW') {
+    return {
+      badgeClassName: 'bg-amber-100 text-amber-800',
+      badgeLabel: '📦 Storyous: čaká',
+      detailClassName: 'bg-amber-50 text-amber-800',
+      detailText: `⚠️ Storyous order exists, but still requires manual acceptance (ID: ${order.storyousOrderId})`,
+    };
+  }
+
+  if (storyousState === 'DECLINED' || storyousState === 'VERIFICATION_FAILED') {
+    return {
+      badgeClassName: 'bg-red-100 text-red-800',
+      badgeLabel: '📦 Storyous: problém',
+      detailClassName: 'bg-red-50 text-red-800',
+      detailText:
+        storyousState === 'DECLINED'
+          ? `❌ Storyous declined the order (ID: ${order.storyousOrderId})`
+          : `❌ Storyous order exists, but confirmation could not be verified (ID: ${order.storyousOrderId})`,
+    };
+  }
+
+  return {
+    badgeClassName: 'bg-gray-100 text-gray-700',
+    badgeLabel: '📦 Storyous',
+    detailClassName: 'bg-gray-100 text-gray-700',
+    detailText: `📦 Storyous order exists (ID: ${order.storyousOrderId}), state unknown`,
+  };
 };
 
 export function OrderCard({
@@ -89,10 +171,12 @@ export function OrderCard({
   
   const [syncingStoryous, setSyncingStoryous] = useState(false);
   const [storyousMessage, setStoryousMessage] = useState<string | null>(null);
+  const [storyousMessageTone, setStoryousMessageTone] = useState<StoryousMessageTone | null>(null);
   const [creatingWolt, setCreatingWolt] = useState(false);
   const [woltMessage, setWoltMessage] = useState<string | null>(null);
   const [showWoltModal, setShowWoltModal] = useState(false);
   const [checkingWolt, setCheckingWolt] = useState(false);
+  const [cancelingWolt, setCancelingWolt] = useState(false);
   const [woltPromise, setWoltPromise] = useState<{
     promiseId: string;
     feeCents: number;
@@ -106,12 +190,17 @@ export function OrderCard({
   const [woltError, setWoltError] = useState<string | null>(null);
   const [woltPreparationMinutes, setWoltPreparationMinutes] = useState<number>(20);
   const woltPreparationQuickOptions = [10, 15, 20, 25, 30, 40];
-  const { success: toastSuccess, error: toastError } = useToastContext();
+  const [woltAreaCheck, setWoltAreaCheck] = useState<WoltAreaCheckResult | null>(null);
+  const [checkingWoltArea, setCheckingWoltArea] = useState(false);
+  const [nowMs, setNowMs] = useState(Date.now());
+  const [clientPanelOpen, setClientPanelOpen] = useState(false);
+  const { success: toastSuccess, error: toastError, warning: toastWarning } = useToastContext();
   
   const customer = order.customer;
   const address = order.address;
   const nextStatus = NEXT_STATUS[order.status];
-  const isStoryousSynced = !!order.storyousOrderId;
+  const hasStoryousOrder = !!order.storyousOrderId;
+  const storyousStatusMeta = getStoryousStatusMeta(order);
   const hasDelivery = !!order.deliveryId || !!order.delivery;
   const isWoltDelivery = order.delivery?.provider === 'wolt';
   const woltDelivery = isWoltDelivery ? order.delivery : null;
@@ -126,15 +215,67 @@ export function OrderCard({
 
     return () => clearInterval(timer);
   }, [isWoltDelivery, order.id]);
+
+  useEffect(() => {
+    setClientPanelOpen(false);
+  }, [order.id]);
+
+  const tenantSlugForAreaCheck =
+    tenantSlug || (order as any)?.tenant?.slug || (order as any)?.tenant?.subdomain || '';
+
+  const shouldRunAreaCheck =
+    !hasDelivery &&
+    (order.status === OrderStatus.PAID ||
+      order.status === OrderStatus.PREPARING ||
+      order.status === OrderStatus.READY) &&
+    Boolean(tenantSlugForAreaCheck) &&
+    Boolean(address?.street) &&
+    Boolean(address?.city) &&
+    Boolean(address?.postalCode);
+
+  useEffect(() => {
+    if (!shouldRunAreaCheck) {
+      setWoltAreaCheck(null);
+      setCheckingWoltArea(false);
+      return;
+    }
+
+    let cancelled = false;
+
+    const run = async () => {
+      setCheckingWoltArea(true);
+      try {
+        const result = await checkWoltDeliveryArea(tenantSlugForAreaCheck, address as Record<string, any>);
+        if (!cancelled) {
+          setWoltAreaCheck(result);
+        }
+      } catch (error: any) {
+        if (!cancelled) {
+          setWoltAreaCheck({
+            insideArea: null,
+            source: 'fallback',
+            reason: error?.message || 'Nepodarilo sa overiť Wolt zónu.',
+          });
+        }
+      } finally {
+        if (!cancelled) {
+          setCheckingWoltArea(false);
+        }
+      }
+    };
+
+    run();
+    return () => {
+      cancelled = true;
+    };
+  }, [shouldRunAreaCheck, tenantSlugForAreaCheck, address, order.id, order.status]);
   
   // Show Storyous/Wolt buttons only while in PAID/PREPARING and not yet created
-  const canSyncToStoryous = !isStoryousSynced && (
+  const canSyncToStoryous = !hasStoryousOrder && (
     order.status === OrderStatus.PAID ||
     order.status === OrderStatus.PREPARING
   );
   const canCancelAnytime = order.status !== OrderStatus.DELIVERED && order.status !== OrderStatus.CANCELED;
-  const isPreparing = order.status === OrderStatus.PREPARING;
-  
   // Helper function to check if payment is on delivery (cash/card on delivery)
   // Normalized check: case-insensitive, handles null/undefined
   const isDeliveryPayment = (): boolean => {
@@ -163,6 +304,12 @@ export function OrderCard({
   const canCreateWolt =
     !hasDelivery &&
     (order.status === OrderStatus.PAID || order.status === OrderStatus.PREPARING || order.status === OrderStatus.READY);
+  const isOutsideWoltArea = woltAreaCheck?.insideArea === false;
+  const woltAreaBlockReason = isOutsideWoltArea
+    ? woltAreaCheck?.reason || 'Adresa zákazníka je mimo doručovacej zóny Wolt.'
+    : null;
+  const canCreateWoltEffective = canCreateWolt && !isOutsideWoltArea;
+  const canCancelWolt = isWoltDelivery && order.status !== OrderStatus.DELIVERED && order.status !== OrderStatus.CANCELED;
   // Show cancel for anything except delivered/canceled
   const canShowCancel = order.status !== OrderStatus.DELIVERED && order.status !== OrderStatus.CANCELED;
   // Desktop already has specialized reject/cancel buttons for some states.
@@ -210,8 +357,7 @@ export function OrderCard({
   const woltPickupEtaRounded = showPickupEtaInAdminHeader ? woltPickupEtaRemainingMinutes : null;
 
   const timelineSteps = isDeliveryPaymentValue ? DELIVERY_TIMELINE_STEPS : ONLINE_TIMELINE_STEPS;
-  const timelineStatus =
-    order.status === OrderStatus.READY ? OrderStatus.OUT_FOR_DELIVERY : order.status;
+  const timelineStatus = order.status;
   const currentTimelineIndex = Math.max(
     timelineSteps.findIndex((step) => step.key === timelineStatus),
     0,
@@ -258,7 +404,7 @@ export function OrderCard({
       [OrderStatus.PENDING]: t.orderStatusPendingDesc,
       [OrderStatus.PAID]: t.orderStatusPaidDesc,
       [OrderStatus.PREPARING]: t.orderStatusPreparingDesc,
-      [OrderStatus.READY]: t.orderStatusOutForDeliveryDesc,
+      [OrderStatus.READY]: t.orderStatusReadyDesc,
       [OrderStatus.OUT_FOR_DELIVERY]: t.orderStatusOutForDeliveryDesc,
       [OrderStatus.DELIVERED]: t.orderStatusDeliveredDesc,
       [OrderStatus.CANCELED]:
@@ -274,28 +420,62 @@ export function OrderCard({
       return t.orderStatusPreparing; // PAID → PREPARING
     }
     if (status === OrderStatus.PREPARING) {
-      return t.orderStatusOutForDelivery; // PREPARING → OUT_FOR_DELIVERY
+      return language === 'sk' ? 'Pripravené na vyzdvihnutie' : 'Ready for pickup';
+    }
+    if (status === OrderStatus.READY) {
+      return t.orderStatusOutForDelivery; // READY → OUT_FOR_DELIVERY
     }
     if (status === OrderStatus.OUT_FOR_DELIVERY) {
       return t.orderStatusDelivered; // OUT_FOR_DELIVERY → DELIVERED
     }
     return status; // Fallback (shouldn't happen as nextStatus is checked before calling)
   };
+
+  const getDispatchStageLabel = (status: OrderStatus): string => {
+    if (status === OrderStatus.PENDING) {
+      return language === 'sk' ? 'Nové' : 'New';
+    }
+    if (status === OrderStatus.PAID || status === OrderStatus.PREPARING) {
+      return language === 'sk' ? 'Prebieha' : 'In progress';
+    }
+    if (status === OrderStatus.READY) {
+      return language === 'sk' ? 'Pripravené na vyzdvihnutie' : 'Ready for pickup';
+    }
+    if (status === OrderStatus.OUT_FOR_DELIVERY) {
+      return language === 'sk' ? 'Doručuje sa' : 'Out for delivery';
+    }
+    if (status === OrderStatus.DELIVERED) {
+      return language === 'sk' ? 'Dokončené' : 'Completed';
+    }
+    return language === 'sk' ? 'Zrušené' : 'Canceled';
+  };
   
   const handleSyncStoryous = async () => {
     setSyncingStoryous(true);
     setStoryousMessage(null);
+    setStoryousMessageTone(null);
     try {
       const result = await syncOrderToStoryous(order.id);
       if (result.success) {
-        setStoryousMessage(`✅ Synced! Storyous ID: ${result.storyousOrderId || 'N/A'}`);
-        toastSuccess(`Storyous: objednávka odoslaná (${result.storyousOrderId || 'ID neznáme'})`);
+        setStoryousMessage(`✅ ${result.message}`);
+        setStoryousMessageTone('success');
+        toastSuccess(result.message || `Storyous confirmed (${result.storyousOrderId || 'ID neznáme'})`);
       } else {
-        setStoryousMessage(`❌ ${result.message}`);
-        toastError(result.message || 'Storyous sync zlyhal');
+        const requiresManualAcceptance = result.storyousState === 'NEW';
+        setStoryousMessage(`${requiresManualAcceptance ? '⚠️' : '❌'} ${result.message}`);
+        setStoryousMessageTone(requiresManualAcceptance ? 'warning' : 'error');
+        if (requiresManualAcceptance) {
+          toastWarning(result.message || 'Storyous order stále čaká na ručné prijatie');
+        } else {
+          toastError(result.message || 'Storyous sync zlyhal');
+        }
+      }
+      if (result.storyousOrderId) {
+        onOrderRefresh?.();
       }
     } catch (error: any) {
       setStoryousMessage(`❌ Error: ${error.message}`);
+      setStoryousMessageTone('error');
       toastError(error.message || 'Storyous sync zlyhal');
     } finally {
       setSyncingStoryous(false);
@@ -303,6 +483,13 @@ export function OrderCard({
   };
 
   const handleCreateWoltDelivery = async () => {
+    if (isOutsideWoltArea) {
+      const message = woltAreaBlockReason || 'Adresa zákazníka je mimo doručovacej zóny Wolt.';
+      setWoltMessage(`⚠️ ${message}`);
+      toastError(message);
+      return;
+    }
+
     setShowWoltModal(true);
     setCheckingWolt(true);
     setWoltError(null);
@@ -355,6 +542,29 @@ export function OrderCard({
     setWoltPromise(null);
     setWoltError(null);
     setWoltPreparationMinutes(20);
+  };
+
+  const handleCancelWoltDelivery = async () => {
+    setCancelingWolt(true);
+    setWoltMessage(null);
+    try {
+      const result = await cancelWoltDelivery(order.id);
+      if (result.success) {
+        setWoltMessage('✅ Wolt delivery zrušené');
+        toastSuccess('Wolt delivery bolo zrušené');
+        onOrderRefresh?.();
+      } else {
+        const message = result.message || 'Nepodarilo sa zrušiť Wolt delivery';
+        setWoltMessage(`❌ ${message}`);
+        toastError(message);
+      }
+    } catch (error: any) {
+      const message = error?.message || 'Nepodarilo sa zrušiť Wolt delivery';
+      setWoltMessage(`❌ ${message}`);
+      toastError(message);
+    } finally {
+      setCancelingWolt(false);
+    }
   };
 
   // Format created time
@@ -420,8 +630,26 @@ export function OrderCard({
     return remainingHours > 0 ? `${days}d ${remainingHours}h` : `${days}d`;
   };
 
+  const parseOptionalDate = (value: unknown): Date | null => {
+    if (!value) return null;
+    const parsed = new Date(String(value));
+    if (Number.isNaN(parsed.getTime())) return null;
+    return parsed;
+  };
+
+  const getScheduledAtFromOrder = (currentOrder: Order): Date | null => {
+    const maybeOrder = currentOrder as any;
+    return parseOptionalDate(
+      maybeOrder?.scheduledAt ??
+        maybeOrder?.scheduledFor ??
+        maybeOrder?.preferredAt ??
+        maybeOrder?.deliveryAt,
+    );
+  };
+
   const createdAtDate = new Date(order.createdAt);
   const updatedAtDate = new Date(order.updatedAt);
+  const scheduledAtDate = getScheduledAtFromOrder(order);
   const normalizedHistory = [...(order.statusHistory || [])]
     .map((entry) => ({
       ...entry,
@@ -441,17 +669,7 @@ export function OrderCard({
       return exactEntry.createdAt;
     }
 
-    // Legacy flow stored READY before OUT_FOR_DELIVERY.
-    if (status === OrderStatus.OUT_FOR_DELIVERY) {
-      const readyEntry = normalizedHistory.find((entry) => entry.status === OrderStatus.READY);
-      if (readyEntry) {
-        return readyEntry.createdAt;
-      }
-    }
-
-    const currentStatusForTimeline =
-      order.status === OrderStatus.READY ? OrderStatus.OUT_FOR_DELIVERY : order.status;
-    if (status === currentStatusForTimeline) {
+    if (status === order.status) {
       return updatedAtDate;
     }
 
@@ -487,8 +705,120 @@ export function OrderCard({
       : order.status === OrderStatus.DELIVERED
         ? `Delivery ${orderDisplayNumber}`
         : `Order ${orderDisplayNumber}`;
-  const dispatchStatusLabel = getStatusLabel(order.status).toUpperCase();
-  const dispatchElapsed = formatDuration(updatedAtDate.getTime() - createdAtDate.getTime());
+  const dispatchStageLabel = getDispatchStageLabel(order.status).toUpperCase();
+  const dispatchStageAge = formatDuration(nowMs - updatedAtDate.getTime());
+  const dispatchEyebrow = `${dispatchStageLabel}: ${dispatchStageAge.toUpperCase()}`;
+  const clientPanelSubtitle = [customer.phone, customer.email].filter(Boolean).join(' • ');
+  const addressSummary = `${address.street}, ${address.postalCode} ${address.city}`;
+  const dispatchTargetDate =
+    scheduledAtDate ??
+    (woltPickupEtaRounded != null ? new Date(nowMs + woltPickupEtaRounded * 60000) : null);
+  const dispatchTargetMeta =
+    dispatchTargetDate != null
+      ? dispatchTargetDate.getTime() >= nowMs
+        ? `${language === 'sk' ? 'za' : 'in'} ${formatDuration(dispatchTargetDate.getTime() - nowMs)}`
+        : `${language === 'sk' ? 'meška' : 'late by'} ${formatDuration(nowMs - dispatchTargetDate.getTime())}`
+      : dispatchStageAge;
+  const dispatchTargetLabel =
+    dispatchTargetDate != null
+      ? language === 'sk'
+        ? 'Vydanie'
+        : 'Release'
+      : language === 'sk'
+        ? 'Aktuálny krok'
+        : 'Current step';
+  const dispatchTargetValue =
+    dispatchTargetDate != null ? formatTimelineTime(dispatchTargetDate) : getStatusLabel(order.status);
+  const storyousMessageClassName =
+    storyousMessageTone === 'success'
+      ? 'bg-green-50 text-green-800 border-green-200'
+      : storyousMessageTone === 'warning'
+        ? 'bg-amber-50 text-amber-800 border-amber-200'
+        : 'bg-red-50 text-red-800 border-red-200';
+
+  const dispatchPrimaryAction: DispatchActionConfig | null = isPendingDelivery
+    ? {
+        label: language === 'sk' ? 'Prijať' : 'Accept',
+        icon: '✓',
+        onClick: () => onStatusUpdate(order.id, OrderStatus.PAID),
+      }
+    : isPaidOnline
+      ? {
+          label: language === 'sk' ? 'Potvrdiť' : 'Confirm',
+          icon: '✓',
+          onClick: () => onStatusUpdate(order.id, OrderStatus.PREPARING),
+        }
+      : shouldShowNextStatusButton() && nextStatus
+        ? {
+          label: getNextStatusLabel(order.status),
+          icon: order.status === OrderStatus.PREPARING ? '✓' : '→',
+          onClick: () => onStatusUpdate(order.id, nextStatus),
+        }
+        : null;
+
+  const dispatchSecondaryAction: DispatchActionConfig | null = isPendingDelivery
+    ? {
+        label: language === 'sk' ? 'Zrušiť' : 'Cancel',
+        onClick: () => onStatusUpdate(order.id, OrderStatus.CANCELED),
+      }
+    : isPendingOnline
+      ? {
+          label: language === 'sk' ? 'Zrušiť' : 'Cancel',
+          onClick: () => onStatusUpdate(order.id, OrderStatus.CANCELED),
+        }
+      : isPaidOnline
+        ? {
+            label: language === 'sk' ? 'Odmietnuť' : 'Reject',
+            onClick: () => onStatusUpdate(order.id, OrderStatus.CANCELED),
+            title: 'Odmietnuť objednávku (refund bude spracovaný neskôr)',
+          }
+        : showDesktopBackdoorCancel
+          ? {
+              label: language === 'sk' ? 'Zrušiť' : 'Cancel',
+              onClick: () => onStatusUpdate(order.id, OrderStatus.CANCELED),
+              title: 'Backdoor zrusenie objednavky',
+            }
+          : null;
+
+  const renderWoltZoneBadge = () => {
+    if (!shouldRunAreaCheck) {
+      return null;
+    }
+
+    if (checkingWoltArea) {
+      return (
+        <span className="inline-flex items-center rounded-full bg-gray-100 px-2 py-1 text-[11px] font-semibold text-gray-600">
+          Wolt zóna: kontrola...
+        </span>
+      );
+    }
+
+    if (woltAreaCheck?.insideArea === false) {
+      return (
+        <span className="inline-flex items-center rounded-full bg-red-100 px-2 py-1 text-[11px] font-semibold text-red-700">
+          Wolt: mimo zóny
+        </span>
+      );
+    }
+
+    if (woltAreaCheck?.insideArea === true) {
+      return (
+        <span className="inline-flex items-center rounded-full bg-emerald-100 px-2 py-1 text-[11px] font-semibold text-emerald-700">
+          Wolt: v zóne
+        </span>
+      );
+    }
+
+    if (woltAreaCheck?.reason) {
+      return (
+        <span className="inline-flex items-center rounded-full bg-amber-100 px-2 py-1 text-[11px] font-semibold text-amber-700">
+          Wolt: {woltAreaCheck.reason}
+        </span>
+      );
+    }
+
+    return null;
+  };
 
   const desktopActionButtons = (
     <>
@@ -546,11 +876,21 @@ export function OrderCard({
       {canCreateWolt && (
         <button
           onClick={handleCreateWoltDelivery}
-          disabled={creatingWolt}
+          disabled={creatingWolt || !canCreateWoltEffective}
           className="px-3 py-2 bg-orange-600 text-white rounded hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
-          title="Create Wolt delivery"
+          title={canCreateWoltEffective ? 'Create Wolt delivery' : (woltAreaBlockReason || 'Wolt dispatch blocked')}
         >
           {creatingWolt ? '⏳' : '🚚 Wolt'}
+        </button>
+      )}
+      {canCancelWolt && (
+        <button
+          onClick={handleCancelWoltDelivery}
+          disabled={cancelingWolt}
+          className="px-3 py-2 bg-orange-100 text-orange-800 border border-orange-300 rounded hover:bg-orange-200 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+          title="Zrušiť Wolt delivery"
+        >
+          {cancelingWolt ? '⏳ Ruším Wolt…' : '🛑 Zrušiť Wolt'}
         </button>
       )}
       {shouldShowNextStatusButton() && nextStatus && (
@@ -582,14 +922,10 @@ export function OrderCard({
   );
   
   return (
-    <div className="p-3 sm:p-4 hover:bg-gray-50">
-      {storyousMessage && (
+    <div className={isDispatchDetailMode ? 'h-full' : 'p-3 sm:p-4 hover:bg-gray-50'}>
+      {!isDispatchDetailMode && storyousMessage && (
         <div
-          className={`mb-3 p-2 rounded text-xs border ${
-            storyousMessage.startsWith('✅')
-              ? 'bg-green-50 text-green-800 border-green-200'
-              : 'bg-red-50 text-red-800 border-red-200'
-          }`}
+          className={`mb-3 rounded border p-2 text-xs ${storyousMessageClassName}`}
         >
           {storyousMessage}
         </div>
@@ -609,9 +945,9 @@ export function OrderCard({
           <span className={`px-2 py-0.5 rounded text-xs font-semibold whitespace-nowrap ${STATUS_COLORS[order.status]}`}>
             {getStatusLabel(order.status)}
           </span>
-          {isStoryousSynced && (
-            <span className="px-2 py-0.5 rounded text-xs font-semibold bg-green-100 text-green-800 whitespace-nowrap">
-              📦 Storyous
+          {storyousStatusMeta && (
+            <span className={`px-2 py-0.5 rounded text-xs font-semibold whitespace-nowrap ${storyousStatusMeta.badgeClassName}`}>
+              {storyousStatusMeta.badgeLabel}
             </span>
           )}
           {isWoltDelivery && (
@@ -620,6 +956,11 @@ export function OrderCard({
             </span>
           )}
         </div>
+        {renderWoltZoneBadge() && (
+          <div className="mt-1">
+            {renderWoltZoneBadge()}
+          </div>
+        )}
 
         {woltPickupEtaRounded != null && (
           <div className="rounded-lg border border-orange-300 bg-orange-50 px-3 py-2">
@@ -687,11 +1028,21 @@ export function OrderCard({
             {canCreateWolt && (
               <button
                 onClick={handleCreateWoltDelivery}
-                disabled={creatingWolt}
+                disabled={creatingWolt || !canCreateWoltEffective}
                 className="flex-1 min-w-[120px] px-3 py-2 bg-orange-600 text-white rounded hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-semibold"
-                title="Create Wolt delivery"
+                title={canCreateWoltEffective ? 'Create Wolt delivery' : (woltAreaBlockReason || 'Wolt dispatch blocked')}
               >
                 {creatingWolt ? '⏳' : '🚚 Wolt'}
+              </button>
+            )}
+            {canCancelWolt && (
+              <button
+                onClick={handleCancelWoltDelivery}
+                disabled={cancelingWolt}
+                className="flex-1 min-w-[120px] px-3 py-2 bg-orange-100 text-orange-800 border border-orange-300 rounded hover:bg-orange-200 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-semibold"
+                title="Zrušiť Wolt delivery"
+              >
+                {cancelingWolt ? '⏳ Ruším Wolt…' : '🛑 Zrušiť Wolt'}
               </button>
             )}
             {shouldShowNextStatusButton() && nextStatus && (
@@ -724,48 +1075,55 @@ export function OrderCard({
 
       {/* Desktop Layout */}
       {isDispatchDetailMode ? (
-        <div className="hidden md:block border-l-2 border-red-500 pl-3 pb-4 mb-4 border-b border-gray-200">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <div className="text-[11px] uppercase tracking-wide font-extrabold text-emerald-600">
-                {dispatchStatusLabel}
+        <div className="hidden md:block space-y-4">
+          <div className="rounded-[28px] border border-zinc-200 bg-white px-6 py-6 shadow-[0_20px_48px_-34px_rgba(15,23,42,0.3)]">
+            <div className="flex items-start justify-between gap-6">
+              <div className="min-w-0 flex-1">
+                <p className="text-[11px] font-black uppercase tracking-[0.24em] text-orange-600">
+                  {dispatchEyebrow}
+                </p>
+                <h2 className="mt-2 text-4xl font-black leading-none tracking-tight text-zinc-950">
+                  {dispatchHeadline}
+                </h2>
+                <p className="mt-3 text-base font-semibold text-zinc-700">
+                  {brandLabel}
+                  {brandLabel ? ' • ' : ''}
+                  {customer.name}
+                </p>
+                <div className="mt-4 flex flex-wrap items-center gap-2">
+                  <span className={`rounded-full px-3 py-1 text-xs font-semibold ${STATUS_COLORS[order.status]}`}>
+                    {getStatusLabel(order.status)}
+                  </span>
+                  {storyousStatusMeta && (
+                    <span
+                      className={`rounded-full px-3 py-1 text-xs font-semibold ${storyousStatusMeta.badgeClassName}`}
+                    >
+                      {storyousStatusMeta.badgeLabel}
+                    </span>
+                  )}
+                  {isWoltDelivery && (
+                    <span className="rounded-full bg-orange-100 px-3 py-1 text-xs font-semibold text-orange-800">
+                      Wolt aktivny
+                    </span>
+                  )}
+                  {renderWoltZoneBadge()}
+                </div>
               </div>
-              <div className="text-3xl font-extrabold text-gray-900 leading-tight mt-1">
-                {dispatchHeadline}
-              </div>
-              <div className="text-sm font-semibold text-emerald-700 mt-1">
-                {brandLabel}{brandLabel ? ' • ' : ''}{customer.name}
+
+              <div className="grid min-w-[280px] grid-cols-1 gap-3 xl:grid-cols-2">
+                <InspectorStatTile
+                  label={dispatchTargetLabel}
+                  meta={dispatchTargetMeta}
+                  value={dispatchTargetValue}
+                />
+                <InspectorStatTile
+                  label={language === 'sk' ? 'Celkom' : 'Total'}
+                  meta={`${order.items.length} ${language === 'sk' ? 'poloziek' : 'items'}`}
+                  tone="warning"
+                  value={formatEurPrice(order.totalCents)}
+                />
               </div>
             </div>
-            <div className="flex items-stretch gap-2 min-w-[128px]">
-              <div className="rounded-xl bg-gray-100 border border-gray-200 px-4 py-3 text-right min-w-[128px]">
-                <div className="text-[10px] uppercase tracking-wide font-bold text-gray-500">
-                  {language === 'sk' ? 'Vydanie' : 'Updated'}
-                </div>
-                <div className="text-3xl font-extrabold text-gray-900 leading-none mt-1">
-                  {formatTimelineTime(order.updatedAt)}
-                </div>
-                <div className="text-[11px] font-semibold text-emerald-600 mt-1">
-                  {dispatchElapsed}
-                </div>
-              </div>
-              {woltPickupEtaRounded != null && (
-                <div className="rounded-xl border border-orange-300 bg-orange-50 px-4 py-3 text-right min-w-[128px]">
-                  <div className="text-[10px] uppercase tracking-wide font-bold text-orange-700">
-                    Kuriér na prevádzku
-                  </div>
-                  <div className="text-3xl font-extrabold leading-none text-orange-700 mt-1">
-                    {woltPickupEtaRounded}
-                  </div>
-                  <div className="text-[11px] font-semibold text-orange-700 mt-1">
-                    min
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-          <div className="mt-3 flex items-center gap-2 flex-wrap">
-            {desktopActionButtons}
           </div>
         </div>
       ) : (
@@ -779,9 +1137,9 @@ export function OrderCard({
               <span className={`px-2 py-1 rounded text-xs font-semibold ${STATUS_COLORS[order.status]}`}>
                 {getStatusLabel(order.status)}
               </span>
-              {isStoryousSynced && (
-                <span className="px-2 py-1 rounded text-xs font-semibold bg-green-100 text-green-800">
-                  📦 Storyous
+              {storyousStatusMeta && (
+                <span className={`px-2 py-1 rounded text-xs font-semibold ${storyousStatusMeta.badgeClassName}`}>
+                  {storyousStatusMeta.badgeLabel}
                 </span>
               )}
               {isWoltDelivery && (
@@ -792,6 +1150,7 @@ export function OrderCard({
               <span className="text-sm text-gray-600">
                 {customer.name} • {customer.phone}
               </span>
+              {renderWoltZoneBadge()}
             </div>
             
             <div className="mt-2 text-sm text-gray-600">
@@ -816,30 +1175,288 @@ export function OrderCard({
         </div>
       )}
       
-      {expanded && (
-        <div className={`${isDispatchDetailMode ? 'grid grid-cols-1 md:grid-cols-2 gap-4 text-sm border-l-2 border-red-500 pl-3' : 'mt-4 pt-4 border-t grid grid-cols-1 md:grid-cols-2 gap-4 text-sm'}`}>
-          <div className={`col-span-2 border border-gray-200 ${isDispatchDetailMode ? 'rounded-lg bg-white overflow-hidden' : 'rounded-xl bg-gray-50 p-4'}`}>
-            <div className={`flex items-center gap-2 ${isDispatchDetailMode ? 'px-4 py-3 border-b border-gray-200 bg-gray-50/60' : 'justify-between mb-4'}`}>
-              <div className="font-semibold text-gray-900">
-                {language === 'sk' ? 'Časová os objednávky' : 'Order timeline'}
-              </div>
-              {!isDispatchDetailMode && (
-                <div className="text-xs text-gray-500">
-                  {formatTimelineTime(order.createdAt)} to {formatTimelineTime(order.updatedAt)}
-                </div>
-              )}
-            </div>
+      {expanded &&
+        (isDispatchDetailMode ? (
+          <div className="hidden gap-4 pb-6 md:grid">
+            <InspectorSection
+              eyebrow={language === 'sk' ? 'Objednavka' : 'Order'}
+              title={language === 'sk' ? 'Polozky a suma' : 'Items & total'}
+              description={`${order.items.length} ${language === 'sk' ? 'poloziek' : 'items'} • ${formatEurPrice(order.totalCents)}`}
+            >
+              <div className="space-y-4">
+                {order.items.map((item, i) => {
+                  const modifierLines = getFormattedModifierLines(
+                    item.modifiers,
+                    true,
+                    language,
+                    customizationLabels,
+                  );
+                  const itemTotal = calculateOrderItemPrice(item, 'PIZZA');
+                  const displayName = item.productName;
 
-            {order.status === OrderStatus.CANCELED ? (
-              <div className={`${isDispatchDetailMode ? 'm-4 rounded-lg border border-red-200 bg-red-50 px-3 py-3 text-sm text-red-700' : 'rounded-lg border border-red-200 bg-red-50 px-3 py-3 text-sm text-red-700'}`}>
-                {language === 'sk'
-                  ? 'Objednávka bola zrušená.'
-                  : 'This order has been canceled.'}
+                  return (
+                    <div key={i} className="border-b border-zinc-200 pb-4 last:border-b-0 last:pb-0">
+                      <div className="flex items-start justify-between gap-4 text-[15px] leading-6">
+                        <span className="min-w-0 font-semibold text-zinc-950">
+                          <span className="mr-2 text-orange-600">{item.quantity}x</span>
+                          {displayName}
+                        </span>
+                        <span className="shrink-0 font-semibold text-zinc-900">
+                          {formatEurPrice(itemTotal)}
+                        </span>
+                      </div>
+                      {modifierLines.length > 0 && (
+                        <div className="mt-2 space-y-1 pl-5">
+                          {modifierLines.map((modifier, idx) => (
+                            <div
+                              key={idx}
+                              className="flex items-start justify-between gap-4 text-[14px] text-zinc-600"
+                            >
+                              <span className="min-w-0 truncate">
+                                <span className="mr-2 text-orange-500">1x</span>
+                                {modifier.label}
+                              </span>
+                              <span className="shrink-0 whitespace-nowrap">
+                                {formatEurPrice(modifier.priceCents)}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+
+                {displayedDeliveryFeeCents != null && (
+                  <div className="flex items-center justify-between border-t border-dashed border-zinc-200 pt-3 text-sm text-zinc-600">
+                    <span>{language === 'sk' ? 'Doprava' : 'Delivery fee'}</span>
+                    <span>{formatEurPrice(displayedDeliveryFeeCents)}</span>
+                  </div>
+                )}
+
+                <div className="flex items-center justify-between border-t border-zinc-200 pt-3 text-lg font-black text-zinc-950">
+                  <span>{language === 'sk' ? 'Celkom' : 'Total'}</span>
+                  <span>{formatEurPrice(order.totalCents)}</span>
+                </div>
               </div>
-            ) : (
-              <>
-                {isDispatchDetailMode ? (
-                  <div className="hidden lg:grid gap-2 p-4" style={{ gridTemplateColumns: `repeat(${timelineEntries.length}, minmax(0, 1fr))` }}>
+            </InspectorSection>
+
+            <InspectorSection
+              eyebrow={language === 'sk' ? 'Integracie' : 'Integrations'}
+              title={language === 'sk' ? 'Partneri a systemy' : 'Partners & systems'}
+              description={
+                language === 'sk'
+                  ? 'Wolt a Storyous ostavaju viditelne ako operacny kontext, nie ako header buttony.'
+                  : 'Wolt and Storyous stay visible as operational context instead of header actions.'
+              }
+            >
+              <div className="grid gap-4 xl:grid-cols-2">
+                <div className="rounded-[20px] border border-orange-200 bg-orange-50 p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <h4 className="text-sm font-black uppercase tracking-[0.18em] text-orange-800">
+                        Wolt
+                      </h4>
+                      <p className="mt-2 text-sm text-orange-900">
+                        {isWoltDelivery
+                          ? `Aktivne dorucenie: ${woltDelivery?.status || 'Wolt'}`
+                          : canCreateWolt
+                            ? 'Kurier zatial nevytvoreny. Ak je objednavka pripravena, vytvor dorucenie odtialto.'
+                            : 'Wolt sa aktivuje po prijati objednavky alebo ked je k dispozicii dorucenie.'}
+                      </p>
+                    </div>
+                    {renderWoltZoneBadge()}
+                  </div>
+
+                  <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-orange-900">
+                    {woltPickupEtaRounded != null && <span>Pickup: ~{woltPickupEtaRounded} min</span>}
+                    {woltDropoffEtaRemainingMinutes != null && (
+                      <span>Dropoff: ~{woltDropoffEtaRemainingMinutes} min</span>
+                    )}
+                    {displayedDeliveryFeeCents != null && (
+                      <span>Fee: {formatEurPrice(displayedDeliveryFeeCents)}</span>
+                    )}
+                  </div>
+
+                  {woltDelivery?.trackingUrl && (
+                    <a
+                      href={woltDelivery.trackingUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mt-3 inline-block text-sm font-semibold text-orange-700 underline"
+                    >
+                      Otvorit tracking
+                    </a>
+                  )}
+
+                  {woltMessage && (
+                    <div className="mt-3 rounded-xl border border-orange-200 bg-white/80 px-3 py-2 text-xs text-orange-900">
+                      {woltMessage}
+                    </div>
+                  )}
+
+                  {woltAreaBlockReason && !isWoltDelivery && (
+                    <div className="mt-3 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+                      {woltAreaBlockReason}
+                    </div>
+                  )}
+
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    {canCreateWolt && (
+                      <button
+                        onClick={handleCreateWoltDelivery}
+                        disabled={creatingWolt || !canCreateWoltEffective}
+                        className="rounded-2xl bg-orange-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-50"
+                        title={
+                          canCreateWoltEffective
+                            ? 'Create Wolt delivery'
+                            : woltAreaBlockReason || 'Wolt dispatch blocked'
+                        }
+                      >
+                        {creatingWolt ? '⏳ Kontrolujem' : 'Vytvorit Wolt'}
+                      </button>
+                    )}
+                    {canCancelWolt && (
+                      <button
+                        onClick={handleCancelWoltDelivery}
+                        disabled={cancelingWolt}
+                        className="rounded-2xl border border-orange-300 bg-white px-4 py-2 text-sm font-semibold text-orange-800 transition hover:bg-orange-100 disabled:cursor-not-allowed disabled:opacity-50"
+                        title="Zrušiť Wolt delivery"
+                      >
+                        {cancelingWolt ? '⏳ Rusim Wolt' : 'Zrusit Wolt'}
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                <div className="rounded-[20px] border border-zinc-200 bg-zinc-50 p-4">
+                  <h4 className="text-sm font-black uppercase tracking-[0.18em] text-zinc-700">
+                    Storyous
+                  </h4>
+                  <div className="mt-3 space-y-3">
+                    {storyousStatusMeta ? (
+                      <div className={`rounded-xl px-3 py-2 text-xs ${storyousStatusMeta.detailClassName}`}>
+                        {storyousStatusMeta.detailText}
+                      </div>
+                    ) : (
+                      <div className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-xs text-zinc-600">
+                        Zatial bez Storyous objednavky.
+                      </div>
+                    )}
+
+                    {storyousMessage && (
+                      <div className={`rounded-xl border px-3 py-2 text-xs ${storyousMessageClassName}`}>
+                        {storyousMessage}
+                      </div>
+                    )}
+
+                    {canSyncToStoryous && (
+                      <button
+                        onClick={handleSyncStoryous}
+                        disabled={syncingStoryous}
+                        className="rounded-2xl bg-purple-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-purple-700 disabled:cursor-not-allowed disabled:opacity-50"
+                        title="Send to Storyous"
+                      >
+                        {syncingStoryous ? '⏳ Posielam' : 'Poslat do Storyous'}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </InspectorSection>
+
+            <InspectorSection
+              eyebrow={language === 'sk' ? 'Timing' : 'Timing'}
+              title={language === 'sk' ? 'Cas a vyzdvihnutie' : 'Timing & pickup'}
+              description={
+                language === 'sk'
+                  ? 'Pickup a dispatch casy ostavaju stale viditelne bez rozbalovania klienta.'
+                  : 'Pickup and dispatch timing stays visible without opening the client panel.'
+              }
+            >
+              <div className="grid gap-3 lg:grid-cols-2 xl:grid-cols-4">
+                <InspectorStatTile
+                  label={language === 'sk' ? 'Prijate' : 'Created'}
+                  meta={formatCreatedTime(order.createdAt)}
+                  value={formatTimelineTime(order.createdAt)}
+                />
+                <InspectorStatTile
+                  label={language === 'sk' ? 'Posledny update' : 'Updated'}
+                  meta={dispatchStageAge}
+                  value={formatTimelineTime(order.updatedAt)}
+                />
+                {woltPickupEtaRounded != null && (
+                  <InspectorStatTile
+                    label={language === 'sk' ? 'Pickup' : 'Pickup'}
+                    meta={language === 'sk' ? 'Kurier na prevadzku' : 'Courier arrival'}
+                    tone="warning"
+                    value={`${woltPickupEtaRounded}m`}
+                  />
+                )}
+                {woltDropoffEtaRemainingMinutes != null && (
+                  <InspectorStatTile
+                    label={language === 'sk' ? 'Dropoff' : 'Dropoff'}
+                    meta={language === 'sk' ? 'K zakaznikovi' : 'To customer'}
+                    tone="success"
+                    value={`${woltDropoffEtaRemainingMinutes}m`}
+                  />
+                )}
+              </div>
+              {woltPickupEtaRounded == null && woltDropoffEtaRemainingMinutes == null && (
+                <p className="mt-4 text-sm text-zinc-500">
+                  Pickup ETA sa zobrazi po vytvoreni alebo potvrdeni dorucenia.
+                </p>
+              )}
+            </InspectorSection>
+
+            <InspectorAccordion
+              open={clientPanelOpen}
+              onToggle={() => setClientPanelOpen((prev) => !prev)}
+              subtitle={clientPanelSubtitle}
+              title={customer.name}
+            >
+              <div className="grid gap-4 xl:grid-cols-2">
+                <div>
+                  <div className="text-[11px] font-black uppercase tracking-[0.18em] text-zinc-500">
+                    Kontakt
+                  </div>
+                  <div className="mt-2 space-y-1 text-sm text-zinc-700">
+                    <div>{customer.name}</div>
+                    <div>{customer.email}</div>
+                    <div>{customer.phone}</div>
+                  </div>
+                </div>
+                <div>
+                  <div className="text-[11px] font-black uppercase tracking-[0.18em] text-zinc-500">
+                    Adresa
+                  </div>
+                  <div className="mt-2 space-y-1 text-sm text-zinc-700">
+                    <div>{addressSummary}</div>
+                    {address.instructions && (
+                      <div className="text-zinc-500">Poznamka: {address.instructions}</div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </InspectorAccordion>
+
+            <InspectorSection
+              eyebrow={language === 'sk' ? 'Timeline' : 'Timeline'}
+              title={language === 'sk' ? 'Casova os objednavky' : 'Order timeline'}
+              description={`${formatTimelineTime(order.createdAt)} → ${formatTimelineTime(order.updatedAt)}`}
+            >
+              {order.status === OrderStatus.CANCELED ? (
+                <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                  {language === 'sk'
+                    ? 'Objednavka bola zrusena.'
+                    : 'This order has been canceled.'}
+                </div>
+              ) : (
+                <>
+                  <div
+                    className="hidden gap-2 lg:grid"
+                    style={{ gridTemplateColumns: `repeat(${timelineEntries.length}, minmax(0, 1fr))` }}
+                  >
                     {timelineEntries.map((step, index) => {
                       const isComplete = index <= currentTimelineIndex;
                       const isCurrent = index === currentTimelineIndex;
@@ -847,33 +1464,153 @@ export function OrderCard({
                       return (
                         <div
                           key={step.key}
-                          className={`rounded-md border px-2.5 py-2 min-h-[72px] ${
+                          className={`min-h-[84px] rounded-2xl border px-3 py-3 ${
                             isCurrent
                               ? 'border-emerald-400 bg-emerald-50'
                               : isComplete
-                                ? 'border-gray-200 bg-white'
-                                : 'border-gray-200 bg-gray-50'
+                                ? 'border-zinc-200 bg-white'
+                                : 'border-zinc-200 bg-zinc-50'
                           }`}
                         >
-                          <div className="text-[12px] font-bold text-gray-900">
+                          <div className="text-[12px] font-bold text-zinc-900">
                             {step.timestamp ? formatTimelineTime(step.timestamp) : '--:--'}
                           </div>
-                          <div className={`text-[12px] font-semibold mt-0.5 ${isComplete ? 'text-gray-900' : 'text-gray-500'}`}>
+                          <div
+                            className={`mt-1 text-[12px] font-semibold ${
+                              isComplete ? 'text-zinc-900' : 'text-zinc-500'
+                            }`}
+                          >
                             {getStatusLabel(step.key)}
                           </div>
-                          {step.durationFromPrevious && (
-                            <div className="text-[11px] font-bold text-emerald-600 mt-1">
+                          {step.durationFromPrevious ? (
+                            <div className="mt-2 text-[11px] font-bold text-emerald-600">
                               {step.durationFromPrevious}
                             </div>
-                          )}
-                          {!step.durationFromPrevious && (
-                            <div className="text-[11px] text-gray-400 mt-1">--</div>
+                          ) : (
+                            <div className="mt-2 text-[11px] text-zinc-400">--</div>
                           )}
                         </div>
                       );
                     })}
                   </div>
-                ) : (
+
+                  <div className="space-y-3 lg:hidden">
+                    {timelineEntries.map((step, index) => {
+                      const isComplete = index <= currentTimelineIndex;
+                      const isCurrent = index === currentTimelineIndex;
+
+                      return (
+                        <div key={step.key} className="flex items-start gap-3">
+                          <div
+                            className={`mt-0.5 flex h-9 w-9 items-center justify-center rounded-full text-sm ${
+                              isComplete ? 'bg-emerald-500 text-white' : 'bg-zinc-200 text-zinc-500'
+                            }`}
+                          >
+                            {step.icon}
+                          </div>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2">
+                              <div
+                                className={`text-sm font-semibold ${
+                                  isComplete ? 'text-zinc-900' : 'text-zinc-500'
+                                }`}
+                              >
+                                {getStatusLabel(step.key)}
+                              </div>
+                              <div className="text-[11px] text-zinc-500">
+                                {step.timestamp ? formatTimelineTime(step.timestamp) : '--:--'}
+                              </div>
+                            </div>
+                            <div
+                              className={`text-xs ${
+                                isComplete ? 'text-zinc-600' : 'text-zinc-400'
+                              }`}
+                            >
+                              {getTimelineDescription(step.key)}
+                            </div>
+                            {step.durationFromPrevious && (
+                              <div className="mt-1 text-[11px] font-semibold text-emerald-600">
+                                {step.durationFromPrevious}
+                              </div>
+                            )}
+                            {isCurrent && (
+                              <div className="mt-1 text-[11px] font-semibold text-emerald-600">
+                                {language === 'sk' ? 'Aktualny krok' : 'Current step'}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </>
+              )}
+            </InspectorSection>
+
+            <div className="sticky bottom-0 z-10 pt-2">
+              <div className="rounded-[28px] border border-zinc-200 bg-white/95 px-4 py-4 shadow-[0_24px_48px_-36px_rgba(15,23,42,0.4)] backdrop-blur">
+                <div className="flex items-stretch gap-3">
+                  {dispatchPrimaryAction ? (
+                    <button
+                      onClick={dispatchPrimaryAction.onClick}
+                      className="flex-1 rounded-[22px] bg-orange-500 px-6 py-5 text-center text-lg font-black text-white transition hover:bg-orange-600"
+                    >
+                      <span className="inline-flex items-center justify-center gap-3">
+                        {dispatchPrimaryAction.icon && (
+                          <span className="text-xl leading-none">{dispatchPrimaryAction.icon}</span>
+                        )}
+                        <span>{dispatchPrimaryAction.label}</span>
+                      </span>
+                    </button>
+                  ) : dispatchSecondaryAction ? (
+                    <button
+                      onClick={dispatchSecondaryAction.onClick}
+                      title={dispatchSecondaryAction.title}
+                      className="flex-1 rounded-[22px] border border-red-200 bg-red-50 px-6 py-5 text-center text-base font-semibold text-red-700 transition hover:bg-red-100"
+                    >
+                      {dispatchSecondaryAction.label}
+                    </button>
+                  ) : (
+                    <div className="flex-1 rounded-[22px] border border-zinc-200 bg-zinc-50 px-6 py-5 text-center text-sm font-semibold text-zinc-500">
+                      {language === 'sk'
+                        ? 'Objednavka momentalne nema dalsi stavovy krok.'
+                        : 'This order has no next status action right now.'}
+                    </div>
+                  )}
+
+                  {dispatchPrimaryAction && dispatchSecondaryAction && (
+                    <button
+                      onClick={dispatchSecondaryAction.onClick}
+                      title={dispatchSecondaryAction.title || dispatchSecondaryAction.label}
+                      className="w-[76px] shrink-0 rounded-[22px] border border-zinc-200 bg-white text-2xl font-black text-red-600 transition hover:bg-red-50"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="mt-4 grid grid-cols-1 gap-4 border-t pt-4 text-sm md:grid-cols-2">
+            <div className="col-span-2 rounded-xl border border-gray-200 bg-gray-50 p-4">
+              <div className="mb-4 flex items-center justify-between gap-2">
+                <div className="font-semibold text-gray-900">
+                  {language === 'sk' ? 'Časová os objednávky' : 'Order timeline'}
+                </div>
+                <div className="text-xs text-gray-500">
+                  {formatTimelineTime(order.createdAt)} to {formatTimelineTime(order.updatedAt)}
+                </div>
+              </div>
+
+              {order.status === OrderStatus.CANCELED ? (
+                <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-3 text-sm text-red-700">
+                  {language === 'sk'
+                    ? 'Objednávka bola zrušená.'
+                    : 'This order has been canceled.'}
+                </div>
+              ) : (
+                <>
                   <div className="hidden lg:block relative">
                     <div className="absolute left-0 right-0 top-5 h-1 bg-gray-200 rounded-full" />
                     <div
@@ -919,178 +1656,171 @@ export function OrderCard({
                       })}
                     </div>
                   </div>
-                )}
 
-                <div className="lg:hidden space-y-3">
-                  {timelineEntries.map((step, index) => {
-                    const isComplete = index <= currentTimelineIndex;
-                    const isCurrent = index === currentTimelineIndex;
+                  <div className="space-y-3 lg:hidden">
+                    {timelineEntries.map((step, index) => {
+                      const isComplete = index <= currentTimelineIndex;
+                      const isCurrent = index === currentTimelineIndex;
 
-                    return (
-                      <div key={step.key} className="flex items-start gap-3">
-                        <div
-                          className={`h-9 w-9 mt-0.5 rounded-full flex items-center justify-center text-sm ${
-                            isComplete ? 'bg-emerald-500 text-white' : 'bg-gray-200 text-gray-500'
-                          }`}
-                        >
-                          {step.icon}
-                        </div>
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-2">
-                            <div className={`text-sm font-semibold ${isComplete ? 'text-gray-900' : 'text-gray-500'}`}>
-                              {getStatusLabel(step.key)}
-                            </div>
-                            <div className="text-[11px] text-gray-500">
-                              {step.timestamp ? formatTimelineTime(step.timestamp) : '--:--'}
-                            </div>
+                      return (
+                        <div key={step.key} className="flex items-start gap-3">
+                          <div
+                            className={`h-9 w-9 mt-0.5 rounded-full flex items-center justify-center text-sm ${
+                              isComplete ? 'bg-emerald-500 text-white' : 'bg-gray-200 text-gray-500'
+                            }`}
+                          >
+                            {step.icon}
                           </div>
-                          <div className={`text-xs ${isComplete ? 'text-gray-600' : 'text-gray-400'}`}>
-                            {getTimelineDescription(step.key)}
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2">
+                              <div className={`text-sm font-semibold ${isComplete ? 'text-gray-900' : 'text-gray-500'}`}>
+                                {getStatusLabel(step.key)}
+                              </div>
+                              <div className="text-[11px] text-gray-500">
+                                {step.timestamp ? formatTimelineTime(step.timestamp) : '--:--'}
+                              </div>
+                            </div>
+                            <div className={`text-xs ${isComplete ? 'text-gray-600' : 'text-gray-400'}`}>
+                              {getTimelineDescription(step.key)}
+                            </div>
+                            {step.durationFromPrevious && (
+                              <div className="text-[11px] text-emerald-600 font-semibold mt-1">
+                                {step.durationFromPrevious}
+                              </div>
+                            )}
+                            {isCurrent && (
+                              <div className="text-[11px] text-emerald-600 font-semibold mt-1">
+                                {language === 'sk' ? 'Aktuálny krok' : 'Current step'}
+                              </div>
+                            )}
                           </div>
-                          {step.durationFromPrevious && (
-                            <div className="text-[11px] text-emerald-600 font-semibold mt-1">
-                              {step.durationFromPrevious}
-                            </div>
-                          )}
-                          {isCurrent && (
-                            <div className="text-[11px] text-emerald-600 font-semibold mt-1">
-                              {language === 'sk' ? 'Aktuálny krok' : 'Current step'}
-                            </div>
-                          )}
                         </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </>
+                      );
+                    })}
+                  </div>
+                </>
+              )}
+            </div>
+
+            {storyousMessage && (
+              <div className={`col-span-2 mb-2 rounded border p-2 text-xs ${storyousMessageClassName}`}>
+                {storyousMessage}
+              </div>
             )}
-          </div>
-
-          {storyousMessage && (
-            <div
-              className={`col-span-2 mb-2 p-2 rounded text-xs border ${
-                storyousMessage.startsWith('✅')
-                  ? 'bg-green-50 text-green-800 border-green-200'
-                  : 'bg-red-50 text-red-800 border-red-200'
-              }`}
-            >
-              {storyousMessage}
-            </div>
-          )}
-          {woltMessage && (
-            <div className="col-span-2 mb-2 p-2 rounded text-xs bg-gray-100">
-              {woltMessage}
-            </div>
-          )}
-          {isStoryousSynced && (
-            <div className="col-span-2 mb-2 p-2 rounded text-xs bg-green-50 text-green-800">
-              ✅ Synced to Storyous (ID: {order.storyousOrderId})
-            </div>
-          )}
-          {isWoltDelivery && woltDelivery && (
-            <div className="col-span-2 mb-2 rounded-lg border border-orange-200 bg-orange-50 p-3">
-              <div className="flex flex-col gap-3">
-                <div className="min-w-0">
-                  <div className="text-sm font-semibold text-orange-900">
-                    🚚 Wolt Delivery: {woltDelivery.status}
-                    {woltDelivery.jobId && (
-                      <span className="ml-2 font-medium text-gray-600">(Job: {woltDelivery.jobId})</span>
+            {woltMessage && (
+              <div className="col-span-2 mb-2 rounded bg-gray-100 p-2 text-xs">
+                {woltMessage}
+              </div>
+            )}
+            {storyousStatusMeta && (
+              <div className={`col-span-2 mb-2 rounded p-2 text-xs ${storyousStatusMeta.detailClassName}`}>
+                {storyousStatusMeta.detailText}
+              </div>
+            )}
+            {isWoltDelivery && woltDelivery && (
+              <div className="col-span-2 mb-2 rounded-lg border border-orange-200 bg-orange-50 p-3">
+                <div className="flex flex-col gap-3">
+                  <div className="min-w-0">
+                    <div className="text-sm font-semibold text-orange-900">
+                      🚚 Wolt Delivery: {woltDelivery.status}
+                      {woltDelivery.jobId && (
+                        <span className="ml-2 font-medium text-gray-600">(Job: {woltDelivery.jobId})</span>
+                      )}
+                    </div>
+                    {woltDelivery.trackingUrl && (
+                      <a
+                        href={woltDelivery.trackingUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="mt-1 inline-block text-sm font-semibold text-orange-700 underline"
+                      >
+                        Otvoriť tracking
+                      </a>
                     )}
                   </div>
-                  {woltDelivery.trackingUrl && (
-                    <a
-                      href={woltDelivery.trackingUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="mt-1 inline-block text-sm font-semibold text-orange-700 underline"
-                    >
-                      Otvoriť tracking
-                    </a>
+                </div>
+
+                <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-700">
+                  {woltDropoffEtaRemainingMinutes != null && (
+                    <span>Doručenie zákazníkovi: ~{woltDropoffEtaRemainingMinutes} min</span>
+                  )}
+                  {displayedDeliveryFeeCents != null && (
+                    <span>Delivery fee: {formatEurPrice(displayedDeliveryFeeCents)}</span>
                   )}
                 </div>
               </div>
-
-              <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-700">
-                {woltDropoffEtaRemainingMinutes != null && (
-                  <span>Doručenie zákazníkovi: ~{woltDropoffEtaRemainingMinutes} min</span>
-                )}
-                {displayedDeliveryFeeCents != null && (
-                  <span>Delivery fee: {formatEurPrice(displayedDeliveryFeeCents)}</span>
-                )}
-              </div>
-            </div>
-          )}
-          <div>
-            <div className="font-semibold mb-2">Customer</div>
-            <div>{customer.name}</div>
-            <div>{customer.email}</div>
-            <div>{customer.phone}</div>
-          </div>
-          
-          <div>
-            <div className="font-semibold mb-2">Delivery Address</div>
-            <div>{address.street}</div>
-            <div>{address.city} {address.postalCode}</div>
-            {address.instructions && (
-              <div className="text-gray-600 mt-1">Note: {address.instructions}</div>
             )}
-          </div>
-          
-          <div className="col-span-2">
-            <div className="font-semibold mb-2">Items</div>
-            {order.items.map((item, i) => {
-              const modifierLines = getFormattedModifierLines(
-                item.modifiers,
-                true,
-                language,
-                customizationLabels,
-              );
-              // Calculate correct price (handles both old and new orders)
-              const itemTotal = calculateOrderItemPrice(item, 'PIZZA');
-              // In admin, show the database product name (internal name), not the web display name
-              const displayName = item.productName;
-              
-              return (
-                <div key={i} className="mb-4 pb-3 border-b border-gray-200 last:border-b-0">
-                  <div className="flex justify-between gap-3 text-[15px] leading-6">
-                    <span className="font-semibold text-gray-900 truncate">
-                      <span className="text-red-500 font-bold mr-1">{item.quantity}x</span>
-                      {displayName}
-                    </span>
-                    <span className="font-semibold text-gray-800 whitespace-nowrap">{formatEurPrice(itemTotal)}</span>
-                  </div>
-                  {modifierLines.length > 0 && (
-                    <div className="mt-1.5 ml-5 space-y-1">
-                      {modifierLines.map((modifier, idx) => {
-                        return (
-                          <div key={idx} className="flex justify-between gap-3 text-[14px] text-gray-700 leading-5">
+            <div>
+              <div className="mb-2 font-semibold">Customer</div>
+              <div>{customer.name}</div>
+              <div>{customer.email}</div>
+              <div>{customer.phone}</div>
+            </div>
+
+            <div>
+              <div className="mb-2 font-semibold">Delivery Address</div>
+              <div>{address.street}</div>
+              <div>{address.city} {address.postalCode}</div>
+              {address.instructions && (
+                <div className="mt-1 text-gray-600">Note: {address.instructions}</div>
+              )}
+            </div>
+
+            <div className="col-span-2">
+              <div className="mb-2 font-semibold">Items</div>
+              {order.items.map((item, i) => {
+                const modifierLines = getFormattedModifierLines(
+                  item.modifiers,
+                  true,
+                  language,
+                  customizationLabels,
+                );
+                const itemTotal = calculateOrderItemPrice(item, 'PIZZA');
+                const displayName = item.productName;
+
+                return (
+                  <div key={i} className="mb-4 border-b border-gray-200 pb-3 last:border-b-0">
+                    <div className="flex justify-between gap-3 text-[15px] leading-6">
+                      <span className="truncate font-semibold text-gray-900">
+                        <span className="mr-1 font-bold text-red-500">{item.quantity}x</span>
+                        {displayName}
+                      </span>
+                      <span className="whitespace-nowrap font-semibold text-gray-800">
+                        {formatEurPrice(itemTotal)}
+                      </span>
+                    </div>
+                    {modifierLines.length > 0 && (
+                      <div className="mt-1.5 ml-5 space-y-1">
+                        {modifierLines.map((modifier, idx) => (
+                          <div key={idx} className="flex justify-between gap-3 text-[14px] leading-5 text-gray-700">
                             <span className="truncate">
-                              <span className="text-red-500 font-semibold mr-1">1x</span>
+                              <span className="mr-1 font-semibold text-red-500">1x</span>
                               {modifier.label}
                             </span>
-                            <span className="text-gray-700 whitespace-nowrap">{formatEurPrice(modifier.priceCents)}</span>
+                            <span className="whitespace-nowrap text-gray-700">
+                              {formatEurPrice(modifier.priceCents)}
+                            </span>
                           </div>
-                        );
-                      })}
-                    </div>
-                  )}
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+
+              {displayedDeliveryFeeCents != null && (
+                <div className="flex justify-between pt-2 text-sm text-gray-600">
+                  <span>Delivery fee</span>
+                  <span>{formatEurPrice(displayedDeliveryFeeCents)}</span>
                 </div>
-              );
-            })}
-            
-            {displayedDeliveryFeeCents != null && (
-              <div className="pt-2 flex justify-between text-sm text-gray-600">
-                <span>Delivery fee</span>
-                <span>{formatEurPrice(displayedDeliveryFeeCents)}</span>
+              )}
+              <div className="mt-2 flex justify-between border-t pt-2 font-semibold">
+                <span>Total</span>
+                <span>{formatEurPrice(order.totalCents)}</span>
               </div>
-            )}
-            <div className="mt-2 pt-2 border-t flex justify-between font-semibold">
-              <span>Total</span>
-              <span>{formatEurPrice(order.totalCents)}</span>
             </div>
           </div>
-        </div>
-      )}
+        ))}
 
       {/* Wolt Confirmation Modal */}
       {showWoltModal && (

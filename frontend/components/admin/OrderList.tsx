@@ -4,12 +4,14 @@ import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { Order, OrderStatus } from '@pizza-ecosystem/shared';
 import { OrderCard } from './OrderCard';
 import { OrderFilters } from './OrderFilters';
+import { DispatchQueueItem } from './DispatchQueueItem';
 import { getTenantSlug } from '@/lib/tenant-utils';
 import { isSoundNotificationEnabled } from './SoundNotificationSettings';
 
 interface OrderListProps {
   todayOnly?: boolean;
   selectedTenant?: 'all' | string;
+  variant?: 'dashboard' | 'page';
 }
 
 type DispatchGroupKey =
@@ -30,7 +32,7 @@ const DISPATCH_GROUPS: Array<{
   defaultCollapsed: boolean;
 }> = [
   { key: 'new', label: 'Nove', defaultCollapsed: false },
-  { key: 'inProgress', label: 'Prebieha', defaultCollapsed: true },
+  { key: 'inProgress', label: 'Prebieha', defaultCollapsed: false },
   { key: 'readyForPickup', label: 'Pripravene na vyzdvihnutie', defaultCollapsed: true },
   { key: 'delivering', label: 'Dorucuje sa', defaultCollapsed: true },
   { key: 'scheduled', label: 'Naplanovane', defaultCollapsed: true },
@@ -39,9 +41,9 @@ const DISPATCH_GROUPS: Array<{
 
 const BRAND_META: Record<BrandSlug, { label: string; initials: string; color: string }> = {
   all: {
-    label: 'Vsetky',
+    label: 'Vsetky brandy',
     initials: 'ALL',
-    color: 'from-slate-500 to-slate-700',
+    color: 'from-zinc-500 to-zinc-700',
   },
   pornopizza: {
     label: 'Porno Pizza',
@@ -60,6 +62,46 @@ const BRAND_META: Record<BrandSlug, { label: string; initials: string; color: st
   },
 };
 
+const GROUP_META: Record<
+  DispatchGroupKey,
+  {
+    accentClassName: string;
+    headerClassName: string;
+    helperText: string;
+  }
+> = {
+  new: {
+    accentClassName: 'bg-emerald-600',
+    headerClassName: 'text-emerald-700',
+    helperText: 'Objednavky cakajuce na prvy zasah operatorky.',
+  },
+  inProgress: {
+    accentClassName: 'bg-amber-500',
+    headerClassName: 'text-amber-700',
+    helperText: 'Prijate objednavky vo vyrobe alebo v potvrdenom stave.',
+  },
+  readyForPickup: {
+    accentClassName: 'bg-teal-500',
+    headerClassName: 'text-teal-700',
+    helperText: 'Objednavky pripravene na dalsi presun.',
+  },
+  delivering: {
+    accentClassName: 'bg-violet-500',
+    headerClassName: 'text-violet-700',
+    helperText: 'Objednavky odovzdane na dorucenie.',
+  },
+  scheduled: {
+    accentClassName: 'bg-sky-500',
+    headerClassName: 'text-sky-700',
+    helperText: 'Buduce objednavky s neskorsim casom spracovania.',
+  },
+  recentDone: {
+    accentClassName: 'bg-zinc-500',
+    headerClassName: 'text-zinc-600',
+    helperText: 'Posledne dokoncene alebo zrusene objednavky.',
+  },
+};
+
 const isKnownTenantBrand = (value: string): value is Exclude<BrandSlug, 'all'> =>
   value === 'pornopizza' || value === 'partypizza' || value === 'pizzavnudzi';
 
@@ -70,25 +112,6 @@ const normalizeBrandSlug = (value: string): BrandSlug => {
   return 'all';
 };
 
-const GROUP_ACCENT: Record<DispatchGroupKey, string> = {
-  new: 'text-emerald-700',
-  inProgress: 'text-amber-700',
-  readyForPickup: 'text-teal-700',
-  delivering: 'text-violet-700',
-  scheduled: 'text-sky-700',
-  recentDone: 'text-gray-600',
-};
-
-const GROUP_ROW_COLOR: Record<DispatchGroupKey, string> = {
-  new: 'bg-emerald-600',
-  inProgress: 'bg-amber-500',
-  readyForPickup: 'bg-teal-500',
-  delivering: 'bg-violet-500',
-  scheduled: 'bg-sky-500',
-  recentDone: 'bg-emerald-700',
-};
-
-// Get today's date in YYYY-MM-DD format
 const getTodayDate = () => {
   const today = new Date();
   return today.toISOString().split('T')[0];
@@ -125,6 +148,45 @@ const getMinutesSinceCreated = (createdAt: Date): number => {
   const createdMs = new Date(createdAt).getTime();
   const diffMs = Date.now() - createdMs;
   return Math.max(0, Math.floor(diffMs / 60000));
+};
+
+const getQueueTimer = (
+  order: Order,
+  now: Date,
+): { label: string; tone: 'success' | 'warning' | 'danger' } => {
+  const scheduledAt = getScheduledAtFromOrder(order);
+
+  if (scheduledAt) {
+    const deltaMinutes = Math.ceil((scheduledAt.getTime() - now.getTime()) / 60000);
+
+    if (deltaMinutes < 0) {
+      return {
+        label: `-${Math.abs(deltaMinutes)}m`,
+        tone: 'danger',
+      };
+    }
+
+    if (deltaMinutes <= 10) {
+      return {
+        label: `${deltaMinutes}m`,
+        tone: 'warning',
+      };
+    }
+
+    return {
+      label: `${deltaMinutes}m`,
+      tone: 'success',
+    };
+  }
+
+  const ageMinutes = getMinutesSinceCreated(order.createdAt);
+  if (ageMinutes >= 35) {
+    return { label: `${ageMinutes}m`, tone: 'danger' };
+  }
+  if (ageMinutes >= 18) {
+    return { label: `${ageMinutes}m`, tone: 'warning' };
+  }
+  return { label: `${ageMinutes}m`, tone: 'success' };
 };
 
 const parseOptionalDate = (value: unknown): Date | null => {
@@ -173,10 +235,8 @@ const getDispatchGroupForOrder = (order: Order, now: Date): DispatchGroupKey => 
   }
 };
 
-// Funkcia na prehratie zvuku pri novej objednávke
 const playNewOrderSound = () => {
   try {
-    // Vytvor jednoduchý beep zvuk pomocou Web Audio API
     const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
     const oscillator = audioContext.createOscillator();
     const gainNode = audioContext.createGain();
@@ -197,8 +257,31 @@ const playNewOrderSound = () => {
   }
 };
 
-export function OrderList({ todayOnly = false, selectedTenant }: OrderListProps = {}) {
-  // Get current tenant as default
+const getWorkspaceCopy = (variant: NonNullable<OrderListProps['variant']>, todayOnly: boolean) => {
+  if (variant === 'dashboard') {
+    return {
+      eyebrow: 'Live queue',
+      title: todayOnly ? 'Dnes na linke' : 'Dispecersky prehlad',
+      description: todayOnly
+        ? 'Aktivne objednavky pre dnesny den v jednom operatorkom workspace.'
+        : 'Prehlad objednavok v kompaktnom dispatch rozlozeni.',
+    };
+  }
+
+  return {
+    eyebrow: 'Dispatch workspace',
+    title: todayOnly ? 'Dnesne objednavky' : 'Objednavky na linke',
+    description: todayOnly
+      ? 'Dnesne objednavky zoradene do dispatch skupin s jednym inspectorom.'
+      : 'Operatorky workspace s queue vlavo a inspectorom vpravo. Aktualizacia kazdych 5 sekund.',
+  };
+};
+
+export function OrderList({
+  todayOnly = false,
+  selectedTenant,
+  variant = 'dashboard',
+}: OrderListProps = {}) {
   const currentTenant = selectedTenant || getTenantSlug();
 
   const [orders, setOrders] = useState<Order[]>([]);
@@ -214,15 +297,13 @@ export function OrderList({ todayOnly = false, selectedTenant }: OrderListProps 
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
   const [collapsedGroups, setCollapsedGroups] = useState<Record<DispatchGroupKey, boolean>>({
     new: false,
-    inProgress: true,
+    inProgress: false,
     readyForPickup: true,
     delivering: true,
     scheduled: true,
     recentDone: false,
   });
   const isInitialLoad = useRef(true);
-
-  // Ref na uloženie predchádzajúcich order IDs pre detekciu nových objednávok
   const previousOrderIds = useRef<Set<string>>(new Set());
 
   const handleUnauthorized = useCallback((source: string) => {
@@ -236,7 +317,6 @@ export function OrderList({ todayOnly = false, selectedTenant }: OrderListProps 
     }
   }, []);
 
-  // Cache tenant ID to slug mapping
   const fetchTenantMapping = useCallback(async () => {
     const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
     if (!token) {
@@ -245,7 +325,6 @@ export function OrderList({ todayOnly = false, selectedTenant }: OrderListProps 
     }
     const headers: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {};
 
-    // Determine which tenants to fetch based on current filter
     const tenantsToFetch =
       filters.tenantSlug === 'all'
         ? ['pornopizza', 'pizzavnudzi', 'partypizza']
@@ -264,8 +343,8 @@ export function OrderList({ todayOnly = false, selectedTenant }: OrderListProps 
           handleUnauthorized(`tenant mapping ${tenantSlug} ${res.status}`);
           return;
         }
-      } catch (e) {
-        console.error(`Failed to fetch tenant ${tenantSlug}:`, e);
+      } catch (error) {
+        console.error(`Failed to fetch tenant ${tenantSlug}:`, error);
       }
     }
 
@@ -275,36 +354,29 @@ export function OrderList({ todayOnly = false, selectedTenant }: OrderListProps 
   const fetchOrders = useCallback(async () => {
     const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
 
-    // If no token, redirect to login immediately
     if (!token) {
       handleUnauthorized('missing token while fetching orders');
       return;
     }
 
     const headers: HeadersInit = { Authorization: `Bearer ${token}` };
-
-    // Save scroll position before update
     const scrollPosition = window.scrollY;
     const isInitial = isInitialLoad.current;
 
     try {
-      // Only show loading on initial load, not on auto-refresh
       if (isInitial) {
         setLoading(true);
       }
 
-      // Fetch tenant mapping if not cached
       if (Object.keys(tenantIdToSlug).length === 0) {
         await fetchTenantMapping();
       }
 
-      // Determine which tenants to fetch from based on filter
       const tenantsToFetch =
         filters.tenantSlug === 'all'
           ? ['pornopizza', 'pizzavnudzi', 'partypizza']
           : [filters.tenantSlug];
 
-      // If todayOnly, always use today's date
       const todayDate = getTodayDate();
       const startDate = todayOnly ? todayDate : filters.startDate;
       const endDate = todayOnly ? todayDate : filters.endDate;
@@ -335,23 +407,18 @@ export function OrderList({ todayOnly = false, selectedTenant }: OrderListProps 
         }
       }
 
-      // Sort by date, newest first
       allOrders.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
-      // Detekcia nových objednávok (len ak to nie je prvý load)
       if (!isInitial && previousOrderIds.current.size > 0) {
-        const currentOrderIds = new Set(allOrders.map((o) => o.id));
+        const currentOrderIds = new Set(allOrders.map((order) => order.id));
         const newOrderIds = Array.from(currentOrderIds).filter((id) => !previousOrderIds.current.has(id));
 
-        // Ak sú nové objednávky, prehraj zvuk
         if (newOrderIds.length > 0) {
-          // Filtruj len nové objednávky s PENDING statusom (nepridávať zvuk pre staré objednávky)
           const newPendingOrders = allOrders.filter(
-            (o) => newOrderIds.includes(o.id) && o.status === 'PENDING',
+            (order) => newOrderIds.includes(order.id) && order.status === OrderStatus.PENDING,
           );
 
           if (newPendingOrders.length > 0) {
-            // Prehraj zvuk len ak sú zvukové upozornenia zapnuté
             if (isSoundNotificationEnabled()) {
               playNewOrderSound();
             }
@@ -360,10 +427,9 @@ export function OrderList({ todayOnly = false, selectedTenant }: OrderListProps 
         }
       }
 
-      previousOrderIds.current = new Set(allOrders.map((o) => o.id));
+      previousOrderIds.current = new Set(allOrders.map((order) => order.id));
       setOrders(allOrders);
 
-      // Restore scroll position after update (only if not initial load)
       if (!isInitial) {
         setTimeout(() => {
           window.scrollTo({
@@ -385,8 +451,6 @@ export function OrderList({ todayOnly = false, selectedTenant }: OrderListProps 
     }
   }, [filters, tenantIdToSlug, fetchTenantMapping, todayOnly, handleUnauthorized]);
 
-  // Sync with top tenant selector only when it actually changes.
-  // This keeps brand chip clicks functional inside the dispatch panel.
   useEffect(() => {
     if (!selectedTenant) return;
     setFilters((prev) => {
@@ -397,7 +461,6 @@ export function OrderList({ todayOnly = false, selectedTenant }: OrderListProps 
     });
   }, [selectedTenant]);
 
-  // Reset initial load when filters change
   useEffect(() => {
     isInitialLoad.current = true;
     previousOrderIds.current = new Set();
@@ -406,7 +469,6 @@ export function OrderList({ todayOnly = false, selectedTenant }: OrderListProps 
   useEffect(() => {
     fetchOrders();
 
-    // Poll for updates every 5 seconds
     const interval = setInterval(fetchOrders, 5000);
     return () => clearInterval(interval);
   }, [fetchOrders]);
@@ -446,9 +508,12 @@ export function OrderList({ todayOnly = false, selectedTenant }: OrderListProps 
     return grouped;
   }, [orders]);
 
-  const expandedGroupCount = useMemo(
-    () => DISPATCH_GROUPS.filter((group) => !collapsedGroups[group.key]).length,
-    [collapsedGroups],
+  const activeOrderCount = useMemo(
+    () =>
+      orders.filter(
+        (order) => order.status !== OrderStatus.DELIVERED && order.status !== OrderStatus.CANCELED,
+      ).length,
+    [orders],
   );
 
   const brandCounts = useMemo<Record<BrandSlug, number>>(() => {
@@ -501,66 +566,85 @@ export function OrderList({ todayOnly = false, selectedTenant }: OrderListProps 
     }
   };
 
-  const setTenantFilterFromIcon = (tenantSlug: BrandSlug) => {
-    setFilters((prev) => ({ ...prev, tenantSlug }));
-  };
-
   const toggleGroup = (groupKey: DispatchGroupKey) => {
     setCollapsedGroups((prev) => ({ ...prev, [groupKey]: !prev[groupKey] }));
   };
 
+  const workspaceCopy = getWorkspaceCopy(variant, todayOnly);
+  const desktopMinHeightClass = variant === 'page' ? 'min-h-[calc(100vh-13rem)]' : 'min-h-[760px]';
+  const desktopScrollClass =
+    variant === 'page' ? 'max-h-[calc(100vh-19rem)] overflow-y-auto' : 'max-h-[680px] overflow-y-auto';
+  const renderNow = new Date();
+
   return (
-    <div className="bg-white rounded-2xl shadow-md text-gray-900 border border-gray-200 overflow-hidden">
-      <div className="p-4 lg:p-6 border-b border-gray-200 bg-white">
-        <h2 className="text-xl lg:text-2xl font-bold text-gray-900">Orders</h2>
-        {todayOnly ? (
-          <div className="mt-2 text-sm text-gray-600">
-            Showing orders from today ({new Date().toLocaleDateString('sk-SK')})
+    <section className="overflow-hidden rounded-[28px] border border-zinc-200 bg-white shadow-[0_24px_60px_-42px_rgba(15,23,42,0.35)]">
+      <div className="border-b border-zinc-200 bg-white/95 px-5 py-5 lg:px-6">
+        <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+          <div className="max-w-2xl">
+            <p className="text-[11px] font-black uppercase tracking-[0.28em] text-orange-600">
+              {workspaceCopy.eyebrow}
+            </p>
+            <h2 className="mt-2 text-2xl font-black tracking-tight text-zinc-950 lg:text-3xl">
+              {workspaceCopy.title}
+            </h2>
+            <p className="mt-2 text-sm text-zinc-500">{workspaceCopy.description}</p>
           </div>
-        ) : (
-          <div className="mt-4">
-            <OrderFilters filters={filters} onChange={setFilters} />
-          </div>
-        )}
+
+          {!todayOnly && (
+            <div className="xl:w-[520px] xl:max-w-[520px]">
+              <OrderFilters filters={filters} onChange={setFilters} />
+            </div>
+          )}
+        </div>
       </div>
 
       {loading ? (
-        <div className="p-6 text-center text-gray-600">Loading...</div>
+        <div className="p-8 text-center text-sm font-medium text-zinc-500">Nacitavam objednavky...</div>
       ) : (
         <>
-          {/* Dispatch-style desktop layout */}
-          <div className="hidden lg:grid lg:grid-cols-[370px_minmax(0,1fr)] min-h-[700px]">
-            <div className="border-r border-gray-200 bg-gray-50/70">
-              <div className="px-4 py-4 border-b border-gray-200 bg-white sticky top-0 z-10">
-                <p className="text-xs uppercase tracking-[0.2em] text-gray-500 mb-3">Brands</p>
-                <div className="flex items-center gap-2 overflow-x-auto overflow-y-visible px-1 py-1">
+          <div className={`hidden lg:grid lg:grid-cols-[392px_minmax(0,1fr)] ${desktopMinHeightClass}`}>
+            <aside className="border-r border-zinc-200 bg-zinc-50/90">
+              <div className="sticky top-0 z-10 border-b border-zinc-200 bg-white/95 px-4 py-4 backdrop-blur">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-[11px] font-black uppercase tracking-[0.22em] text-zinc-500">Fronta</p>
+                    <h3 className="mt-1 text-lg font-black tracking-tight text-zinc-950">Aktivne skupiny</h3>
+                  </div>
+                  <div className="rounded-2xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-right">
+                    <div className="text-[10px] font-black uppercase tracking-[0.18em] text-zinc-500">
+                      Aktivne
+                    </div>
+                    <div className="mt-1 text-2xl font-black leading-none text-zinc-950">{activeOrderCount}</div>
+                  </div>
+                </div>
+
+                <div className="mt-4 flex items-center gap-2 overflow-x-auto pb-1">
                   {BRAND_FILTER_SLUGS.map((slug) => {
                     const isActive = filters.tenantSlug === slug;
                     const brand = BRAND_META[slug];
                     return (
                       <button
                         key={slug}
-                        onClick={() => setTenantFilterFromIcon(slug)}
+                        onClick={() => setFilters((prev) => ({ ...prev, tenantSlug: slug }))}
                         title={brand.label}
-                        className={`relative h-11 w-11 shrink-0 rounded-full border p-[2px] transition-colors duration-150 ${
+                        className={`relative h-12 w-12 shrink-0 rounded-full border p-[2px] transition-all duration-200 ${
                           isActive
-                            ? 'border-gray-900 bg-gray-900'
-                            : 'border-gray-300 bg-white hover:border-gray-500'
+                            ? 'border-zinc-950 bg-zinc-950 shadow-[0_10px_24px_-18px_rgba(15,23,42,0.8)]'
+                            : 'border-zinc-200 bg-white hover:border-zinc-400'
                         }`}
                       >
                         <span
-                          className={`absolute inset-[2px] rounded-full bg-gradient-to-br ${brand.color} flex items-center justify-center`}
-                          aria-hidden="true"
+                          className={`absolute inset-[2px] flex items-center justify-center rounded-full bg-gradient-to-br ${brand.color}`}
                         >
-                          <span className="text-[10px] font-black tracking-wide text-white">
+                          <span className="text-[10px] font-black tracking-[0.18em] text-white">
                             {brand.initials}
                           </span>
                         </span>
                         <span
-                          className={`absolute -top-1 -right-1 inline-flex h-5 min-w-[20px] items-center justify-center rounded-full px-1 text-[10px] font-bold border ${
+                          className={`absolute -right-1 -top-1 inline-flex min-w-[20px] items-center justify-center rounded-full border px-1 text-[10px] font-black ${
                             isActive
-                              ? 'bg-gray-900 text-white border-white'
-                              : 'bg-white text-gray-700 border-gray-300'
+                              ? 'border-white bg-zinc-950 text-white'
+                              : 'border-zinc-200 bg-white text-zinc-700'
                           }`}
                         >
                           {brandCounts[slug]}
@@ -569,143 +653,125 @@ export function OrderList({ todayOnly = false, selectedTenant }: OrderListProps 
                     );
                   })}
                 </div>
-                <div className="mt-3 flex items-center justify-between text-[11px] font-semibold text-gray-500">
-                  <span>Filtre ({expandedGroupCount}/{DISPATCH_GROUPS.length})</span>
-                  <span>{orders.length} objednavok</span>
+
+                <div className="mt-4 grid grid-cols-2 gap-2">
+                  <div className="rounded-2xl border border-zinc-200 bg-zinc-50 px-3 py-2">
+                    <div className="text-[10px] font-black uppercase tracking-[0.18em] text-zinc-500">Vsetky</div>
+                    <div className="mt-1 text-xl font-black text-zinc-950">{orders.length}</div>
+                  </div>
+                  <div className="rounded-2xl border border-zinc-200 bg-zinc-50 px-3 py-2">
+                    <div className="text-[10px] font-black uppercase tracking-[0.18em] text-zinc-500">Brandy</div>
+                    <div className="mt-1 text-xl font-black text-zinc-950">
+                      {filters.tenantSlug === 'all' ? '3' : '1'}
+                    </div>
+                  </div>
                 </div>
               </div>
 
-              <div className="max-h-[620px] overflow-y-auto">
+              <div className={desktopScrollClass}>
                 {orders.length === 0 ? (
-                  <div className="p-6 text-sm text-gray-500">No orders found</div>
+                  <div className="px-5 py-8 text-sm text-zinc-500">Ziadne objednavky pre zvolene filtre.</div>
                 ) : (
-                  <div>
-                    {DISPATCH_GROUPS.map((group) => {
-                      const sectionOrders = groupedOrders[group.key];
-                      const isCollapsed = collapsedGroups[group.key];
-                      const count = sectionOrders.length;
+                  DISPATCH_GROUPS.map((group) => {
+                    const sectionOrders = groupedOrders[group.key];
+                    const isCollapsed = collapsedGroups[group.key];
+                    const groupMeta = GROUP_META[group.key];
 
-                      return (
-                        <section key={group.key} className="border-b border-gray-200 last:border-b-0">
-                          <button
-                            onClick={() => toggleGroup(group.key)}
-                            className="w-full px-3 py-2.5 bg-white text-left flex items-center justify-between hover:bg-gray-50 transition-colors"
-                          >
-                            <div className="flex items-center gap-2 min-w-0">
-                              <span
-                                className={`text-xs text-gray-500 transition-transform ${isCollapsed ? '-rotate-90' : 'rotate-0'}`}
-                              >
-                                ▼
-                              </span>
-                              <span className={`text-[12px] font-semibold uppercase tracking-wide ${GROUP_ACCENT[group.key]}`}>
-                                {group.label}
-                              </span>
+                    return (
+                      <section key={group.key} className="border-b border-zinc-200 last:border-b-0">
+                        <button
+                          onClick={() => toggleGroup(group.key)}
+                          className="w-full bg-white px-4 py-3 text-left transition-colors hover:bg-zinc-50"
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-2">
+                                <span
+                                  className={`text-xs text-zinc-500 transition-transform ${
+                                    isCollapsed ? '-rotate-90' : 'rotate-0'
+                                  }`}
+                                >
+                                  ▼
+                                </span>
+                                <span
+                                  className={`text-[12px] font-black uppercase tracking-[0.2em] ${groupMeta.headerClassName}`}
+                                >
+                                  {group.label}
+                                </span>
+                              </div>
+                              <p className="mt-1 text-[11px] text-zinc-500">{groupMeta.helperText}</p>
                             </div>
-                            <span className="text-[12px] font-semibold text-gray-500">{count}</span>
-                          </button>
+                            <span className="rounded-full bg-zinc-100 px-2.5 py-1 text-[12px] font-black text-zinc-700">
+                              {sectionOrders.length}
+                            </span>
+                          </div>
+                        </button>
 
-                          {!isCollapsed && (
-                            <div className="divide-y divide-gray-200 bg-gray-50/40">
-                              {count === 0 ? (
-                                <div className="px-4 py-2 text-xs text-gray-400">Ziadne objednavky</div>
-                              ) : (
-                                sectionOrders.map((order) => {
-                                  const isSelected = order.id === selectedOrderId;
-                                  const tenantSlugForOrder = normalizeBrandSlug(
-                                    tenantIdToSlug[order.tenantId] || filters.tenantSlug,
-                                  );
-                                  const brand = BRAND_META[tenantSlugForOrder];
-                                  const ageMinutes = getMinutesSinceCreated(order.createdAt);
-                                  const isFinished = order.status === OrderStatus.DELIVERED;
-                                  const isCanceled = order.status === OrderStatus.CANCELED;
-                                  const headlineCode = getListHeadlineCode(order);
-                                  const shortCustomer = getCustomerShortName(order.customer?.name);
+                        {!isCollapsed && (
+                          <div className="divide-y divide-zinc-200 bg-zinc-50/60">
+                            {sectionOrders.length === 0 ? (
+                              <div className="px-4 py-3 text-xs text-zinc-400">Ziadne objednavky</div>
+                            ) : (
+                              sectionOrders.map((order) => {
+                                const isSelected = order.id === selectedOrderId;
+                                const tenantSlugForOrder = normalizeBrandSlug(
+                                  tenantIdToSlug[order.tenantId] || filters.tenantSlug,
+                                );
+                                const brand = BRAND_META[tenantSlugForOrder];
+                                const queueTimer = getQueueTimer(order, renderNow);
+                                const isFinished = order.status === OrderStatus.DELIVERED;
+                                const isCanceled = order.status === OrderStatus.CANCELED;
+                                const headlineCode = getListHeadlineCode(order);
+                                const shortCustomer = getCustomerShortName(order.customer?.name);
 
-                                  return (
-                                    <button
-                                      key={order.id}
-                                      onClick={() => setSelectedOrderId(order.id)}
-                                      className={`w-full text-left transition-colors ${
-                                        isSelected ? 'bg-blue-50/70' : 'bg-transparent hover:bg-white'
-                                      }`}
-                                    >
-                                      <div className="flex items-stretch min-h-[72px]">
-                                        <div className={`w-10 flex items-center justify-center text-white ${GROUP_ROW_COLOR[group.key]}`}>
-                                          <span className="text-[11px]">◉</span>
-                                        </div>
-                                        <div className="flex-1 min-w-0 px-3 py-2.5 flex items-center justify-between gap-3">
-                                          <div className="min-w-0">
-                                            <p className="font-bold text-[19px] text-gray-900 leading-tight truncate">
-                                              {headlineCode} - {brand.label}
-                                            </p>
-                                            <p className="mt-1 text-[13px] text-gray-600 truncate">
-                                              {getOrderNumber(order)} - €{(order.totalCents / 100).toFixed(2)}, {shortCustomer}
-                                            </p>
-                                          </div>
-
-                                          <div className="w-[68px] shrink-0 flex flex-col items-center justify-center gap-1">
-                                            {isFinished && (
-                                              <>
-                                                <span className="inline-flex h-8 w-8 items-center justify-center rounded-full border-2 border-emerald-600 text-emerald-600 text-sm font-black bg-white">
-                                                  ✓
-                                                </span>
-                                                <span className="text-[9px] uppercase tracking-wide font-black text-emerald-600 leading-none text-center">
-                                                  DOKONCENE
-                                                </span>
-                                              </>
-                                            )}
-                                            {isCanceled && (
-                                              <>
-                                                <span className="inline-flex h-8 w-8 items-center justify-center rounded-full border-2 border-rose-600 text-rose-600 text-sm font-black bg-white">
-                                                  ✕
-                                                </span>
-                                                <span className="text-[9px] uppercase tracking-wide font-black text-rose-600 leading-none text-center">
-                                                  ZRUSENE
-                                                </span>
-                                              </>
-                                            )}
-                                            {!isFinished && !isCanceled && (
-                                              <span className="inline-flex min-w-[38px] h-9 px-1 items-center justify-center rounded-full border-2 border-emerald-600 text-[11px] font-bold text-emerald-700 bg-white">
-                                                {ageMinutes}m
-                                              </span>
-                                            )}
-                                          </div>
-                                        </div>
-                                      </div>
-                                    </button>
-                                  );
-                                })
-                              )}
-                            </div>
-                          )}
-                        </section>
-                      );
-                    })}
-                  </div>
+                                return (
+                                  <DispatchQueueItem
+                                    key={order.id}
+                                    accentClassName={groupMeta.accentClassName}
+                                    brandInitials={brand.initials}
+                                    createdLabel={`${formatOrderTime(order.createdAt)} • ${order.items.length} pol.`}
+                                    headline={`${headlineCode} — ${brand.label}`}
+                                    isCanceled={isCanceled}
+                                    isFinished={isFinished}
+                                    isSelected={isSelected}
+                                    metaLine={`${getOrderNumber(order)} • €${(order.totalCents / 100).toFixed(2)} • ${shortCustomer}`}
+                                    onSelect={() => setSelectedOrderId(order.id)}
+                                    timerLabel={queueTimer.label}
+                                    timerTone={queueTimer.tone}
+                                  />
+                                );
+                              })
+                            )}
+                          </div>
+                        )}
+                      </section>
+                    );
+                  })
                 )}
               </div>
-            </div>
+            </aside>
 
-            <div className="bg-white p-4 lg:p-6 overflow-y-auto">
+            <div className="min-w-0 bg-[#f5f4ef] p-5 lg:p-6">
               {selectedOrder ? (
-                <OrderCard
-                  order={selectedOrder}
-                  onStatusUpdate={handleStatusUpdate}
-                  onOrderRefresh={fetchOrders}
-                  isExpanded={true}
-                  showToggle={false}
-                  tenantSlug={tenantIdToSlug[selectedOrder.tenantId]}
-                />
+                <div className="mx-auto h-full max-w-[1180px]">
+                  <OrderCard
+                    order={selectedOrder}
+                    onStatusUpdate={handleStatusUpdate}
+                    onOrderRefresh={fetchOrders}
+                    isExpanded={true}
+                    showToggle={false}
+                    tenantSlug={tenantIdToSlug[selectedOrder.tenantId]}
+                  />
+                </div>
               ) : (
-                <div className="h-full min-h-[420px] flex items-center justify-center text-gray-500">
-                  Select order from the left list
+                <div className="flex h-full min-h-[460px] items-center justify-center rounded-[28px] border border-dashed border-zinc-300 bg-white text-sm font-medium text-zinc-500">
+                  Vyber objednavku z lavej fronty.
                 </div>
               )}
             </div>
           </div>
 
-          {/* Existing mobile/tablet cards */}
-          <div className="lg:hidden divide-y divide-gray-200">
+          <div className="divide-y divide-zinc-200 lg:hidden">
             {orders.map((order) => (
               <OrderCard
                 key={order.id}
@@ -729,13 +795,11 @@ export function OrderList({ todayOnly = false, selectedTenant }: OrderListProps 
             ))}
 
             {orders.length === 0 && (
-              <div className="p-6 text-center text-gray-500">
-                No orders found
-              </div>
+              <div className="p-6 text-center text-sm text-zinc-500">Ziadne objednavky.</div>
             )}
           </div>
         </>
       )}
-    </div>
+    </section>
   );
 }

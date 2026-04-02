@@ -31,7 +31,7 @@ export function OrderFilters({ filters, onChange }: OrderFiltersProps) {
     return statusMap[status] || status;
   };
   return (
-    <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 mt-4">
+    <div className="flex flex-col gap-2 sm:flex-row sm:gap-4">
       <select
         value={filters.tenantSlug}
         onChange={e => onChange({ ...filters, tenantSlug: e.target.value })}
@@ -75,7 +75,6 @@ export function OrderFilters({ filters, onChange }: OrderFiltersProps) {
     </div>
   );
 }
-
 
 
 

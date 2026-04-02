@@ -2,6 +2,41 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Order, OrderStatus } from '@pizza-ecosystem/shared';
 import { SettingsService } from '../settings/settings.service';
 
+export interface StoryousReceiptPreviewItem {
+  quantity: number;
+  name: string;
+  modifierLines: string[];
+}
+
+export interface StoryousReceiptPreview {
+  printedTime: string;
+  printedDate: string;
+  title: string | null;
+  orderReference: string;
+  website: string;
+  noteLines: string[];
+  customerName: string;
+  customerDetailLines: string[];
+  items: StoryousReceiptPreviewItem[];
+}
+
+export type StoryousDeliveryOrderState =
+  | 'NEW'
+  | 'SCHEDULING_DELIVERY'
+  | 'CONFIRMED'
+  | 'DECLINED'
+  | 'DISPATCHED'
+  | 'VERIFICATION_FAILED';
+
+export interface StoryousCreateOrderResult {
+  id?: string;
+  storyousState?: StoryousDeliveryOrderState | null;
+  autoConfirmRequested: boolean;
+  requiresManualAcceptance: boolean;
+  verificationFailed: boolean;
+  raw: Record<string, any>;
+}
+
 @Injectable()
 export class StoryousService {
   private readonly logger = new Logger(StoryousService.name);
@@ -86,6 +121,120 @@ export class StoryousService {
     return order.orderNumber ? `#${order.orderNumber}` : `#${order.id.slice(-6)}`;
   }
 
+  private getOrderSourceWebsite(order: Order): string {
+    const tenant = (order as any)?.tenant as Record<string, any> | undefined;
+    const rawDomain = String(tenant?.domain || '').trim();
+    if (rawDomain) {
+      return rawDomain.replace(/^https?:\/\//i, '').replace(/\/.*$/, '');
+    }
+
+    const rawSource = String((order as any)?.source || '').trim();
+    if (rawSource) {
+      return rawSource.replace(/^https?:\/\//i, '').replace(/\/.*$/, '');
+    }
+
+    const rawSlug = String(tenant?.slug || tenant?.subdomain || '').trim();
+    if (rawSlug) {
+      return rawSlug;
+    }
+
+    return 'unknown';
+  }
+
+  private normalizeStoryousState(value: unknown): StoryousDeliveryOrderState | null {
+    const normalized = String(value || '').trim().toUpperCase();
+    if (
+      normalized === 'NEW' ||
+      normalized === 'SCHEDULING_DELIVERY' ||
+      normalized === 'CONFIRMED' ||
+      normalized === 'DECLINED' ||
+      normalized === 'DISPATCHED' ||
+      normalized === 'VERIFICATION_FAILED'
+    ) {
+      return normalized as StoryousDeliveryOrderState;
+    }
+
+    return null;
+  }
+
+  private isAcceptedStoryousState(state: StoryousDeliveryOrderState | null | undefined): boolean {
+    return state === 'CONFIRMED' || state === 'SCHEDULING_DELIVERY' || state === 'DISPATCHED';
+  }
+
+  private async sleep(ms: number): Promise<void> {
+    await new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  private async getDeliveryOrderStatus(
+    token: string,
+    merchantPlaceId: string,
+    orderId: string,
+  ): Promise<{ orderId?: string; state: StoryousDeliveryOrderState | null; raw: Record<string, any> }> {
+    const response = await fetch(
+      `${this.apiBaseUrl}/delivery/orders/${encodeURIComponent(merchantPlaceId)}/${encodeURIComponent(orderId)}`,
+      {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      },
+    );
+
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`Storyous order verification error: ${response.status} - ${error}`);
+    }
+
+    const result = await response.json();
+    return {
+      orderId: result?.orderId || result?.id || undefined,
+      state: this.normalizeStoryousState(result?.state),
+      raw: result as Record<string, any>,
+    };
+  }
+
+  private async verifyDeliveryOrderState(
+    token: string,
+    merchantPlaceId: string,
+    orderId: string,
+    initialState: StoryousDeliveryOrderState | null,
+    autoConfirmRequested: boolean,
+  ): Promise<StoryousDeliveryOrderState> {
+    let currentState = initialState;
+
+    if (this.isAcceptedStoryousState(currentState) || currentState === 'DECLINED') {
+      return currentState;
+    }
+
+    const attempts = autoConfirmRequested ? 3 : 1;
+    const retryDelaysMs = [750, 1500];
+
+    for (let attempt = 0; attempt < attempts; attempt += 1) {
+      if (attempt > 0) {
+        await this.sleep(retryDelaysMs[Math.min(attempt - 1, retryDelaysMs.length - 1)]);
+      }
+
+      try {
+        const statusResult = await this.getDeliveryOrderStatus(token, merchantPlaceId, orderId);
+        currentState = statusResult.state;
+
+        if (this.isAcceptedStoryousState(currentState) || currentState === 'DECLINED') {
+          return currentState;
+        }
+      } catch (error: any) {
+        this.logger.error('[Storyous] Failed to verify Storyous order state', {
+          orderId,
+          merchantPlaceId,
+          error: error?.message || String(error),
+        });
+        return 'VERIFICATION_FAILED';
+      }
+    }
+
+    return currentState || 'VERIFICATION_FAILED';
+  }
+
   private computeRequestedDeliveryAt(order: Order, defaultLeadMinutes: number): string {
     const now = new Date();
     const tenantTheme = (order as any)?.tenant?.theme as Record<string, any> | undefined;
@@ -107,13 +256,58 @@ export class StoryousService {
     return deliveryAt.toISOString();
   }
 
-  async createOrder(order: Order, merchantId: string, placeId: string): Promise<any> {
-    const config = await this.getConfig();
-    if (!config.enabled) {
-      this.logger.debug('Storyous integration disabled, skipping');
-      return null;
+  private formatPreviewTime(value: Date | string): string {
+    const parsed = value instanceof Date ? value : new Date(value);
+    return parsed.toLocaleTimeString('sk-SK', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    });
+  }
+
+  private formatPreviewDate(value: Date | string): string {
+    const parsed = value instanceof Date ? value : new Date(value);
+    return parsed.toLocaleDateString('sk-SK');
+  }
+
+  private getPaymentReceiptLabel(order: Order): string {
+    const paymentStatus = String((order as any)?.paymentStatus || '').toLowerCase();
+    return paymentStatus === 'pending' ? 'pri prevzatí' : 'platené vopred';
+  }
+
+  private buildCustomerReceiptLines(order: Order, requestedDeliveryAt: string): string[] {
+    const customer = (order.customer || {}) as Record<string, any>;
+    const address = (order.address || {}) as Record<string, any>;
+    const lines: string[] = [];
+
+    if (customer?.name) {
+      lines.push(String(customer.name));
     }
 
+    const streetParts = [address?.street, address?.houseNumber].filter(Boolean);
+    if (streetParts.length > 0) {
+      lines.push(streetParts.join(' '));
+    }
+
+    const cityParts = [address?.city, address?.postalCode].filter(Boolean);
+    if (cityParts.length > 0) {
+      lines.push(cityParts.join(', '));
+    }
+
+    if (customer?.phone) {
+      lines.push(String(customer.phone));
+    }
+
+    lines.push(`Spôsob platby: ${this.getPaymentReceiptLabel(order)}`);
+    lines.push(`Požadované vyzdvihnutie kuriérom: v ${this.formatPreviewTime(requestedDeliveryAt)}`);
+
+    return lines;
+  }
+
+  private async buildStoryousOrderData(order: Order): Promise<{
+    orderData: any;
+    preview: StoryousReceiptPreview;
+  }> {
     const customer = order.customer as any;
     const address = order.address as any;
 
@@ -128,8 +322,9 @@ export class StoryousService {
     const settings = await this.settingsService.getStoryousSettings();
     const defaultLeadMinutes = settings?.defaultDeliveryLeadMinutes ?? 45;
     const requestedDeliveryAt = this.computeRequestedDeliveryAt(order, defaultLeadMinutes);
+    const requestedPickupTime = requestedDeliveryAt;
     const orderReference = this.getOrderReference(order);
-
+    const orderSourceWebsite = this.getOrderSourceWebsite(order);
     const isAlreadyPaid = String((order as any).paymentStatus || '').toLowerCase() !== 'pending';
 
     const items = order.items.map((item: any) => {
@@ -154,11 +349,17 @@ export class StoryousService {
         : [];
 
       if (resolvedModifierLines.length > 0 && (settings?.receiptIncludeModifierLines ?? true)) {
-        itemData.note = resolvedModifierLines.map((line: string) => `+${line}`).join('\n');
+        const normalizedModifierLines = resolvedModifierLines
+          .map((line: string) => line.replace(/^["']+|["']+$/g, '').trim())
+          .filter((line: string) => line.length > 0);
+
+        itemData.note = normalizedModifierLines.map((line: string) => `+${line}`).join('\n');
       }
 
       return itemData;
     });
+
+    const orderNote = `${orderReference}\nWeb: ${orderSourceWebsite}`;
 
     const orderData: any = {
       items,
@@ -180,26 +381,84 @@ export class StoryousService {
       tax: order.taxCents / 100,
       delivery_fee: order.deliveryFeeCents / 100,
       deliveryFeeWithVat: order.deliveryFeeCents / 100,
+      ...(settings?.autoAcceptPrintMode ? { autoConfirm: true } : {}),
       externalId: (settings?.receiptIncludeOrderNumber ?? true) ? orderReference : order.id,
       external_id: (settings?.receiptIncludeOrderNumber ?? true) ? orderReference : order.id,
       reference: orderReference,
       status: this.mapOrderStatus(order.status),
       deliveryType: 'delivery',
-      timing: 'scheduled',
+      timing: {
+        asSoonAsPossible: false,
+        requestedPickupTime,
+        requestedDeliveryTime: requestedDeliveryAt,
+        at: requestedDeliveryAt,
+      },
+      requestedPickupTime,
+      requestedDeliveryTime: requestedDeliveryAt,
       requestedDeliveryAt,
       deliveryAt: requestedDeliveryAt,
       scheduledAt: requestedDeliveryAt,
       alreadyPaid: isAlreadyPaid,
       timezone: 'Europe/Bratislava',
-      note: `${orderReference} | ${customer?.name || 'Customer'} | ${address.street}, ${address.city}`,
+      note: orderNote,
     };
+
+    const now = new Date();
+    const preview: StoryousReceiptPreview = {
+      printedTime: this.formatPreviewTime(now),
+      printedDate: this.formatPreviewDate(now),
+      title: order.status === OrderStatus.CANCELED ? 'STORNO' : null,
+      orderReference,
+      website: orderSourceWebsite,
+      noteLines: orderNote.split('\n').filter(Boolean),
+      customerName: String(customer?.name || ''),
+      customerDetailLines: this.buildCustomerReceiptLines(order, requestedDeliveryAt),
+      items: items.map((item: any) => ({
+        quantity: Number(item.quantity) || 1,
+        name: String(item.name || ''),
+        modifierLines: typeof item.note === 'string'
+          ? item.note.split('\n').filter((line: string) => line.trim().length > 0)
+          : [],
+      })),
+    };
+
+    return {
+      orderData,
+      preview,
+    };
+  }
+
+  async getReceiptPreview(order: Order): Promise<StoryousReceiptPreview> {
+    const { preview } = await this.buildStoryousOrderData(order);
+    return preview;
+  }
+
+  async createOrder(order: Order, merchantId: string, placeId: string): Promise<StoryousCreateOrderResult | null> {
+    const config = await this.getConfig();
+    if (!config.enabled) {
+      this.logger.debug('Storyous integration disabled, skipping');
+      return null;
+    }
+
+    const readiness = await this.settingsService.getStoryousAutoPrintReadiness();
+    if (!readiness.ready || readiness.warnings.length > 0) {
+      this.logger.warn('[Storyous] Auto-confirm readiness is not fully green', {
+        orderId: order.id,
+        ready: readiness.ready,
+        blockers: readiness.blockers,
+        warnings: readiness.warnings,
+      });
+    }
+    const { orderData } = await this.buildStoryousOrderData(order);
 
     this.logger.log('[Storyous] Sending order', {
       orderId: order.id,
       tenantId: (order as any).tenantId,
-      orderReference,
-      itemsCount: items.length,
-      requestedDeliveryAt,
+      orderReference: this.getOrderReference(order),
+      itemsCount: orderData.items.length,
+      requestedDeliveryAt: orderData.requestedDeliveryAt,
+      requestedPickupTime: orderData.requestedPickupTime,
+      orderSourceWebsite: this.getOrderSourceWebsite(order),
       deliveryType: orderData.deliveryType,
       timing: orderData.timing,
     });
@@ -232,9 +491,52 @@ export class StoryousService {
       ...result,
       id: result?.id || result?.orderId || undefined,
     };
+    const autoConfirmRequested = Boolean(orderData.autoConfirm);
+    let storyousState = this.normalizeStoryousState(normalizedResult?.state);
 
-    this.logger.log(`✅ Order ${order.id} sent to Storyous: ${normalizedResult.id || 'success'}`);
-    return normalizedResult;
+    if (normalizedResult.id) {
+      storyousState = await this.verifyDeliveryOrderState(
+        token,
+        merchantPlaceId,
+        normalizedResult.id,
+        storyousState,
+        autoConfirmRequested,
+      );
+    }
+
+    const createResult: StoryousCreateOrderResult = {
+      id: normalizedResult.id,
+      storyousState,
+      autoConfirmRequested,
+      requiresManualAcceptance: storyousState === 'NEW',
+      verificationFailed: storyousState === 'VERIFICATION_FAILED',
+      raw: normalizedResult,
+    };
+
+    if (this.isAcceptedStoryousState(storyousState)) {
+      this.logger.log(`✅ Order ${order.id} sent to Storyous and confirmed: ${normalizedResult.id || 'success'}`);
+    } else if (storyousState === 'NEW') {
+      this.logger.warn('[Storyous] Order created but still requires manual acceptance', {
+        orderId: order.id,
+        storyousOrderId: normalizedResult.id,
+        autoConfirmRequested,
+      });
+    } else if (storyousState === 'DECLINED') {
+      this.logger.error('[Storyous] Order was declined by Storyous during verification', {
+        orderId: order.id,
+        storyousOrderId: normalizedResult.id,
+      });
+    } else if (storyousState === 'VERIFICATION_FAILED') {
+      this.logger.error('[Storyous] Order created but confirmation could not be verified', {
+        orderId: order.id,
+        storyousOrderId: normalizedResult.id,
+        autoConfirmRequested,
+      });
+    } else {
+      this.logger.log(`✅ Order ${order.id} sent to Storyous: ${normalizedResult.id || 'success'}`);
+    }
+
+    return createResult;
   }
 
   async updateOrderStatus(storyousOrderId: string, status: OrderStatus): Promise<void> {

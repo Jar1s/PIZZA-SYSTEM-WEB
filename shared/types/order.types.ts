@@ -41,6 +41,7 @@ export interface Order {
   
   // External integrations
   storyousOrderId?: string | null;
+  storyousOrderState?: string | null;
   
   // Items
   items: OrderItem[];

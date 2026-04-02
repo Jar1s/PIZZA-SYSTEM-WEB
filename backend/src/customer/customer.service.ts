@@ -6,6 +6,47 @@ import { Order } from '@pizza-ecosystem/shared';
 export class CustomerService {
   constructor(private prisma: PrismaService) {}
 
+  private normalizeCoordinates(
+    coordinates?: { lat: number; lng: number } | null,
+  ): { lat: number; lng: number } | null {
+    if (coordinates?.lat == null || coordinates?.lng == null) {
+      return null;
+    }
+
+    const lat = Number(coordinates.lat);
+    const lng = Number(coordinates.lng);
+
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+      return null;
+    }
+
+    return { lat, lng };
+  }
+
+  private mapAddressResponse(address: any) {
+    const latitude = Number(address?.latitude);
+    const longitude = Number(address?.longitude);
+    const hasCoordinates = Number.isFinite(latitude) && Number.isFinite(longitude);
+
+    return {
+      id: address.id,
+      street: address.street,
+      description: address.description,
+      city: address.city,
+      postalCode: address.postalCode,
+      country: address.country,
+      isPrimary: address.isPrimary,
+      coordinates: hasCoordinates
+        ? {
+            lat: latitude,
+            lng: longitude,
+          }
+        : undefined,
+      createdAt: address.createdAt.toISOString(),
+      updatedAt: address.updatedAt.toISOString(),
+    };
+  }
+
   /**
    * Get customer orders by user and tenant
    */
@@ -264,17 +305,7 @@ export class CustomerService {
       console.log('[CustomerService] getCustomerAddresses - Found addresses:', addresses.length);
 
       return {
-        addresses: addresses.map((addr) => ({
-          id: addr.id,
-          street: addr.street,
-          description: addr.description,
-          city: addr.city,
-          postalCode: addr.postalCode,
-          country: addr.country,
-          isPrimary: addr.isPrimary,
-          createdAt: addr.createdAt.toISOString(),
-          updatedAt: addr.updatedAt.toISOString(),
-        })),
+        addresses: addresses.map((addr) => this.mapAddressResponse(addr)),
       };
     } catch (error) {
       console.error('[CustomerService] getCustomerAddresses - Error:', error);
@@ -299,6 +330,10 @@ export class CustomerService {
     city?: string;
     postalCode?: string;
     country?: string;
+    coordinates?: {
+      lat: number;
+      lng: number;
+    } | null;
     isPrimary?: boolean;
   }) {
     try {
@@ -338,6 +373,8 @@ export class CustomerService {
         });
       }
 
+      const coordinates = this.normalizeCoordinates(data.coordinates);
+
       const address = await this.prisma.address.create({
         data: {
           userId,
@@ -346,21 +383,13 @@ export class CustomerService {
           city: data.city.trim(),
           postalCode: data.postalCode.trim(),
           country: data.country?.trim() || 'SK',
+          latitude: coordinates?.lat ?? null,
+          longitude: coordinates?.lng ?? null,
           isPrimary: data.isPrimary || false,
-        },
+        } as any,
       });
 
-      return {
-        id: address.id,
-        street: address.street,
-        description: address.description,
-        city: address.city,
-        postalCode: address.postalCode,
-        country: address.country,
-        isPrimary: address.isPrimary,
-        createdAt: address.createdAt.toISOString(),
-        updatedAt: address.updatedAt.toISOString(),
-      };
+      return this.mapAddressResponse(address);
     } catch (error: any) {
       console.error('[CustomerService] createCustomerAddress - Error:', error);
       console.error('[CustomerService] createCustomerAddress - Error details:', {
@@ -402,6 +431,10 @@ export class CustomerService {
     city?: string;
     postalCode?: string;
     country?: string;
+    coordinates?: {
+      lat: number;
+      lng: number;
+    } | null;
     isPrimary?: boolean;
   }) {
     // Verify address belongs to user
@@ -421,29 +454,45 @@ export class CustomerService {
       });
     }
 
+    const hasCoordinatesField = Object.prototype.hasOwnProperty.call(data, 'coordinates');
+    const coordinates = this.normalizeCoordinates(data.coordinates);
+    const nextStreet = data.street?.trim();
+    const nextCity = data.city?.trim();
+    const nextPostalCode = data.postalCode?.trim();
+    const nextCountry = data.country?.trim();
+    const shouldResetCoordinates =
+      !hasCoordinatesField &&
+      (
+        (nextStreet !== undefined && nextStreet !== address.street) ||
+        (nextCity !== undefined && nextCity !== address.city) ||
+        (nextPostalCode !== undefined && nextPostalCode !== address.postalCode) ||
+        (nextCountry !== undefined && nextCountry !== address.country)
+      );
+
     const updated = await this.prisma.address.update({
       where: { id: addressId },
       data: {
-        ...(data.street && { street: data.street }),
+        ...(nextStreet && { street: nextStreet }),
         ...(data.description !== undefined && { description: data.description }),
-        ...(data.city && { city: data.city }),
-        ...(data.postalCode && { postalCode: data.postalCode }),
-        ...(data.country && { country: data.country }),
+        ...(nextCity && { city: nextCity }),
+        ...(nextPostalCode && { postalCode: nextPostalCode }),
+        ...(nextCountry && { country: nextCountry }),
+        ...(hasCoordinatesField
+          ? {
+              latitude: coordinates?.lat ?? null,
+              longitude: coordinates?.lng ?? null,
+            }
+          : shouldResetCoordinates
+            ? {
+                latitude: null,
+                longitude: null,
+              }
+            : {}),
         ...(data.isPrimary !== undefined && { isPrimary: data.isPrimary }),
-      },
+      } as any,
     });
 
-    return {
-      id: updated.id,
-      street: updated.street,
-      description: updated.description,
-      city: updated.city,
-      postalCode: updated.postalCode,
-      country: updated.country,
-      isPrimary: updated.isPrimary,
-      createdAt: updated.createdAt.toISOString(),
-      updatedAt: updated.updatedAt.toISOString(),
-    };
+    return this.mapAddressResponse(updated);
   }
 
   /**
@@ -465,4 +514,3 @@ export class CustomerService {
     return { message: 'Address deleted' };
   }
 }
-

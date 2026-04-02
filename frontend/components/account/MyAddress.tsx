@@ -5,6 +5,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { useCustomerAuth } from '@/contexts/CustomerAuthContext';
 import AddressAutocomplete from './AddressAutocomplete';
 import { getTenantSlug } from '@/lib/tenant-utils';
+import { resolveAddressCoordinates } from '@/lib/geocoding';
 
 interface Address {
   id: string;
@@ -14,6 +15,10 @@ interface Address {
   postalCode: string;
   country: string;
   isPrimary: boolean;
+  coordinates?: {
+    lat: number;
+    lng: number;
+  };
 }
 
 interface MyAddressProps {
@@ -35,6 +40,7 @@ export default function MyAddress({ tenant, isDark = false }: MyAddressProps) {
     postalCode: '',
     country: 'SK',
     isPrimary: false,
+    coordinates: null as { lat: number; lng: number } | null,
   });
 
   const fetchAddresses = useCallback(async () => {
@@ -84,17 +90,29 @@ export default function MyAddress({ tenant, isDark = false }: MyAddressProps) {
 
   const handleAddressSelect = (address: string, details?: any) => {
     if (details) {
+      const coords = details.geometry?.location
+        ? {
+            lat: typeof details.geometry.location.lat === 'function'
+              ? details.geometry.location.lat()
+              : details.geometry.location.lat,
+            lng: typeof details.geometry.location.lng === 'function'
+              ? details.geometry.location.lng()
+              : details.geometry.location.lng,
+          }
+        : null;
       setFormData({
         ...formData,
         street: details.street || address,
         city: details.city || '',
         postalCode: details.postalCode || '',
         country: details.country || 'SK',
+        coordinates: coords,
       });
     } else {
       setFormData({
         ...formData,
         street: address,
+        coordinates: null,
       });
     }
   };
@@ -120,6 +138,14 @@ export default function MyAddress({ tenant, isDark = false }: MyAddressProps) {
         : `${API_URL}/api/customer/account/addresses`;
       
       const method = addressId ? 'PATCH' : 'POST';
+      const coordinates =
+        formData.coordinates ||
+        await resolveAddressCoordinates(
+          formData.street,
+          formData.city,
+          formData.postalCode,
+          formData.country,
+        );
 
       const res = await fetch(url, {
         method,
@@ -128,7 +154,10 @@ export default function MyAddress({ tenant, isDark = false }: MyAddressProps) {
           'Content-Type': 'application/json',
           'x-tenant': tenantSlug,
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          ...formData,
+          coordinates: coordinates || undefined,
+        }),
       });
 
       if (res.ok) {
@@ -142,6 +171,7 @@ export default function MyAddress({ tenant, isDark = false }: MyAddressProps) {
           postalCode: '',
           country: 'SK',
           isPrimary: false,
+          coordinates: null,
         });
       } else {
         let errorMessage = 'Nepodarilo sa uložiť adresu';
@@ -207,6 +237,7 @@ export default function MyAddress({ tenant, isDark = false }: MyAddressProps) {
       postalCode: address.postalCode,
       country: address.country,
       isPrimary: address.isPrimary,
+      coordinates: address.coordinates || null,
     });
     setShowAddForm(false);
   };
@@ -221,6 +252,7 @@ export default function MyAddress({ tenant, isDark = false }: MyAddressProps) {
       postalCode: '',
       country: 'SK',
       isPrimary: false,
+      coordinates: null,
     });
   };
 
@@ -301,7 +333,7 @@ export default function MyAddress({ tenant, isDark = false }: MyAddressProps) {
                 <input
                   type="text"
                   value={formData.city}
-                  onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                  onChange={(e) => setFormData({ ...formData, city: e.target.value, coordinates: null })}
                   className={inputClass}
                 />
               </div>
@@ -313,7 +345,7 @@ export default function MyAddress({ tenant, isDark = false }: MyAddressProps) {
                 <input
                   type="text"
                   value={formData.postalCode}
-                  onChange={(e) => setFormData({ ...formData, postalCode: e.target.value })}
+                  onChange={(e) => setFormData({ ...formData, postalCode: e.target.value, coordinates: null })}
                   className={inputClass}
                 />
               </div>

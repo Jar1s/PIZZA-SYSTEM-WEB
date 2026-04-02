@@ -12,7 +12,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { calculateModifierPrice } from '@/lib/calculate-modifier-price';
 import { validateReturnUrl } from '@/lib/validate-return-url';
 import { getTenant } from '@/lib/api';
-import { geocodeAddress, validateBratislavaAddressSimple } from '@/lib/geocoding';
+import { geocodeAddress, resolveAddressCoordinates, validateBratislavaAddressSimple } from '@/lib/geocoding';
 import { isDarkTheme, getBackgroundClass, getButtonGradientClass, getButtonStyle, withTenantThemeDefaults, getTenantSlug } from '@/lib/tenant-utils';
 import { isCurrentlyOpen } from '@/lib/opening-hours';
 import { getProductDisplayName } from '@/lib/product-translations';
@@ -26,6 +26,10 @@ interface Address {
   postalCode: string;
   country: string;
   isPrimary: boolean;
+  coordinates?: {
+    lat: number;
+    lng: number;
+  };
 }
 
 export default function CheckoutPage() {
@@ -115,6 +119,7 @@ export default function CheckoutPage() {
   const [savingPhone, setSavingPhone] = useState(false);
   const [addressFormError, setAddressFormError] = useState<string | null>(null);
   const [phoneFormError, setPhoneFormError] = useState<string | null>(null);
+  const addressCoordinateRequestsRef = useRef(new Map<string, Promise<Address>>());
 
   // Validate phone number function (must be declared before useMemo hooks)
   const validatePhone = (phone: string, prefix: string): { isValid: boolean; message?: string } => {
@@ -175,6 +180,86 @@ export default function CheckoutPage() {
     );
   }, [addressFormData.street, addressFormData.city, addressFormData.postalCode]);
 
+  const persistAddressCoordinates = useCallback(
+    async (addressId: string, coordinates: { lat: number; lng: number }) => {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+      const token = localStorage.getItem('customer_auth_token');
+
+      if (!token) {
+        return false;
+      }
+
+      const res = await fetch(`${API_URL}/api/customer/account/addresses/${addressId}`, {
+        method: 'PATCH',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          'x-tenant': tenantSlug,
+        },
+        body: JSON.stringify({ coordinates }),
+      });
+
+      return res.ok;
+    },
+    [tenantSlug],
+  );
+
+  const ensureSavedAddressCoordinates = useCallback(
+    async (address: Address): Promise<Address> => {
+      if (address.coordinates?.lat != null && address.coordinates?.lng != null) {
+        return address;
+      }
+
+      const existingRequest = addressCoordinateRequestsRef.current.get(address.id);
+      if (existingRequest) {
+        return existingRequest;
+      }
+
+      const request = (async () => {
+        const coordinates = await resolveAddressCoordinates(
+          address.street,
+          address.city,
+          address.postalCode,
+          address.country || 'SK',
+        );
+
+        if (!coordinates) {
+          return address;
+        }
+
+        const enrichedAddress: Address = {
+          ...address,
+          coordinates,
+        };
+
+        setAddresses((current) =>
+          current.map((entry) =>
+            entry.id === address.id
+              ? enrichedAddress
+              : entry,
+          ),
+        );
+
+        try {
+          await persistAddressCoordinates(address.id, coordinates);
+        } catch (error) {
+          console.warn('[Checkout] Failed to persist saved address coordinates', {
+            addressId: address.id,
+            error,
+          });
+        }
+
+        return enrichedAddress;
+      })().finally(() => {
+        addressCoordinateRequestsRef.current.delete(address.id);
+      });
+
+      addressCoordinateRequestsRef.current.set(address.id, request);
+      return request;
+    },
+    [persistAddressCoordinates],
+  );
+
   // Calculate delivery fee when address changes
   useEffect(() => {
     const calculateFee = async () => {
@@ -183,21 +268,23 @@ export default function CheckoutPage() {
       if (user && selectedAddressId) {
         const selectedAddress = addresses.find(addr => addr.id === selectedAddressId);
         if (selectedAddress) {
+          const resolvedAddress = await ensureSavedAddressCoordinates(selectedAddress);
           console.log('[Checkout] Recalculating delivery fee for selected address:', {
             addressId: selectedAddressId,
-            street: selectedAddress.street,
-            city: selectedAddress.city,
-            postalCode: selectedAddress.postalCode,
+            street: resolvedAddress.street,
+            city: resolvedAddress.city,
+            postalCode: resolvedAddress.postalCode,
             userId: user?.id,
             userEmail: user?.email,
           });
           address = {
-            street: selectedAddress.street,
-            postalCode: selectedAddress.postalCode,
-            city: selectedAddress.city,
-            cityPart: selectedAddress.city.includes(' - ')
-              ? selectedAddress.city.split(' - ')[1]
-              : selectedAddress.city,
+            street: resolvedAddress.street,
+            postalCode: resolvedAddress.postalCode,
+            city: resolvedAddress.city,
+            cityPart: resolvedAddress.city.includes(' - ')
+              ? resolvedAddress.city.split(' - ')[1]
+              : resolvedAddress.city,
+            coordinates: resolvedAddress.coordinates || undefined,
           };
         }
       } else if (!user && guestData.postalCode && guestData.city) {
@@ -264,7 +351,7 @@ export default function CheckoutPage() {
     };
 
     calculateFee();
-  }, [user, selectedAddressId, addresses, guestData.postalCode, guestData.city, guestData.street, guestData.houseNumber, guestData.coordinates, tenantSlug, deliveryFeeFeatureEnabled]);
+  }, [user, selectedAddressId, addresses, guestData.postalCode, guestData.city, guestData.street, guestData.houseNumber, guestData.coordinates, tenantSlug, deliveryFeeFeatureEnabled, ensureSavedAddressCoordinates]);
 
   useEffect(() => {
     const layout = tenantData?.theme?.layout || {};
@@ -945,6 +1032,14 @@ export default function CheckoutPage() {
     try {
       const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
       const token = localStorage.getItem('customer_auth_token');
+      const resolvedCoordinates =
+        addressFormData.coordinates ||
+        await resolveAddressCoordinates(
+          addressFormData.street,
+          addressFormData.city,
+          addressFormData.postalCode,
+          addressFormData.country,
+        );
 
       if (!token) {
         setAddressFormError('Nie ste prihlásený');
@@ -965,6 +1060,7 @@ export default function CheckoutPage() {
           postalCode: addressFormData.postalCode,
           country: addressFormData.country,
           description: addressFormData.description || undefined,
+          coordinates: resolvedCoordinates || undefined,
           isPrimary: addressFormData.isPrimary,
         }),
       });
@@ -1152,6 +1248,8 @@ export default function CheckoutPage() {
         return;
       }
 
+      const resolvedAddress = await ensureSavedAddressCoordinates(selectedAddress);
+
       // Validate minimum order for delivery zone
       if (minOrderCents !== null && total < minOrderCents) {
         alert(`Minimálna objednávka pre ${zoneName || 'túto zónu'} je ${(minOrderCents / 100).toFixed(2)}€. Vaša objednávka je ${(total / 100).toFixed(2)}€.`);
@@ -1160,10 +1258,10 @@ export default function CheckoutPage() {
       
       // Validate Bratislava address for logged-in users with geocoding
       const addressValidation = await validateBratislavaAddress(
-        selectedAddress.street,
-        selectedAddress.city,
-        selectedAddress.postalCode,
-        selectedAddress.country || 'SK',
+        resolvedAddress.street,
+        resolvedAddress.city,
+        resolvedAddress.postalCode,
+        resolvedAddress.country || 'SK',
         true // Use geocoding
       );
       if (!addressValidation.isValid) {
@@ -1181,6 +1279,28 @@ export default function CheckoutPage() {
     
     try {
       // Prepare order data
+      const selectedAddress = user
+        ? await ensureSavedAddressCoordinates(addresses.find(addr => addr.id === selectedAddressId)!)
+        : null;
+      const guestCoordinates = !user
+        ? (
+            guestData.coordinates ||
+            await resolveAddressCoordinates(
+              `${guestData.street}${guestData.houseNumber ? ` ${guestData.houseNumber}` : ''}`,
+              guestData.city,
+              guestData.postalCode,
+              guestData.country || 'SK',
+            )
+          )
+        : null;
+
+      if (!user && guestCoordinates && !guestData.coordinates) {
+        setGuestData((current) => ({
+          ...current,
+          coordinates: guestCoordinates,
+        }));
+      }
+
       const orderData: any = {
         customer: user ? {
           name: user.name || 'Customer',
@@ -1192,11 +1312,11 @@ export default function CheckoutPage() {
           phone: `${guestData.phonePrefix}${guestData.phone}`,
         },
         address: user ? {
-          street: addresses.find(addr => addr.id === selectedAddressId)!.street,
-          city: addresses.find(addr => addr.id === selectedAddressId)!.city,
-          postalCode: addresses.find(addr => addr.id === selectedAddressId)!.postalCode,
-          country: addresses.find(addr => addr.id === selectedAddressId)!.country || 'SK',
-          // Coordinates are not stored on saved addresses yet; backend will geocode
+          street: selectedAddress!.street,
+          city: selectedAddress!.city,
+          postalCode: selectedAddress!.postalCode,
+          country: selectedAddress!.country || 'SK',
+          coordinates: selectedAddress!.coordinates || undefined,
         } : {
           street: guestData.street,
           houseNumber: guestData.houseNumber,
@@ -1204,13 +1324,14 @@ export default function CheckoutPage() {
           postalCode: guestData.postalCode,
           country: guestData.country,
           instructions: guestData.instructions,
-          coordinates: guestData.coordinates || undefined,
+          coordinates: guestCoordinates || undefined,
         },
         items: items.map(item => ({
           productId: item.product.id,
           quantity: item.quantity,
           modifiers: item.modifiers,
         })),
+        addressId: user ? selectedAddress?.id : undefined,
         userId: user?.id,
         deliveryFeeCents: deliveryFeeCents, // Add delivery fee from zone calculation
       };
@@ -1988,7 +2109,7 @@ export default function CheckoutPage() {
                         <input
                           type="text"
                           value={addressFormData.city}
-                          onChange={(e) => setAddressFormData({ ...addressFormData, city: e.target.value })}
+                          onChange={(e) => setAddressFormData({ ...addressFormData, city: e.target.value, coordinates: null })}
                           className={`w-full px-4 py-2 border rounded-lg ${
                             isDark 
                               ? 'bg-white/5 border-white/20 text-white placeholder:text-gray-400' 
@@ -2004,7 +2125,7 @@ export default function CheckoutPage() {
                         <input
                           type="text"
                           value={addressFormData.postalCode}
-                          onChange={(e) => setAddressFormData({ ...addressFormData, postalCode: e.target.value })}
+                          onChange={(e) => setAddressFormData({ ...addressFormData, postalCode: e.target.value, coordinates: null })}
                           className={`w-full px-4 py-2 border rounded-lg ${
                             isDark 
                               ? 'bg-white/5 border-white/20 text-white placeholder:text-gray-400' 
@@ -2020,7 +2141,7 @@ export default function CheckoutPage() {
                       </label>
                       <select
                         value={addressFormData.country}
-                        onChange={(e) => setAddressFormData({ ...addressFormData, country: e.target.value })}
+                        onChange={(e) => setAddressFormData({ ...addressFormData, country: e.target.value, coordinates: null })}
                         className={`w-full px-4 py-2 border rounded-lg ${
                           isDark 
                             ? 'bg-white/5 border-white/20 text-white' 
@@ -2165,7 +2286,7 @@ export default function CheckoutPage() {
                     type="text"
                     value={guestData.city}
                     onChange={(e) => {
-                      setGuestData({...guestData, city: e.target.value});
+                      setGuestData({...guestData, city: e.target.value, coordinates: null});
                       // Trigger validation with geocoding if we have all required fields
                       if (e.target.value && guestData.postalCode && guestData.street) {
                         validateAddressWithGeocoding(guestData.street, e.target.value, guestData.postalCode);
@@ -2191,7 +2312,7 @@ export default function CheckoutPage() {
                     type="text"
                     value={guestData.postalCode}
                     onChange={(e) => {
-                      setGuestData({...guestData, postalCode: e.target.value});
+                      setGuestData({...guestData, postalCode: e.target.value, coordinates: null});
                       // Trigger validation with geocoding if we have all required fields
                       if (e.target.value && guestData.city && guestData.street) {
                         validateAddressWithGeocoding(guestData.street, guestData.city, e.target.value);

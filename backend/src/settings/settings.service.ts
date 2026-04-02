@@ -15,6 +15,20 @@ export interface StoryousSettings {
   receiptIncludeOrderNumber: boolean;
 }
 
+export interface StoryousAutoPrintReadiness {
+  ready: boolean;
+  blockers: string[];
+  warnings: string[];
+  checks: {
+    enabled: boolean;
+    credentialsConfigured: boolean;
+    merchantPlaceConfigured: boolean;
+    autoAcceptPrintMode: boolean;
+    receiptIncludeModifierLines: boolean;
+    receiptIncludeOrderNumber: boolean;
+  };
+}
+
 @Injectable()
 export class SettingsService {
   constructor(private prisma: PrismaService) {}
@@ -77,5 +91,52 @@ export class SettingsService {
     });
     
     return updatedStoryous as unknown as StoryousSettings;
+  }
+
+  async getStoryousAutoPrintReadiness(): Promise<StoryousAutoPrintReadiness> {
+    const settings = await this.getStoryousSettings();
+
+    const checks = {
+      enabled: Boolean(settings?.enabled),
+      credentialsConfigured: Boolean(
+        settings?.clientId?.trim() && settings?.clientSecret?.trim(),
+      ),
+      merchantPlaceConfigured: Boolean(
+        settings?.merchantId?.trim() && settings?.placeId?.trim(),
+      ),
+      autoAcceptPrintMode: Boolean(settings?.autoAcceptPrintMode ?? false),
+      receiptIncludeModifierLines: Boolean(settings?.receiptIncludeModifierLines ?? false),
+      receiptIncludeOrderNumber: Boolean(settings?.receiptIncludeOrderNumber ?? false),
+    };
+
+    const blockers: string[] = [];
+    const warnings: string[] = [];
+
+    if (!checks.enabled) {
+      blockers.push('Storyous integrácia nie je aktivovaná.');
+    }
+    if (!checks.credentialsConfigured) {
+      blockers.push('Chýba Storyous ClientID alebo Client Secret.');
+    }
+    if (!checks.merchantPlaceConfigured) {
+      blockers.push('Chýba Storyous MerchantID alebo PlaceID.');
+    }
+
+    if (!checks.autoAcceptPrintMode) {
+      warnings.push('Auto-confirm v Storyous je vypnutý. Prevádzka môže vyžadovať ručné prijatie objednávky.');
+    }
+    if (!checks.receiptIncludeModifierLines) {
+      warnings.push('Tlač modifikátorov je vypnutá. Bloček nemusí obsahovať + riadky.');
+    }
+    if (!checks.receiptIncludeOrderNumber) {
+      warnings.push('Tlač čísla objednávky je vypnutá.');
+    }
+
+    return {
+      ready: blockers.length === 0,
+      blockers,
+      warnings,
+      checks,
+    };
   }
 }

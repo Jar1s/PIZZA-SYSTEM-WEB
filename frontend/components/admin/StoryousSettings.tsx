@@ -1,7 +1,13 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { getStoryousSettings, updateStoryousSettings, StoryousSettings as StoryousSettingsType } from '@/lib/api';
+import {
+  getStoryousSettings,
+  updateStoryousSettings,
+  getStoryousAutoPrintReadiness,
+  StoryousSettings as StoryousSettingsType,
+  StoryousAutoPrintReadiness,
+} from '@/lib/api';
 
 export function StoryousSettings() {
   const [settings, setSettings] = useState<StoryousSettingsType | null>(null);
@@ -18,11 +24,16 @@ export function StoryousSettings() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
+  const [readiness, setReadiness] = useState<StoryousAutoPrintReadiness | null>(null);
 
   useEffect(() => {
     const loadSettings = async () => {
       try {
-        const data = await getStoryousSettings();
+        const [data, readinessData] = await Promise.all([
+          getStoryousSettings(),
+          getStoryousAutoPrintReadiness(),
+        ]);
+        setReadiness(readinessData);
         if (data) {
           setSettings(data);
           setClientId(data.clientId || '');
@@ -68,6 +79,8 @@ export function StoryousSettings() {
       });
       
       setSettings(updated);
+      const readinessData = await getStoryousAutoPrintReadiness();
+      setReadiness(readinessData);
       alert('Nastavenia Storyous boli uložené!');
     } catch (error: any) {
       console.error('Failed to update Storyous settings:', error);
@@ -122,11 +135,43 @@ export function StoryousSettings() {
               <div className="text-xs text-gray-600">
                 Delivery lead: <span className="font-semibold">{defaultDeliveryLeadMinutes} min</span>
               </div>
+              {readiness && (
+                <div
+                  className={`text-xs rounded px-2 py-1 ${
+                    readiness.ready
+                      ? 'bg-emerald-50 text-emerald-700'
+                      : 'bg-amber-50 text-amber-700'
+                  }`}
+                >
+                  {readiness.ready ? '✅ Auto-confirm readiness: OK' : '⚠️ Auto-confirm readiness: potrebuje doladiť'}
+                </div>
+              )}
             </>
           )}
         </div>
       ) : (
         <div className="space-y-3">
+          {readiness && (
+            <div className="rounded border border-gray-200 bg-gray-50 p-2 text-xs">
+              <div className={`font-semibold ${readiness.ready ? 'text-emerald-700' : 'text-amber-700'}`}>
+                {readiness.ready ? '✅ Auto-confirm readiness: OK' : '⚠️ Auto-confirm readiness: nie je úplne pripravené'}
+              </div>
+              {readiness.blockers.length > 0 && (
+                <div className="mt-1 text-red-700">
+                  {readiness.blockers.map((item, idx) => (
+                    <div key={`blocker-${idx}`}>• {item}</div>
+                  ))}
+                </div>
+              )}
+              {readiness.warnings.length > 0 && (
+                <div className="mt-1 text-amber-700">
+                  {readiness.warnings.map((item, idx) => (
+                    <div key={`warning-${idx}`}>• {item}</div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
           <div>
             <label className="block text-xs font-medium text-gray-700 mb-1">ClientID</label>
             <input
@@ -211,7 +256,10 @@ export function StoryousSettings() {
               disabled={saving || !enabled}
               className="rounded"
             />
-            <span className="text-xs text-gray-700">Auto-accept/print mode (POS)</span>
+            <span className="text-xs text-gray-700">Auto-confirm v Storyous</span>
+          </div>
+          <div className="text-[11px] text-gray-500">
+            Backend požiada Storyous, aby objednávka nečakala na ručné prijatie. Samotná tlač ešte závisí od Storyous POS a tlačiarne na prevádzke.
           </div>
           <div className="flex items-center gap-2">
             <input

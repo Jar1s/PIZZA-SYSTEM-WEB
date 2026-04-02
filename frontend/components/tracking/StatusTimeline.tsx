@@ -36,6 +36,12 @@ export function StatusTimeline({ status, paymentStatus }: StatusTimelineProps) {
       icon: '👨‍🍳', 
       description: t.orderStatusPreparingDesc 
     },
+    {
+      key: OrderStatus.READY,
+      label: t.orderStatusReady,
+      icon: '📦',
+      description: t.orderStatusReadyDesc,
+    },
     { 
       key: OrderStatus.OUT_FOR_DELIVERY, 
       label: t.orderStatusOutForDelivery, 
@@ -70,6 +76,12 @@ export function StatusTimeline({ status, paymentStatus }: StatusTimelineProps) {
       icon: '👨‍🍳', 
       description: t.orderStatusPreparingDesc 
     },
+    {
+      key: OrderStatus.READY,
+      label: t.orderStatusReady,
+      icon: '📦',
+      description: t.orderStatusReadyDesc,
+    },
     { 
       key: OrderStatus.OUT_FOR_DELIVERY, 
       label: t.orderStatusOutForDelivery, 
@@ -87,15 +99,9 @@ export function StatusTimeline({ status, paymentStatus }: StatusTimelineProps) {
   // Select the appropriate flow based on payment type
   const STATUSES = isDeliveryPayment ? STATUSES_DELIVERY : STATUSES_ONLINE;
   
-  // Handle READY status for backward compatibility (map to OUT_FOR_DELIVERY for display)
-  let displayStatus = status;
-  if (status === OrderStatus.READY) {
-    displayStatus = OrderStatus.OUT_FOR_DELIVERY;
-  }
-  
   // For online payment: if status is PAID but not yet PREPARING, show as "waiting for confirmation"
   // This is handled by showing PAID step as current
-  const currentIndex = STATUSES.findIndex(s => s.key === displayStatus);
+  const currentIndex = STATUSES.findIndex(s => s.key === status);
   const effectiveIndex = currentIndex >= 0 ? currentIndex : STATUSES.findIndex(s => s.key === status);
   
   if (status === OrderStatus.CANCELED) {

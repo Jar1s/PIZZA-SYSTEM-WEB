@@ -138,7 +138,7 @@ export default function AdminDashboard() {
       
       <ErrorBoundary>
         <Suspense fallback={<div className="animate-pulse bg-gray-200 h-64 rounded-lg" />}>
-          <OrderList todayOnly={true} selectedTenant={selectedTenant} />
+          <OrderList todayOnly={true} selectedTenant={selectedTenant} variant="dashboard" />
         </Suspense>
       </ErrorBoundary>
     </div>

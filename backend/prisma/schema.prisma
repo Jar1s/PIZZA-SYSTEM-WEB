@@ -82,6 +82,7 @@ model Order {
   createdAt        DateTime    @default(now())
   updatedAt        DateTime    @updatedAt
   storyousOrderId  String?
+  storyousOrderState String?
   userId           String?
   items            OrderItem[]
   statusHistory    OrderStatusHistory[]
@@ -218,6 +219,8 @@ model Address {
   city        String
   postalCode  String
   country     String   @default("SK")
+  latitude    Float?
+  longitude   Float?
   isPrimary   Boolean  @default(false)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt

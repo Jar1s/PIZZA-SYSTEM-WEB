@@ -5,6 +5,8 @@
 
 interface GeocodingResult {
   display_name: string;
+  lat: string;
+  lon: string;
   address: {
     city?: string;
     town?: string;
@@ -24,6 +26,77 @@ interface GeocodingResponse {
   fullAddress?: string;
 }
 
+export interface AddressCoordinates {
+  lat: number;
+  lng: number;
+}
+
+function buildGeocodingQuery(
+  street: string,
+  city: string,
+  postalCode: string,
+  country: string,
+): string {
+  const queryParts: string[] = [];
+  if (street) queryParts.push(street);
+  if (city) queryParts.push(city);
+  if (postalCode) queryParts.push(postalCode);
+  if (country) queryParts.push(country);
+  return queryParts.join(', ');
+}
+
+async function fetchGeocodingResults(
+  street: string,
+  city: string,
+  postalCode: string,
+  country: string,
+): Promise<GeocodingResult[]> {
+  const query = buildGeocodingQuery(street, city, postalCode, country);
+  const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1&addressdetails=1`;
+
+  const response = await fetch(url, {
+    headers: {
+      'User-Agent': 'PizzaOrderingApp/1.0',
+      'Accept-Language': 'sk,en',
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Geocoding API error: ${response.status}`);
+  }
+
+  const data = (await response.json()) as GeocodingResult[];
+  return data || [];
+}
+
+export async function resolveAddressCoordinates(
+  street: string,
+  city: string,
+  postalCode: string,
+  country: string = 'SK',
+): Promise<AddressCoordinates | null> {
+  try {
+    const data = await fetchGeocodingResults(street, city, postalCode, country);
+
+    if (!data.length) {
+      return null;
+    }
+
+    const result = data[0];
+    const lat = Number(result.lat);
+    const lng = Number(result.lon);
+
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+      return null;
+    }
+
+    return { lat, lng };
+  } catch (error) {
+    console.warn('Failed to resolve address coordinates:', error);
+    return null;
+  }
+}
+
 /**
  * Geocode an address using OpenStreetMap Nominatim API
  * @param street Street address
@@ -39,35 +112,7 @@ export async function geocodeAddress(
   country: string = 'SK'
 ): Promise<GeocodingResponse> {
   try {
-    // Build query string
-    const queryParts: string[] = [];
-    if (street) queryParts.push(street);
-    if (city) queryParts.push(city);
-    if (postalCode) queryParts.push(postalCode);
-    if (country) queryParts.push(country);
-    
-    const query = queryParts.join(', ');
-    
-    // Use Nominatim API with proper user agent (required by their ToS)
-    const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1&addressdetails=1`;
-    
-    const response = await fetch(url, {
-      headers: {
-        'User-Agent': 'PizzaOrderingApp/1.0', // Required by Nominatim ToS
-        'Accept-Language': 'sk,en',
-      },
-    });
-    
-    if (!response.ok) {
-      console.warn('Geocoding API error:', response.status);
-      return {
-        isValid: false,
-        isInBratislava: false,
-        message: 'Nepodarilo sa overiť adresu. Prosím, skontrolujte zadané údaje.',
-      };
-    }
-    
-    const data: GeocodingResult[] = await response.json();
+    const data = await fetchGeocodingResults(street, city, postalCode, country);
     
     if (!data || data.length === 0) {
       return {
@@ -181,4 +226,3 @@ export function validateBratislavaAddressSimple(
   
   return { isValid: true };
 }
-

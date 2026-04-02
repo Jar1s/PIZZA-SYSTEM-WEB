@@ -15,13 +15,12 @@ export class OrderStatusService implements OnModuleInit, OnModuleDestroy {
   private readonly CHECK_INTERVAL_MS = 60000; // Check every minute
   
   // Valid status transitions
-  // Note: READY status is kept for backward compatibility but not used in new flow
-  // New flow: PENDING → PAID → PREPARING → OUT_FOR_DELIVERY → DELIVERED
+  // Active flow: PENDING → PAID → PREPARING → READY → OUT_FOR_DELIVERY → DELIVERED
   private transitions: Record<OrderStatus, OrderStatus[]> = {
     [OrderStatus.PENDING]: [OrderStatus.PAID, OrderStatus.CANCELED],
     [OrderStatus.PAID]: [OrderStatus.PREPARING, OrderStatus.CANCELED],
-    [OrderStatus.PREPARING]: [OrderStatus.OUT_FOR_DELIVERY, OrderStatus.CANCELED], // Skip READY
-    [OrderStatus.READY]: [OrderStatus.OUT_FOR_DELIVERY, OrderStatus.CANCELED], // Backward compatibility only
+    [OrderStatus.PREPARING]: [OrderStatus.READY, OrderStatus.CANCELED],
+    [OrderStatus.READY]: [OrderStatus.OUT_FOR_DELIVERY, OrderStatus.CANCELED],
     [OrderStatus.OUT_FOR_DELIVERY]: [OrderStatus.DELIVERED, OrderStatus.CANCELED],
     [OrderStatus.DELIVERED]: [],
     [OrderStatus.CANCELED]: [],
@@ -114,19 +113,35 @@ export class OrderStatusService implements OnModuleInit, OnModuleDestroy {
             address: order.address as unknown as Address,
           } as unknown as Order;
           
-          const storyousResult = await this.storyousService.createOrder(
-            orderForStoryous,
-            storyousSettings.merchantId,
-            storyousSettings.placeId
-          );
+        const storyousResult = await this.storyousService.createOrder(
+          orderForStoryous,
+          storyousSettings.merchantId,
+          storyousSettings.placeId
+        );
           
-          if (storyousResult?.id) {
-            await this.prisma.order.update({
-              where: { id: orderId },
-              data: { storyousOrderId: storyousResult.id },
-            });
+        if (storyousResult?.id) {
+          const storyousState = String(storyousResult.storyousState || '').trim().toUpperCase() || null;
+          const storyousAccepted =
+            storyousState === 'CONFIRMED' ||
+            storyousState === 'SCHEDULING_DELIVERY' ||
+            storyousState === 'DISPATCHED';
+          await this.prisma.order.update({
+            where: { id: orderId },
+            data: {
+              storyousOrderId: storyousResult.id,
+              storyousOrderState: storyousState,
+            },
+          });
+          if (storyousAccepted) {
             this.logger.log(`✅ Order ${orderId} auto-synced to Storyous: ${storyousResult.id}`);
+          } else {
+            this.logger.warn(`⚠️ Order ${orderId} reached Storyous but still requires attention`, {
+              orderId,
+              storyousOrderId: storyousResult.id,
+              storyousState,
+            });
           }
+        }
         }
       } catch (error: any) {
         // Log but don't fail status update
@@ -289,8 +304,6 @@ export class OrderStatusService implements OnModuleInit, OnModuleDestroy {
     }
   }
 }
-
-
 
 
 
