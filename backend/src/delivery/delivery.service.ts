@@ -1,10 +1,20 @@
-import { Injectable, BadRequestException, Logger, Inject, forwardRef, ForbiddenException } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  Logger,
+  Inject,
+  forwardRef,
+  ForbiddenException,
+  OnModuleInit,
+  OnModuleDestroy,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { WoltDriveService } from './wolt-drive.service';
 import { OrdersService } from '../orders/orders.service';
 import { OrderStatusService } from '../orders/order-status.service';
 import { TenantsService } from '../tenants/tenants.service';
 import { DeliveryFeeTierService } from './delivery-fee-tier.service';
+import { DeliveryAreaCacheService, WoltAreaCheckResult } from './delivery-area-cache.service';
 import { OrderStatus, DeliveryStatus, Address } from '@pizza-ecosystem/shared';
 import { DeliveryConfig } from '../types/tenant.types';
 import { Prisma } from '@prisma/client';
@@ -28,8 +38,11 @@ interface ShipmentPromiseData {
 }
 
 @Injectable()
-export class DeliveryService {
+export class DeliveryService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(DeliveryService.name);
+  private stalePollingTimer: NodeJS.Timeout | null = null;
+  private readonly stalePollingIntervalMs = 5 * 60 * 1000;
+  private readonly staleWindowMs = 10 * 60 * 1000;
 
   constructor(
     private prisma: PrismaService,
@@ -40,7 +53,25 @@ export class DeliveryService {
     private orderStatusService: OrderStatusService,
     private tenantsService: TenantsService,
     private deliveryFeeTierService: DeliveryFeeTierService,
+    private deliveryAreaCacheService: DeliveryAreaCacheService,
   ) {}
+
+  onModuleInit() {
+    this.stalePollingTimer = setInterval(() => {
+      this.reconcileStaleWoltDeliveries().catch((error: any) => {
+        this.logger.warn('[reconcileStaleWoltDeliveries] Background run failed', {
+          error: error?.message,
+        });
+      });
+    }, this.stalePollingIntervalMs);
+  }
+
+  onModuleDestroy() {
+    if (this.stalePollingTimer) {
+      clearInterval(this.stalePollingTimer);
+      this.stalePollingTimer = null;
+    }
+  }
 
   private assertWoltConfig(tenant: { slug: string; id: string }, woltConfig: any): void {
     const hasApiKey = Boolean(woltConfig?.apiKey && String(woltConfig.apiKey).trim());
@@ -320,6 +351,156 @@ export class DeliveryService {
     }
   }
 
+  private parseWebhookTimestamp(value: unknown): string | null {
+    if (typeof value === 'number' && Number.isFinite(value)) {
+      return new Date(value * (value > 10_000_000_000 ? 1 : 1000)).toISOString();
+    }
+    if (typeof value === 'string' && value.trim()) {
+      const parsed = new Date(value);
+      if (!Number.isNaN(parsed.getTime())) {
+        return parsed.toISOString();
+      }
+    }
+    return null;
+  }
+
+  private mapWoltStatus(statusRaw: string): {
+    deliveryStatus: DeliveryStatus;
+    orderStatus: OrderStatus | null;
+  } {
+    switch (statusRaw) {
+      case 'INFO_RECEIVED':
+        return { deliveryStatus: DeliveryStatus.PENDING, orderStatus: null };
+      case 'COURIER_ASSIGNED':
+        return { deliveryStatus: DeliveryStatus.COURIER_ASSIGNED, orderStatus: null };
+      case 'ITEM_PICKED_UP':
+      case 'PICKED_UP':
+        return { deliveryStatus: DeliveryStatus.PICKED_UP, orderStatus: OrderStatus.OUT_FOR_DELIVERY };
+      case 'COURIER_LEFT_PICK_UP':
+      case 'IN_TRANSIT':
+        return { deliveryStatus: DeliveryStatus.IN_TRANSIT, orderStatus: OrderStatus.OUT_FOR_DELIVERY };
+      case 'DELIVERED':
+        return { deliveryStatus: DeliveryStatus.DELIVERED, orderStatus: OrderStatus.DELIVERED };
+      case 'CANCELLED':
+      case 'FAILED':
+      case 'REJECTED':
+        return { deliveryStatus: DeliveryStatus.FAILED, orderStatus: null };
+      default:
+        return { deliveryStatus: DeliveryStatus.IN_TRANSIT, orderStatus: null };
+    }
+  }
+
+  async checkAreaByTenantSlug(
+    tenantSlug: string,
+    dropoffAddress: any,
+    user?: AuthenticatedUser,
+  ): Promise<WoltAreaCheckResult> {
+    const normalizedTenantSlug = String(tenantSlug || '').trim().toLowerCase();
+    const tenant = await this.prisma.tenant.findFirst({
+      where: { slug: normalizedTenantSlug },
+    });
+
+    if (!tenant) {
+      throw new BadRequestException(`Tenant ${tenantSlug} not found`);
+    }
+
+    this.assertTenantAccess(tenant.id, user, 'checkAreaByTenantSlug');
+
+    const deliveryConfig = (tenant.deliveryConfig as DeliveryConfig) || {};
+    const woltConfig = deliveryConfig?.woltConfig || {};
+    const apiKey = String(woltConfig.apiKey || '').trim();
+    const merchantId = String(woltConfig.merchantId || '').trim();
+
+    if (!apiKey) {
+      return {
+        insideArea: null,
+        source: 'fallback',
+        reason: 'Wolt Merchant Key nie je nastavený pre tento tenant.',
+      };
+    }
+
+    if (!merchantId) {
+      return {
+        insideArea: null,
+        source: 'fallback',
+        reason: 'Wolt Merchant ID nie je nastavený pre tento tenant.',
+      };
+    }
+
+    let normalizedDropoff: Address;
+    try {
+      normalizedDropoff = await this.normalizeDropoffAddress(
+        tenant.id,
+        dropoffAddress,
+        'checkAreaByTenantSlug',
+      );
+    } catch (error: any) {
+      return {
+        insideArea: null,
+        source: 'fallback',
+        reason: error?.message || 'Dropoff address coordinates are missing.',
+      };
+    }
+
+    const coordinates = normalizedDropoff.coordinates;
+    if (!coordinates) {
+      return {
+        insideArea: null,
+        source: 'fallback',
+        reason: 'Dropoff coordinates are not available.',
+      };
+    }
+
+    return this.deliveryAreaCacheService.checkPoint(
+      tenant.id,
+      apiKey,
+      merchantId,
+      {
+        lat: coordinates.lat,
+        lng: coordinates.lng,
+      },
+      woltConfig,
+    );
+  }
+
+  async refreshAreasForTenantSlug(tenantSlug: string, user?: AuthenticatedUser) {
+    const normalizedTenantSlug = String(tenantSlug || '').trim().toLowerCase();
+    const tenant = await this.prisma.tenant.findFirst({
+      where: { slug: normalizedTenantSlug },
+    });
+
+    if (!tenant) {
+      throw new BadRequestException(`Tenant ${tenantSlug} not found`);
+    }
+
+    this.assertTenantAccess(tenant.id, user, 'refreshAreasForTenantSlug');
+
+    const deliveryConfig = (tenant.deliveryConfig as DeliveryConfig) || {};
+    const woltConfig = deliveryConfig?.woltConfig || {};
+    const apiKey = String(woltConfig.apiKey || '').trim();
+    const merchantId = String(woltConfig.merchantId || '').trim();
+
+    if (!apiKey) {
+      throw new BadRequestException('Wolt Merchant Key nie je nastavený pre tento tenant.');
+    }
+    if (!merchantId) {
+      throw new BadRequestException('Wolt Merchant ID nie je nastavený pre tento tenant.');
+    }
+
+    const refreshed = await this.deliveryAreaCacheService.refreshTenantAreas(
+      tenant.id,
+      apiKey,
+      merchantId,
+      woltConfig,
+    );
+
+    return {
+      ok: true,
+      polygons: refreshed.polygons.length,
+      fetchedAt: new Date(refreshed.fetchedAt).toISOString(),
+    };
+  }
+
   async getQuote(tenantId: string, dropoffAddress: any, user?: AuthenticatedUser) {
     const tenant = await this.prisma.tenant.findUnique({
       where: { id: tenantId },
@@ -454,6 +635,26 @@ export class DeliveryService {
       'createDeliveryForOrder',
       order.id,
     );
+
+    const merchantId = String(woltConfig?.merchantId || '').trim();
+    if (merchantId && normalizedDropoffAddress.coordinates) {
+      const areaResult = await this.deliveryAreaCacheService.checkPoint(
+        order.tenantId,
+        String(woltConfig.apiKey).trim(),
+        merchantId,
+        {
+          lat: normalizedDropoffAddress.coordinates.lat,
+          lng: normalizedDropoffAddress.coordinates.lng,
+        },
+        woltConfig,
+      );
+
+      if (areaResult.insideArea === false) {
+        throw new BadRequestException(
+          'Adresa zákazníka je mimo doručovacej zóny Wolt pre túto prevádzku.',
+        );
+      }
+    }
 
     const minPreparationTimeMinutesUsed =
       minPreparationTimeMinutes !== undefined ? minPreparationTimeMinutes : 20;
@@ -693,8 +894,16 @@ export class DeliveryService {
       },
     });
 
-    if (order.status !== OrderStatus.CANCELED && order.status !== OrderStatus.DELIVERED) {
-      await this.orderStatusService.updateStatus(order.id, OrderStatus.CANCELED);
+    // Keep order alive after Wolt cancellation.
+    // If order was already "out for delivery", move it back to preparing
+    // so operator can choose another courier flow.
+    await this.prisma.order.update({
+      where: { id: order.id },
+      data: { deliveryId: null },
+    });
+
+    if (order.status === OrderStatus.OUT_FOR_DELIVERY) {
+      await this.orderStatusService.updateStatus(order.id, OrderStatus.PREPARING);
     }
 
     return {
@@ -731,6 +940,19 @@ export class DeliveryService {
     const eventType = webhookData?.event;
     const orderData = webhookData?.order || {};
     const status = String(orderData?.status || webhookData?.status || '').toUpperCase();
+    const eventId =
+      webhookData?.event_id ||
+      webhookData?.id ||
+      webhookData?.eventId ||
+      webhookData?.webhook_id ||
+      null;
+    const eventTimestamp =
+      this.parseWebhookTimestamp(
+        webhookData?.event_time ||
+          webhookData?.timestamp ||
+          webhookData?.created_at ||
+          webhookData?.occurred_at,
+      ) || new Date().toISOString();
     const deliveryJobId =
       orderData?.wolt_order_reference_id ||
       webhookData?.wolt_order_reference_id ||
@@ -763,58 +985,160 @@ export class DeliveryService {
       return;
     }
 
-    // Update delivery status
-    let newDeliveryStatus: DeliveryStatus;
-    let newOrderStatus: OrderStatus | null = null;
+    const quoteObj = this.getQuoteObject(delivery.quote);
+    const lastEventId = typeof quoteObj.lastWebhookEventId === 'string' ? quoteObj.lastWebhookEventId : null;
+    const lastStatus =
+      typeof quoteObj.lastWebhookStatus === 'string'
+        ? quoteObj.lastWebhookStatus.toUpperCase()
+        : null;
+    const lastTimestamp =
+      typeof quoteObj.lastWebhookTimestamp === 'string' ? quoteObj.lastWebhookTimestamp : null;
 
-    switch (status) {
-      case 'INFO_RECEIVED':
-        newDeliveryStatus = DeliveryStatus.PENDING;
-        break;
-      case 'COURIER_ASSIGNED':
-        newDeliveryStatus = DeliveryStatus.COURIER_ASSIGNED;
-        break;
-      case 'ITEM_PICKED_UP':
-      case 'PICKED_UP':
-        newDeliveryStatus = DeliveryStatus.PICKED_UP;
-        newOrderStatus = OrderStatus.OUT_FOR_DELIVERY;
-        break;
-      case 'COURIER_LEFT_PICK_UP':
-      case 'IN_TRANSIT':
-        newDeliveryStatus = DeliveryStatus.IN_TRANSIT;
-        break;
-      case 'DELIVERED':
-        newDeliveryStatus = DeliveryStatus.DELIVERED;
-        newOrderStatus = OrderStatus.DELIVERED;
-        break;
-      case 'CANCELLED':
-      case 'FAILED':
-      case 'REJECTED':
-        newDeliveryStatus = DeliveryStatus.FAILED;
-        break;
-      default:
-        newDeliveryStatus = DeliveryStatus.IN_TRANSIT;
+    if (eventId && lastEventId && eventId === lastEventId) {
+      this.logger.debug('Skipping duplicate Wolt webhook by eventId', {
+        deliveryId: delivery.id,
+        deliveryJobId,
+        eventId,
+      });
+      return;
     }
+
+    if (!eventId && lastStatus === status && lastTimestamp === eventTimestamp) {
+      this.logger.debug('Skipping duplicate Wolt webhook by status+timestamp', {
+        deliveryId: delivery.id,
+        deliveryJobId,
+        status,
+        eventTimestamp,
+      });
+      return;
+    }
+
+    const { deliveryStatus: newDeliveryStatus, orderStatus: newOrderStatus } = this.mapWoltStatus(status);
 
     await this.prisma.delivery.update({
       where: { id: delivery.id },
-      data: { status: newDeliveryStatus },
+      data: {
+        status: newDeliveryStatus,
+        quote: {
+          ...quoteObj,
+          lastWebhookStatus: status,
+          lastWebhookTimestamp: eventTimestamp,
+          lastWebhookEventId: eventId,
+          lastWebhookEventType: eventType || null,
+        } as Prisma.InputJsonValue,
+      },
     });
 
-    // Update order status if needed
     if (newOrderStatus && delivery.orders.length > 0) {
-      for (const order of delivery.orders) {
-        await this.orderStatusService.updateStatus(order.id, newOrderStatus);
+      for (const linkedOrder of delivery.orders) {
+        if (linkedOrder.status !== newOrderStatus) {
+          await this.orderStatusService.updateStatus(linkedOrder.id, newOrderStatus);
+        }
+      }
+    }
+  }
+
+  private async reconcileStaleWoltDeliveries(): Promise<void> {
+    const staleBefore = new Date(Date.now() - this.staleWindowMs);
+    const staleDeliveries = await this.prisma.delivery.findMany({
+      where: {
+        provider: 'wolt',
+        status: {
+          in: [
+            DeliveryStatus.PENDING,
+            DeliveryStatus.COURIER_ASSIGNED,
+            DeliveryStatus.PICKED_UP,
+            DeliveryStatus.IN_TRANSIT,
+          ],
+        },
+        updatedAt: { lte: staleBefore },
+      },
+      include: {
+        orders: {
+          select: { id: true, status: true, tenantId: true },
+        },
+        tenant: {
+          select: { deliveryConfig: true, id: true },
+        },
+      },
+      take: 50,
+      orderBy: { updatedAt: 'asc' },
+    });
+
+    if (!staleDeliveries.length) {
+      return;
+    }
+
+    for (const delivery of staleDeliveries) {
+      try {
+        const tenantDeliveryConfig = (delivery.tenant?.deliveryConfig as DeliveryConfig) || {};
+        const woltConfig = tenantDeliveryConfig?.woltConfig || {};
+        const apiKey = String(woltConfig.apiKey || '').trim();
+        if (!apiKey || !delivery.jobId) {
+          continue;
+        }
+
+        const quoteObj = this.getQuoteObject(delivery.quote);
+        const snapshotConfig = this.getWoltApiConfigFromQuote(quoteObj);
+        const statusConfig =
+          snapshotConfig.venueId || snapshotConfig.apiUrl || snapshotConfig.merchantId
+            ? snapshotConfig
+            : woltConfig;
+
+        const statusPayload = await this.woltDrive.getOrderStatus(apiKey, delivery.jobId, 2, statusConfig);
+        const statusRaw = String(
+          statusPayload?.status || statusPayload?.order?.status || statusPayload?.delivery?.status || '',
+        ).toUpperCase();
+
+        if (!statusRaw) {
+          continue;
+        }
+
+        const { deliveryStatus: mappedDeliveryStatus, orderStatus: mappedOrderStatus } =
+          this.mapWoltStatus(statusRaw);
+
+        if (mappedDeliveryStatus !== delivery.status) {
+          await this.prisma.delivery.update({
+            where: { id: delivery.id },
+            data: {
+              status: mappedDeliveryStatus,
+              quote: {
+                ...quoteObj,
+                lastPolledStatus: statusRaw,
+                lastPolledAt: new Date().toISOString(),
+              } as Prisma.InputJsonValue,
+            },
+          });
+        } else {
+          await this.prisma.delivery.update({
+            where: { id: delivery.id },
+            data: {
+              quote: {
+                ...quoteObj,
+                lastPolledStatus: statusRaw,
+                lastPolledAt: new Date().toISOString(),
+              } as Prisma.InputJsonValue,
+            },
+          });
+        }
+
+        if (mappedOrderStatus) {
+          for (const linkedOrder of delivery.orders) {
+            if (linkedOrder.status !== mappedOrderStatus) {
+              await this.orderStatusService.updateStatus(linkedOrder.id, mappedOrderStatus);
+            }
+          }
+        }
+      } catch (error: any) {
+        this.logger.warn('[reconcileStaleWoltDeliveries] Failed to reconcile delivery', {
+          deliveryId: delivery.id,
+          jobId: delivery.jobId,
+          error: error?.message,
+        });
       }
     }
   }
 }
-
-
-
-
-
-
 
 
 

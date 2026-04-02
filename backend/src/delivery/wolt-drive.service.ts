@@ -27,6 +27,7 @@ interface WoltApiEndpoints {
   deliveriesUrl: string;
   shipmentPromisesUrl: string;
   orderStatusUrl: string;
+  merchantAreasUrl: string;
 }
 
 interface DeliveryCreateContext {
@@ -35,6 +36,7 @@ interface DeliveryCreateContext {
   orderNumber?: string | number | null;
   supportEmail?: string;
   supportUrl?: string;
+  promiseSnapshot?: ShipmentPromiseSnapshot;
 }
 
 @Injectable()
@@ -59,13 +61,16 @@ export class WoltDriveService {
     } else if (normalized) {
       apiBase = `${normalized}/v1`;
     }
+    const orderRoot = v1Index >= 0 ? normalized.slice(0, v1Index) : normalized;
 
     const venuePath = `${apiBase}/venues/${encodeURIComponent(venueId)}`;
 
     return {
       deliveriesUrl: `${venuePath}/deliveries`,
       shipmentPromisesUrl: `${venuePath}/shipment-promises`,
-      orderStatusUrl: `${venuePath}/order`,
+      // Live order endpoints are not under /v1 in Wolt Drive docs.
+      orderStatusUrl: `${orderRoot || normalized}/order`,
+      merchantAreasUrl: `${apiBase}/merchants`,
     };
   }
   
@@ -235,7 +240,12 @@ export class WoltDriveService {
     }
 
     if (status === 422) {
-      const message = errorData?.message || errorData?.error || 'Nedá sa spracovať';
+      const message =
+        extractedMessage ||
+        (errorData && typeof errorData === 'object'
+          ? JSON.stringify(errorData).slice(0, 500)
+          : '') ||
+        'Nedá sa spracovať';
       return `Wolt API nemôže spracovať požiadavku: ${message}`;
     }
 
@@ -532,8 +542,12 @@ export class WoltDriveService {
       context?.parcelCurrency || promiseSnapshot?.currency || 'EUR';
     const parcelPriceCents =
       typeof context?.parcelPriceCents === 'number' ? context.parcelPriceCents : 0;
-    const supportEmail = context?.supportEmail || process.env.WOLT_SUPPORT_EMAIL;
-    const supportUrl = context?.supportUrl || process.env.FRONTEND_URL;
+    const supportEmail =
+      context?.supportEmail ||
+      process.env.WOLT_SUPPORT_EMAIL ||
+      process.env.SMTP_FROM_EMAIL ||
+      'support@example.com';
+    const supportUrl = context?.supportUrl || process.env.FRONTEND_URL || 'https://example.com';
     const orderNumber = context?.orderNumber != null ? String(context.orderNumber) : orderId;
 
     const request: Record<string, unknown> = {
@@ -567,8 +581,11 @@ export class WoltDriveService {
           },
         },
       ],
-      merchant_order_reference_id: orderId,
-      order_number: orderNumber,
+      merchant_order_reference_id: orderNumber || orderId,
+      customer_support: {
+        email: supportEmail,
+        url: supportUrl,
+      },
     };
 
     // Add shipment promise ID if provided (required by Wolt API for proper flow)
@@ -700,8 +717,10 @@ export class WoltDriveService {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
+            reason: 'OTHER',
             reject_reason: 'OTHER',
             reject_details: 'Cancelled by merchant',
+            details: 'Cancelled by merchant',
           }),
         });
 
@@ -751,14 +770,131 @@ export class WoltDriveService {
     // Should never reach here, but TypeScript needs it
     throw lastError || new Error('Wolt API cancelDelivery failed');
   }
+
+  async getDeliveryAreas(
+    apiKey: string,
+    merchantId: string,
+    maxRetries = 2,
+    apiConfig?: WoltApiConfig,
+  ): Promise<any> {
+    const trimmedMerchantId = String(merchantId || '').trim();
+    if (!trimmedMerchantId) {
+      throw new BadRequestException('Wolt Merchant ID nie je nastavený pre tento tenant.');
+    }
+
+    const { merchantAreasUrl } = this.resolveApiEndpoints(apiConfig);
+    const url = `${merchantAreasUrl}/${encodeURIComponent(trimmedMerchantId)}/delivery-areas`;
+    let lastError: Error | null = null;
+
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+      try {
+        const response = await fetch(url, {
+          method: 'GET',
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+            'Content-Type': 'application/json',
+          },
+        });
+
+        if (!response.ok) {
+          const error = await this.buildApiError(response);
+          if (!this.isRetryableError(error, response)) {
+            throw error;
+          }
+          lastError = error;
+          throw error;
+        }
+
+        return await response.json();
+      } catch (error: any) {
+        lastError = error instanceof Error ? error : new Error(String(error));
+
+        if (!this.isRetryableError(error, undefined)) {
+          this.logger.error('Non-retryable error from Wolt API', {
+            error: lastError.message,
+            merchantId: trimmedMerchantId,
+          });
+          throw lastError;
+        }
+
+        if (attempt === maxRetries - 1) {
+          this.logger.error(`Wolt API getDeliveryAreas failed after ${maxRetries} attempts`, {
+            error: lastError.message,
+            merchantId: trimmedMerchantId,
+          });
+          throw lastError;
+        }
+
+        const delayMs = Math.pow(2, attempt) * 1000;
+        await this.delay(delayMs);
+      }
+    }
+
+    throw lastError || new Error('Wolt API getDeliveryAreas failed');
+  }
+
+  async getOrderStatus(
+    apiKey: string,
+    jobId: string,
+    maxRetries = 2,
+    apiConfig?: WoltApiConfig,
+  ): Promise<any> {
+    const trimmedJobId = String(jobId || '').trim();
+    if (!trimmedJobId) {
+      throw new BadRequestException('Wolt jobId is required for status lookup');
+    }
+
+    const { orderStatusUrl } = this.resolveApiEndpoints(apiConfig);
+    const url = `${orderStatusUrl}/${encodeURIComponent(trimmedJobId)}`;
+    let lastError: Error | null = null;
+
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+      try {
+        const response = await fetch(url, {
+          method: 'GET',
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+            'Content-Type': 'application/json',
+          },
+        });
+
+        if (!response.ok) {
+          const error = await this.buildApiError(response);
+          if (!this.isRetryableError(error, response)) {
+            throw error;
+          }
+          lastError = error;
+          throw error;
+        }
+
+        return await response.json();
+      } catch (error: any) {
+        lastError = error instanceof Error ? error : new Error(String(error));
+
+        if (!this.isRetryableError(error, undefined)) {
+          this.logger.error('Non-retryable error from Wolt API', {
+            error: lastError.message,
+            jobId: trimmedJobId,
+          });
+          throw lastError;
+        }
+
+        if (attempt === maxRetries - 1) {
+          this.logger.error(`Wolt API getOrderStatus failed after ${maxRetries} attempts`, {
+            error: lastError.message,
+            jobId: trimmedJobId,
+          });
+          throw lastError;
+        }
+
+        const delayMs = Math.pow(2, attempt) * 1000;
+        await this.delay(delayMs);
+      }
+    }
+
+    throw lastError || new Error('Wolt API getOrderStatus failed');
+  }
 }
-
-
-
-
-
-
-
 
 
 

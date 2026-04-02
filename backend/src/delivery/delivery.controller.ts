@@ -21,6 +21,20 @@ interface ShipmentPromiseData {
   distance?: number;
 }
 
+interface CheckAreaBody {
+  tenantSlug: string;
+  dropoffAddress: {
+    street?: string;
+    city?: string;
+    postalCode?: string;
+    country?: string;
+    coordinates?: {
+      lat?: number;
+      lng?: number;
+    };
+  };
+}
+
 @Controller('delivery')
 @UseGuards(RolesGuard)
 @Roles('ADMIN', 'OPERATOR')
@@ -89,12 +103,42 @@ export class DeliveryController {
     return this.deliveryService.cancelDeliveryForOrder(data.orderId, req.user);
   }
 
+  @Post('check-area')
+  async checkArea(
+    @Body() data: CheckAreaBody,
+    @Req() req: { user?: RequestUser },
+  ) {
+    if (!data?.tenantSlug || typeof data.tenantSlug !== 'string') {
+      throw new BadRequestException('tenantSlug is required');
+    }
+    if (!data?.dropoffAddress || typeof data.dropoffAddress !== 'object') {
+      throw new BadRequestException('dropoffAddress is required');
+    }
+
+    return this.deliveryService.checkAreaByTenantSlug(
+      data.tenantSlug,
+      data.dropoffAddress,
+      req.user,
+    );
+  }
+
+  @Post('areas/refresh')
+  async refreshAreas(
+    @Body() data: { tenantSlug: string },
+    @Req() req: { user?: RequestUser },
+  ) {
+    if (!data?.tenantSlug || typeof data.tenantSlug !== 'string') {
+      throw new BadRequestException('tenantSlug is required');
+    }
+
+    return this.deliveryService.refreshAreasForTenantSlug(data.tenantSlug, req.user);
+  }
+
   @Get(':id')
   async getDelivery(@Param('id') id: string, @Req() req: { user?: RequestUser }) {
     return this.deliveryService.getDeliveryById(id, req.user);
   }
 }
-
 
 
 
