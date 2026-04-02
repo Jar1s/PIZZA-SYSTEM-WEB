@@ -1,7 +1,7 @@
 {
   "framework": "nextjs",
   "regions": ["fra1"],
-  "installCommand": "sh -c 'if [ -d frontend ]; then cd frontend; fi; npm install'",
-  "buildCommand": "sh -c 'if [ -d frontend ]; then cd frontend && npm run build && cd .. && rm -rf .next && cp -R frontend/.next .next; else npm run build; fi'",
-  "outputDirectory": ".next"
+  "installCommand": "npm install",
+  "buildCommand": "npm run vercel-build",
+  "outputDirectory": "frontend/.next"
 }
