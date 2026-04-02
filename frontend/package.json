@@ -10,6 +10,7 @@
     "prebuild": "node prepare-build.js",
     "dev": "next dev",
     "build": "next build",
+    "vercel-build": "npm run build",
     "start": "next start",
     "lint": "next lint",
     "type-check": "tsc --noEmit",
