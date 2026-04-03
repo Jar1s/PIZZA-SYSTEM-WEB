@@ -127,7 +127,7 @@ export function getProductFallbackImage(
   }
   
   // Universal fallback for all products
-  return toWebpIfLocal('/images/placeholder-pizza.jpg');
+  return toWebpIfLocal('/images/placeholder-pizza.webp');
 }
 
 /**

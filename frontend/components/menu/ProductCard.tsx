@@ -30,7 +30,7 @@ export const ProductCard = memo(function ProductCard({ product, index = 0, isBes
   const [showCustomization, setShowCustomization] = useState(false);
   const [imageError, setImageError] = useState(false);
   const [imageLoading, setImageLoading] = useState(true);
-  const [retryCount, setRetryCount] = useState(0);
+  const [currentImageSrc, setCurrentImageSrc] = useState<string | undefined>(undefined);
   const isPremium = useMemo(() => product.priceCents >= 1100, [product.priceCents]);
   const primaryColor = tenant?.theme?.primaryColor || 'var(--color-primary)';
   
@@ -38,7 +38,6 @@ export const ProductCard = memo(function ProductCard({ product, index = 0, isBes
   useEffect(() => {
     setImageError(false);
     setImageLoading(true);
-    setRetryCount(0);
   }, [product.image, product.name]);
   
   // Get tenant from context
@@ -77,6 +76,12 @@ export const ProductCard = memo(function ProductCard({ product, index = 0, isBes
     }
     return getProductDisplayImage(product, translation.name);
   }, [product, translation.name, fallbackImage]);
+
+  const placeholderImage = '/images/placeholder-pizza.webp';
+
+  useEffect(() => {
+    setCurrentImageSrc(displayImage || fallbackImage || placeholderImage);
+  }, [displayImage, fallbackImage]);
   
   // Debug logging
   useEffect(() => {
@@ -146,7 +151,7 @@ export const ProductCard = memo(function ProductCard({ product, index = 0, isBes
       {isDark && <span className="product-card-gradient" aria-hidden />}
       {/* Image Container */}
       <div className="relative h-48 sm:h-56 md:h-64 overflow-hidden bg-gray-100 flex-shrink-0">
-        {displayImage && !imageError ? (
+        {currentImageSrc && !imageError ? (
           <>
             {/* Loading skeleton */}
             {imageLoading && (
@@ -154,7 +159,7 @@ export const ProductCard = memo(function ProductCard({ product, index = 0, isBes
             )}
             
             <Image
-              src={displayImage}
+              src={currentImageSrc}
               alt={product.name}
               fill
               sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
@@ -169,40 +174,24 @@ export const ProductCard = memo(function ProductCard({ product, index = 0, isBes
               }`}
               onLoad={() => {
                 setImageLoading(false);
-                setRetryCount(0);
               }}
-              onError={(e) => {
-                console.error('Image failed to load:', displayImage, 'Product:', product.name, 'Category:', product.category, 'Fallback:', fallbackImage, 'retry:', retryCount);
-                
-                // If we're using fallback and it fails, or if we tried product.image and it failed, try fallback
-                if (displayImage === product.image && fallbackImage && retryCount === 0) {
-                  // Try fallback image instead
-                  console.log('Trying fallback image:', fallbackImage);
-                  setRetryCount(1);
+              onError={() => {
+                console.error('Image failed to load:', currentImageSrc, 'Product:', product.name, 'Category:', product.category, 'Fallback:', fallbackImage);
+
+                if (fallbackImage && currentImageSrc !== fallbackImage) {
                   setImageLoading(true);
-                  const img = e.currentTarget as HTMLImageElement;
-                  img.src = fallbackImage;
+                  setCurrentImageSrc(fallbackImage);
                   return;
                 }
-                
-                // Retry logic - try again max 2 times
-                if (retryCount < 2) {
-                  setTimeout(() => {
-                    setRetryCount(prev => prev + 1);
-                    setImageLoading(true);
-                    // Force reload by adding cache busting parameter
-                    const img = e.currentTarget as HTMLImageElement;
-                    if (img.src && !img.src.includes('retry=')) {
-                      const separator = img.src.includes('?') ? '&' : '?';
-                      img.src = `${displayImage}${separator}retry=${retryCount + 1}&t=${Date.now()}`;
-                    }
-                  }, 1000 * (retryCount + 1)); // Exponential backoff: 1s, 2s
-                } else {
-                  // After 2 retries, show placeholder
-                  console.log('All image loading attempts failed, showing placeholder');
-                  setImageError(true);
-                  setImageLoading(false);
+
+                if (currentImageSrc !== placeholderImage) {
+                  setImageLoading(true);
+                  setCurrentImageSrc(placeholderImage);
+                  return;
                 }
+
+                setImageError(true);
+                setImageLoading(false);
               }}
             />
             
@@ -212,7 +201,7 @@ export const ProductCard = memo(function ProductCard({ product, index = 0, isBes
         ) : (
           <div className="relative w-full h-full">
             <Image
-              src={fallbackImage || '/images/placeholder-pizza.jpg'}
+              src={fallbackImage || placeholderImage}
               alt={product.name}
               fill
               sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"

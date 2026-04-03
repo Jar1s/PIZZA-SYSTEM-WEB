@@ -3,6 +3,7 @@ const { withSentryConfig } = require('@sentry/nextjs');
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   images: {
+    unoptimized: true,
     remotePatterns: [
       {
         protocol: 'https',
@@ -36,6 +37,9 @@ const nextConfig = {
   },
   // Performance optimizations
   experimental: {
+    outputFileTracingIncludes: {
+      '/*': ['./public/**/*'],
+    },
     optimizePackageImports: ['framer-motion', '@/components'],
   },
   // Optimize production builds
