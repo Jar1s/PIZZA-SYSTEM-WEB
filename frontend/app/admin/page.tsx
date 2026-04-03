@@ -48,99 +48,18 @@ const OrderList = dynamic(() => import('@/components/admin/OrderList').then(mod 
   ssr: false,
 });
 
-const KPICards = dynamic(() => import('@/components/admin/KPICards').then(mod => ({ default: mod.KPICards })), {
-  loading: () => <div className="animate-pulse bg-gray-200 h-32 rounded-lg mb-6" />,
-  ssr: false,
-});
-
-const MaintenanceBanner = dynamic(() => import('@/components/admin/MaintenanceBanner').then(mod => ({ default: mod.MaintenanceBanner })), {
-  loading: () => null,
-  ssr: false,
-});
-
-const PaymentSettings = dynamic(() => import('@/components/admin/PaymentSettings').then(mod => ({ default: mod.PaymentSettings })), {
-  loading: () => <div className="animate-pulse bg-gray-200 h-64 rounded-lg mb-6" />,
-  ssr: false,
-});
-
-const SoundNotificationSettings = dynamic(() => import('@/components/admin/SoundNotificationSettings').then(mod => ({ default: mod.SoundNotificationSettings })), {
-  loading: () => null,
-  ssr: false,
-});
-
-const StoryousSettings = dynamic(() => import('@/components/admin/StoryousSettings').then(mod => ({ default: mod.StoryousSettings })), {
-  loading: () => <div className="animate-pulse bg-gray-200 h-24 rounded-lg" />,
-  ssr: false,
-});
-
-const DeliveryFeeTiersSettings = dynamic(() => import('@/components/admin/DeliveryFeeTiersSettings').then(mod => ({ default: mod.default })), {
-  loading: () => <div className="animate-pulse bg-gray-200 h-64 rounded-lg mb-6" />,
-  ssr: false,
-});
-
-const OpeningHoursSettings = dynamic(() => import('@/components/admin/OpeningHoursSettings').then(mod => ({ default: mod.OpeningHoursSettings })), {
-  loading: () => <div className="animate-pulse bg-gray-200 h-64 rounded-lg mb-6" />,
-  ssr: false,
-});
-
-
 export default function AdminDashboard() {
   const { selectedTenant } = useAdminContext();
   
   return (
-    <div className="text-gray-900">
-      <h1 className="text-2xl lg:text-3xl font-bold mb-4 lg:mb-6 text-gray-900">Dashboard</h1>
-      
-      {/* Compact Settings Grid - Top Section */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2 sm:gap-3 mb-4 lg:mb-6">
-        {/* Maintenance Banner with Toggle - Compact */}
+    <div className="flex min-h-[calc(100dvh-8rem)] flex-col text-gray-900 lg:h-[calc(100dvh-8rem)] lg:min-h-0">
+      <div className="min-h-0 flex-1">
         <ErrorBoundary>
-          <Suspense fallback={null}>
-            <MaintenanceBanner />
-          </Suspense>
-        </ErrorBoundary>
-
-        {/* Sound Notification Settings - Compact */}
-        <ErrorBoundary>
-          <Suspense fallback={null}>
-            <SoundNotificationSettings />
-          </Suspense>
-        </ErrorBoundary>
-
-        {/* Opening Hours Settings - Compact */}
-        <ErrorBoundary>
-          <Suspense fallback={<div className="animate-pulse bg-gray-200 h-24 rounded-lg" />}>
-            <OpeningHoursSettings />
-          </Suspense>
-        </ErrorBoundary>
-
-        {/* Payment Settings - Compact */}
-        <ErrorBoundary>
-          <Suspense fallback={<div className="animate-pulse bg-gray-200 h-24 rounded-lg" />}>
-            <PaymentSettings />
-          </Suspense>
-        </ErrorBoundary>
-
-        {/* Storyous Settings - Compact */}
-        <ErrorBoundary>
-          <Suspense fallback={<div className="animate-pulse bg-gray-200 h-24 rounded-lg" />}>
-            <StoryousSettings />
+          <Suspense fallback={<div className="animate-pulse bg-gray-200 h-64 rounded-lg" />}>
+            <OrderList todayOnly={true} selectedTenant={selectedTenant} variant="dashboard" />
           </Suspense>
         </ErrorBoundary>
       </div>
-
-      {/* Main Content */}
-      <ErrorBoundary>
-        <Suspense fallback={<div className="animate-pulse bg-gray-200 h-32 rounded-lg mb-6" />}>
-          <KPICards selectedTenant={selectedTenant} />
-        </Suspense>
-      </ErrorBoundary>
-      
-      <ErrorBoundary>
-        <Suspense fallback={<div className="animate-pulse bg-gray-200 h-64 rounded-lg" />}>
-          <OrderList todayOnly={true} selectedTenant={selectedTenant} variant="dashboard" />
-        </Suspense>
-      </ErrorBoundary>
     </div>
   );
 }
