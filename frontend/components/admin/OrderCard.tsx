@@ -1232,15 +1232,15 @@ export function OrderCard({
                     );
                   })}
 
-                  <div className="space-y-2.5 border-t border-zinc-200 pt-2.5">
+                  <div className="space-y-1.5 border-t border-zinc-200 pt-2">
                     {displayedDeliveryFeeCents != null && (
-                      <div className="flex items-center justify-between text-[13px] text-zinc-600">
+                      <div className="flex items-center justify-between text-[12px] text-zinc-600">
                         <span>{language === 'sk' ? 'Doprava' : 'Delivery fee'}</span>
                         <span>{formatEurPrice(displayedDeliveryFeeCents)}</span>
                       </div>
                     )}
 
-                    <div className="flex items-center justify-between text-[18px] font-black text-zinc-950">
+                    <div className="flex items-center justify-between text-[14px] font-bold text-zinc-950">
                       <span>{language === 'sk' ? 'Celkom' : 'Total'}</span>
                       <span>{formatEurPrice(order.totalCents)}</span>
                     </div>
@@ -1326,23 +1326,6 @@ export function OrderCard({
                     </div>
 
                     <div className="mt-2 flex flex-wrap items-center gap-2">
-                      <input
-                        type="number"
-                        min={0}
-                        max={180}
-                        step={1}
-                        value={woltPreparationMinutes}
-                        onChange={(e) => {
-                          const next = Number(e.target.value);
-                          if (!Number.isFinite(next)) {
-                            setWoltPreparationMinutes(20);
-                            return;
-                          }
-                          setWoltPreparationMinutes(Math.max(0, Math.min(180, Math.round(next))));
-                        }}
-                        className="h-9 w-[88px] rounded-xl border border-zinc-200 bg-white px-3 text-sm text-zinc-900"
-                      />
-
                       {canCreateWolt && (
                         <button
                           onClick={handleCreateWoltDelivery}
@@ -1858,25 +1841,6 @@ export function OrderCard({
                           );
                         })}
                       </div>
-                      <input
-                        type="number"
-                        min={0}
-                        max={180}
-                        step={1}
-                        value={woltPreparationMinutes}
-                        onChange={(e) => {
-                          const next = Number(e.target.value);
-                          if (!Number.isFinite(next)) {
-                            setWoltPreparationMinutes(20);
-                            return;
-                          }
-                          setWoltPreparationMinutes(Math.max(0, Math.min(180, Math.round(next))));
-                        }}
-                        className="w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900"
-                      />
-                      <p className="text-xs text-gray-500 mt-1">
-                        Wolt použije túto prípravu na výpočet pickup času kuriéra.
-                      </p>
                     </div>
                   </div>
 
