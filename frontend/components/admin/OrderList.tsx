@@ -572,6 +572,7 @@ export function OrderList({
 
   const workspaceCopy = getWorkspaceCopy(variant, todayOnly);
   const isPageVariant = variant === 'page';
+  const showWorkspaceHeader = isPageVariant;
   const desktopWorkspaceClass = isPageVariant
     ? 'lg:h-[calc(100vh-8.25rem)]'
     : 'lg:h-[min(680px,calc(100vh-17rem))]';
@@ -581,33 +582,26 @@ export function OrderList({
     <section
       className={`overflow-hidden rounded-[24px] border border-zinc-200 bg-white shadow-[0_24px_60px_-42px_rgba(15,23,42,0.35)] lg:flex lg:flex-col ${desktopWorkspaceClass}`}
     >
-      <div
-        className={`border-b border-zinc-200 bg-white/95 ${
-          isPageVariant ? 'px-4 py-2.5 lg:px-5' : 'px-4 py-4 lg:px-5'
-        }`}
-      >
-        <div className={`flex flex-col gap-3 ${isPageVariant ? 'xl:flex-row xl:items-center xl:justify-between' : 'xl:flex-row xl:items-end xl:justify-between'}`}>
-          <div className={isPageVariant ? 'max-w-xl' : 'max-w-2xl'}>
-            <p className="text-[11px] font-black uppercase tracking-[0.28em] text-orange-600">
-              {workspaceCopy.eyebrow}
-            </p>
-            <h2
-              className={`font-black tracking-tight text-zinc-950 ${
-                isPageVariant ? 'mt-1 text-lg lg:text-[1.65rem]' : 'mt-1.5 text-[1.65rem] lg:text-[2rem]'
-              }`}
-            >
-              {workspaceCopy.title}
-            </h2>
-            {!isPageVariant && <p className="mt-1.5 text-[13px] text-zinc-500">{workspaceCopy.description}</p>}
-          </div>
-
-          {!todayOnly && (
-            <div className={isPageVariant ? 'xl:w-[420px] xl:max-w-[420px]' : 'xl:w-[520px] xl:max-w-[520px]'}>
-              <OrderFilters filters={filters} onChange={setFilters} />
+      {showWorkspaceHeader && (
+        <div className="border-b border-zinc-200 bg-white/95 px-4 py-2.5 lg:px-5">
+          <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+            <div className="max-w-xl">
+              <p className="text-[11px] font-black uppercase tracking-[0.28em] text-orange-600">
+                {workspaceCopy.eyebrow}
+              </p>
+              <h2 className="mt-1 text-lg font-black tracking-tight text-zinc-950 lg:text-[1.65rem]">
+                {workspaceCopy.title}
+              </h2>
             </div>
-          )}
+
+            {!todayOnly && (
+              <div className="xl:w-[420px] xl:max-w-[420px]">
+                <OrderFilters filters={filters} onChange={setFilters} />
+              </div>
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
       {loading ? (
         <div className="p-8 text-center text-sm font-medium text-zinc-500">Nacitavam objednavky...</div>
