@@ -26,6 +26,7 @@ export function Sidebar({ onClose, collapsed = false, onToggleCollapse }: Sideba
     { href: '/admin/brands', label: 'Brands', icon: '🏢', roles: ['ADMIN'] },
     { href: '/admin/customers', label: 'Customers', icon: '👥', roles: ['ADMIN'] },
     { href: '/admin/analytics', label: 'Analytics', icon: '📈', roles: ['ADMIN'] },
+    { href: '/admin/settings', label: 'Settings', icon: '⚙️', roles: ['ADMIN'] },
   ];
 
   // Filter links based on user role

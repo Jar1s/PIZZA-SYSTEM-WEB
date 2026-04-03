@@ -20,6 +20,7 @@ export function Header({ onMenuClick, selectedTenant, onTenantChange }: HeaderPr
     if (pathname === '/admin/brands') return 'Brands';
     if (pathname === '/admin/analytics') return 'Analytics';
     if (pathname === '/admin/customers') return 'Customers';
+    if (pathname === '/admin/settings') return 'Settings';
     return 'Admin';
   };
 

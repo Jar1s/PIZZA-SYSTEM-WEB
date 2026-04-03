@@ -48,81 +48,12 @@ const OrderList = dynamic(() => import('@/components/admin/OrderList').then(mod 
   ssr: false,
 });
 
-const MaintenanceBanner = dynamic(() => import('@/components/admin/MaintenanceBanner').then(mod => ({ default: mod.MaintenanceBanner })), {
-  loading: () => null,
-  ssr: false,
-});
-
-const PaymentSettings = dynamic(() => import('@/components/admin/PaymentSettings').then(mod => ({ default: mod.PaymentSettings })), {
-  loading: () => <div className="animate-pulse bg-gray-200 h-64 rounded-lg mb-6" />,
-  ssr: false,
-});
-
-const SoundNotificationSettings = dynamic(() => import('@/components/admin/SoundNotificationSettings').then(mod => ({ default: mod.SoundNotificationSettings })), {
-  loading: () => null,
-  ssr: false,
-});
-
-const StoryousSettings = dynamic(() => import('@/components/admin/StoryousSettings').then(mod => ({ default: mod.StoryousSettings })), {
-  loading: () => <div className="animate-pulse bg-gray-200 h-24 rounded-lg" />,
-  ssr: false,
-});
-
-const DeliveryFeeTiersSettings = dynamic(() => import('@/components/admin/DeliveryFeeTiersSettings').then(mod => ({ default: mod.default })), {
-  loading: () => <div className="animate-pulse bg-gray-200 h-64 rounded-lg mb-6" />,
-  ssr: false,
-});
-
-const OpeningHoursSettings = dynamic(() => import('@/components/admin/OpeningHoursSettings').then(mod => ({ default: mod.OpeningHoursSettings })), {
-  loading: () => <div className="animate-pulse bg-gray-200 h-64 rounded-lg mb-6" />,
-  ssr: false,
-});
-
-
 export default function AdminDashboard() {
   const { selectedTenant } = useAdminContext();
   
   return (
     <div className="text-gray-900">
       <h1 className="text-xl lg:text-2xl font-bold mb-3 lg:mb-4 text-gray-900">Dashboard</h1>
-      
-      {/* Compact Settings Grid - Top Section */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2 mb-3 lg:mb-4">
-        {/* Maintenance Banner with Toggle - Compact */}
-        <ErrorBoundary>
-          <Suspense fallback={null}>
-            <MaintenanceBanner />
-          </Suspense>
-        </ErrorBoundary>
-
-        {/* Sound Notification Settings - Compact */}
-        <ErrorBoundary>
-          <Suspense fallback={null}>
-            <SoundNotificationSettings />
-          </Suspense>
-        </ErrorBoundary>
-
-        {/* Opening Hours Settings - Compact */}
-        <ErrorBoundary>
-          <Suspense fallback={<div className="animate-pulse bg-gray-200 h-24 rounded-lg" />}>
-            <OpeningHoursSettings />
-          </Suspense>
-        </ErrorBoundary>
-
-        {/* Payment Settings - Compact */}
-        <ErrorBoundary>
-          <Suspense fallback={<div className="animate-pulse bg-gray-200 h-24 rounded-lg" />}>
-            <PaymentSettings />
-          </Suspense>
-        </ErrorBoundary>
-
-        {/* Storyous Settings - Compact */}
-        <ErrorBoundary>
-          <Suspense fallback={<div className="animate-pulse bg-gray-200 h-24 rounded-lg" />}>
-            <StoryousSettings />
-          </Suspense>
-        </ErrorBoundary>
-      </div>
 
       <ErrorBoundary>
         <Suspense fallback={<div className="animate-pulse bg-gray-200 h-64 rounded-lg" />}>
