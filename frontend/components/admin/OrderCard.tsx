@@ -1281,116 +1281,30 @@ export function OrderCard({
                 </div>
               </InspectorAccordion>
 
-              <InspectorSection
-                className="shrink-0"
-                eyebrow={language === 'sk' ? 'Wolt' : 'Wolt'}
-                title={language === 'sk' ? 'Wolt a partneri' : 'Wolt & partners'}
-                description={
-                  language === 'sk'
-                    ? 'Podpora partnera, príprava pre kuriéra a synchronizácia systému na jednom mieste.'
-                    : 'Partner support, courier prep, and system sync in one place.'
-                }
-              >
-                <div className="space-y-3">
-                  <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_220px]">
-                    <div className="rounded-[16px] border border-orange-200 bg-orange-50 p-3">
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <h4 className="text-[11px] font-black uppercase tracking-[0.18em] text-orange-800">
-                            Wolt
-                          </h4>
-                          <p className="mt-1 text-[14px] font-semibold text-orange-900">
-                            {isWoltDelivery
-                              ? `Aktívne doručenie: ${woltDelivery?.status || 'Wolt'}`
-                              : canCreateWolt
-                                ? 'Kuriér zatiaľ nie je vytvorený.'
-                                : 'Wolt sa aktivuje po prijatí objednávky.'}
-                          </p>
-                        </div>
-                        {renderWoltZoneBadge()}
-                      </div>
-
-                      <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] font-medium text-orange-900">
-                        {woltPickupEtaRounded != null && <span>Pickup ~{woltPickupEtaRounded}m</span>}
-                        {woltDropoffEtaRemainingMinutes != null && (
-                          <span>Dropoff ~{woltDropoffEtaRemainingMinutes}m</span>
-                        )}
-                        {displayedDeliveryFeeCents != null && (
-                          <span>Fee {formatEurPrice(displayedDeliveryFeeCents)}</span>
-                        )}
-                      </div>
-
-                      {woltMessage && (
-                        <div className="mt-2 rounded-xl border border-orange-200 bg-white/80 px-3 py-2 text-[11px] text-orange-900">
-                          {woltMessage}
-                        </div>
+              <section className="shrink-0 overflow-hidden rounded-[18px] border border-zinc-200 bg-white shadow-[0_14px_34px_-30px_rgba(15,23,42,0.22)]">
+                <div className="grid gap-2.5 px-3 py-2.5 xl:grid-cols-[minmax(0,1fr)_220px]">
+                  <div className="rounded-[14px] border border-zinc-200 bg-zinc-50 px-3 py-2.5">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <span className="rounded-full border border-zinc-200 bg-white px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-zinc-600">
+                        Wolt
+                      </span>
+                      <span className="rounded-full border border-zinc-200 bg-white px-2.5 py-1 text-[10px] font-semibold text-zinc-700">
+                        {language === 'sk' ? 'Kuriér' : 'Courier'} {woltPreparationMinutes}m
+                      </span>
+                      {renderWoltZoneBadge()}
+                      {isWoltDelivery && (
+                        <span className="rounded-full border border-orange-200 bg-orange-50 px-2.5 py-1 text-[10px] font-semibold text-orange-800">
+                          {woltDelivery?.status || 'Wolt'}
+                        </span>
                       )}
-
-                      {woltAreaBlockReason && !isWoltDelivery && (
-                        <div className="mt-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-[11px] text-red-700">
-                          {woltAreaBlockReason}
-                        </div>
-                      )}
-
-                      {woltDelivery?.trackingUrl && (
-                        <a
-                          href={woltDelivery.trackingUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="mt-2 inline-block text-[11px] font-semibold text-orange-700 underline"
-                        >
-                          Otvoriť tracking
-                        </a>
+                      {woltPickupEtaRounded != null && (
+                        <span className="rounded-full border border-zinc-200 bg-white px-2.5 py-1 text-[10px] font-semibold text-zinc-700">
+                          Pickup ~{woltPickupEtaRounded}m
+                        </span>
                       )}
                     </div>
 
-                    <div className="rounded-[16px] border border-zinc-200 bg-zinc-50 p-3">
-                      <h4 className="text-[11px] font-black uppercase tracking-[0.18em] text-zinc-700">
-                        Storyous
-                      </h4>
-                      <div className="mt-2 space-y-2">
-                        {storyousStatusMeta ? (
-                          <div className={`rounded-xl px-3 py-2 text-[11px] ${storyousStatusMeta.detailClassName}`}>
-                            {storyousStatusMeta.detailText}
-                          </div>
-                        ) : (
-                          <div className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-[11px] text-zinc-600">
-                            Zatiaľ bez Storyous objednávky.
-                          </div>
-                        )}
-
-                        {canSyncToStoryous && (
-                          <button
-                            onClick={handleSyncStoryous}
-                            disabled={syncingStoryous}
-                            className="rounded-2xl bg-purple-600 px-3 py-1.5 text-[11px] font-semibold text-white transition hover:bg-purple-700 disabled:cursor-not-allowed disabled:opacity-50"
-                            title="Send to Storyous"
-                          >
-                            {syncingStoryous ? '⏳ Posielam' : 'Poslať do Storyous'}
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="rounded-[16px] border border-zinc-200 bg-zinc-50 p-3">
-                    <div className="flex flex-wrap items-start justify-between gap-3">
-                      <div>
-                        <h4 className="text-[11px] font-black uppercase tracking-[0.18em] text-zinc-700">
-                          {language === 'sk' ? 'Príprava pre kuriéra' : 'Courier prep'}
-                        </h4>
-                        <p className="mt-1 text-[13px] text-zinc-600">
-                          {language === 'sk'
-                            ? 'Wolt použije túto prípravu na výpočet času vyzdvihnutia kuriéra.'
-                            : 'Wolt uses this prep time to calculate courier pickup.'}
-                        </p>
-                      </div>
-                      <div className="rounded-full border border-zinc-200 bg-white px-3 py-1 text-[11px] font-semibold text-zinc-700">
-                        {language === 'sk' ? 'Aktuálne' : 'Current'} {woltPreparationMinutes}m
-                      </div>
-                    </div>
-
-                    <div className="mt-3 flex flex-wrap gap-2">
+                    <div className="mt-2 flex flex-wrap gap-1.5">
                       {woltPreparationQuickOptions.map((minutes) => {
                         const isActive = woltPreparationMinutes === minutes;
                         return (
@@ -1398,7 +1312,7 @@ export function OrderCard({
                             key={minutes}
                             type="button"
                             onClick={() => setWoltPreparationMinutes(minutes)}
-                            className={`rounded-xl border px-3 py-1.5 text-[11px] font-semibold transition-colors ${
+                            className={`rounded-xl border px-2.5 py-1.5 text-[10px] font-semibold transition-colors ${
                               isActive
                                 ? 'border-orange-600 bg-orange-500 text-white'
                                 : 'border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50'
@@ -1411,7 +1325,7 @@ export function OrderCard({
                       })}
                     </div>
 
-                    <div className="mt-3 grid gap-3 xl:grid-cols-[180px_minmax(0,1fr)]">
+                    <div className="mt-2 flex flex-wrap items-center gap-2">
                       <input
                         type="number"
                         min={0}
@@ -1426,39 +1340,88 @@ export function OrderCard({
                           }
                           setWoltPreparationMinutes(Math.max(0, Math.min(180, Math.round(next))));
                         }}
-                        className="w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900"
+                        className="h-9 w-[88px] rounded-xl border border-zinc-200 bg-white px-3 text-sm text-zinc-900"
                       />
 
-                      <div className="flex flex-wrap items-center gap-2">
-                        {canCreateWolt && (
-                          <button
-                            onClick={handleCreateWoltDelivery}
-                            disabled={creatingWolt || !canCreateWoltEffective}
-                            className="rounded-2xl bg-orange-600 px-3 py-2 text-[11px] font-semibold text-white transition hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-50"
-                            title={
-                              canCreateWoltEffective
-                                ? 'Create Wolt delivery'
-                                : woltAreaBlockReason || 'Wolt dispatch blocked'
-                            }
-                          >
-                            {creatingWolt ? '⏳ Kontrolujem' : 'Vytvoriť Wolt'}
-                          </button>
-                        )}
-                        {canCancelWolt && (
-                          <button
-                            onClick={handleCancelWoltDelivery}
-                            disabled={cancelingWolt}
-                            className="rounded-2xl border border-orange-300 bg-white px-3 py-2 text-[11px] font-semibold text-orange-800 transition hover:bg-orange-100 disabled:cursor-not-allowed disabled:opacity-50"
-                            title="Zrušiť Wolt delivery"
-                          >
-                            {cancelingWolt ? '⏳ Ruším Wolt' : 'Zrušiť Wolt'}
-                          </button>
-                        )}
+                      {canCreateWolt && (
+                        <button
+                          onClick={handleCreateWoltDelivery}
+                          disabled={creatingWolt || !canCreateWoltEffective}
+                          className="rounded-2xl bg-orange-600 px-3 py-2 text-[10px] font-semibold text-white transition hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-50"
+                          title={
+                            canCreateWoltEffective
+                              ? 'Create Wolt delivery'
+                              : woltAreaBlockReason || 'Wolt dispatch blocked'
+                          }
+                        >
+                          {creatingWolt ? '⏳ Kontrolujem' : 'Vytvoriť Wolt'}
+                        </button>
+                      )}
+                      {canCancelWolt && (
+                        <button
+                          onClick={handleCancelWoltDelivery}
+                          disabled={cancelingWolt}
+                          className="rounded-2xl border border-orange-300 bg-white px-3 py-2 text-[10px] font-semibold text-orange-800 transition hover:bg-orange-100 disabled:cursor-not-allowed disabled:opacity-50"
+                          title="Zrušiť Wolt delivery"
+                        >
+                          {cancelingWolt ? '⏳ Ruším Wolt' : 'Zrušiť Wolt'}
+                        </button>
+                      )}
+                      {woltDelivery?.trackingUrl && (
+                        <a
+                          href={woltDelivery.trackingUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-[10px] font-semibold text-orange-700 underline"
+                        >
+                          Tracking
+                        </a>
+                      )}
+                    </div>
+
+                    {(woltMessage || woltAreaBlockReason) && (
+                      <div className="mt-2 text-[10px] text-zinc-500">
+                        {woltAreaBlockReason || woltMessage}
                       </div>
+                    )}
+                  </div>
+
+                  <div className="rounded-[14px] border border-zinc-200 bg-zinc-50 px-3 py-2.5">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <div className="text-[10px] font-black uppercase tracking-[0.18em] text-zinc-500">
+                          Storyous
+                        </div>
+                        <div className="mt-1.5">
+                          {storyousStatusMeta ? (
+                            <span className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-semibold ${storyousStatusMeta.badgeClassName}`}>
+                              {storyousStatusMeta.badgeLabel.replace('📦 ', '')}
+                            </span>
+                          ) : (
+                            <span className="inline-flex rounded-full border border-zinc-200 bg-white px-2.5 py-1 text-[10px] font-semibold text-zinc-600">
+                              Bez syncu
+                            </span>
+                          )}
+                        </div>
+                        <div className="mt-1 break-all text-[10px] text-zinc-600">
+                          {order.storyousOrderId ? `ID: ${order.storyousOrderId}` : 'ID: -'}
+                        </div>
+                      </div>
+
+                      {canSyncToStoryous && (
+                        <button
+                          onClick={handleSyncStoryous}
+                          disabled={syncingStoryous}
+                          className="rounded-2xl bg-purple-600 px-3 py-1.5 text-[10px] font-semibold text-white transition hover:bg-purple-700 disabled:cursor-not-allowed disabled:opacity-50"
+                          title="Send to Storyous"
+                        >
+                          {syncingStoryous ? '⏳' : 'Sync'}
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>
-              </InspectorSection>
+              </section>
 
               <InspectorSection
                 className="hidden shrink-0 2xl:block"
