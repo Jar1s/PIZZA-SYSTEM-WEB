@@ -575,7 +575,7 @@ export function OrderList({
   const showWorkspaceHeader = isPageVariant;
   const desktopWorkspaceClass = isPageVariant
     ? 'lg:h-[calc(100vh-8.25rem)]'
-    : 'lg:h-[min(680px,calc(100vh-17rem))]';
+    : 'lg:h-full';
   const renderNow = new Date();
 
   return (
@@ -756,9 +756,9 @@ export function OrderList({
               </div>
             </aside>
 
-              <div className="min-w-0 overflow-hidden bg-[#f5f4ef] p-2.5 lg:p-3">
+              <div className="flex min-h-0 min-w-0 flex-col overflow-hidden bg-[#f5f4ef] p-2.5 lg:p-3">
               {selectedOrder ? (
-                <div className="mx-auto h-full min-h-0 max-w-[1180px]">
+                <div className="mx-auto flex h-full min-h-0 w-full max-w-[1180px] flex-1 flex-col">
                   <OrderCard
                     order={selectedOrder}
                     onStatusUpdate={handleStatusUpdate}

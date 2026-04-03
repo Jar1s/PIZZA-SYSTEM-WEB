@@ -155,7 +155,7 @@ export default function AdminLayout({
             selectedTenant={selectedTenant}
             onTenantChange={handleTenantChange}
           />
-          <main className="flex-1 overflow-y-auto p-4 lg:p-6 bg-gray-50 text-gray-900" style={{ backgroundColor: '#f9fafb', color: '#111827' }}>
+          <main className="min-h-0 flex-1 overflow-y-auto bg-gray-50 p-4 text-gray-900 lg:p-6" style={{ backgroundColor: '#f9fafb', color: '#111827' }}>
             {children}
           </main>
         </div>

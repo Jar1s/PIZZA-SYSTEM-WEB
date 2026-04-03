@@ -52,14 +52,14 @@ export default function AdminDashboard() {
   const { selectedTenant } = useAdminContext();
   
   return (
-    <div className="text-gray-900">
-      <h1 className="text-xl lg:text-2xl font-bold mb-3 lg:mb-4 text-gray-900">Dashboard</h1>
-
-      <ErrorBoundary>
-        <Suspense fallback={<div className="animate-pulse bg-gray-200 h-64 rounded-lg" />}>
-          <OrderList todayOnly={true} selectedTenant={selectedTenant} variant="dashboard" />
-        </Suspense>
-      </ErrorBoundary>
+    <div className="flex min-h-[calc(100dvh-8rem)] flex-col text-gray-900 lg:h-[calc(100dvh-8rem)] lg:min-h-0">
+      <div className="min-h-0 flex-1">
+        <ErrorBoundary>
+          <Suspense fallback={<div className="animate-pulse bg-gray-200 h-64 rounded-lg" />}>
+            <OrderList todayOnly={true} selectedTenant={selectedTenant} variant="dashboard" />
+          </Suspense>
+        </ErrorBoundary>
+      </div>
     </div>
   );
 }

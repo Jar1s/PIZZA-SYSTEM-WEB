@@ -1210,285 +1210,287 @@ export function OrderCard({
       
       {expanded &&
         (isDispatchDetailMode ? (
-          <div className="hidden min-h-0 flex-1 gap-3 md:grid md:grid-cols-[minmax(0,1.36fr)_280px]">
-            <InspectorSection
-              className="flex min-h-0 flex-col"
-              contentClassName="flex min-h-0 flex-1 flex-col"
-              eyebrow={language === 'sk' ? 'Objednavka' : 'Order'}
-              title={language === 'sk' ? 'Polozky a suma' : 'Items & total'}
-              description={`${order.items.length} ${language === 'sk' ? 'poloziek' : 'items'} • ${formatEurPrice(order.totalCents)}`}
-            >
-              <div className="flex min-h-0 flex-1 flex-col">
-                <div className="min-h-0 flex-1 space-y-2.5 overflow-y-auto pr-1">
-                  {order.items.map((item, i) => {
-                    const modifierLines = getFormattedModifierLines(
-                      item.modifiers,
-                      true,
-                      language,
-                      customizationLabels,
-                    );
-                    const itemTotal = calculateOrderItemPrice(item, 'PIZZA');
-                    const displayName = item.productName;
-
-                    return (
-                      <div key={i} className="border-b border-zinc-200 pb-2.5 last:border-b-0 last:pb-0">
-                        <div className="flex items-start justify-between gap-4 text-[14px] leading-5">
-                          <span className="min-w-0 font-semibold text-zinc-950">
-                            <span className="mr-2 text-orange-600">{item.quantity}x</span>
-                            {displayName}
-                          </span>
-                          <span className="shrink-0 font-semibold text-zinc-900">
-                            {formatEurPrice(itemTotal)}
-                          </span>
-                        </div>
-                        {modifierLines.length > 0 && (
-                          <div className="mt-1.5 space-y-0.5 pl-4.5">
-                            {modifierLines.map((modifier, idx) => (
-                              <div
-                                key={idx}
-                                className="flex items-start justify-between gap-4 text-[12px] text-zinc-600"
-                              >
-                                <span className="min-w-0 truncate">
-                                  <span className="mr-2 text-orange-500">1x</span>
-                                  {modifier.label}
-                                </span>
-                                <span className="shrink-0 whitespace-nowrap">
-                                  {formatEurPrice(modifier.priceCents)}
-                                </span>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-
-                <div className="mt-2.5 space-y-2.5 border-t border-zinc-200 pt-2.5">
-                  {displayedDeliveryFeeCents != null && (
-                    <div className="flex items-center justify-between text-[13px] text-zinc-600">
-                      <span>{language === 'sk' ? 'Doprava' : 'Delivery fee'}</span>
-                      <span>{formatEurPrice(displayedDeliveryFeeCents)}</span>
-                    </div>
-                  )}
-
-                  <div className="flex items-center justify-between text-[18px] font-black text-zinc-950">
-                    <span>{language === 'sk' ? 'Celkom' : 'Total'}</span>
-                    <span>{formatEurPrice(order.totalCents)}</span>
-                  </div>
-                </div>
-              </div>
-            </InspectorSection>
-
-            <div className="flex min-h-0 flex-col gap-3">
+          <div className="hidden min-h-0 flex-1 md:flex md:flex-col">
+            <div className="grid min-h-0 flex-1 gap-3 md:grid-cols-[minmax(0,1.36fr)_280px]">
               <InspectorSection
-                className="shrink-0"
-                eyebrow={language === 'sk' ? 'Integracie' : 'Integrations'}
-                title={language === 'sk' ? 'Partneri a systemy' : 'Partners & systems'}
-                description={
-                  language === 'sk'
-                    ? 'Wolt ostava stale viditelny, klient je jediny rozbalovaci blok.'
-                    : 'Wolt stays visible at all times, the client block is the only accordion.'
-                }
+                className="flex min-h-0 flex-col"
+                contentClassName="flex min-h-0 flex-1 flex-col"
+                eyebrow={language === 'sk' ? 'Objednavka' : 'Order'}
+                title={language === 'sk' ? 'Polozky a suma' : 'Items & total'}
+                description={`${order.items.length} ${language === 'sk' ? 'poloziek' : 'items'} • ${formatEurPrice(order.totalCents)}`}
               >
-                <div className="grid gap-3">
-                  <div className="rounded-[16px] border border-orange-200 bg-orange-50 p-2.5">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <h4 className="text-[11px] font-black uppercase tracking-[0.18em] text-orange-800">
-                          Wolt
-                        </h4>
-                        <p className="mt-1 text-[13px] font-semibold text-orange-900">
-                          {isWoltDelivery
-                            ? `Aktivne dorucenie: ${woltDelivery?.status || 'Wolt'}`
-                            : canCreateWolt
-                              ? 'Kurier zatial nie je vytvoreny.'
-                              : 'Wolt sa aktivuje po prijati objednavky.'}
-                        </p>
-                      </div>
-                      {renderWoltZoneBadge()}
-                    </div>
-
-                    <div className="mt-1.5 flex flex-wrap items-center gap-2 text-[11px] font-medium text-orange-900">
-                      {woltPickupEtaRounded != null && <span>Pickup ~{woltPickupEtaRounded}m</span>}
-                      {woltDropoffEtaRemainingMinutes != null && (
-                        <span>Dropoff ~{woltDropoffEtaRemainingMinutes}m</span>
-                      )}
-                      {displayedDeliveryFeeCents != null && (
-                        <span>Fee {formatEurPrice(displayedDeliveryFeeCents)}</span>
-                      )}
-                    </div>
-
-                    {woltDelivery?.trackingUrl && (
-                      <a
-                        href={woltDelivery.trackingUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="mt-1.5 inline-block text-[11px] font-semibold text-orange-700 underline"
-                      >
-                        Otvorit tracking
-                      </a>
-                    )}
-
-                    {woltMessage && (
-                      <div className="mt-1.5 rounded-xl border border-orange-200 bg-white/80 px-3 py-1.5 text-[11px] text-orange-900">
-                        {woltMessage}
-                      </div>
-                    )}
-
-                    {woltAreaBlockReason && !isWoltDelivery && (
-                      <div className="mt-1.5 rounded-xl border border-red-200 bg-red-50 px-3 py-1.5 text-[11px] text-red-700">
-                        {woltAreaBlockReason}
-                      </div>
-                    )}
-
-                    <div className="mt-2.5 flex flex-wrap gap-2">
-                      {canCreateWolt && (
-                        <button
-                          onClick={handleCreateWoltDelivery}
-                          disabled={creatingWolt || !canCreateWoltEffective}
-                          className="rounded-2xl bg-orange-600 px-3 py-1.5 text-[11px] font-semibold text-white transition hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-50"
-                          title={
-                            canCreateWoltEffective
-                              ? 'Create Wolt delivery'
-                              : woltAreaBlockReason || 'Wolt dispatch blocked'
-                          }
-                        >
-                          {creatingWolt ? '⏳ Kontrolujem' : 'Vytvorit Wolt'}
-                        </button>
-                      )}
-                      {canCancelWolt && (
-                        <button
-                          onClick={handleCancelWoltDelivery}
-                          disabled={cancelingWolt}
-                          className="rounded-2xl border border-orange-300 bg-white px-3 py-1.5 text-[11px] font-semibold text-orange-800 transition hover:bg-orange-100 disabled:cursor-not-allowed disabled:opacity-50"
-                          title="Zrušiť Wolt delivery"
-                        >
-                          {cancelingWolt ? '⏳ Rusim Wolt' : 'Zrusit Wolt'}
-                        </button>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="rounded-[16px] border border-zinc-200 bg-zinc-50 p-2.5">
-                    <h4 className="text-[11px] font-black uppercase tracking-[0.18em] text-zinc-700">
-                      Storyous
-                    </h4>
-                    <div className="mt-2 space-y-2">
-                      {storyousStatusMeta ? (
-                        <div className={`rounded-xl px-3 py-1.5 text-[11px] ${storyousStatusMeta.detailClassName}`}>
-                          {storyousStatusMeta.detailText}
-                        </div>
-                      ) : (
-                        <div className="rounded-xl border border-zinc-200 bg-white px-3 py-1.5 text-[11px] text-zinc-600">
-                          Zatial bez Storyous objednavky.
-                        </div>
-                      )}
-
-                      {canSyncToStoryous && (
-                        <button
-                          onClick={handleSyncStoryous}
-                          disabled={syncingStoryous}
-                          className="rounded-2xl bg-purple-600 px-3 py-1.5 text-[11px] font-semibold text-white transition hover:bg-purple-700 disabled:cursor-not-allowed disabled:opacity-50"
-                          title="Send to Storyous"
-                        >
-                          {syncingStoryous ? '⏳ Posielam' : 'Poslat do Storyous'}
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </InspectorSection>
-
-              <InspectorAccordion
-                className="shrink-0"
-                contentClassName="space-y-4"
-                open={clientPanelOpen}
-                onToggle={() => setClientPanelOpen((prev) => !prev)}
-                subtitle={clientPanelSubtitle}
-                title={customer.name}
-              >
-                <div className="grid gap-3 xl:grid-cols-2">
-                  <div>
-                    <div className="text-[11px] font-black uppercase tracking-[0.18em] text-zinc-500">
-                      Kontakt
-                    </div>
-                    <div className="mt-1.5 space-y-1 text-[13px] text-zinc-700">
-                      <div>{customer.name}</div>
-                      <div>{customer.email}</div>
-                      <div>{customer.phone}</div>
-                    </div>
-                  </div>
-                  <div>
-                    <div className="text-[11px] font-black uppercase tracking-[0.18em] text-zinc-500">
-                      Adresa
-                    </div>
-                    <div className="mt-1.5 space-y-1 text-[13px] text-zinc-700">
-                      <div>{addressSummary}</div>
-                      {address.instructions && (
-                        <div className="text-zinc-500">Poznamka: {address.instructions}</div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </InspectorAccordion>
-
-              <InspectorSection
-                className="hidden shrink-0 2xl:block"
-                eyebrow={language === 'sk' ? 'Timeline' : 'Timeline'}
-                title={language === 'sk' ? 'Casova os objednavky' : 'Order timeline'}
-                description={`${formatTimelineTime(order.createdAt)} → ${formatTimelineTime(order.updatedAt)}`}
-              >
-                {order.status === OrderStatus.CANCELED ? (
-                  <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-                    {language === 'sk'
-                      ? 'Objednavka bola zrusena.'
-                      : 'This order has been canceled.'}
-                  </div>
-                ) : (
-                  <div
-                    className="grid gap-2"
-                    style={{ gridTemplateColumns: `repeat(${timelineEntries.length}, minmax(0, 1fr))` }}
-                  >
-                    {timelineEntries.map((step, index) => {
-                      const isComplete = index <= currentTimelineIndex;
-                      const isCurrent = index === currentTimelineIndex;
+                <div className="flex min-h-0 flex-1 flex-col">
+                  <div className="min-h-0 flex-1 space-y-2.5 overflow-y-auto pr-1">
+                    {order.items.map((item, i) => {
+                      const modifierLines = getFormattedModifierLines(
+                        item.modifiers,
+                        true,
+                        language,
+                        customizationLabels,
+                      );
+                      const itemTotal = calculateOrderItemPrice(item, 'PIZZA');
+                      const displayName = item.productName;
 
                       return (
-                        <div
-                          key={step.key}
-                          className={`rounded-[18px] border px-2.5 py-2 ${
-                            isCurrent
-                              ? 'border-emerald-400 bg-emerald-50'
-                              : isComplete
-                                ? 'border-zinc-200 bg-white'
-                                : 'border-zinc-200 bg-zinc-50'
-                          }`}
-                        >
-                          <div className="text-[11px] font-bold text-zinc-900">
-                            {step.timestamp ? formatTimelineTime(step.timestamp) : '--:--'}
+                        <div key={i} className="border-b border-zinc-200 pb-2.5 last:border-b-0 last:pb-0">
+                          <div className="flex items-start justify-between gap-4 text-[14px] leading-5">
+                            <span className="min-w-0 font-semibold text-zinc-950">
+                              <span className="mr-2 text-orange-600">{item.quantity}x</span>
+                              {displayName}
+                            </span>
+                            <span className="shrink-0 font-semibold text-zinc-900">
+                              {formatEurPrice(itemTotal)}
+                            </span>
                           </div>
-                          <div
-                            className={`mt-1 text-[11px] font-semibold ${
-                              isComplete ? 'text-zinc-900' : 'text-zinc-500'
-                            }`}
-                          >
-                            {getStatusLabel(step.key)}
-                          </div>
-                          {step.durationFromPrevious ? (
-                            <div className="mt-1 text-[10px] font-bold text-emerald-600">
-                              {step.durationFromPrevious}
+                          {modifierLines.length > 0 && (
+                            <div className="mt-1.5 space-y-0.5 pl-4.5">
+                              {modifierLines.map((modifier, idx) => (
+                                <div
+                                  key={idx}
+                                  className="flex items-start justify-between gap-4 text-[12px] text-zinc-600"
+                                >
+                                  <span className="min-w-0 truncate">
+                                    <span className="mr-2 text-orange-500">1x</span>
+                                    {modifier.label}
+                                  </span>
+                                  <span className="shrink-0 whitespace-nowrap">
+                                    {formatEurPrice(modifier.priceCents)}
+                                  </span>
+                                </div>
+                              ))}
                             </div>
-                          ) : null}
+                          )}
                         </div>
                       );
                     })}
                   </div>
-                )}
+
+                  <div className="mt-2.5 space-y-2.5 border-t border-zinc-200 pt-2.5">
+                    {displayedDeliveryFeeCents != null && (
+                      <div className="flex items-center justify-between text-[13px] text-zinc-600">
+                        <span>{language === 'sk' ? 'Doprava' : 'Delivery fee'}</span>
+                        <span>{formatEurPrice(displayedDeliveryFeeCents)}</span>
+                      </div>
+                    )}
+
+                    <div className="flex items-center justify-between text-[18px] font-black text-zinc-950">
+                      <span>{language === 'sk' ? 'Celkom' : 'Total'}</span>
+                      <span>{formatEurPrice(order.totalCents)}</span>
+                    </div>
+                  </div>
+                </div>
               </InspectorSection>
+
+              <div className="flex min-h-0 flex-col gap-3 overflow-y-auto pr-1">
+                <InspectorSection
+                  className="shrink-0"
+                  eyebrow={language === 'sk' ? 'Integracie' : 'Integrations'}
+                  title={language === 'sk' ? 'Partneri a systemy' : 'Partners & systems'}
+                  description={
+                    language === 'sk'
+                      ? 'Wolt ostava stale viditelny, klient je jediny rozbalovaci blok.'
+                      : 'Wolt stays visible at all times, the client block is the only accordion.'
+                  }
+                >
+                  <div className="grid gap-3">
+                    <div className="rounded-[16px] border border-orange-200 bg-orange-50 p-2.5">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <h4 className="text-[11px] font-black uppercase tracking-[0.18em] text-orange-800">
+                            Wolt
+                          </h4>
+                          <p className="mt-1 text-[13px] font-semibold text-orange-900">
+                            {isWoltDelivery
+                              ? `Aktivne dorucenie: ${woltDelivery?.status || 'Wolt'}`
+                              : canCreateWolt
+                                ? 'Kurier zatial nie je vytvoreny.'
+                                : 'Wolt sa aktivuje po prijati objednavky.'}
+                          </p>
+                        </div>
+                        {renderWoltZoneBadge()}
+                      </div>
+
+                      <div className="mt-1.5 flex flex-wrap items-center gap-2 text-[11px] font-medium text-orange-900">
+                        {woltPickupEtaRounded != null && <span>Pickup ~{woltPickupEtaRounded}m</span>}
+                        {woltDropoffEtaRemainingMinutes != null && (
+                          <span>Dropoff ~{woltDropoffEtaRemainingMinutes}m</span>
+                        )}
+                        {displayedDeliveryFeeCents != null && (
+                          <span>Fee {formatEurPrice(displayedDeliveryFeeCents)}</span>
+                        )}
+                      </div>
+
+                      {woltDelivery?.trackingUrl && (
+                        <a
+                          href={woltDelivery.trackingUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="mt-1.5 inline-block text-[11px] font-semibold text-orange-700 underline"
+                        >
+                          Otvorit tracking
+                        </a>
+                      )}
+
+                      {woltMessage && (
+                        <div className="mt-1.5 rounded-xl border border-orange-200 bg-white/80 px-3 py-1.5 text-[11px] text-orange-900">
+                          {woltMessage}
+                        </div>
+                      )}
+
+                      {woltAreaBlockReason && !isWoltDelivery && (
+                        <div className="mt-1.5 rounded-xl border border-red-200 bg-red-50 px-3 py-1.5 text-[11px] text-red-700">
+                          {woltAreaBlockReason}
+                        </div>
+                      )}
+
+                      <div className="mt-2.5 flex flex-wrap gap-2">
+                        {canCreateWolt && (
+                          <button
+                            onClick={handleCreateWoltDelivery}
+                            disabled={creatingWolt || !canCreateWoltEffective}
+                            className="rounded-2xl bg-orange-600 px-3 py-1.5 text-[11px] font-semibold text-white transition hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-50"
+                            title={
+                              canCreateWoltEffective
+                                ? 'Create Wolt delivery'
+                                : woltAreaBlockReason || 'Wolt dispatch blocked'
+                            }
+                          >
+                            {creatingWolt ? '⏳ Kontrolujem' : 'Vytvorit Wolt'}
+                          </button>
+                        )}
+                        {canCancelWolt && (
+                          <button
+                            onClick={handleCancelWoltDelivery}
+                            disabled={cancelingWolt}
+                            className="rounded-2xl border border-orange-300 bg-white px-3 py-1.5 text-[11px] font-semibold text-orange-800 transition hover:bg-orange-100 disabled:cursor-not-allowed disabled:opacity-50"
+                            title="Zrušiť Wolt delivery"
+                          >
+                            {cancelingWolt ? '⏳ Rusim Wolt' : 'Zrusit Wolt'}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="rounded-[16px] border border-zinc-200 bg-zinc-50 p-2.5">
+                      <h4 className="text-[11px] font-black uppercase tracking-[0.18em] text-zinc-700">
+                        Storyous
+                      </h4>
+                      <div className="mt-2 space-y-2">
+                        {storyousStatusMeta ? (
+                          <div className={`rounded-xl px-3 py-1.5 text-[11px] ${storyousStatusMeta.detailClassName}`}>
+                            {storyousStatusMeta.detailText}
+                          </div>
+                        ) : (
+                          <div className="rounded-xl border border-zinc-200 bg-white px-3 py-1.5 text-[11px] text-zinc-600">
+                            Zatial bez Storyous objednavky.
+                          </div>
+                        )}
+
+                        {canSyncToStoryous && (
+                          <button
+                            onClick={handleSyncStoryous}
+                            disabled={syncingStoryous}
+                            className="rounded-2xl bg-purple-600 px-3 py-1.5 text-[11px] font-semibold text-white transition hover:bg-purple-700 disabled:cursor-not-allowed disabled:opacity-50"
+                            title="Send to Storyous"
+                          >
+                            {syncingStoryous ? '⏳ Posielam' : 'Poslat do Storyous'}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </InspectorSection>
+
+                <InspectorAccordion
+                  className="shrink-0"
+                  contentClassName="space-y-4"
+                  open={clientPanelOpen}
+                  onToggle={() => setClientPanelOpen((prev) => !prev)}
+                  subtitle={clientPanelSubtitle}
+                  title={customer.name}
+                >
+                  <div className="grid gap-3 xl:grid-cols-2">
+                    <div>
+                      <div className="text-[11px] font-black uppercase tracking-[0.18em] text-zinc-500">
+                        Kontakt
+                      </div>
+                      <div className="mt-1.5 space-y-1 text-[13px] text-zinc-700">
+                        <div>{customer.name}</div>
+                        <div>{customer.email}</div>
+                        <div>{customer.phone}</div>
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-[11px] font-black uppercase tracking-[0.18em] text-zinc-500">
+                        Adresa
+                      </div>
+                      <div className="mt-1.5 space-y-1 text-[13px] text-zinc-700">
+                        <div>{addressSummary}</div>
+                        {address.instructions && (
+                          <div className="text-zinc-500">Poznamka: {address.instructions}</div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </InspectorAccordion>
+
+                <InspectorSection
+                  className="hidden shrink-0 2xl:block"
+                  eyebrow={language === 'sk' ? 'Timeline' : 'Timeline'}
+                  title={language === 'sk' ? 'Casova os objednavky' : 'Order timeline'}
+                  description={`${formatTimelineTime(order.createdAt)} → ${formatTimelineTime(order.updatedAt)}`}
+                >
+                  {order.status === OrderStatus.CANCELED ? (
+                    <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                      {language === 'sk'
+                        ? 'Objednavka bola zrusena.'
+                        : 'This order has been canceled.'}
+                    </div>
+                  ) : (
+                    <div
+                      className="grid gap-2"
+                      style={{ gridTemplateColumns: `repeat(${timelineEntries.length}, minmax(0, 1fr))` }}
+                    >
+                      {timelineEntries.map((step, index) => {
+                        const isComplete = index <= currentTimelineIndex;
+                        const isCurrent = index === currentTimelineIndex;
+
+                        return (
+                          <div
+                            key={step.key}
+                            className={`rounded-[18px] border px-2.5 py-2 ${
+                              isCurrent
+                                ? 'border-emerald-400 bg-emerald-50'
+                                : isComplete
+                                  ? 'border-zinc-200 bg-white'
+                                  : 'border-zinc-200 bg-zinc-50'
+                            }`}
+                          >
+                            <div className="text-[11px] font-bold text-zinc-900">
+                              {step.timestamp ? formatTimelineTime(step.timestamp) : '--:--'}
+                            </div>
+                            <div
+                              className={`mt-1 text-[11px] font-semibold ${
+                                isComplete ? 'text-zinc-900' : 'text-zinc-500'
+                              }`}
+                            >
+                              {getStatusLabel(step.key)}
+                            </div>
+                            {step.durationFromPrevious ? (
+                              <div className="mt-1 text-[10px] font-bold text-emerald-600">
+                                {step.durationFromPrevious}
+                              </div>
+                            ) : null}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </InspectorSection>
+              </div>
             </div>
 
-            <div className="md:col-span-2">
+            <div className="mt-3 shrink-0">
               <div className="rounded-[20px] border border-zinc-200 bg-white/95 px-2.5 py-2.5 shadow-[0_18px_40px_-34px_rgba(15,23,42,0.3)] backdrop-blur">
                 <div className="flex items-stretch gap-2">
                   {dispatchPrimaryAction ? (
