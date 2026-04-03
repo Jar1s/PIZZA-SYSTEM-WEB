@@ -729,7 +729,7 @@ export function OrderCard({
   const dispatchTargetValue =
     dispatchTargetDate != null ? formatTimelineTime(dispatchTargetDate) : getStatusLabel(order.status);
   const dispatchTargetValueClassName =
-    dispatchTargetDate != null ? 'text-[26px] tracking-tight' : 'text-[18px] leading-tight';
+    dispatchTargetDate != null ? 'text-[20px] tracking-tight' : 'text-[16px] leading-tight';
   const storyousMessageClassName =
     storyousMessageTone === 'success'
       ? 'bg-green-50 text-green-800 border-green-200'
@@ -1077,36 +1077,36 @@ export function OrderCard({
       {/* Desktop Layout */}
       {isDispatchDetailMode ? (
         <div className="hidden shrink-0 md:block">
-          <div className="shrink-0 rounded-[22px] border border-zinc-200 bg-white px-3.5 py-3 shadow-[0_16px_40px_-32px_rgba(15,23,42,0.24)] lg:px-4">
-            <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_120px] md:items-start">
+          <div className="shrink-0 rounded-[20px] border border-zinc-200 bg-white px-3 py-2 shadow-[0_16px_40px_-32px_rgba(15,23,42,0.24)] lg:px-3.5">
+            <div className="grid gap-2 md:grid-cols-[minmax(0,1fr)_96px] md:items-start">
               <div className="min-w-0">
-                <p className="text-[10px] font-black uppercase tracking-[0.24em] text-orange-600">
+                <p className="text-[9px] font-black uppercase tracking-[0.2em] text-orange-600">
                   {dispatchEyebrow}
                 </p>
-                <h2 className="mt-1 text-[clamp(1.35rem,2.1vw,2rem)] font-black leading-[0.95] tracking-tight text-zinc-950">
+                <h2 className="mt-0.5 text-[clamp(1.05rem,1.6vw,1.55rem)] font-black leading-[0.95] tracking-tight text-zinc-950">
                   {dispatchHeadline}
                 </h2>
-                <p className="mt-1 text-[13px] font-semibold text-zinc-700">
+                <p className="mt-0.5 text-[12px] font-semibold text-zinc-700">
                   {brandLabel}
                   {brandLabel ? ' • ' : ''}
                   {customer.name}
                 </p>
-                <p className="mt-1 text-[11px] text-zinc-500">
+                <p className="mt-0.5 text-[10px] text-zinc-500">
                   {order.items.length} {language === 'sk' ? 'položiek' : 'items'} • {formatEurPrice(order.totalCents)}
                 </p>
-                <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                  <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${STATUS_COLORS[order.status]}`}>
+                <div className="mt-1.5 flex flex-wrap items-center gap-1">
+                  <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${STATUS_COLORS[order.status]}`}>
                     {getStatusLabel(order.status)}
                   </span>
                   {storyousStatusMeta && (
                     <span
-                      className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${storyousStatusMeta.badgeClassName}`}
+                      className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${storyousStatusMeta.badgeClassName}`}
                     >
                       {storyousStatusMeta.badgeLabel}
                     </span>
                   )}
                   {isWoltDelivery && (
-                    <span className="rounded-full bg-orange-100 px-2.5 py-1 text-[11px] font-semibold text-orange-800">
+                    <span className="rounded-full bg-orange-100 px-2 py-0.5 text-[10px] font-semibold text-orange-800">
                       Wolt aktivny
                     </span>
                   )}
@@ -1114,22 +1114,22 @@ export function OrderCard({
                 </div>
 
                 {storyousMessage && (
-                  <div className="mt-2.5 flex flex-wrap gap-2">
-                    <div className={`rounded-2xl border px-3 py-1.5 text-[11px] ${storyousMessageClassName}`}>
+                  <div className="mt-1.5 flex flex-wrap gap-1.5">
+                    <div className={`rounded-2xl border px-2.5 py-1 text-[10px] ${storyousMessageClassName}`}>
                       {storyousMessage}
                     </div>
                   </div>
                 )}
               </div>
 
-              <div className="rounded-[18px] border border-zinc-200 bg-zinc-50 px-3 py-2 text-right">
-                <div className="text-[9px] font-black uppercase tracking-[0.2em] text-zinc-500">
+              <div className="rounded-[16px] border border-zinc-200 bg-zinc-50 px-2.5 py-2 text-right">
+                <div className="text-[8px] font-black uppercase tracking-[0.18em] text-zinc-500">
                   {dispatchTargetLabel}
                 </div>
                 <div className={`mt-1 font-black leading-none text-zinc-950 ${dispatchTargetValueClassName}`}>
                   {dispatchTargetValue}
                 </div>
-                <div className="mt-1 text-[10px] font-semibold text-zinc-500">{dispatchTargetMeta}</div>
+                <div className="mt-0.5 text-[9px] font-semibold text-zinc-500">{dispatchTargetMeta}</div>
               </div>
             </div>
           </div>
@@ -1187,12 +1187,7 @@ export function OrderCard({
         (isDispatchDetailMode ? (
           <div className="hidden min-h-0 flex-1 md:flex md:flex-col">
             <div className="min-h-0 flex-1 space-y-3 overflow-y-auto pr-1">
-              <InspectorSection
-                className="shrink-0"
-                eyebrow={language === 'sk' ? 'Zhrnutie' : 'Summary'}
-                title={language === 'sk' ? 'Prehľad objednávky' : 'Order overview'}
-                description={`${order.items.length} ${language === 'sk' ? 'poloziek' : 'items'} • ${formatEurPrice(order.totalCents)}`}
-              >
+              <section className="shrink-0 overflow-hidden rounded-[20px] border border-zinc-200 bg-white px-3.5 py-3 shadow-[0_14px_34px_-30px_rgba(15,23,42,0.22)]">
                 <div className="space-y-2.5">
                   {order.items.map((item, i) => {
                     const modifierLines = getFormattedModifierLines(
@@ -1251,7 +1246,7 @@ export function OrderCard({
                     </div>
                   </div>
                 </div>
-              </InspectorSection>
+              </section>
 
               <InspectorAccordion
                 className="shrink-0"
