@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300" viewBox="0 0 300 300">
+  <!-- Star background -->
+  <g id="star">
+    <path d="M 150 20 L 180 110 L 280 110 L 200 170 L 230 260 L 150 200 L 70 260 L 100 170 L 20 110 L 120 110 Z" 
+          fill="#FFD700" stroke="#000" stroke-width="4"/>
+  </g>
+  
+  <!-- Pizza slice character -->
+  <g id="pizza-slice">
+    <!-- Pizza slice body -->
+    <path d="M 150 80 L 200 180 A 70 70 0 0 1 100 180 Z" 
+          fill="#FFCC33" stroke="#000" stroke-width="3"/>
+    
+    <!-- Crust -->
+    <path d="M 200 180 A 70 70 0 0 1 100 180 A 10 10 0 0 0 200 180" 
+          fill="#D2691E" stroke="#000" stroke-width="2"/>
+    
+    <!-- Cheese drip -->
+    <path d="M 120 160 Q 115 175 110 180" fill="none" stroke="#FFD700" stroke-width="3" stroke-linecap="round"/>
+    <path d="M 180 160 Q 185 175 190 180" fill="none" stroke="#FFD700" stroke-width="3" stroke-linecap="round"/>
+    
+    <!-- Pepperoni spots -->
+    <circle cx="135" cy="130" r="10" fill="#8B0000"/>
+    <circle cx="165" cy="125" r="10" fill="#8B0000"/>
+    <circle cx="150" cy="150" r="9" fill="#8B0000"/>
+    <circle cx="130" cy="155" r="8" fill="#8B0000"/>
+    <circle cx="170" cy="155" r="8" fill="#8B0000"/>
+    
+    <!-- Face -->
+    <!-- Winking left eye -->
+    <path d="M 135 115 Q 138 118 141 115" fill="none" stroke="#000" stroke-width="3" stroke-linecap="round"/>
+    
+    <!-- Open right eye -->
+    <circle cx="165" cy="115" r="5" fill="#000"/>
+    
+    <!-- Tongue out smile -->
+    <path d="M 135 135 Q 150 150 165 135" fill="none" stroke="#000" stroke-width="3" stroke-linecap="round"/>
+    <ellipse cx="150" cy="145" rx="12" ry="18" fill="#E74C3C"/>
+    
+    <!-- PZ text on pizza -->
+    <text x="150" y="105" font-family="Arial Black, sans-serif" font-size="20" font-weight="bold" 
+          fill="#FF6B00" text-anchor="middle" stroke="#000" stroke-width="0.5">PZ</text>
+  </g>
+  
+  <!-- Text - PORNO -->
+  <text x="150" y="235" font-family="Arial Black, Impact, sans-serif" font-size="32" font-weight="bold" 
+        fill="#FF6B00" text-anchor="middle" stroke="#000" stroke-width="2">PORNO</text>
+  
+  <!-- Text - PIZZA -->
+  <text x="150" y="270" font-family="Arial Black, Impact, sans-serif" font-size="38" font-weight="bold" 
+        fill="#FF6B00" text-anchor="middle" stroke="#000" stroke-width="2">PIZZA</text>
+</svg>
+
