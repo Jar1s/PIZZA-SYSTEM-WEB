@@ -1,0 +1,16 @@
+{
+  "moduleFileExtensions": ["js", "json", "ts"],
+  "rootDir": ".",
+  "testEnvironment": "node",
+  "testRegex": ".(e2e-spec|integration.spec).ts$",
+  "transform": {
+    "^.+\\.(t|j)s$": "ts-jest"
+  },
+  "moduleNameMapper": {
+    "^@pizza-ecosystem/shared$": "<rootDir>/../../shared"
+  },
+  "testTimeout": 30000,
+  "passWithNoTests": true,
+  "setupFilesAfterEnv": ["<rootDir>/setup-integration-tests.ts"]
+}
+

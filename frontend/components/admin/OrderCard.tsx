@@ -18,7 +18,6 @@ import { useToastContext } from '@/contexts/ToastContext';
 import {
   InspectorAccordion,
   InspectorSection,
-  InspectorStatTile,
 } from './OrderInspectorPrimitives';
 
 interface OrderCardProps {
@@ -729,6 +728,8 @@ export function OrderCard({
         : 'Current step';
   const dispatchTargetValue =
     dispatchTargetDate != null ? formatTimelineTime(dispatchTargetDate) : getStatusLabel(order.status);
+  const dispatchTargetValueClassName =
+    dispatchTargetDate != null ? 'text-[20px] tracking-tight' : 'text-[16px] leading-tight';
   const storyousMessageClassName =
     storyousMessageTone === 'success'
       ? 'bg-green-50 text-green-800 border-green-200'
@@ -1076,85 +1077,59 @@ export function OrderCard({
       {/* Desktop Layout */}
       {isDispatchDetailMode ? (
         <div className="hidden shrink-0 md:block">
-          <div className="shrink-0 rounded-[22px] border border-zinc-200 bg-white px-3.5 py-3 shadow-[0_16px_40px_-32px_rgba(15,23,42,0.24)] lg:px-4">
-            <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_280px] xl:items-start">
+          <div className="shrink-0 rounded-[20px] border border-zinc-200 bg-white px-3 py-2 shadow-[0_16px_40px_-32px_rgba(15,23,42,0.24)] lg:px-3.5">
+            <div className="grid gap-2 md:grid-cols-[minmax(0,1fr)_96px] md:items-start">
               <div className="min-w-0">
-                <p className="text-[10px] font-black uppercase tracking-[0.24em] text-orange-600">
+                <p className="text-[9px] font-black uppercase tracking-[0.2em] text-orange-600">
                   {dispatchEyebrow}
                 </p>
-                <h2 className="mt-1 text-[clamp(1.75rem,3vw,2.55rem)] font-black leading-[0.94] tracking-tight text-zinc-950">
+                <h2 className="mt-0.5 text-[clamp(1.05rem,1.6vw,1.55rem)] font-black leading-[0.95] tracking-tight text-zinc-950">
                   {dispatchHeadline}
                 </h2>
-                <p className="mt-1.5 text-[13px] font-semibold text-zinc-700 lg:text-[15px]">
+                <p className="mt-0.5 text-[12px] font-semibold text-zinc-700">
                   {brandLabel}
                   {brandLabel ? ' • ' : ''}
                   {customer.name}
                 </p>
-                <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
-                  <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${STATUS_COLORS[order.status]}`}>
+                <p className="mt-0.5 text-[10px] text-zinc-500">
+                  {order.items.length} {language === 'sk' ? 'položiek' : 'items'} • {formatEurPrice(order.totalCents)}
+                </p>
+                <div className="mt-1.5 flex flex-wrap items-center gap-1">
+                  <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${STATUS_COLORS[order.status]}`}>
                     {getStatusLabel(order.status)}
                   </span>
                   {storyousStatusMeta && (
                     <span
-                      className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${storyousStatusMeta.badgeClassName}`}
+                      className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${storyousStatusMeta.badgeClassName}`}
                     >
                       {storyousStatusMeta.badgeLabel}
                     </span>
                   )}
                   {isWoltDelivery && (
-                    <span className="rounded-full bg-orange-100 px-2.5 py-1 text-[11px] font-semibold text-orange-800">
+                    <span className="rounded-full bg-orange-100 px-2 py-0.5 text-[10px] font-semibold text-orange-800">
                       Wolt aktivny
                     </span>
                   )}
                   {renderWoltZoneBadge()}
                 </div>
 
-                {(storyousMessage || woltAreaBlockReason) && (
-                  <div className="mt-2.5 flex flex-wrap gap-2">
-                    {storyousMessage && (
-                      <div className={`rounded-2xl border px-3 py-1.5 text-[11px] ${storyousMessageClassName}`}>
-                        {storyousMessage}
-                      </div>
-                    )}
-                    {woltAreaBlockReason && (
-                      <div className="rounded-2xl border border-amber-200 bg-amber-50 px-3 py-1.5 text-[11px] text-amber-800">
-                        {woltAreaBlockReason}
-                      </div>
-                    )}
+                {storyousMessage && (
+                  <div className="mt-1.5 flex flex-wrap gap-1.5">
+                    <div className={`rounded-2xl border px-2.5 py-1 text-[10px] ${storyousMessageClassName}`}>
+                      {storyousMessage}
+                    </div>
                   </div>
                 )}
               </div>
 
-              <div className="grid gap-2 sm:grid-cols-2">
-                <InspectorStatTile
-                  label={dispatchTargetLabel}
-                  meta={dispatchTargetMeta}
-                  value={dispatchTargetValue}
-                />
-                <InspectorStatTile
-                  label={language === 'sk' ? 'Celkom' : 'Total'}
-                  meta={`${order.items.length} ${language === 'sk' ? 'poloziek' : 'items'}`}
-                  tone="warning"
-                  value={formatEurPrice(order.totalCents)}
-                />
-                {woltPickupEtaRounded != null && (
-                  <InspectorStatTile
-                    label={language === 'sk' ? 'Pickup' : 'Pickup'}
-                    meta={language === 'sk' ? 'Kurier na prevadzku' : 'Courier arrival'}
-                    tone="warning"
-                    value={`${woltPickupEtaRounded}m`}
-                    valueClassName="text-[20px]"
-                  />
-                )}
-                {woltDropoffEtaRemainingMinutes != null && (
-                  <InspectorStatTile
-                    label={language === 'sk' ? 'Dropoff' : 'Dropoff'}
-                    meta={language === 'sk' ? 'K zakaznikovi' : 'To customer'}
-                    tone="success"
-                    value={`${woltDropoffEtaRemainingMinutes}m`}
-                    valueClassName="text-[20px]"
-                  />
-                )}
+              <div className="rounded-[16px] border border-zinc-200 bg-zinc-50 px-2.5 py-2 text-right">
+                <div className="text-[8px] font-black uppercase tracking-[0.18em] text-zinc-500">
+                  {dispatchTargetLabel}
+                </div>
+                <div className={`mt-1 font-black leading-none text-zinc-950 ${dispatchTargetValueClassName}`}>
+                  {dispatchTargetValue}
+                </div>
+                <div className="mt-0.5 text-[9px] font-semibold text-zinc-500">{dispatchTargetMeta}</div>
               </div>
             </div>
           </div>
@@ -1211,283 +1186,279 @@ export function OrderCard({
       {expanded &&
         (isDispatchDetailMode ? (
           <div className="hidden min-h-0 flex-1 md:flex md:flex-col">
-            <div className="grid min-h-0 flex-1 gap-3 md:grid-cols-[minmax(0,1.36fr)_280px]">
-              <InspectorSection
-                className="flex min-h-0 flex-col"
-                contentClassName="flex min-h-0 flex-1 flex-col"
-                eyebrow={language === 'sk' ? 'Objednavka' : 'Order'}
-                title={language === 'sk' ? 'Polozky a suma' : 'Items & total'}
-                description={`${order.items.length} ${language === 'sk' ? 'poloziek' : 'items'} • ${formatEurPrice(order.totalCents)}`}
-              >
-                <div className="flex min-h-0 flex-1 flex-col">
-                  <div className="min-h-0 flex-1 space-y-2.5 overflow-y-auto pr-1">
-                    {order.items.map((item, i) => {
-                      const modifierLines = getFormattedModifierLines(
-                        item.modifiers,
-                        true,
-                        language,
-                        customizationLabels,
-                      );
-                      const itemTotal = calculateOrderItemPrice(item, 'PIZZA');
-                      const displayName = item.productName;
+            <div className="min-h-0 flex-1 space-y-3 overflow-y-auto pr-1">
+              <section className="shrink-0 overflow-hidden rounded-[20px] border border-zinc-200 bg-white px-3.5 py-3 shadow-[0_14px_34px_-30px_rgba(15,23,42,0.22)]">
+                <div className="space-y-2.5">
+                  {order.items.map((item, i) => {
+                    const modifierLines = getFormattedModifierLines(
+                      item.modifiers,
+                      true,
+                      language,
+                      customizationLabels,
+                    );
+                    const itemTotal = calculateOrderItemPrice(item, 'PIZZA');
+                    const displayName = item.productName;
 
-                      return (
-                        <div key={i} className="border-b border-zinc-200 pb-2.5 last:border-b-0 last:pb-0">
-                          <div className="flex items-start justify-between gap-4 text-[14px] leading-5">
-                            <span className="min-w-0 font-semibold text-zinc-950">
-                              <span className="mr-2 text-orange-600">{item.quantity}x</span>
-                              {displayName}
-                            </span>
-                            <span className="shrink-0 font-semibold text-zinc-900">
-                              {formatEurPrice(itemTotal)}
-                            </span>
-                          </div>
-                          {modifierLines.length > 0 && (
-                            <div className="mt-1.5 space-y-0.5 pl-4.5">
-                              {modifierLines.map((modifier, idx) => (
-                                <div
-                                  key={idx}
-                                  className="flex items-start justify-between gap-4 text-[12px] text-zinc-600"
-                                >
-                                  <span className="min-w-0 truncate">
-                                    <span className="mr-2 text-orange-500">1x</span>
-                                    {modifier.label}
-                                  </span>
-                                  <span className="shrink-0 whitespace-nowrap">
-                                    {formatEurPrice(modifier.priceCents)}
-                                  </span>
-                                </div>
-                              ))}
-                            </div>
-                          )}
+                    return (
+                      <div key={i} className="border-b border-zinc-200 pb-2.5 last:border-b-0 last:pb-0">
+                        <div className="flex items-start justify-between gap-4 text-[14px] leading-5">
+                          <span className="min-w-0 font-semibold text-zinc-950">
+                            <span className="mr-2 text-orange-600">{item.quantity}x</span>
+                            {displayName}
+                          </span>
+                          <span className="shrink-0 font-semibold text-zinc-900">
+                            {formatEurPrice(itemTotal)}
+                          </span>
                         </div>
-                      );
-                    })}
-                  </div>
+                        {modifierLines.length > 0 && (
+                          <div className="mt-1.5 space-y-0.5 pl-4.5">
+                            {modifierLines.map((modifier, idx) => (
+                              <div
+                                key={idx}
+                                className="flex items-start justify-between gap-4 text-[12px] text-zinc-600"
+                              >
+                                <span className="min-w-0 truncate">
+                                  <span className="mr-2 text-orange-500">1x</span>
+                                  {modifier.label}
+                                </span>
+                                <span className="shrink-0 whitespace-nowrap">
+                                  {formatEurPrice(modifier.priceCents)}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
 
-                  <div className="mt-2.5 space-y-2.5 border-t border-zinc-200 pt-2.5">
+                  <div className="space-y-1.5 border-t border-zinc-200 pt-2">
                     {displayedDeliveryFeeCents != null && (
-                      <div className="flex items-center justify-between text-[13px] text-zinc-600">
+                      <div className="flex items-center justify-between text-[12px] text-zinc-600">
                         <span>{language === 'sk' ? 'Doprava' : 'Delivery fee'}</span>
                         <span>{formatEurPrice(displayedDeliveryFeeCents)}</span>
                       </div>
                     )}
 
-                    <div className="flex items-center justify-between text-[18px] font-black text-zinc-950">
+                    <div className="flex items-center justify-between text-[14px] font-bold text-zinc-950">
                       <span>{language === 'sk' ? 'Celkom' : 'Total'}</span>
                       <span>{formatEurPrice(order.totalCents)}</span>
                     </div>
                   </div>
                 </div>
-              </InspectorSection>
+              </section>
 
-              <div className="flex min-h-0 flex-col gap-3 overflow-y-auto pr-1">
-                <InspectorSection
-                  className="shrink-0"
-                  eyebrow={language === 'sk' ? 'Integracie' : 'Integrations'}
-                  title={language === 'sk' ? 'Partneri a systemy' : 'Partners & systems'}
-                  description={
-                    language === 'sk'
-                      ? 'Wolt ostava stale viditelny, klient je jediny rozbalovaci blok.'
-                      : 'Wolt stays visible at all times, the client block is the only accordion.'
-                  }
-                >
-                  <div className="grid gap-3">
-                    <div className="rounded-[16px] border border-orange-200 bg-orange-50 p-2.5">
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <h4 className="text-[11px] font-black uppercase tracking-[0.18em] text-orange-800">
-                            Wolt
-                          </h4>
-                          <p className="mt-1 text-[13px] font-semibold text-orange-900">
-                            {isWoltDelivery
-                              ? `Aktivne dorucenie: ${woltDelivery?.status || 'Wolt'}`
-                              : canCreateWolt
-                                ? 'Kurier zatial nie je vytvoreny.'
-                                : 'Wolt sa aktivuje po prijati objednavky.'}
-                          </p>
-                        </div>
-                        {renderWoltZoneBadge()}
-                      </div>
+              <InspectorAccordion
+                className="shrink-0"
+                contentClassName="space-y-4"
+                open={clientPanelOpen}
+                onToggle={() => setClientPanelOpen((prev) => !prev)}
+                subtitle={clientPanelSubtitle}
+                title={customer.name}
+              >
+                <div className="grid gap-3 xl:grid-cols-2">
+                  <div>
+                    <div className="text-[11px] font-black uppercase tracking-[0.18em] text-zinc-500">
+                      Kontakt
+                    </div>
+                    <div className="mt-1.5 space-y-1 text-[13px] text-zinc-700">
+                      <div>{customer.name}</div>
+                      <div>{customer.email}</div>
+                      <div>{customer.phone}</div>
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-[11px] font-black uppercase tracking-[0.18em] text-zinc-500">
+                      Adresa
+                    </div>
+                    <div className="mt-1.5 space-y-1 text-[13px] text-zinc-700">
+                      <div>{addressSummary}</div>
+                      {address.instructions && (
+                        <div className="text-zinc-500">Poznamka: {address.instructions}</div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </InspectorAccordion>
 
-                      <div className="mt-1.5 flex flex-wrap items-center gap-2 text-[11px] font-medium text-orange-900">
-                        {woltPickupEtaRounded != null && <span>Pickup ~{woltPickupEtaRounded}m</span>}
-                        {woltDropoffEtaRemainingMinutes != null && (
-                          <span>Dropoff ~{woltDropoffEtaRemainingMinutes}m</span>
-                        )}
-                        {displayedDeliveryFeeCents != null && (
-                          <span>Fee {formatEurPrice(displayedDeliveryFeeCents)}</span>
-                        )}
-                      </div>
+              <section className="shrink-0 overflow-hidden rounded-[18px] border border-zinc-200 bg-white shadow-[0_14px_34px_-30px_rgba(15,23,42,0.22)]">
+                <div className="grid gap-2.5 px-3 py-2.5 xl:grid-cols-[minmax(0,1fr)_220px]">
+                  <div className="rounded-[14px] border border-zinc-200 bg-zinc-50 px-3 py-2.5">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <span className="rounded-full border border-zinc-200 bg-white px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-zinc-600">
+                        Wolt
+                      </span>
+                      <span className="rounded-full border border-zinc-200 bg-white px-2.5 py-1 text-[10px] font-semibold text-zinc-700">
+                        {language === 'sk' ? 'Kuriér' : 'Courier'} {woltPreparationMinutes}m
+                      </span>
+                      {renderWoltZoneBadge()}
+                      {isWoltDelivery && (
+                        <span className="rounded-full border border-orange-200 bg-orange-50 px-2.5 py-1 text-[10px] font-semibold text-orange-800">
+                          {woltDelivery?.status || 'Wolt'}
+                        </span>
+                      )}
+                      {woltPickupEtaRounded != null && (
+                        <span className="rounded-full border border-zinc-200 bg-white px-2.5 py-1 text-[10px] font-semibold text-zinc-700">
+                          Pickup ~{woltPickupEtaRounded}m
+                        </span>
+                      )}
+                    </div>
 
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      {woltPreparationQuickOptions.map((minutes) => {
+                        const isActive = woltPreparationMinutes === minutes;
+                        return (
+                          <button
+                            key={minutes}
+                            type="button"
+                            onClick={() => setWoltPreparationMinutes(minutes)}
+                            className={`rounded-xl border px-2.5 py-1.5 text-[10px] font-semibold transition-colors ${
+                              isActive
+                                ? 'border-orange-600 bg-orange-500 text-white'
+                                : 'border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50'
+                            }`}
+                            aria-pressed={isActive}
+                          >
+                            +{minutes}m
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    <div className="mt-2 flex flex-wrap items-center gap-2">
+                      {canCreateWolt && (
+                        <button
+                          onClick={handleCreateWoltDelivery}
+                          disabled={creatingWolt || !canCreateWoltEffective}
+                          className="rounded-2xl bg-orange-600 px-3 py-2 text-[10px] font-semibold text-white transition hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-50"
+                          title={
+                            canCreateWoltEffective
+                              ? 'Create Wolt delivery'
+                              : woltAreaBlockReason || 'Wolt dispatch blocked'
+                          }
+                        >
+                          {creatingWolt ? '⏳ Kontrolujem' : 'Vytvoriť Wolt'}
+                        </button>
+                      )}
+                      {canCancelWolt && (
+                        <button
+                          onClick={handleCancelWoltDelivery}
+                          disabled={cancelingWolt}
+                          className="rounded-2xl border border-orange-300 bg-white px-3 py-2 text-[10px] font-semibold text-orange-800 transition hover:bg-orange-100 disabled:cursor-not-allowed disabled:opacity-50"
+                          title="Zrušiť Wolt delivery"
+                        >
+                          {cancelingWolt ? '⏳ Ruším Wolt' : 'Zrušiť Wolt'}
+                        </button>
+                      )}
                       {woltDelivery?.trackingUrl && (
                         <a
                           href={woltDelivery.trackingUrl}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="mt-1.5 inline-block text-[11px] font-semibold text-orange-700 underline"
+                          className="text-[10px] font-semibold text-orange-700 underline"
                         >
-                          Otvorit tracking
+                          Tracking
                         </a>
                       )}
-
-                      {woltMessage && (
-                        <div className="mt-1.5 rounded-xl border border-orange-200 bg-white/80 px-3 py-1.5 text-[11px] text-orange-900">
-                          {woltMessage}
-                        </div>
-                      )}
-
-                      {woltAreaBlockReason && !isWoltDelivery && (
-                        <div className="mt-1.5 rounded-xl border border-red-200 bg-red-50 px-3 py-1.5 text-[11px] text-red-700">
-                          {woltAreaBlockReason}
-                        </div>
-                      )}
-
-                      <div className="mt-2.5 flex flex-wrap gap-2">
-                        {canCreateWolt && (
-                          <button
-                            onClick={handleCreateWoltDelivery}
-                            disabled={creatingWolt || !canCreateWoltEffective}
-                            className="rounded-2xl bg-orange-600 px-3 py-1.5 text-[11px] font-semibold text-white transition hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-50"
-                            title={
-                              canCreateWoltEffective
-                                ? 'Create Wolt delivery'
-                                : woltAreaBlockReason || 'Wolt dispatch blocked'
-                            }
-                          >
-                            {creatingWolt ? '⏳ Kontrolujem' : 'Vytvorit Wolt'}
-                          </button>
-                        )}
-                        {canCancelWolt && (
-                          <button
-                            onClick={handleCancelWoltDelivery}
-                            disabled={cancelingWolt}
-                            className="rounded-2xl border border-orange-300 bg-white px-3 py-1.5 text-[11px] font-semibold text-orange-800 transition hover:bg-orange-100 disabled:cursor-not-allowed disabled:opacity-50"
-                            title="Zrušiť Wolt delivery"
-                          >
-                            {cancelingWolt ? '⏳ Rusim Wolt' : 'Zrusit Wolt'}
-                          </button>
-                        )}
-                      </div>
                     </div>
 
-                    <div className="rounded-[16px] border border-zinc-200 bg-zinc-50 p-2.5">
-                      <h4 className="text-[11px] font-black uppercase tracking-[0.18em] text-zinc-700">
-                        Storyous
-                      </h4>
-                      <div className="mt-2 space-y-2">
-                        {storyousStatusMeta ? (
-                          <div className={`rounded-xl px-3 py-1.5 text-[11px] ${storyousStatusMeta.detailClassName}`}>
-                            {storyousStatusMeta.detailText}
-                          </div>
-                        ) : (
-                          <div className="rounded-xl border border-zinc-200 bg-white px-3 py-1.5 text-[11px] text-zinc-600">
-                            Zatial bez Storyous objednavky.
-                          </div>
-                        )}
-
-                        {canSyncToStoryous && (
-                          <button
-                            onClick={handleSyncStoryous}
-                            disabled={syncingStoryous}
-                            className="rounded-2xl bg-purple-600 px-3 py-1.5 text-[11px] font-semibold text-white transition hover:bg-purple-700 disabled:cursor-not-allowed disabled:opacity-50"
-                            title="Send to Storyous"
-                          >
-                            {syncingStoryous ? '⏳ Posielam' : 'Poslat do Storyous'}
-                          </button>
-                        )}
+                    {(woltMessage || woltAreaBlockReason) && (
+                      <div className="mt-2 text-[10px] text-zinc-500">
+                        {woltAreaBlockReason || woltMessage}
                       </div>
+                    )}
+                  </div>
+
+                  <div className="rounded-[14px] border border-zinc-200 bg-zinc-50 px-3 py-2.5">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <div className="text-[10px] font-black uppercase tracking-[0.18em] text-zinc-500">
+                          Storyous
+                        </div>
+                        <div className="mt-1.5">
+                          {storyousStatusMeta ? (
+                            <span className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-semibold ${storyousStatusMeta.badgeClassName}`}>
+                              {storyousStatusMeta.badgeLabel.replace('📦 ', '')}
+                            </span>
+                          ) : (
+                            <span className="inline-flex rounded-full border border-zinc-200 bg-white px-2.5 py-1 text-[10px] font-semibold text-zinc-600">
+                              Bez syncu
+                            </span>
+                          )}
+                        </div>
+                        <div className="mt-1 break-all text-[10px] text-zinc-600">
+                          {order.storyousOrderId ? `ID: ${order.storyousOrderId}` : 'ID: -'}
+                        </div>
+                      </div>
+
+                      {canSyncToStoryous && (
+                        <button
+                          onClick={handleSyncStoryous}
+                          disabled={syncingStoryous}
+                          className="rounded-2xl bg-purple-600 px-3 py-1.5 text-[10px] font-semibold text-white transition hover:bg-purple-700 disabled:cursor-not-allowed disabled:opacity-50"
+                          title="Send to Storyous"
+                        >
+                          {syncingStoryous ? '⏳' : 'Sync'}
+                        </button>
+                      )}
                     </div>
                   </div>
-                </InspectorSection>
+                </div>
+              </section>
 
-                <InspectorAccordion
-                  className="shrink-0"
-                  contentClassName="space-y-4"
-                  open={clientPanelOpen}
-                  onToggle={() => setClientPanelOpen((prev) => !prev)}
-                  subtitle={clientPanelSubtitle}
-                  title={customer.name}
-                >
-                  <div className="grid gap-3 xl:grid-cols-2">
-                    <div>
-                      <div className="text-[11px] font-black uppercase tracking-[0.18em] text-zinc-500">
-                        Kontakt
-                      </div>
-                      <div className="mt-1.5 space-y-1 text-[13px] text-zinc-700">
-                        <div>{customer.name}</div>
-                        <div>{customer.email}</div>
-                        <div>{customer.phone}</div>
-                      </div>
-                    </div>
-                    <div>
-                      <div className="text-[11px] font-black uppercase tracking-[0.18em] text-zinc-500">
-                        Adresa
-                      </div>
-                      <div className="mt-1.5 space-y-1 text-[13px] text-zinc-700">
-                        <div>{addressSummary}</div>
-                        {address.instructions && (
-                          <div className="text-zinc-500">Poznamka: {address.instructions}</div>
-                        )}
-                      </div>
-                    </div>
+              <InspectorSection
+                className="hidden shrink-0 2xl:block"
+                eyebrow={language === 'sk' ? 'Timeline' : 'Timeline'}
+                title={language === 'sk' ? 'Časová os objednávky' : 'Order timeline'}
+                description={`${formatTimelineTime(order.createdAt)} → ${formatTimelineTime(order.updatedAt)}`}
+              >
+                {order.status === OrderStatus.CANCELED ? (
+                  <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                    {language === 'sk'
+                      ? 'Objednávka bola zrušená.'
+                      : 'This order has been canceled.'}
                   </div>
-                </InspectorAccordion>
+                ) : (
+                  <div
+                    className="grid gap-2"
+                    style={{ gridTemplateColumns: `repeat(${timelineEntries.length}, minmax(0, 1fr))` }}
+                  >
+                    {timelineEntries.map((step, index) => {
+                      const isComplete = index <= currentTimelineIndex;
+                      const isCurrent = index === currentTimelineIndex;
 
-                <InspectorSection
-                  className="hidden shrink-0 2xl:block"
-                  eyebrow={language === 'sk' ? 'Timeline' : 'Timeline'}
-                  title={language === 'sk' ? 'Casova os objednavky' : 'Order timeline'}
-                  description={`${formatTimelineTime(order.createdAt)} → ${formatTimelineTime(order.updatedAt)}`}
-                >
-                  {order.status === OrderStatus.CANCELED ? (
-                    <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-                      {language === 'sk'
-                        ? 'Objednavka bola zrusena.'
-                        : 'This order has been canceled.'}
-                    </div>
-                  ) : (
-                    <div
-                      className="grid gap-2"
-                      style={{ gridTemplateColumns: `repeat(${timelineEntries.length}, minmax(0, 1fr))` }}
-                    >
-                      {timelineEntries.map((step, index) => {
-                        const isComplete = index <= currentTimelineIndex;
-                        const isCurrent = index === currentTimelineIndex;
-
-                        return (
+                      return (
+                        <div
+                          key={step.key}
+                          className={`rounded-[18px] border px-2.5 py-2 ${
+                            isCurrent
+                              ? 'border-emerald-400 bg-emerald-50'
+                              : isComplete
+                                ? 'border-zinc-200 bg-white'
+                                : 'border-zinc-200 bg-zinc-50'
+                          }`}
+                        >
+                          <div className="text-[11px] font-bold text-zinc-900">
+                            {step.timestamp ? formatTimelineTime(step.timestamp) : '--:--'}
+                          </div>
                           <div
-                            key={step.key}
-                            className={`rounded-[18px] border px-2.5 py-2 ${
-                              isCurrent
-                                ? 'border-emerald-400 bg-emerald-50'
-                                : isComplete
-                                  ? 'border-zinc-200 bg-white'
-                                  : 'border-zinc-200 bg-zinc-50'
+                            className={`mt-1 text-[11px] font-semibold ${
+                              isComplete ? 'text-zinc-900' : 'text-zinc-500'
                             }`}
                           >
-                            <div className="text-[11px] font-bold text-zinc-900">
-                              {step.timestamp ? formatTimelineTime(step.timestamp) : '--:--'}
-                            </div>
-                            <div
-                              className={`mt-1 text-[11px] font-semibold ${
-                                isComplete ? 'text-zinc-900' : 'text-zinc-500'
-                              }`}
-                            >
-                              {getStatusLabel(step.key)}
-                            </div>
-                            {step.durationFromPrevious ? (
-                              <div className="mt-1 text-[10px] font-bold text-emerald-600">
-                                {step.durationFromPrevious}
-                              </div>
-                            ) : null}
+                            {getStatusLabel(step.key)}
                           </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </InspectorSection>
-              </div>
+                          {step.durationFromPrevious ? (
+                            <div className="mt-1 text-[10px] font-bold text-emerald-600">
+                              {step.durationFromPrevious}
+                            </div>
+                          ) : null}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </InspectorSection>
             </div>
 
             <div className="mt-3 shrink-0">
@@ -1870,25 +1841,6 @@ export function OrderCard({
                           );
                         })}
                       </div>
-                      <input
-                        type="number"
-                        min={0}
-                        max={180}
-                        step={1}
-                        value={woltPreparationMinutes}
-                        onChange={(e) => {
-                          const next = Number(e.target.value);
-                          if (!Number.isFinite(next)) {
-                            setWoltPreparationMinutes(20);
-                            return;
-                          }
-                          setWoltPreparationMinutes(Math.max(0, Math.min(180, Math.round(next))));
-                        }}
-                        className="w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900"
-                      />
-                      <p className="text-xs text-gray-500 mt-1">
-                        Wolt použije túto prípravu na výpočet pickup času kuriéra.
-                      </p>
                     </div>
                   </div>
 

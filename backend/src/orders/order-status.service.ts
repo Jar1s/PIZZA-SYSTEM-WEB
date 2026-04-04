@@ -97,9 +97,19 @@ export class OrderStatusService implements OnModuleInit, OnModuleDestroy {
       }),
     ]);
 
-    // Auto-sync to Storyous when order is confirmed (PREPARING) and autoSync is enabled
-    // This runs ONLY ONCE when status changes to PREPARING, not on subsequent status changes
-    if (newStatus === OrderStatus.PREPARING && !(order as any).storyousOrderId) {
+    const paymentStatus = String((order as any).paymentStatus || '').toLowerCase();
+    const isDeliveryPaymentAcceptance =
+      newStatus === OrderStatus.PAID && paymentStatus === 'pending';
+    const shouldAutoSyncToStoryous =
+      !(order as any).storyousOrderId &&
+      (newStatus === OrderStatus.PREPARING || isDeliveryPaymentAcceptance);
+    const storyousCreateStatus = isDeliveryPaymentAcceptance ? OrderStatus.PREPARING : newStatus;
+
+    // Auto-sync to Storyous when the order is accepted:
+    // - delivery payment orders: PENDING -> PAID ("Prijať")
+    // - online paid orders: PAID -> PREPARING ("Potvrdiť")
+    // This runs only once before a Storyous order ID exists.
+    if (shouldAutoSyncToStoryous) {
       try {
         // Get global Storyous settings
         const storyousSettings = await this.settingsService.getStoryousSettings();
@@ -108,7 +118,7 @@ export class OrderStatusService implements OnModuleInit, OnModuleDestroy {
           // Convert Prisma Order to shared Order type
           const orderForStoryous: Order = {
             ...order,
-            status: newStatus as OrderStatus,
+            status: storyousCreateStatus as OrderStatus,
             customer: order.customer as unknown as CustomerInfo,
             address: order.address as unknown as Address,
           } as unknown as Order;
@@ -139,6 +149,8 @@ export class OrderStatusService implements OnModuleInit, OnModuleDestroy {
               orderId,
               storyousOrderId: storyousResult.id,
               storyousState,
+              acceptedAtStatus: newStatus,
+              storyousCreateStatus,
             });
           }
         }
@@ -304,8 +316,6 @@ export class OrderStatusService implements OnModuleInit, OnModuleDestroy {
     }
   }
 }
-
-
 
 
 

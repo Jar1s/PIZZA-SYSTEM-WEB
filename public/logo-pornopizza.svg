@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200">
+  <!-- Background circle -->
+  <circle cx="100" cy="100" r="95" fill="#FF6B00" stroke="#000" stroke-width="3"/>
+  
+  <!-- Pizza slice shape -->
+  <path d="M 100 100 L 160 70 A 60 60 0 0 1 160 130 Z" fill="#FFD700" stroke="#8B4513" stroke-width="2"/>
+  
+  <!-- Pepperoni dots -->
+  <circle cx="140" cy="90" r="8" fill="#8B0000"/>
+  <circle cx="145" cy="110" r="8" fill="#8B0000"/>
+  <circle cx="130" cy="105" r="7" fill="#8B0000"/>
+  
+  <!-- Text - PORNO -->
+  <text x="100" y="40" font-family="Arial Black, sans-serif" font-size="28" font-weight="bold" fill="#FFD700" text-anchor="middle" stroke="#000" stroke-width="1">PORNO</text>
+  
+  <!-- Text - PIZZA -->
+  <text x="100" y="175" font-family="Arial Black, sans-serif" font-size="32" font-weight="bold" fill="#FFD700" text-anchor="middle" stroke="#000" stroke-width="1">PIZZA</text>
+  
+  <!-- Decorative elements -->
+  <circle cx="30" cy="100" r="5" fill="#FFD700"/>
+  <circle cx="170" cy="100" r="5" fill="#FFD700"/>
+</svg>
+

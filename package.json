@@ -1,0 +1,17 @@
+{
+  "name": "pizza-ecosystem-vercel-root",
+  "private": true,
+  "engines": {
+    "node": ">=20.0.0 <23.0.0",
+    "npm": ">=9.0.0"
+  },
+  "scripts": {
+    "build": "npm --prefix frontend run build",
+    "vercel-build": "npm --prefix frontend install && npm --prefix frontend run build && rm -rf .next public && cp -R frontend/.next .next && cp -R frontend/public public"
+  },
+  "dependencies": {
+    "next": "14.2.15",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  }
+}

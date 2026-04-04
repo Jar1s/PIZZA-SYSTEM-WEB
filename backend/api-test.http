@@ -1,0 +1,261 @@
+### Backend API Testing - VS Code REST Client
+### Install "REST Client" extension in VS Code to use this file
+### https://marketplace.visualstudio.com/items?itemName=humao.rest-client
+
+@baseUrl = http://localhost:3000
+@apiUrl = {{baseUrl}}/api
+@tenantSlug = pornopizza
+
+### ============================================
+### HEALTH CHECK & ROUTES
+### ============================================
+
+GET {{baseUrl}}/api/health
+
+###
+GET {{baseUrl}}/
+
+### Get all routes (kompletný zoznam všetkých endpointov)
+GET {{apiUrl}}/routes
+
+### ============================================
+### TENANTS
+### ============================================
+
+GET {{apiUrl}}/tenants
+
+###
+GET {{apiUrl}}/tenants/{{tenantSlug}}
+
+### ============================================
+### PRODUCTS
+### ============================================
+
+GET {{apiUrl}}/{{tenantSlug}}/products
+
+###
+GET {{apiUrl}}/{{tenantSlug}}/products?category=PIZZA
+
+###
+GET {{apiUrl}}/{{tenantSlug}}/products/categories
+
+###
+GET {{apiUrl}}/{{tenantSlug}}/products/product-id-here
+
+### ============================================
+### DELIVERY ZONES
+### ============================================
+
+### Calculate delivery fee for Staré Mesto (ZADARMO)
+POST {{apiUrl}}/delivery-zones/{{tenantSlug}}/calculate-fee
+Content-Type: application/json
+
+{
+  "address": {
+    "postalCode": "81101",
+    "city": "Bratislava",
+    "cityPart": "Staré Mesto"
+  }
+}
+
+### Calculate delivery fee for Petržalka (ZADARMO)
+POST {{apiUrl}}/delivery-zones/{{tenantSlug}}/calculate-fee
+Content-Type: application/json
+
+{
+  "address": {
+    "postalCode": "85101",
+    "city": "Bratislava",
+    "cityPart": "Petržalka"
+  }
+}
+
+### Calculate delivery fee for Jarovce (ZADARMO, min 30€)
+POST {{apiUrl}}/delivery-zones/{{tenantSlug}}/calculate-fee
+Content-Type: application/json
+
+{
+  "address": {
+    "postalCode": "85108",
+    "city": "Bratislava",
+    "cityPart": "Jarovce"
+  }
+}
+
+### Validate minimum order for Jarovce (should fail with 25€)
+POST {{apiUrl}}/delivery-zones/{{tenantSlug}}/validate-min-order
+Content-Type: application/json
+
+{
+  "address": {
+    "postalCode": "85108",
+    "city": "Bratislava",
+    "cityPart": "Jarovce"
+  },
+  "orderTotalCents": 2500
+}
+
+### Validate minimum order for Jarovce (should pass with 35€)
+POST {{apiUrl}}/delivery-zones/{{tenantSlug}}/validate-min-order
+Content-Type: application/json
+
+{
+  "address": {
+    "postalCode": "85108",
+    "city": "Bratislava",
+    "cityPart": "Jarovce"
+  },
+  "orderTotalCents": 3500
+}
+
+### ============================================
+### AUTH - Customer
+### ============================================
+
+### Check if email exists
+POST {{apiUrl}}/auth/customer/check-email
+Content-Type: application/json
+
+{
+  "email": "test@example.com"
+}
+
+### Register customer
+POST {{apiUrl}}/auth/customer/register
+Content-Type: application/json
+
+{
+  "email": "test@example.com",
+  "password": "password123",
+  "name": "Test User"
+}
+
+### Login customer
+POST {{apiUrl}}/auth/customer/login
+Content-Type: application/json
+
+{
+  "email": "test@example.com",
+  "password": "password123"
+}
+
+### Set password with token (after guest checkout)
+POST {{apiUrl}}/auth/customer/set-password
+Content-Type: application/json
+
+{
+  "token": "your-password-reset-token-here",
+  "password": "newpassword123"
+}
+
+### ============================================
+### ORDERS
+### ============================================
+
+### Create order (guest checkout)
+POST {{apiUrl}}/{{tenantSlug}}/orders
+Content-Type: application/json
+
+{
+  "customer": {
+    "name": "Test Customer",
+    "email": "test@example.com",
+    "phone": "+421912345678"
+  },
+  "address": {
+    "street": "Hlavná 1",
+    "city": "Bratislava",
+    "postalCode": "81101",
+    "country": "SK"
+  },
+  "items": [
+    {
+      "productId": "product-id-here",
+      "quantity": 2
+    }
+  ],
+  "deliveryFeeCents": 0,
+  "saveAccount": false
+}
+
+### Create order with cash on delivery (auto-creates account)
+POST {{apiUrl}}/{{tenantSlug}}/orders
+Content-Type: application/json
+
+{
+  "customer": {
+    "name": "Test Customer",
+    "email": "test2@example.com",
+    "phone": "+421912345679"
+  },
+  "address": {
+    "street": "Hlavná 1",
+    "city": "Bratislava",
+    "postalCode": "81101",
+    "country": "SK"
+  },
+  "items": [
+    {
+      "productId": "product-id-here",
+      "quantity": 1
+    }
+  ],
+  "paymentMethod": "cash",
+  "deliveryFeeCents": 0
+}
+
+### Get order by ID
+GET {{apiUrl}}/{{tenantSlug}}/orders/order-id-here
+
+### Get orders (with filters)
+GET {{apiUrl}}/{{tenantSlug}}/orders?status=PENDING
+
+###
+GET {{apiUrl}}/{{tenantSlug}}/orders?startDate=2025-01-01&endDate=2025-01-31
+
+### Update order status
+PATCH {{apiUrl}}/{{tenantSlug}}/orders/order-id-here/status
+Content-Type: application/json
+
+{
+  "status": "PAID"
+}
+
+### ============================================
+### CUSTOMER ACCOUNT (requires auth token)
+### ============================================
+
+@authToken = your-auth-token-here
+
+### Get customer profile
+GET {{apiUrl}}/customer/account/profile
+Authorization: Bearer {{authToken}}
+
+### Get customer addresses
+GET {{apiUrl}}/customer/account/addresses
+Authorization: Bearer {{authToken}}
+
+### Add address
+POST {{apiUrl}}/customer/account/addresses
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "street": "Nová ulica 10",
+  "description": "2. poschodie, byt 5",
+  "city": "Bratislava",
+  "postalCode": "81102",
+  "country": "SK",
+  "isPrimary": false
+}
+
+### Get order history
+GET {{apiUrl}}/customer/account/orders
+Authorization: Bearer {{authToken}}
+
+### ============================================
+### TRACKING
+### ============================================
+
+GET {{apiUrl}}/track/order-id-here
+

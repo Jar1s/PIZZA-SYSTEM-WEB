@@ -1,0 +1,30 @@
+import { Module } from '@nestjs/common';
+import { JwtModule } from '@nestjs/jwt';
+import { PassportModule } from '@nestjs/passport';
+import { AuthService } from './auth.service';
+import { AuthController } from './auth.controller';
+import { CustomerAuthService } from './customer-auth.service';
+import { CustomerAuthController } from './customer-auth.controller';
+import { JwtStrategy } from './jwt.strategy';
+import { SmsService } from './sms.service';
+import { PrismaModule } from '../prisma/prisma.module';
+import { EmailModule } from '../email/email.module';
+import { TenantsModule } from '../tenants/tenants.module';
+
+@Module({
+  imports: [
+    PrismaModule,
+    PassportModule,
+    EmailModule,
+    TenantsModule,
+    JwtModule.register({
+      secret: process.env.JWT_SECRET || 'your-secret-key-change-in-production',
+      signOptions: { expiresIn: '1h' }, // Short-lived access token (improved security)
+    }),
+  ],
+  providers: [AuthService, CustomerAuthService, JwtStrategy, SmsService],
+  controllers: [AuthController, CustomerAuthController],
+  exports: [AuthService, CustomerAuthService, SmsService],
+})
+export class AuthModule {}
+

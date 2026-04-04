@@ -1,0 +1,213 @@
+import { NestFactory } from '@nestjs/core';
+import { AppModule } from '../src/app.module';
+import { ExpressAdapter } from '@nestjs/platform-express';
+import express from 'express';
+import helmet from 'helmet';
+import { ValidationPipe, Logger } from '@nestjs/common';
+import { json } from 'express';
+import { appConfig } from '../src/config/app.config';
+import { initSentry } from '../src/config/sentry.config';
+
+let cachedApp: any;
+
+async function createApp() {
+  if (cachedApp) {
+    return cachedApp;
+  }
+
+  try {
+    // Initialize Sentry
+    initSentry();
+
+    const expressApp = express();
+    const app = await NestFactory.create(AppModule, new ExpressAdapter(expressApp));
+  
+    // Apply middleware
+    app.use(json({
+      verify: (req: any, res: any, buf: Buffer) => {
+        if (req.path && req.path.startsWith('/api/webhooks')) {
+          req.rawBody = buf;
+        }
+      },
+    }));
+
+    app.setGlobalPrefix('api');
+    app.useGlobalPipes(new ValidationPipe({
+      whitelist: true,
+      transform: true,
+    }));
+
+    // CORS configuration - MUST be before app.init() and helmet
+    // CORS is restricted to specific domains via ALLOWED_ORIGINS env var
+    // .vercel.app domains are only allowed if explicitly listed in ALLOWED_ORIGINS
+    app.enableCors({
+      origin: (origin, callback) => {
+        // Allow requests with no origin (like mobile apps or curl requests)
+        if (!origin) {
+          return callback(null, true);
+        }
+        
+        // Check explicit allowed origins first (includes specific .vercel.app domains)
+        if (process.env.ALLOWED_ORIGINS) {
+          const allowedOrigins = process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim());
+          if (allowedOrigins.includes(origin)) {
+            return callback(null, true);
+          }
+          // Also check if origin matches any allowed pattern (for .vercel.app subdomains)
+          const matchesPattern = allowedOrigins.some(allowed => {
+            if (allowed.includes('*')) {
+              const pattern = allowed.replace(/\*/g, '.*');
+              return new RegExp(`^${pattern}$`).test(origin);
+            }
+            return false;
+          });
+          if (matchesPattern) {
+            return callback(null, true);
+          }
+        }
+        
+        // Only allow .vercel.app domains if explicitly listed in ALLOWED_ORIGINS
+        // This prevents unauthorized access from any Vercel preview URL
+        if (origin.endsWith('.vercel.app')) {
+          // Deny by default - must be in ALLOWED_ORIGINS
+          return callback(null, false);
+        }
+        
+        // Always allow production domains (p0rnopizza.sk, pornopizza.sk, etc.)
+        if (origin.includes('p0rnopizza.sk') || origin.includes('pornopizza.sk') || origin.includes('pizzavnudzi.sk')) {
+          return callback(null, true);
+        }
+        
+        // In development, allow localhost
+        if (process.env.NODE_ENV !== 'production') {
+          if (origin.startsWith('http://localhost:') || origin.startsWith('http://pornopizza.localhost:') || origin.startsWith('http://pizzavnudzi.localhost:')) {
+            return callback(null, true);
+          }
+        }
+        
+        // Deny by default
+        callback(null, false);
+      },
+      credentials: true,
+      methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+      allowedHeaders: ['Content-Type', 'Authorization', 'x-tenant', 'X-Requested-With'],
+      exposedHeaders: ['Content-Length', 'Content-Type'],
+      maxAge: 86400, // 24 hours
+    });
+
+    app.use(helmet({
+      contentSecurityPolicy: {
+        directives: {
+          defaultSrc: ["'self'"],
+          styleSrc: ["'self'", "'unsafe-inline'"],
+          scriptSrc: ["'self'"],
+          imgSrc: ["'self'", "data:", "https:"],
+          connectSrc: ["'self'", "https://*.sentry.io", "https://*.ingest.sentry.io", "https://*.vercel.app"],
+          fontSrc: ["'self'", "data:", "https:"],
+          frameSrc: ["'self'"],
+        },
+      },
+      crossOriginEmbedderPolicy: false,
+      crossOriginResourcePolicy: { policy: "cross-origin" }, // Allow cross-origin requests
+    }));
+
+    await app.init();
+    
+    cachedApp = expressApp;
+    return expressApp;
+  } catch (err) {
+    const logger = new Logger('VercelBootstrap');
+    logger.error('Failed to create Nest app for Vercel', err as Error);
+    throw err;
+  }
+}
+
+export default async function handler(req: any, res: any) {
+  try {
+    // Handle OPTIONS preflight requests explicitly BEFORE creating app
+    if (req.method === 'OPTIONS') {
+      const origin = req.headers.origin;
+      
+      // Check allowed origins (restricted CORS - .vercel.app must be in ALLOWED_ORIGINS)
+      let allowOrigin = false;
+      
+      if (origin) {
+        // Check explicit allowed origins first (includes specific .vercel.app domains)
+        if (process.env.ALLOWED_ORIGINS) {
+          const allowedOrigins = process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim());
+          if (allowedOrigins.includes(origin)) {
+            allowOrigin = true;
+          } else {
+            // Also check if origin matches any allowed pattern (for .vercel.app subdomains)
+            const matchesPattern = allowedOrigins.some(allowed => {
+              if (allowed.includes('*')) {
+                const pattern = allowed.replace(/\*/g, '.*');
+                return new RegExp(`^${pattern}$`).test(origin);
+              }
+              return false;
+            });
+            if (matchesPattern) {
+              allowOrigin = true;
+            }
+          }
+        }
+        
+        // Only allow .vercel.app domains if explicitly listed in ALLOWED_ORIGINS
+        // This prevents unauthorized access from any Vercel preview URL
+        if (!allowOrigin && origin.endsWith('.vercel.app')) {
+          // Deny by default - must be in ALLOWED_ORIGINS
+          allowOrigin = false;
+        }
+        
+        // Always allow production domains (p0rnopizza.sk, pornopizza.sk, etc.)
+        else if (origin.includes('p0rnopizza.sk') || origin.includes('pornopizza.sk') || origin.includes('pizzavnudzi.sk')) {
+          allowOrigin = true;
+        }
+        // In development, allow localhost
+        else if (process.env.NODE_ENV !== 'production') {
+          if (origin.startsWith('http://localhost:') || 
+              origin.startsWith('http://pornopizza.localhost:') || 
+              origin.startsWith('http://pizzavnudzi.localhost:')) {
+            allowOrigin = true;
+          }
+        }
+      } else {
+        // Allow requests with no origin (like mobile apps or curl requests)
+        allowOrigin = true;
+      }
+      
+      if (allowOrigin) {
+        // IMPORTANT: With credentials: true, we MUST use the specific origin, not '*'
+        // If no origin, we can't use credentials, so we allow without credentials
+        if (origin) {
+          res.setHeader('Access-Control-Allow-Origin', origin);
+          res.setHeader('Access-Control-Allow-Credentials', 'true');
+        } else {
+          // No origin - allow but without credentials
+          res.setHeader('Access-Control-Allow-Origin', '*');
+          // Don't set credentials header when using '*'
+        }
+        res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
+        res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-tenant, X-Requested-With');
+        res.setHeader('Access-Control-Max-Age', '86400');
+        return res.status(200).end();
+      } else {
+        // Deny CORS preflight
+        return res.status(403).end();
+      }
+    }
+    
+    const app = await createApp();
+    return app(req, res);
+  } catch (error) {
+    const Logger = require('@nestjs/common').Logger;
+    const logger = new Logger('VercelHandler');
+    logger.error('Handler error:', error);
+    if (!res.headersSent) {
+      res.status(500).json({ 
+        error: 'Internal server error',
+        message: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  }
+}
