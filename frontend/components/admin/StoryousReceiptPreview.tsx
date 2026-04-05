@@ -48,6 +48,14 @@ export function StoryousReceiptPreview({
         </div>
       )}
 
+      {preview && preview.warnings.length > 0 ? (
+        <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+          {preview.warnings.map((warning, index) => (
+            <div key={`${warning}-${index}`}>• {warning}</div>
+          ))}
+        </div>
+      ) : null}
+
       {loading && !preview ? (
         <div className="rounded-lg border border-dashed border-gray-300 bg-white px-4 py-8 text-center text-sm text-gray-500">
           Nacitavam nahlad kolku...

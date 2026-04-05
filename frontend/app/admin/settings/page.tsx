@@ -3,11 +3,10 @@
 import dynamic from 'next/dynamic';
 import { Suspense, Component, ReactNode, useEffect, useMemo, useState } from 'react';
 import { Tenant } from '@pizza-ecosystem/shared';
-import type { StoryousReceiptPreview as StoryousReceiptPreviewData } from '@/lib/api';
 import { getAllTenants, syncFromMaster, updateTenant } from '@/lib/api';
 import { EditBrandModal } from '@/components/admin/EditBrandModal';
 import { CloneBrandModal } from '@/components/admin/CloneBrandModal';
-import { StoryousReceiptPreview } from '@/components/admin/StoryousReceiptPreview';
+import { StoryousSampleReceiptPanel } from '@/components/admin/StoryousSampleReceiptPanel';
 import { useAdminContext } from '@/app/admin/admin-context';
 
 class ErrorBoundary extends Component<
@@ -92,59 +91,6 @@ export default function AdminSettingsPage() {
 
     return tenants.find((tenant) => tenant.isActive) || tenants[0];
   }, [selectedTenant, tenants]);
-
-  const storyousBrandPreview = useMemo<StoryousReceiptPreviewData | null>(() => {
-    if (!previewTenant) return null;
-
-    const now = new Date();
-    const printedTime = now.toLocaleTimeString('sk-SK', {
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false,
-    });
-    const printedDate = `${now.getDate()}.${now.getMonth() + 1}.${now.getFullYear()}`;
-    const website = String(previewTenant.domain || previewTenant.subdomain || previewTenant.slug || 'unknown')
-      .replace(/^https?:\/\//i, '')
-      .replace(/\/.*$/, '');
-    const printedWebsite = website.includes('.')
-      ? (website.startsWith('www.') ? website : `www.${website}`)
-      : `www.${website}.sk`;
-
-    return {
-      printedTime,
-      printedDate,
-      title: null,
-      orderReference: '#119',
-      website,
-      noteLines: ['- #119', `Web: ${printedWebsite}`],
-      customerName: '',
-      customerDetailLines: [
-        'Jaro',
-        'Námestie F. X. Messerschmidta, Bratislava I,',
-        '811 02',
-        '+421100200400',
-        'Spôsob platby: pri prevzatí',
-        'Požadované vyzdvihnutie kuriérom: v 19:21',
-      ],
-      items: [
-        {
-          quantity: 1,
-          name: 'Pizza Bon Salami',
-          modifierLines: [
-            '+ Klasické 32cm (pšeničné)',
-            '+ Paradajkovy',
-            '+ Mozzarella',
-            '+ Olivovým olejom',
-          ],
-        },
-        {
-          quantity: 1,
-          name: 'Coca Cola 1l',
-          modifierLines: [],
-        },
-      ],
-    };
-  }, [previewTenant]);
 
   useEffect(() => {
     const fetchTenants = async () => {
@@ -263,17 +209,9 @@ export default function AdminSettingsPage() {
           </ErrorBoundary>
         </div>
 
-        <StoryousReceiptPreview
-          preview={storyousBrandPreview}
-          loading={false}
-          error={null}
-          title="Aktuálny výstup Storyous kolku"
-          subtitle={
-            previewTenant
-              ? `Toto simuluje, ako sa to pri aktuálnom kóde vytlačí pre brand ${previewTenant.name}.`
-              : 'Po načítaní brandov sa tu zobrazí aktuálny simulovaný výstup kolku.'
-          }
-          headerLeftLabel="Stôl: CD"
+        <StoryousSampleReceiptPanel
+          tenantSlug={previewTenant?.slug || previewTenant?.subdomain || null}
+          tenantName={previewTenant?.name || null}
           className="h-full"
         />
       </div>

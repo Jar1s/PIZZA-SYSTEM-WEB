@@ -1,6 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Order, OrderStatus } from '@pizza-ecosystem/shared';
+import { PrismaService } from '../prisma/prisma.service';
 import { SettingsService } from '../settings/settings.service';
+import { StoryousModifierSelection } from './storyous-modifier.util';
 
 export interface StoryousReceiptPreviewItem {
   quantity: number;
@@ -18,6 +20,7 @@ export interface StoryousReceiptPreview {
   customerName: string;
   customerDetailLines: string[];
   items: StoryousReceiptPreviewItem[];
+  warnings: string[];
 }
 
 export type StoryousDeliveryOrderState =
@@ -34,6 +37,7 @@ export interface StoryousCreateOrderResult {
   autoConfirmRequested: boolean;
   requiresManualAcceptance: boolean;
   verificationFailed: boolean;
+  warnings?: string[];
   raw: Record<string, any>;
 }
 
@@ -45,7 +49,10 @@ export class StoryousService {
 
   private readonly apiBaseUrl = 'https://api.storyous.com';
 
-  constructor(private settingsService: SettingsService) {}
+  constructor(
+    private settingsService: SettingsService,
+    private prisma: PrismaService,
+  ) {}
 
   private buildMerchantPlaceId(merchantId: string, placeId: string): string {
     const merchant = String(merchantId || '').trim();
@@ -304,9 +311,44 @@ export class StoryousService {
     return lines;
   }
 
+  private normalizeReceiptNoteLine(value: string): string {
+    return String(value || '')
+      .replace(/["']/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  private async getModifierMappingsByOptionId(tenantId: string): Promise<
+    Map<string, { externalAdditionId: string; labelOverride: string | null }>
+  > {
+    if (!tenantId) {
+      return new Map();
+    }
+
+    const mappings = await this.prisma.storyousModifierMapping.findMany({
+      where: { tenantId },
+      select: {
+        optionId: true,
+        externalAdditionId: true,
+        labelOverride: true,
+      },
+    });
+
+    return new Map(
+      mappings.map((mapping) => [
+        mapping.optionId,
+        {
+          externalAdditionId: mapping.externalAdditionId,
+          labelOverride: mapping.labelOverride ?? null,
+        },
+      ]),
+    );
+  }
+
   private async buildStoryousOrderData(order: Order): Promise<{
     orderData: any;
     preview: StoryousReceiptPreview;
+    warnings: string[];
   }> {
     const customer = order.customer as any;
     const address = order.address as any;
@@ -326,7 +368,13 @@ export class StoryousService {
     const orderReference = this.getOrderReference(order);
     const orderSourceWebsite = this.getOrderSourceWebsite(order);
     const isAlreadyPaid = String((order as any).paymentStatus || '').toLowerCase() !== 'pending';
+    const receiptIncludeModifierLines = settings?.receiptIncludeModifierLines ?? true;
+    const modifierMappingsByOptionId = await this.getModifierMappingsByOptionId(
+      String((order as any)?.tenantId || ''),
+    );
+    const warnings = new Set<string>();
 
+    const previewItems: StoryousReceiptPreviewItem[] = [];
     const items = order.items.map((item: any) => {
       const storyousItemId = item.storyousItemId || item.storyous_item_id || item.storyousId;
       if (!storyousItemId) {
@@ -344,17 +392,83 @@ export class StoryousService {
         unitPriceWithVat: item.priceCents / 100,
       };
 
+      const previewModifierLines: string[] = [];
       const resolvedModifierLines = Array.isArray(item.resolvedModifierLines)
         ? item.resolvedModifierLines.filter((line: string) => typeof line === 'string' && line.trim().length > 0)
         : [];
+      const modifierSelections = Array.isArray(item.storyousModifierSelections)
+        ? item.storyousModifierSelections.filter(
+            (selection: StoryousModifierSelection) =>
+              selection &&
+              typeof selection.optionId === 'string' &&
+              typeof selection.receiptLabel === 'string',
+          )
+        : [];
 
-      if (resolvedModifierLines.length > 0 && (settings?.receiptIncludeModifierLines ?? true)) {
+      if (receiptIncludeModifierLines && modifierSelections.length > 0) {
+        const additions = [];
+        const fallbackLines: string[] = [];
+
+        for (const selection of modifierSelections) {
+          const mapping = modifierMappingsByOptionId.get(selection.optionId);
+          const previewLabel = this.normalizeReceiptNoteLine(
+            mapping?.labelOverride || selection.receiptLabel,
+          );
+
+          if (mapping?.externalAdditionId) {
+            additions.push({
+              additionId: mapping.externalAdditionId,
+              countPerMainItem: 1,
+              unitPriceWithVat: 0,
+            });
+            if (previewLabel) {
+              previewModifierLines.push(`+${previewLabel}`);
+            }
+            continue;
+          }
+
+          const fallbackLine = this.normalizeReceiptNoteLine(selection.receiptLabel);
+          if (!fallbackLine) continue;
+
+          fallbackLines.push(fallbackLine);
+          previewModifierLines.push(`+${fallbackLine}`);
+          warnings.add(
+            `Modifier "${fallbackLine}" (${selection.optionId}) nema Storyous addition mapping, preto ostava vo fallback note.`,
+          );
+        }
+
+        if (additions.length > 0) {
+          itemData.additions = additions;
+        }
+
+        if (fallbackLines.length > 0) {
+          itemData.note = fallbackLines.map((line: string) => `+${line}`).join('\n');
+        }
+      }
+
+      if (
+        previewModifierLines.length === 0 &&
+        resolvedModifierLines.length > 0 &&
+        receiptIncludeModifierLines
+      ) {
         const normalizedModifierLines = resolvedModifierLines
-          .map((line: string) => line.replace(/^["']+|["']+$/g, '').trim())
+          .map((line: string) => this.normalizeReceiptNoteLine(line))
           .filter((line: string) => line.length > 0);
 
-        itemData.note = normalizedModifierLines.map((line: string) => `+${line}`).join('\n');
+        if (normalizedModifierLines.length > 0) {
+          itemData.note = normalizedModifierLines.map((line: string) => `+${line}`).join('\n');
+          previewModifierLines.push(...normalizedModifierLines.map((line: string) => `+${line}`));
+          warnings.add(
+            `Item "${item.productName}" pouziva legacy fallback note pre Storyous modifiery, lebo neobsahuje optionId selections.`,
+          );
+        }
       }
+
+      previewItems.push({
+        quantity: Number(item.quantity) || 1,
+        name: String(item.productName || item.name || ''),
+        modifierLines: previewModifierLines,
+      });
 
       return itemData;
     });
@@ -413,18 +527,14 @@ export class StoryousService {
       noteLines: orderNote.split('\n').filter(Boolean),
       customerName: String(customer?.name || ''),
       customerDetailLines: this.buildCustomerReceiptLines(order, requestedDeliveryAt),
-      items: items.map((item: any) => ({
-        quantity: Number(item.quantity) || 1,
-        name: String(item.name || ''),
-        modifierLines: typeof item.note === 'string'
-          ? item.note.split('\n').filter((line: string) => line.trim().length > 0)
-          : [],
-      })),
+      items: previewItems,
+      warnings: Array.from(warnings),
     };
 
     return {
       orderData,
       preview,
+      warnings: Array.from(warnings),
     };
   }
 
@@ -449,7 +559,7 @@ export class StoryousService {
         warnings: readiness.warnings,
       });
     }
-    const { orderData } = await this.buildStoryousOrderData(order);
+    const { orderData, warnings } = await this.buildStoryousOrderData(order);
 
     this.logger.log('[Storyous] Sending order', {
       orderId: order.id,
@@ -510,6 +620,7 @@ export class StoryousService {
       autoConfirmRequested,
       requiresManualAcceptance: storyousState === 'NEW',
       verificationFailed: storyousState === 'VERIFICATION_FAILED',
+      warnings,
       raw: normalizedResult,
     };
 

@@ -141,6 +141,13 @@ export class AdminOrdersController {
     return this.ordersService.getStoryousReceiptPreview(id);
   }
 
+  @Get('storyous-preview-sample/current')
+  @UseGuards(RolesGuard)
+  @Roles('ADMIN', 'OPERATOR')
+  async getStoryousSamplePreview(@Query('tenantSlug') tenantSlug?: string) {
+    return this.ordersService.getStoryousSampleReceiptPreview(tenantSlug);
+  }
+
   @Patch(':id/status')
   @UseGuards(RolesGuard)
   @Roles('ADMIN', 'OPERATOR')

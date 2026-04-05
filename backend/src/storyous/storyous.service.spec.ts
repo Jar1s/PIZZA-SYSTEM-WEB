@@ -8,6 +8,11 @@ describe('StoryousService', () => {
     getStoryousSettings: jest.fn(),
     getStoryousAutoPrintReadiness: jest.fn(),
   };
+  const mockPrismaService = {
+    storyousModifierMapping: {
+      findMany: jest.fn(),
+    },
+  };
 
   const buildJsonResponse = (body: Record<string, any>, status = 200) =>
     ({
@@ -64,7 +69,7 @@ describe('StoryousService', () => {
   } as any;
 
   beforeEach(() => {
-    service = new StoryousService(mockSettingsService as any);
+    service = new StoryousService(mockSettingsService as any, mockPrismaService as any);
     mockSettingsService.getStoryousAutoPrintReadiness.mockResolvedValue({
       ready: true,
       blockers: [],
@@ -78,6 +83,7 @@ describe('StoryousService', () => {
         receiptIncludeOrderNumber: true,
       },
     });
+    mockPrismaService.storyousModifierMapping.findMany.mockResolvedValue([]);
     jest.restoreAllMocks();
   });
 
@@ -178,5 +184,126 @@ describe('StoryousService', () => {
 
     const createPayload = JSON.parse((fetchMock.mock.calls[1]?.[1] as RequestInit).body as string);
     expect(createPayload.autoConfirm).toBeUndefined();
+  });
+
+  it('sends mapped modifiers via additions and leaves unmapped modifiers in fallback note', async () => {
+    mockSettingsService.getStoryousSettings.mockResolvedValue({
+      clientId: 'client',
+      clientSecret: 'secret',
+      enabled: true,
+      autoSync: true,
+      defaultDeliveryLeadMinutes: 45,
+      autoAcceptPrintMode: true,
+      receiptIncludeModifierLines: true,
+      receiptIncludeOrderNumber: true,
+    });
+    mockPrismaService.storyousModifierMapping.findMany.mockResolvedValue([
+      {
+        optionId: 'classic-32',
+        externalAdditionId: 'addition-1',
+        labelOverride: 'Klasické 32 cm',
+      },
+    ]);
+
+    const orderWithModifiers = {
+      ...baseOrder,
+      items: [
+        {
+          ...baseOrder.items[0],
+          resolvedModifierLines: ['Klasické 32 cm', 'Paradajkovy'],
+          storyousModifierSelections: [
+            {
+              optionId: 'classic-32',
+              receiptLabel: 'Klasické 32 cm',
+            },
+            {
+              optionId: 'tomato',
+              receiptLabel: 'Paradajkovy',
+            },
+          ],
+        },
+      ],
+    } as any;
+
+    const fetchMock = jest.spyOn(global, 'fetch');
+    fetchMock
+      .mockResolvedValueOnce(
+        buildJsonResponse({
+          access_token: 'token-123',
+          expires_at: '2026-04-02T11:00:00.000Z',
+        }),
+      )
+      .mockResolvedValueOnce(
+        buildJsonResponse({
+          orderId: 'storyous-3',
+          state: 'CONFIRMED',
+        }),
+      )
+      .mockResolvedValueOnce(
+        buildJsonResponse({
+          orderId: 'storyous-3',
+          state: 'CONFIRMED',
+        }),
+      );
+
+    const result = await service.createOrder(orderWithModifiers, 'merchant-1', 'place-1');
+    const createPayload = JSON.parse((fetchMock.mock.calls[1]?.[1] as RequestInit).body as string);
+
+    expect(createPayload.items[0].additions).toEqual([
+      {
+        additionId: 'addition-1',
+        countPerMainItem: 1,
+        unitPriceWithVat: 0,
+      },
+    ]);
+    expect(createPayload.items[0].note).toBe('+Paradajkovy');
+    expect(result.warnings).toContain(
+      'Modifier "Paradajkovy" (tomato) nema Storyous addition mapping, preto ostava vo fallback note.',
+    );
+  });
+
+  it('builds preview with the same modifier labels and warnings as payload builder', async () => {
+    mockSettingsService.getStoryousSettings.mockResolvedValue({
+      clientId: 'client',
+      clientSecret: 'secret',
+      enabled: true,
+      autoSync: true,
+      defaultDeliveryLeadMinutes: 45,
+      autoAcceptPrintMode: true,
+      receiptIncludeModifierLines: true,
+      receiptIncludeOrderNumber: true,
+    });
+    mockPrismaService.storyousModifierMapping.findMany.mockResolvedValue([
+      {
+        optionId: 'olive-oil',
+        externalAdditionId: 'addition-olive',
+        labelOverride: null,
+      },
+    ]);
+
+    const preview = await service.getReceiptPreview({
+      ...baseOrder,
+      items: [
+        {
+          ...baseOrder.items[0],
+          resolvedModifierLines: ['Olivovým olejom', 'Paradajkovy'],
+          storyousModifierSelections: [
+            {
+              optionId: 'olive-oil',
+              receiptLabel: 'Olivovým olejom',
+            },
+            {
+              optionId: 'tomato',
+              receiptLabel: 'Paradajkovy',
+            },
+          ],
+        },
+      ],
+    } as any);
+
+    expect(preview.items[0].modifierLines).toEqual(['+Olivovým olejom', '+Paradajkovy']);
+    expect(preview.warnings).toContain(
+      'Modifier "Paradajkovy" (tomato) nema Storyous addition mapping, preto ostava vo fallback note.',
+    );
   });
 });

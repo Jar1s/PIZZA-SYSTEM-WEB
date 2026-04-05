@@ -15,6 +15,22 @@ export interface StoryousSettings {
   receiptIncludeOrderNumber: boolean;
 }
 
+export interface StoryousModifierMappingRecord {
+  id: string;
+  tenantId: string;
+  optionId: string;
+  externalAdditionId: string;
+  labelOverride: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface StoryousModifierMappingInput {
+  optionId: string;
+  externalAdditionId: string;
+  labelOverride?: string | null;
+}
+
 export interface StoryousAutoPrintReadiness {
   ready: boolean;
   blockers: string[];
@@ -138,5 +154,61 @@ export class SettingsService {
       warnings,
       checks,
     };
+  }
+
+  async getStoryousModifierMappings(tenantId: string): Promise<StoryousModifierMappingRecord[]> {
+    return this.prisma.storyousModifierMapping.findMany({
+      where: { tenantId },
+      orderBy: [{ optionId: 'asc' }],
+    });
+  }
+
+  async replaceStoryousModifierMappings(
+    tenantId: string,
+    mappings: StoryousModifierMappingInput[],
+  ): Promise<StoryousModifierMappingRecord[]> {
+    const normalizedMappings = mappings
+      .map((mapping) => ({
+        optionId: String(mapping.optionId || '').trim(),
+        externalAdditionId: String(mapping.externalAdditionId || '').trim(),
+        labelOverride: mapping.labelOverride == null ? null : String(mapping.labelOverride).trim() || null,
+      }))
+      .filter((mapping) => mapping.optionId.length > 0 && mapping.externalAdditionId.length > 0);
+
+    await this.prisma.$transaction(async (tx) => {
+      const incomingOptionIds = normalizedMappings.map((mapping) => mapping.optionId);
+
+      await tx.storyousModifierMapping.deleteMany({
+        where: {
+          tenantId,
+          ...(incomingOptionIds.length > 0
+            ? { optionId: { notIn: incomingOptionIds } }
+            : {}),
+        },
+      });
+
+      for (const mapping of normalizedMappings) {
+        await tx.storyousModifierMapping.upsert({
+          where: {
+            tenantId_optionId: {
+              tenantId,
+              optionId: mapping.optionId,
+            },
+          },
+          create: {
+            tenantId,
+            optionId: mapping.optionId,
+            externalAdditionId: mapping.externalAdditionId,
+            labelOverride: mapping.labelOverride,
+          },
+          update: {
+            externalAdditionId: mapping.externalAdditionId,
+            labelOverride: mapping.labelOverride,
+          },
+        });
+      }
+    });
+
+    return this.getStoryousModifierMappings(tenantId);
   }
 }

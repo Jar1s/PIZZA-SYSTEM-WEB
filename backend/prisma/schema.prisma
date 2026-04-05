@@ -29,6 +29,7 @@ model Tenant {
   deliveryFeeTiers DeliveryFeeTier[]
   orders          Order[]
   productMappings ProductMapping[]
+  storyousModifierMappings StoryousModifierMapping[]
   products        Product[]
   users           User[]
 
@@ -123,6 +124,21 @@ model OrderItem {
   product     Product @relation(fields: [productId], references: [id])
 
   @@map("order_items")
+}
+
+model StoryousModifierMapping {
+  id                 String   @id @default(cuid())
+  tenantId           String
+  optionId           String
+  externalAdditionId String
+  labelOverride      String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  tenant             Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, optionId])
+  @@index([tenantId])
+  @@map("storyous_modifier_mappings")
 }
 
 model Delivery {

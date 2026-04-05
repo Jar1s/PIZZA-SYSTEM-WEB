@@ -2,13 +2,14 @@ import { Injectable, NotFoundException, BadRequestException, Logger, Inject, for
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../prisma/prisma.service';
 import { Prisma, User, UserRole, Order as PrismaOrder } from '@prisma/client';
-import { Order, OrderStatus, CustomerInfo, Address, getCustomizationOptions, calculateModifierPrice as calculateModifierPriceShared } from '@pizza-ecosystem/shared';
+import { Order, OrderStatus, CustomerInfo, Address, calculateModifierPrice as calculateModifierPriceShared } from '@pizza-ecosystem/shared';
 import { CreateOrderDto } from './dto';
 import { EmailService } from '../email/email.service';
 import {
   StoryousReceiptPreview,
   StoryousService,
 } from '../storyous/storyous.service';
+import { buildStoryousModifierSelections } from '../storyous/storyous-modifier.util';
 import { SettingsService } from '../settings/settings.service';
 import { ProductMappingService } from '../products/product-mapping.service';
 import { DeliveryFeeTierService } from '../delivery/delivery-fee-tier.service';
@@ -29,6 +30,7 @@ type StoryousSyncResult = {
   storyousOrderId?: string;
   storyousState?: string | null;
   message: string;
+  warnings?: string[];
 };
 
 type OrderWithRelations = Prisma.OrderGetPayload<{
@@ -1240,6 +1242,7 @@ export class OrdersService {
           storyousOrderId: storyousResult.id,
           storyousState,
           message,
+          warnings: storyousResult.warnings,
         };
       }
 
@@ -1248,6 +1251,7 @@ export class OrdersService {
         success: false,
         storyousState: storyousResult?.storyousState || null,
         message: 'Storyous API did not return order ID',
+        warnings: storyousResult?.warnings,
       };
     } catch (error: any) {
       this.logger.error(`❌ Failed to sync order ${orderId} to Storyous:`, { orderId, error: error.message, stack: error.stack });
@@ -1415,69 +1419,14 @@ export class OrdersService {
     }
   }
 
-  private getModifierCategoryOrder(categoryId: string): number {
-    const order: Record<string, number> = {
-      dough: 1,
-      sauce: 2,
-      cheese: 3,
-      edge: 4,
-      toppings: 5,
-      extra: 6,
-    };
-    return order[categoryId] ?? 100;
-  }
-
   private resolveModifierLines(
     modifiers: Record<string, any> | null | undefined,
     productCategory: string = 'PIZZA',
     tenantTheme?: TenantTheme,
   ): string[] {
-    if (!modifiers || typeof modifiers !== 'object') {
-      return [];
-    }
-
-    const parsedModifiers = typeof modifiers === 'string'
-      ? (() => {
-          try {
-            return JSON.parse(modifiers);
-          } catch {
-            return {};
-          }
-        })()
-      : modifiers;
-
-    const category = String(productCategory || 'PIZZA').toUpperCase();
-    const customizationOptions = getCustomizationOptions(category);
-    const optionLabelOverrides = tenantTheme?.customizationLabels?.options || {};
-
-    const groups = Object.keys(parsedModifiers).sort((a, b) => {
-      const byPriority = this.getModifierCategoryOrder(a) - this.getModifierCategoryOrder(b);
-      if (byPriority !== 0) return byPriority;
-      return a.localeCompare(b);
-    });
-
-    const lines: string[] = [];
-    for (const groupId of groups) {
-      const selected = Array.isArray(parsedModifiers[groupId])
-        ? parsedModifiers[groupId]
-        : parsedModifiers[groupId] ? [parsedModifiers[groupId]] : [];
-
-      if (selected.length === 0) continue;
-
-      const group = customizationOptions.find((g) => g.id === groupId);
-      for (const optionIdRaw of selected) {
-        const optionId = String(optionIdRaw);
-        const option = group?.options?.find((o) => o.id === optionId);
-        const overrideLabel = optionLabelOverrides[optionId]?.sk;
-        const label = (overrideLabel || option?.name || optionId).trim();
-
-        if (label) {
-          lines.push(label);
-        }
-      }
-    }
-
-    return lines;
+    return buildStoryousModifierSelections(modifiers, productCategory, tenantTheme).map(
+      (selection) => selection.receiptLabel,
+    );
   }
 
   private async buildStoryousOrderPayload(
@@ -1552,7 +1501,16 @@ export class OrdersService {
         ...item,
         productName: item.productName || internalProductName,
         storyousItemId: mapping.externalIdentifier,
-        resolvedModifierLines: this.resolveModifierLines(item.modifiers as any, product?.category || 'PIZZA', tenantTheme),
+        resolvedModifierLines: this.resolveModifierLines(
+          item.modifiers as any,
+          product?.category || 'PIZZA',
+          tenantTheme,
+        ),
+        storyousModifierSelections: buildStoryousModifierSelections(
+          item.modifiers as any,
+          product?.category || 'PIZZA',
+          tenantTheme,
+        ),
       };
     });
 
@@ -1567,5 +1525,85 @@ export class OrdersService {
       address: order.address as unknown as Address,
       items: enrichedItems,
     } as unknown as Order;
+  }
+
+  async getStoryousSampleReceiptPreview(tenantSlug?: string): Promise<StoryousReceiptPreview> {
+    const normalizedTenantSlug = String(tenantSlug || '').trim().toLowerCase();
+    const tenant = normalizedTenantSlug
+      ? await this.prisma.tenant.findFirst({
+          where: {
+            OR: [
+              { slug: normalizedTenantSlug },
+              { subdomain: normalizedTenantSlug },
+            ],
+          },
+        })
+      : await this.prisma.tenant.findFirst({
+          where: { isActive: true },
+          orderBy: { createdAt: 'asc' },
+        });
+
+    if (!tenant) {
+      throw new NotFoundException(`Tenant ${tenantSlug || '(default)'} not found`);
+    }
+
+    const tenantTheme = tenant.theme as TenantTheme | undefined;
+    const sampleModifiers = {
+      dough: ['classic-32'],
+      sauce: ['tomato'],
+      cheese: ['mozzarella'],
+      edge: ['olive-oil'],
+    };
+    const storyousModifierSelections = buildStoryousModifierSelections(
+      sampleModifiers,
+      'PIZZA',
+      tenantTheme,
+    );
+
+    const sampleOrder = {
+      id: 'storyous-preview-sample',
+      tenantId: tenant.id,
+      orderNumber: 119,
+      status: OrderStatus.PREPARING,
+      customer: {
+        name: 'Jaro',
+        email: 'jardo.bir@gmail.com',
+        phone: '+421100200400',
+      },
+      address: {
+        street: 'Námestie F. X. Messerschmidta',
+        city: 'Bratislava I',
+        postalCode: '811 02',
+        country: 'SK',
+      },
+      subtotalCents: 1849,
+      taxCents: 0,
+      deliveryFeeCents: 0,
+      totalCents: 1849,
+      paymentRef: null,
+      paymentStatus: 'pending',
+      deliveryId: null,
+      storyousOrderId: null,
+      storyousOrderState: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      tenant,
+      items: [
+        {
+          id: 'preview-item-1',
+          orderId: 'storyous-preview-sample',
+          productId: 'preview-product-1',
+          productName: 'Pizza Bon Salami',
+          quantity: 1,
+          priceCents: 1849,
+          modifiers: sampleModifiers,
+          storyousItemId: 'preview-storyous-item-1',
+          resolvedModifierLines: storyousModifierSelections.map((selection) => selection.receiptLabel),
+          storyousModifierSelections,
+        },
+      ],
+    } as unknown as Order;
+
+    return this.storyousService.getReceiptPreview(sampleOrder);
   }
 }
