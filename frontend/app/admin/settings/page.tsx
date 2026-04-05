@@ -2,6 +2,8 @@
 
 import dynamic from 'next/dynamic';
 import { Suspense, Component, ReactNode } from 'react';
+import { StoryousSampleReceiptPanel } from '@/components/admin/StoryousSampleReceiptPanel';
+import { useAdminContext } from '@/app/admin/admin-context';
 
 class ErrorBoundary extends Component<
   { children: ReactNode; fallback?: ReactNode },
@@ -65,6 +67,9 @@ const DeliveryFeeTiersSettings = dynamic(() => import('@/components/admin/Delive
 });
 
 export default function AdminSettingsPage() {
+  const { selectedTenant } = useAdminContext();
+  const previewTenantSlug = selectedTenant && selectedTenant !== 'all' ? selectedTenant : null;
+
   return (
     <div className="space-y-5 text-gray-900">
       <div>
@@ -107,12 +112,18 @@ export default function AdminSettingsPage() {
         </ErrorBoundary>
       </div>
 
-      <div className="grid grid-cols-1 gap-5">
+      <div className="grid grid-cols-1 gap-5 2xl:grid-cols-[minmax(0,420px)_minmax(0,1fr)]">
         <ErrorBoundary>
           <Suspense fallback={<div className="animate-pulse rounded-xl bg-gray-200 h-72" />}>
             <DeliveryFeeTiersSettings />
           </Suspense>
         </ErrorBoundary>
+
+        <StoryousSampleReceiptPanel
+          tenantSlug={previewTenantSlug}
+          tenantName={previewTenantSlug}
+          className="h-full"
+        />
       </div>
     </div>
   );

@@ -613,6 +613,7 @@ type StoryousSyncResult = {
   storyousOrderId?: string;
   storyousState?: string | null;
   message: string;
+  warnings?: string[];
 };
 
 type SyncFromMasterResult = {
@@ -631,6 +632,22 @@ export type StoryousSettings = {
   autoAcceptPrintMode: boolean;
   receiptIncludeModifierLines: boolean;
   receiptIncludeOrderNumber: boolean;
+};
+
+export type StoryousModifierMapping = {
+  id: string;
+  tenantId: string;
+  optionId: string;
+  externalAdditionId: string;
+  labelOverride: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
+export type StoryousModifierMappingInput = {
+  optionId: string;
+  externalAdditionId: string;
+  labelOverride?: string | null;
 };
 
 export type StoryousAutoPrintReadiness = {
@@ -739,6 +756,50 @@ export async function getStoryousAutoPrintReadiness(): Promise<StoryousAutoPrint
   return res.json();
 }
 
+export async function getStoryousModifierMappings(
+  tenantSlug: string,
+): Promise<StoryousModifierMapping[]> {
+  const normalizedTenant = normalizeTenantSlug(tenantSlug);
+  const res = await fetch(
+    `${API_URL}/api/settings/storyous/modifier-mappings?tenantSlug=${encodeURIComponent(normalizedTenant)}`,
+    {
+      method: 'GET',
+      headers: buildAuthHeaders(),
+      credentials: 'include',
+    },
+  );
+
+  if (!res.ok) {
+    const errorText = await res.text().catch(() => '');
+    throw new Error(errorText || 'Failed to fetch Storyous modifier mappings');
+  }
+
+  return res.json();
+}
+
+export async function updateStoryousModifierMappings(
+  tenantSlug: string,
+  mappings: StoryousModifierMappingInput[],
+): Promise<StoryousModifierMapping[]> {
+  const normalizedTenant = normalizeTenantSlug(tenantSlug);
+  const res = await fetch(
+    `${API_URL}/api/settings/storyous/modifier-mappings?tenantSlug=${encodeURIComponent(normalizedTenant)}`,
+    {
+      method: 'PUT',
+      headers: buildAuthHeaders(true),
+      credentials: 'include',
+      body: JSON.stringify({ mappings }),
+    },
+  );
+
+  if (!res.ok) {
+    const errorText = await res.text().catch(() => '');
+    throw new Error(errorText || 'Failed to update Storyous modifier mappings');
+  }
+
+  return res.json();
+}
+
 export async function syncFromMaster(masterSlug: string, targetSlugs?: string[]): Promise<SyncFromMasterResult> {
   const res = await fetch(`${API_URL}/api/tenants/sync-from-master`, {
     method: 'POST',
@@ -803,6 +864,7 @@ export type StoryousReceiptPreview = {
   customerName: string;
   customerDetailLines: string[];
   items: StoryousReceiptPreviewItem[];
+  warnings: string[];
 };
 
 export async function getStoryousReceiptPreview(orderId: string): Promise<StoryousReceiptPreview> {
@@ -815,6 +877,25 @@ export async function getStoryousReceiptPreview(orderId: string): Promise<Storyo
   if (!res.ok) {
     const errorText = await res.text().catch(() => '');
     throw new Error(errorText || 'Failed to load Storyous receipt preview');
+  }
+
+  return res.json();
+}
+
+export async function getStoryousSampleReceiptPreview(tenantSlug: string): Promise<StoryousReceiptPreview> {
+  const normalizedTenant = normalizeTenantSlug(tenantSlug);
+  const res = await fetch(
+    `${API_URL}/api/orders/storyous-preview-sample/current?tenantSlug=${encodeURIComponent(normalizedTenant)}`,
+    {
+      method: 'GET',
+      headers: buildAuthHeaders(),
+      credentials: 'include',
+    },
+  );
+
+  if (!res.ok) {
+    const errorText = await res.text().catch(() => '');
+    throw new Error(errorText || 'Failed to load Storyous sample receipt preview');
   }
 
   return res.json();
