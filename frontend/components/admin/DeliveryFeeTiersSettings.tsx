@@ -19,6 +19,13 @@ interface DeliveryFeeTier {
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
 
+function normalizeTenant(slug: string | null): string | null {
+  if (!slug || slug === 'all') return null;
+  if (slug === 'p0rnopizza') return 'pornopizza';
+  if (slug === 'pizzaparty') return 'partypizza';
+  return slug;
+}
+
 export default function DeliveryFeeTiersSettings() {
   const { selectedTenant } = useAdminContext();
   const router = useRouter();
@@ -48,7 +55,12 @@ export default function DeliveryFeeTiersSettings() {
         await handleUnauthorized();
         return;
       }
-      const response = await fetch(`${API_URL}/api/delivery-fee-tiers`, {
+      const tenantSlug = normalizeTenant(selectedTenant);
+      const endpoint = tenantSlug
+        ? `${API_URL}/api/delivery-fee-tiers?tenantSlug=${encodeURIComponent(tenantSlug)}`
+        : `${API_URL}/api/delivery-fee-tiers`;
+
+      const response = await fetch(endpoint, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -61,12 +73,7 @@ export default function DeliveryFeeTiersSettings() {
         throw new Error('Failed to fetch tiers');
       }
       const data = await response.json();
-      // Filter by selected tenant or show global (null) tiers
-      const tenantSlug = selectedTenant === 'all' ? null : selectedTenant;
-      const filtered = tenantSlug
-        ? data.filter((t: DeliveryFeeTier) => t.tenantId === tenantSlug || t.tenantId === null)
-        : data.filter((t: DeliveryFeeTier) => t.tenantId === null);
-      setTiers(filtered);
+      setTiers(data);
     } catch (error) {
       console.error('Failed to fetch tiers:', error);
     } finally {

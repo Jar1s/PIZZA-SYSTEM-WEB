@@ -1,9 +1,13 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Tenant } from '@pizza-ecosystem/shared';
-import { getTenant, updateTenant } from '@/lib/api';
+import { useAdminContext } from '@/app/admin/admin-context';
 import { getTenantSlug } from '@/lib/tenant-utils';
+import {
+  getTenantOperationsSettings,
+  updateTenantOperationsSettings,
+  TenantOperationsSettings,
+} from '@/lib/api';
 import { OpeningHours, getDefaultOpeningHours } from '@/lib/opening-hours';
 
 const DAYS: Array<{ key: keyof OpeningHours['days']; label: string }> = [
@@ -23,7 +27,7 @@ function normalizeSlug(slug: string | null): string {
   return slug;
 }
 
-function mergeWithDefaults(openingHours?: OpeningHours): OpeningHours {
+function mergeWithDefaults(openingHours?: OpeningHours | null): OpeningHours {
   const defaults = getDefaultOpeningHours();
   if (!openingHours) return defaults;
   return {
@@ -39,7 +43,8 @@ function mergeWithDefaults(openingHours?: OpeningHours): OpeningHours {
 }
 
 export function OpeningHoursSettings() {
-  const [tenant, setTenant] = useState<Tenant | null>(null);
+  const { selectedTenant } = useAdminContext();
+  const [tenantSettings, setTenantSettings] = useState<TenantOperationsSettings | null>(null);
   const [tenantSlug, setTenantSlug] = useState<string>('pornopizza');
   const [openingHours, setOpeningHours] = useState<OpeningHours>(getDefaultOpeningHours());
   const [loading, setLoading] = useState(true);
@@ -49,30 +54,29 @@ export function OpeningHoursSettings() {
   useEffect(() => {
     const load = async () => {
       try {
-        const slug = normalizeSlug(getTenantSlug());
-        setTenantSlug(slug);
-        const tenantData = await getTenant(slug);
-        setTenant(tenantData);
-        const theme = (tenantData.theme as any) || {};
-        setOpeningHours(mergeWithDefaults(theme.openingHours));
+        setLoading(true);
+        const activeSlug = normalizeSlug(
+          selectedTenant && selectedTenant !== 'all' ? selectedTenant : getTenantSlug(),
+        );
+        setTenantSlug(activeSlug);
+        const data = await getTenantOperationsSettings(activeSlug);
+        setTenantSettings(data);
+        setOpeningHours(mergeWithDefaults(data.openingHours as OpeningHours | null));
       } catch (error) {
         console.error('Failed to load opening hours:', error);
       } finally {
         setLoading(false);
       }
     };
+
     load();
-  }, []);
+  }, [selectedTenant]);
 
   const persist = async (next: OpeningHours) => {
-    if (!tenant) return;
-    const theme = (tenant.theme as any) || {};
-    await updateTenant(tenantSlug || tenant.slug, {
-      theme: {
-        ...theme,
-        openingHours: next,
-      },
+    const updated = await updateTenantOperationsSettings(tenantSlug, {
+      openingHours: next,
     });
+    setTenantSettings(updated);
     localStorage.setItem('tenant_refresh_ts', Date.now().toString());
     window.dispatchEvent(new Event('storage'));
     window.dispatchEvent(new CustomEvent('tenant-updated'));
@@ -92,18 +96,23 @@ export function OpeningHoursSettings() {
   };
 
   const handleToggleEnabled = async () => {
+    const previous = openingHours;
     const next = { ...openingHours, enabled: !openingHours.enabled };
     setOpeningHours(next);
     try {
       await persist(next);
     } catch (error: any) {
       console.error('Failed to toggle opening hours:', error);
-      setOpeningHours(openingHours);
+      setOpeningHours(previous);
       alert(`Nepodarilo sa prepnúť otváracie hodiny: ${error?.message || 'Unknown error'}`);
     }
   };
 
-  const handleDayChange = (dayKey: keyof OpeningHours['days'], field: 'open' | 'close' | 'closed', value: string | boolean) => {
+  const handleDayChange = (
+    dayKey: keyof OpeningHours['days'],
+    field: 'open' | 'close' | 'closed',
+    value: string | boolean,
+  ) => {
     setOpeningHours((prev) => ({
       ...prev,
       days: {
@@ -125,9 +134,8 @@ export function OpeningHoursSettings() {
     );
   }
 
-  const theme = (tenant?.theme as any) || {};
-  const primaryColor = theme.primaryColor || 'var(--color-primary)';
-  const secondaryColor = theme.secondaryColor || '#fefaf5';
+  const primaryColor = tenantSettings?.primaryColor || 'var(--color-primary)';
+  const secondaryColor = tenantSettings?.secondaryColor || '#fefaf5';
 
   return (
     <div className="rounded-lg p-4 border" style={{ backgroundColor: secondaryColor, borderColor: primaryColor }}>

@@ -1,18 +1,13 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Tenant } from '@pizza-ecosystem/shared';
 import { getAllTenants, updateTenant, syncFromMaster } from '@/lib/api';
 import { EditBrandModal } from '@/components/admin/EditBrandModal';
 import { CloneBrandModal } from '@/components/admin/CloneBrandModal';
 import { ProtectedRoute } from '@/components/admin/ProtectedRoute';
-import DeliveryFeeTiersSettings from '@/components/admin/DeliveryFeeTiersSettings';
-import { StoryousSettings } from '@/components/admin/StoryousSettings';
-import { StoryousSampleReceiptPanel } from '@/components/admin/StoryousSampleReceiptPanel';
-import { useAdminContext } from '../admin-context';
 
 export default function BrandsPage() {
-  const { selectedTenant } = useAdminContext();
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingTenant, setEditingTenant] = useState<Tenant | null>(null);
@@ -21,17 +16,6 @@ export default function BrandsPage() {
   const [isCloneModalOpen, setIsCloneModalOpen] = useState(false);
   const [showSyncConfirm, setShowSyncConfirm] = useState(false);
   const [syncing, setSyncing] = useState(false);
-
-  const previewTenant = useMemo(() => {
-    if (tenants.length === 0) return null;
-
-    if (selectedTenant && selectedTenant !== 'all') {
-      const exact = tenants.find((tenant) => tenant.slug === selectedTenant || tenant.subdomain === selectedTenant);
-      if (exact) return exact;
-    }
-
-    return tenants.find((tenant) => tenant.isActive) || tenants[0];
-  }, [selectedTenant, tenants]);
 
   useEffect(() => {
     fetchTenants();
@@ -114,9 +98,9 @@ export default function BrandsPage() {
     <div>
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h1 className="text-3xl font-bold">Brands Management</h1>
+          <h1 className="text-3xl font-bold">Brands Inventory</h1>
           <p className="text-gray-600 mt-2">
-            Manage all pizza brands in your ecosystem. Total: {tenants.length} brands
+            Manage brand records only. Runtime settings live in Settings. Total: {tenants.length} brands
           </p>
         </div>
         <button
@@ -126,19 +110,6 @@ export default function BrandsPage() {
         >
           {syncing ? 'Syncing...' : 'Sync All from Master'}
         </button>
-      </div>
-
-      {/* Delivery fee tiers management (based on selected brand from header) */}
-      <div className="mb-6">
-        <DeliveryFeeTiersSettings />
-      </div>
-
-      <div className="mb-6 grid grid-cols-1 gap-6 xl:grid-cols-[minmax(320px,420px)_1fr]">
-        <StoryousSettings />
-        <StoryousSampleReceiptPanel
-          tenantSlug={previewTenant?.slug || previewTenant?.subdomain || null}
-          tenantName={previewTenant?.name || null}
-        />
       </div>
 
       {loading ? (

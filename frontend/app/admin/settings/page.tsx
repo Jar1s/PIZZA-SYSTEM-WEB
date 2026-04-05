@@ -56,6 +56,11 @@ const PaymentSettings = dynamic(() => import('@/components/admin/PaymentSettings
   ssr: false,
 });
 
+const WoltSettings = dynamic(() => import('@/components/admin/WoltSettings').then(mod => ({ default: mod.WoltSettings })), {
+  loading: () => <div className="animate-pulse rounded-xl bg-gray-200 h-24" />,
+  ssr: false,
+});
+
 const StoryousSettings = dynamic(() => import('@/components/admin/StoryousSettings').then(mod => ({ default: mod.StoryousSettings })), {
   loading: () => <div className="animate-pulse rounded-xl bg-gray-200 h-24" />,
   ssr: false,
@@ -80,7 +85,7 @@ export default function AdminSettingsPage() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 gap-3 xl:grid-cols-5">
+      <div className="grid grid-cols-1 gap-3 xl:grid-cols-6">
         <ErrorBoundary>
           <Suspense fallback={<div className="animate-pulse rounded-xl bg-gray-200 h-24" />}>
             <MaintenanceBanner />
@@ -102,6 +107,12 @@ export default function AdminSettingsPage() {
         <ErrorBoundary>
           <Suspense fallback={<div className="animate-pulse rounded-xl bg-gray-200 h-24" />}>
             <PaymentSettings />
+          </Suspense>
+        </ErrorBoundary>
+
+        <ErrorBoundary>
+          <Suspense fallback={<div className="animate-pulse rounded-xl bg-gray-200 h-24" />}>
+            <WoltSettings />
           </Suspense>
         </ErrorBoundary>
 

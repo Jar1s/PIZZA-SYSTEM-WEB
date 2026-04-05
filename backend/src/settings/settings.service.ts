@@ -1,6 +1,8 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { TenantsService } from '../tenants/tenants.service';
+import { DeliveryConfig, PaymentConfig, TenantTheme } from '../types/tenant.types';
 
 export interface StoryousSettings {
   clientId: string;
@@ -45,9 +47,83 @@ export interface StoryousAutoPrintReadiness {
   };
 }
 
+export interface TenantOperationsSettings {
+  tenantId: string;
+  tenantSlug: string;
+  tenantSubdomain: string;
+  primaryColor: string | null;
+  secondaryColor: string | null;
+  maintenanceMode: boolean;
+  openingHours: Record<string, any> | null;
+}
+
+export interface TenantPaymentSettings {
+  tenantId: string;
+  tenantSlug: string;
+  tenantSubdomain: string;
+  paymentProvider: string | null;
+  paymentConfig: PaymentConfig;
+}
+
+export interface TenantDeliverySettings {
+  tenantId: string;
+  tenantSlug: string;
+  tenantSubdomain: string;
+  deliveryConfig: DeliveryConfig;
+}
+
 @Injectable()
 export class SettingsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private tenantsService: TenantsService,
+  ) {}
+
+  private normalizeTenantSlug(slug: string): string {
+    const trimmed = String(slug || '').trim();
+    if (trimmed === 'p0rnopizza') return 'pornopizza';
+    if (trimmed === 'pizzaparty') return 'partypizza';
+    return trimmed;
+  }
+
+  private getTenantLookupCandidates(slug: string): string[] {
+    const normalized = this.normalizeTenantSlug(slug);
+    const candidates = new Set<string>([normalized]);
+
+    if (normalized === 'pornopizza') candidates.add('p0rnopizza');
+    if (normalized === 'partypizza') candidates.add('pizzaparty');
+    if (normalized === 'p0rnopizza') candidates.add('pornopizza');
+    if (normalized === 'pizzaparty') candidates.add('partypizza');
+
+    return Array.from(candidates);
+  }
+
+  private async getTenantForSettings(tenantSlug: string) {
+    const candidates = this.getTenantLookupCandidates(tenantSlug);
+    const tenant = await this.prisma.tenant.findFirst({
+      where: {
+        OR: [
+          { slug: { in: candidates } },
+          { subdomain: { in: candidates } },
+        ],
+      },
+      select: {
+        id: true,
+        slug: true,
+        subdomain: true,
+        theme: true,
+        paymentProvider: true,
+        paymentConfig: true,
+        deliveryConfig: true,
+      },
+    });
+
+    if (!tenant) {
+      throw new NotFoundException(`Tenant ${tenantSlug} not found`);
+    }
+
+    return tenant;
+  }
 
   async getStoryousSettings(): Promise<StoryousSettings | null> {
     const settings = await this.prisma.globalSettings.findUnique({
@@ -210,5 +286,95 @@ export class SettingsService {
     });
 
     return this.getStoryousModifierMappings(tenantId);
+  }
+
+  async getTenantOperationsSettings(tenantSlug: string): Promise<TenantOperationsSettings> {
+    const tenant = await this.getTenantForSettings(tenantSlug);
+    const theme = ((tenant.theme as TenantTheme | null) || {}) as TenantTheme;
+
+    return {
+      tenantId: tenant.id,
+      tenantSlug: tenant.slug,
+      tenantSubdomain: tenant.subdomain,
+      primaryColor: theme.primaryColor || null,
+      secondaryColor: theme.secondaryColor || null,
+      maintenanceMode: Boolean(theme.maintenanceMode),
+      openingHours: (theme.openingHours as Record<string, any> | undefined) || null,
+    };
+  }
+
+  async updateTenantOperationsSettings(
+    tenantSlug: string,
+    data: {
+      maintenanceMode?: boolean;
+      openingHours?: Record<string, any> | null;
+    },
+  ): Promise<TenantOperationsSettings> {
+    const tenant = await this.getTenantForSettings(tenantSlug);
+    const nextTheme: Record<string, any> = {};
+
+    if (data.maintenanceMode !== undefined) {
+      nextTheme.maintenanceMode = Boolean(data.maintenanceMode);
+    }
+    if (data.openingHours !== undefined) {
+      nextTheme.openingHours = data.openingHours;
+    }
+
+    if (Object.keys(nextTheme).length > 0) {
+      await this.tenantsService.updateTenant(tenant.subdomain || tenant.slug, {
+        theme: nextTheme,
+      });
+    }
+
+    return this.getTenantOperationsSettings(tenant.subdomain || tenant.slug);
+  }
+
+  async getTenantPaymentSettings(tenantSlug: string): Promise<TenantPaymentSettings> {
+    const tenant = await this.getTenantForSettings(tenantSlug);
+
+    return {
+      tenantId: tenant.id,
+      tenantSlug: tenant.slug,
+      tenantSubdomain: tenant.subdomain,
+      paymentProvider: tenant.paymentProvider || null,
+      paymentConfig: ((tenant.paymentConfig as PaymentConfig | null) || {}) as PaymentConfig,
+    };
+  }
+
+  async updateTenantPaymentSettings(
+    tenantSlug: string,
+    data: { paymentConfig?: PaymentConfig | null },
+  ): Promise<TenantPaymentSettings> {
+    const tenant = await this.getTenantForSettings(tenantSlug);
+
+    await this.tenantsService.updateTenant(tenant.subdomain || tenant.slug, {
+      paymentConfig: (data.paymentConfig || {}) as Record<string, any>,
+    });
+
+    return this.getTenantPaymentSettings(tenant.subdomain || tenant.slug);
+  }
+
+  async getTenantDeliverySettings(tenantSlug: string): Promise<TenantDeliverySettings> {
+    const tenant = await this.getTenantForSettings(tenantSlug);
+
+    return {
+      tenantId: tenant.id,
+      tenantSlug: tenant.slug,
+      tenantSubdomain: tenant.subdomain,
+      deliveryConfig: ((tenant.deliveryConfig as DeliveryConfig | null) || {}) as DeliveryConfig,
+    };
+  }
+
+  async updateTenantDeliverySettings(
+    tenantSlug: string,
+    data: { deliveryConfig?: DeliveryConfig | null },
+  ): Promise<TenantDeliverySettings> {
+    const tenant = await this.getTenantForSettings(tenantSlug);
+
+    await this.tenantsService.updateTenant(tenant.subdomain || tenant.slug, {
+      deliveryConfig: (data.deliveryConfig || {}) as Record<string, any>,
+    });
+
+    return this.getTenantDeliverySettings(tenant.subdomain || tenant.slug);
   }
 }

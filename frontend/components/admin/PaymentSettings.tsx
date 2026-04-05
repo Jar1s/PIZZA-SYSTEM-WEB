@@ -1,11 +1,25 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { getTenant, updateTenant } from '@/lib/api';
-import { Tenant } from '@pizza-ecosystem/shared';
+import { useEffect, useState } from 'react';
+import { useAdminContext } from '@/app/admin/admin-context';
+import { getTenantSlug } from '@/lib/tenant-utils';
+import {
+  getTenantPaymentSettings,
+  updateTenantPaymentSettings,
+  TenantPaymentSettings,
+} from '@/lib/api';
+
+function normalizeSlug(slug: string | null): string {
+  if (!slug) return 'pornopizza';
+  if (slug === 'p0rnopizza') return 'pornopizza';
+  if (slug === 'pizzaparty') return 'partypizza';
+  return slug;
+}
 
 export function PaymentSettings() {
-  const [tenant, setTenant] = useState<Tenant | null>(null);
+  const { selectedTenant } = useAdminContext();
+  const [tenantSettings, setTenantSettings] = useState<TenantPaymentSettings | null>(null);
+  const [tenantSlug, setTenantSlug] = useState('pornopizza');
   const [cashEnabled, setCashEnabled] = useState(false);
   const [cardEnabled, setCardEnabled] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -14,44 +28,41 @@ export function PaymentSettings() {
   useEffect(() => {
     const loadTenant = async () => {
       try {
-        // Load pornopizza tenant as master for payment config
-        const tenantData = await getTenant('pornopizza');
-        setTenant(tenantData);
-        
-        // Get payment config
-        const paymentConfig = (tenantData.paymentConfig as any) || {};
+        setLoading(true);
+        const activeSlug = normalizeSlug(
+          selectedTenant && selectedTenant !== 'all' ? selectedTenant : getTenantSlug(),
+        );
+        setTenantSlug(activeSlug);
+        const settings = await getTenantPaymentSettings(activeSlug);
+        setTenantSettings(settings);
+        const paymentConfig = settings.paymentConfig || {};
         setCashEnabled(paymentConfig.cashOnDeliveryEnabled === true);
         setCardEnabled(paymentConfig.cardOnDeliveryEnabled === true);
       } catch (error) {
-        console.error('Failed to load tenant:', error);
+        console.error('Failed to load payment settings:', error);
       } finally {
         setLoading(false);
       }
     };
 
     loadTenant();
-  }, []);
+  }, [selectedTenant]);
 
   const handleSave = async () => {
-    if (!tenant) return;
-    
+    if (!tenantSettings) return;
+
     setSaving(true);
     try {
       const paymentConfig = {
-        ...((tenant.paymentConfig as any) || {}),
+        ...(tenantSettings.paymentConfig || {}),
         cashOnDeliveryEnabled: cashEnabled,
         cardOnDeliveryEnabled: cardEnabled,
       };
-      
-      await updateTenant(tenant.subdomain || tenant.slug, {
-        paymentConfig: paymentConfig as any,
-      });
-      
-      // Reload tenant to get updated data
-      const updatedTenant = await getTenant('pornopizza');
-      setTenant(updatedTenant);
-      
-      alert('Nastavenia platieb boli uložené! Zmeny sa aplikujú na všetky weby.');
+
+      const updated = await updateTenantPaymentSettings(tenantSlug, paymentConfig);
+      setTenantSettings(updated);
+
+      alert('Nastavenia platieb boli uložené.');
     } catch (error: any) {
       console.error('Failed to update payment settings:', error);
       alert('Nepodarilo sa uložiť nastavenia: ' + (error.message || 'Unknown error'));
@@ -80,7 +91,7 @@ export function PaymentSettings() {
             Platby pri dodaní
           </h2>
           <p className="text-xs text-gray-500 mt-0.5 truncate" style={{ color: '#6b7280' }}>
-            Aplikuje sa na všetky weby
+            Brand: {tenantSettings?.tenantSubdomain || tenantSlug}
           </p>
         </div>
         <button
@@ -91,9 +102,8 @@ export function PaymentSettings() {
           {saving ? '...' : 'Uložiť'}
         </button>
       </div>
-      
+
       <div className="space-y-1.5">
-        {/* Cash Payment Toggle */}
         <div className="flex items-center justify-between">
           <label className="text-xs font-medium text-gray-900" style={{ color: '#111827' }}>
             Hotovosť
@@ -112,8 +122,7 @@ export function PaymentSettings() {
             />
           </button>
         </div>
-        
-        {/* Card Payment Toggle */}
+
         <div className="flex items-center justify-between">
           <label className="text-xs font-medium text-gray-900" style={{ color: '#111827' }}>
             Platba kartou
@@ -136,4 +145,3 @@ export function PaymentSettings() {
     </div>
   );
 }
-

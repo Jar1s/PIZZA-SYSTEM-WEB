@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Delete, Body, Param, UseGuards, Logger } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Body, Param, UseGuards, Logger, Query } from '@nestjs/common';
 import { DeliveryFeeTierService, AddressForGeocoding } from './delivery-fee-tier.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { Public } from '../auth/decorators/public.decorator';
@@ -18,15 +18,26 @@ export class DeliveryFeeTierController {
   ) {}
 
   @Get()
-  async getAllTiers() {
-    const tiers = await this.prisma.deliveryFeeTier.findMany({
+  async getAllTiers(@Query('tenantSlug') tenantSlug?: string) {
+    let tenantId: string | null = null;
+
+    if (tenantSlug) {
+      const tenant = await this.tenantsService.getTenantBySlug(tenantSlug);
+      tenantId = tenant.id;
+    }
+
+    return this.prisma.deliveryFeeTier.findMany({
+      where: tenantId
+        ? {
+            OR: [{ tenantId }, { tenantId: null }],
+          }
+        : undefined,
       orderBy: [
         { tenantId: 'asc' },
         { priority: 'desc' },
         { minDistanceMeters: 'asc' },
       ],
     });
-    return tiers;
   }
 
   @Post()
