@@ -80,8 +80,6 @@ export function EditBrandModal({
     googleAnalytics: { measurementId: '', enabled: false },
     facebookPixel: { pixelId: '', enabled: false },
     googleTagManager: { containerId: '', enabled: false },
-    tiktokPixel: { pixelId: '', enabled: false },
-    linkedinInsight: { partnerId: '', enabled: false },
   });
 
   useEffect(() => {
@@ -217,14 +215,6 @@ export function EditBrandModal({
           containerId: analytics.googleTagManager?.containerId || '',
           enabled: analytics.googleTagManager?.enabled || false,
         },
-        tiktokPixel: {
-          pixelId: analytics.tiktokPixel?.pixelId || '',
-          enabled: analytics.tiktokPixel?.enabled || false,
-        },
-        linkedinInsight: {
-          partnerId: analytics.linkedinInsight?.partnerId || '',
-          enabled: analytics.linkedinInsight?.enabled || false,
-        },
       });
       
       setError(null);
@@ -339,12 +329,6 @@ export function EditBrandModal({
             : undefined,
           googleTagManager: analyticsConfig.googleTagManager.enabled && analyticsConfig.googleTagManager.containerId
             ? { containerId: analyticsConfig.googleTagManager.containerId, enabled: true }
-            : undefined,
-          tiktokPixel: analyticsConfig.tiktokPixel.enabled && analyticsConfig.tiktokPixel.pixelId
-            ? { pixelId: analyticsConfig.tiktokPixel.pixelId, enabled: true }
-            : undefined,
-          linkedinInsight: analyticsConfig.linkedinInsight.enabled && analyticsConfig.linkedinInsight.partnerId
-            ? { partnerId: analyticsConfig.linkedinInsight.partnerId, enabled: true }
             : undefined,
         },
         googleOAuthConfig: googleOAuthConfig.enabled && googleOAuthConfig.clientId && googleOAuthConfig.clientSecret
@@ -1775,85 +1759,6 @@ export function EditBrandModal({
                       </p>
                     </div>
 
-                    {/* TikTok Pixel */}
-                    <div className="p-3 border border-gray-200 rounded-md">
-                      <div className="flex items-center justify-between mb-2">
-                        <label className="text-sm font-medium text-gray-700">
-                          TikTok Pixel
-                        </label>
-                        <button
-                          type="button"
-                          onClick={() => setAnalyticsConfig({
-                            ...analyticsConfig,
-                            tiktokPixel: { ...analyticsConfig.tiktokPixel, enabled: !analyticsConfig.tiktokPixel.enabled }
-                          })}
-                          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                            analyticsConfig.tiktokPixel.enabled ? 'bg-green-600' : 'bg-gray-300'
-                          }`}
-                        >
-                          <span
-                            className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                              analyticsConfig.tiktokPixel.enabled ? 'translate-x-6' : 'translate-x-1'
-                            }`}
-                          />
-                        </button>
-                      </div>
-                      {analyticsConfig.tiktokPixel.enabled && (
-                        <input
-                          type="text"
-                          value={analyticsConfig.tiktokPixel.pixelId}
-                          onChange={(e) => setAnalyticsConfig({
-                            ...analyticsConfig,
-                            tiktokPixel: { ...analyticsConfig.tiktokPixel, pixelId: e.target.value }
-                          })}
-                          placeholder="C1234567890ABCDEF"
-                          className="w-full px-3 py-2 mt-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm"
-                        />
-                      )}
-                      <p className="text-xs text-gray-500 mt-1">
-                        Pixel ID from TikTok Events Manager
-                      </p>
-                    </div>
-
-                    {/* LinkedIn Insight Tag */}
-                    <div className="p-3 border border-gray-200 rounded-md">
-                      <div className="flex items-center justify-between mb-2">
-                        <label className="text-sm font-medium text-gray-700">
-                          LinkedIn Insight Tag
-                        </label>
-                        <button
-                          type="button"
-                          onClick={() => setAnalyticsConfig({
-                            ...analyticsConfig,
-                            linkedinInsight: { ...analyticsConfig.linkedinInsight, enabled: !analyticsConfig.linkedinInsight.enabled }
-                          })}
-                          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                            analyticsConfig.linkedinInsight.enabled ? 'bg-green-600' : 'bg-gray-300'
-                          }`}
-                        >
-                          <span
-                            className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                              analyticsConfig.linkedinInsight.enabled ? 'translate-x-6' : 'translate-x-1'
-                            }`}
-                          />
-                        </button>
-                      </div>
-                      {analyticsConfig.linkedinInsight.enabled && (
-                        <input
-                          type="text"
-                          value={analyticsConfig.linkedinInsight.partnerId}
-                          onChange={(e) => setAnalyticsConfig({
-                            ...analyticsConfig,
-                            linkedinInsight: { ...analyticsConfig.linkedinInsight, partnerId: e.target.value }
-                          })}
-                          placeholder="123456"
-                          className="w-full px-3 py-2 mt-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm"
-                        />
-                      )}
-                      <p className="text-xs text-gray-500 mt-1">
-                        Partner ID from LinkedIn Campaign Manager
-                      </p>
-                    </div>
                   </div>
                 </div>
               </div>
