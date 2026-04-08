@@ -11,8 +11,8 @@ import {
   StoryousAutoPrintReadiness,
   StoryousModifierMappingInput,
 } from '@/lib/api';
-import { getCustomizationOptions } from '@pizza-ecosystem/shared';
 import { useAdminContext } from '@/app/admin/admin-context';
+import { getCustomizationOptions } from '@/shared/types/customization-options';
 
 type MappingDraft = {
   optionId: string;

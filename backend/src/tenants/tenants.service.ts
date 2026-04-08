@@ -400,6 +400,25 @@ export class TenantsService {
 
         this.logger.log(`[cloneTenant] Found source tenant with ${sourceTenant.products.length} products, ${sourceTenant.deliveryZones.length} zones, ${sourceTenant.productMappings.length} mappings`);
 
+        const sourceTheme = (sourceTenant.theme && typeof sourceTenant.theme === 'object'
+          ? sourceTenant.theme
+          : {}) as Record<string, any>;
+        const cloneTheme = (cloneData.theme && typeof cloneData.theme === 'object'
+          ? cloneData.theme
+          : {}) as Record<string, any>;
+        const sourceDeliveryConfig = (sourceTenant.deliveryConfig && typeof sourceTenant.deliveryConfig === 'object'
+          ? sourceTenant.deliveryConfig
+          : {}) as Record<string, any>;
+        const cloneDeliveryConfig = (cloneData.deliveryConfig && typeof cloneData.deliveryConfig === 'object'
+          ? cloneData.deliveryConfig
+          : null) as Record<string, any> | null;
+        const sourceEmailConfig = (sourceTenant.emailConfig && typeof sourceTenant.emailConfig === 'object'
+          ? sourceTenant.emailConfig
+          : {}) as Record<string, any>;
+        const cloneEmailConfig = (cloneData.emailConfig && typeof cloneData.emailConfig === 'object'
+          ? cloneData.emailConfig
+          : null) as Record<string, any> | null;
+
         // 2. Create new tenant
         const newTenant = await tx.tenant.create({
           data: {
@@ -409,11 +428,23 @@ export class TenantsService {
             domain: cloneData.domain || null,
             currency: sourceTenant.currency,
             paymentProvider: sourceTenant.paymentProvider,
-            theme: cloneData.theme || sourceTenant.theme,
-            // Keep paymentConfig and deliveryConfig separate for each clone
-            paymentConfig: cloneData.deliveryConfig ? {} : sourceTenant.paymentConfig,
-            deliveryConfig: cloneData.deliveryConfig || {},
-            emailConfig: cloneData.emailConfig || {},
+            theme: {
+              ...sourceTheme,
+              ...cloneTheme,
+            },
+            paymentConfig: sourceTenant.paymentConfig,
+            deliveryConfig: cloneDeliveryConfig
+              ? {
+                  ...sourceDeliveryConfig,
+                  ...cloneDeliveryConfig,
+                }
+              : sourceTenant.deliveryConfig,
+            emailConfig: cloneEmailConfig
+              ? {
+                  ...sourceEmailConfig,
+                  ...cloneEmailConfig,
+                }
+              : sourceTenant.emailConfig,
             isActive: true,
           },
         });

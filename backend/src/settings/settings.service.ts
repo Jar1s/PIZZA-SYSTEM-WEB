@@ -291,6 +291,9 @@ export class SettingsService {
   async getTenantOperationsSettings(tenantSlug: string): Promise<TenantOperationsSettings> {
     const tenant = await this.getTenantForSettings(tenantSlug);
     const theme = ((tenant.theme as TenantTheme | null) || {}) as TenantTheme;
+    const themeRecord = (tenant.theme && typeof tenant.theme === 'object'
+      ? tenant.theme
+      : {}) as Record<string, any>;
 
     return {
       tenantId: tenant.id,
@@ -299,7 +302,7 @@ export class SettingsService {
       primaryColor: theme.primaryColor || null,
       secondaryColor: theme.secondaryColor || null,
       maintenanceMode: Boolean(theme.maintenanceMode),
-      openingHours: (theme.openingHours as Record<string, any> | undefined) || null,
+      openingHours: themeRecord.openingHours || null,
     };
   }
 
