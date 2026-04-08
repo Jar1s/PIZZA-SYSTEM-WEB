@@ -29,6 +29,8 @@ export type StoryousDeliveryOrderState =
   | 'CONFIRMED'
   | 'DECLINED'
   | 'DISPATCHED'
+  | 'DELIVERED'
+  | 'CANCELED'
   | 'VERIFICATION_FAILED';
 
 export interface StoryousCreateOrderResult {
@@ -156,9 +158,14 @@ export class StoryousService {
       normalized === 'CONFIRMED' ||
       normalized === 'DECLINED' ||
       normalized === 'DISPATCHED' ||
+      normalized === 'DELIVERED' ||
       normalized === 'VERIFICATION_FAILED'
     ) {
       return normalized as StoryousDeliveryOrderState;
+    }
+
+    if (normalized === 'CANCELLED' || normalized === 'CANCELED') {
+      return 'CANCELED';
     }
 
     return null;
@@ -674,6 +681,22 @@ export class StoryousService {
     }
 
     this.logger.log(`✅ Storyous order ${storyousOrderId} status updated to ${mappedStatus}`);
+  }
+
+  async getOrderState(
+    storyousOrderId: string,
+    merchantId: string,
+    placeId: string,
+  ): Promise<StoryousDeliveryOrderState | null> {
+    const config = await this.getConfig();
+    if (!config.enabled) {
+      return null;
+    }
+
+    const token = await this.getAccessToken();
+    const merchantPlaceId = this.buildMerchantPlaceId(merchantId, placeId);
+    const result = await this.getDeliveryOrderStatus(token, merchantPlaceId, storyousOrderId);
+    return result.state;
   }
 
   private mapOrderStatus(status: OrderStatus): string {
