@@ -40,6 +40,7 @@ export class OrderStatusService implements OnModuleInit, OnModuleDestroy {
     const order = await this.prisma.order.findUnique({
       where: { id: orderId },
       include: {
+        items: true,
         delivery: {
           select: {
             id: true,
@@ -304,7 +305,6 @@ export class OrderStatusService implements OnModuleInit, OnModuleDestroy {
     }
   }
 }
-
 
 
 
