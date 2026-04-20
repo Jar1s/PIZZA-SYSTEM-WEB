@@ -1,9 +1,12 @@
-import { Injectable, NotFoundException, UnauthorizedException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, UnauthorizedException, BadRequestException, Logger } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { Order } from '@pizza-ecosystem/shared';
 
 @Injectable()
 export class CustomerService {
+  private readonly logger = new Logger(CustomerService.name);
+
   constructor(private prisma: PrismaService) {}
 
   private normalizeCoordinates(
@@ -56,36 +59,39 @@ export class CustomerService {
     }
 
     const normalizedEmail = customerEmail ? customerEmail.toLowerCase().trim() : null;
+    let guestOrderIds: string[] = [];
+    if (normalizedEmail) {
+      const guestOrders = await this.prisma.$queryRaw<Array<{ id: string }>>(Prisma.sql`
+        SELECT "id"
+        FROM "orders"
+        WHERE "tenantId" = ${tenantId}
+          AND "userId" IS NULL
+          AND lower("customer"->>'email') = ${normalizedEmail}
+      `);
+      guestOrderIds = guestOrders.map((order) => order.id);
+    }
 
-    const tenantOrders = await this.prisma.order.findMany({
-      where: {
-        tenantId,
-        OR: [
-          { userId },
-          { userId: null },
-        ],
-      },
+    const where: Prisma.OrderWhereInput = guestOrderIds.length > 0
+      ? {
+          tenantId,
+          OR: [
+            { userId },
+            { id: { in: guestOrderIds } },
+          ],
+        }
+      : {
+          tenantId,
+          userId,
+        };
+
+    const orders = await this.prisma.order.findMany({
+      where,
       include: {
         items: true, // OrderItem already has productName snapshot, no need to include product relation
       },
       orderBy: {
         createdAt: 'desc',
       },
-    });
-
-    const orders = tenantOrders.filter((order) => {
-      if (order.userId === userId) {
-        return true;
-      }
-      if (!normalizedEmail) {
-        return false;
-      }
-      const customer = order.customer as any;
-      if (!customer || !customer.email) {
-        return false;
-      }
-      const orderEmail = String(customer.email).toLowerCase().trim();
-      return orderEmail === normalizedEmail;
     });
 
     return orders.map((order) => ({
@@ -243,7 +249,7 @@ export class CustomerService {
         }
       } catch (error: any) {
         // If findUnique fails (e.g., phone is null or invalid), log and continue
-        console.error('[CustomerService] Error checking phone uniqueness:', error.message);
+        this.logger.error(`Error checking phone uniqueness: ${error.message}`);
         // If it's a unique constraint violation, re-throw as BadRequestException
         if (error.code === 'P2002' || error.message?.includes('Unique constraint')) {
           throw new BadRequestException('Phone number is already taken');
@@ -286,13 +292,13 @@ export class CustomerService {
   async getCustomerAddresses(userId: string) {
     try {
       if (!userId) {
-        console.error('[CustomerService] getCustomerAddresses - userId is missing');
+        this.logger.error('getCustomerAddresses failed: userId is missing');
         return {
           addresses: [],
         };
       }
 
-      console.log('[CustomerService] getCustomerAddresses - Fetching addresses for userId:', userId);
+      this.logger.log(`getCustomerAddresses fetching addresses for userId=${userId}`);
       
       const addresses = await this.prisma.address.findMany({
         where: { userId },
@@ -302,18 +308,20 @@ export class CustomerService {
         ],
       });
 
-      console.log('[CustomerService] getCustomerAddresses - Found addresses:', addresses.length);
+      this.logger.log(`getCustomerAddresses found addresses: ${addresses.length}`);
 
       return {
         addresses: addresses.map((addr) => this.mapAddressResponse(addr)),
       };
     } catch (error) {
-      console.error('[CustomerService] getCustomerAddresses - Error:', error);
-      console.error('[CustomerService] getCustomerAddresses - Error details:', {
+      this.logger.error(
+        `getCustomerAddresses error: ${(error as Error)?.message || 'unknown error'}`,
+        (error as Error)?.stack,
+      );
+      this.logger.error(`getCustomerAddresses error details: ${JSON.stringify({
         message: error?.message,
-        stack: error?.stack,
         name: error?.name,
-      });
+      })}`);
       // Return empty array instead of throwing to prevent 500 error
       return {
         addresses: [],
@@ -339,7 +347,7 @@ export class CustomerService {
     try {
       // Validate userId
       if (!userId || !userId.trim()) {
-        console.error('[CustomerService] createCustomerAddress - userId is missing');
+        this.logger.error('createCustomerAddress failed: userId is missing');
         throw new BadRequestException('User ID is required');
       }
 
@@ -350,7 +358,7 @@ export class CustomerService {
       });
 
       if (!user) {
-        console.error('[CustomerService] createCustomerAddress - User not found:', userId);
+        this.logger.error(`createCustomerAddress failed: user not found (${userId})`);
         throw new NotFoundException('User not found');
       }
 
@@ -391,15 +399,16 @@ export class CustomerService {
 
       return this.mapAddressResponse(address);
     } catch (error: any) {
-      console.error('[CustomerService] createCustomerAddress - Error:', error);
-      console.error('[CustomerService] createCustomerAddress - Error details:', {
+      this.logger.error(
+        `createCustomerAddress error: ${error?.message || 'unknown error'}`,
+        error?.stack,
+      );
+      this.logger.error(`createCustomerAddress error details: ${JSON.stringify({
         message: error?.message,
-        stack: error?.stack,
         name: error?.name,
         code: error?.code,
         userId,
-        data,
-      });
+      })}`);
       // Re-throw known exceptions
       if (error instanceof BadRequestException || error instanceof NotFoundException || error instanceof UnauthorizedException) {
         throw error;

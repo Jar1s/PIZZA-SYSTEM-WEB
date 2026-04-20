@@ -11,10 +11,13 @@ import {
   UnauthorizedException,
   BadRequestException,
   NotFoundException,
+  Logger,
 } from '@nestjs/common';
 import { CustomerService } from './customer.service';
 import { TenantsService } from '../tenants/tenants.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+
+const logger = new Logger('CustomerController');
 
 @Controller('customer/account')
 @UseGuards(JwtAuthGuard)
@@ -51,15 +54,29 @@ export class CustomerController {
       throw new UnauthorizedException('Unauthorized');
     }
   }
+
+  private sanitizeUser(user: any) {
+    if (!user) {
+      return null;
+    }
+    const email = typeof user.email === 'string' ? user.email : '';
+    const redactedEmail = email ? `${email.slice(0, 2)}***` : undefined;
+
+    return {
+      id: user.id,
+      role: user.role,
+      email: redactedEmail,
+    };
+  }
   /**
    * Get customer orders
    */
   @Get('orders')
   async getOrders(@Request() req: any) {
-    console.log('[CustomerController] getOrders - user from request:', req.user ? { id: req.user.id, email: req.user.email, role: req.user.role } : 'null');
+    logger.log(`getOrders request received: ${JSON.stringify(this.sanitizeUser(req.user))}`);
     const user = req.user;
     if (!user || user.role !== 'CUSTOMER') {
-      console.error('[CustomerController] getOrders - Unauthorized:', { user: !!user, role: user?.role });
+      logger.warn(`getOrders unauthorized: ${JSON.stringify({ hasUser: !!user, role: user?.role })}`);
       throw new UnauthorizedException('Unauthorized');
     }
 
@@ -72,9 +89,9 @@ export class CustomerController {
 
     // Normalize email for consistent matching (lowercase, trim)
     const normalizedEmail = user.email.toLowerCase().trim();
-    console.log('[CustomerController] Fetching orders for email:', normalizedEmail);
+    logger.log('Fetching orders for authenticated customer');
     const orders = await this.customerService.getCustomerOrders(user.id, tenant.id, normalizedEmail);
-    console.log('[CustomerController] Found orders:', orders.length);
+    logger.log(`Found ${orders.length} customer orders`);
     return { orders };
   }
 
@@ -110,7 +127,10 @@ export class CustomerController {
 
       return await this.customerService.updateCustomerProfile(user.id, tenant.id, data);
     } catch (error: any) {
-      console.error('[CustomerController] updateProfile error:', error);
+      logger.error(
+        `updateProfile error: ${error?.message || 'unknown error'}`,
+        error?.stack,
+      );
       // Re-throw known exceptions
       if (error instanceof UnauthorizedException || error instanceof BadRequestException || error instanceof NotFoundException) {
         throw error;
@@ -126,10 +146,10 @@ export class CustomerController {
   @Get('addresses')
   async getAddresses(@Request() req: any) {
     try {
-    console.log('[CustomerController] getAddresses - user from request:', req.user ? { id: req.user.id, email: req.user.email, role: req.user.role } : 'null');
+    logger.log(`getAddresses request received: ${JSON.stringify(this.sanitizeUser(req.user))}`);
     const user = req.user;
     if (!user || user.role !== 'CUSTOMER') {
-      console.error('[CustomerController] getAddresses - Unauthorized:', { user: !!user, role: user?.role });
+      logger.warn(`getAddresses unauthorized: ${JSON.stringify({ hasUser: !!user, role: user?.role })}`);
       throw new UnauthorizedException('Unauthorized');
     }
 
@@ -139,7 +159,10 @@ export class CustomerController {
       const result = await this.customerService.getCustomerAddresses(user.id);
       return result;
     } catch (error) {
-      console.error('[CustomerController] getAddresses - Error:', error);
+      logger.error(
+        `getAddresses error: ${(error as Error)?.message || 'unknown error'}`,
+        (error as Error)?.stack,
+      );
       // If it's an UnauthorizedException, re-throw it
       if (error instanceof UnauthorizedException) {
         throw error;
@@ -171,11 +194,21 @@ export class CustomerController {
     },
   ) {
     try {
-      console.log('[CustomerController] createAddress - user from request:', req.user ? { id: req.user.id, email: req.user.email, role: req.user.role } : 'null');
-      console.log('[CustomerController] createAddress - data:', data);
+      logger.log(`createAddress request received: ${JSON.stringify(this.sanitizeUser(req.user))}`);
+      logger.log(
+        `createAddress payload metadata: ${JSON.stringify({
+          hasStreet: !!data.street,
+          hasDescription: !!data.description,
+          hasCity: !!data.city,
+          hasPostalCode: !!data.postalCode,
+          hasCountry: !!data.country,
+          hasCoordinates: !!data.coordinates,
+          isPrimary: data.isPrimary,
+        })}`,
+      );
       const user = req.user;
       if (!user || user.role !== 'CUSTOMER') {
-        console.error('[CustomerController] createAddress - Unauthorized:', { user: !!user, role: user?.role });
+        logger.warn(`createAddress unauthorized: ${JSON.stringify({ hasUser: !!user, role: user?.role })}`);
         throw new UnauthorizedException('Unauthorized');
       }
 
@@ -195,13 +228,15 @@ export class CustomerController {
 
       return await this.customerService.createCustomerAddress(user.id, data);
     } catch (error: any) {
-      console.error('[CustomerController] createAddress - Error:', error);
-      console.error('[CustomerController] createAddress - Error details:', {
+      logger.error(
+        `createAddress error: ${error?.message || 'unknown error'}`,
+        error?.stack,
+      );
+      logger.error(`createAddress error details: ${JSON.stringify({
         message: error?.message,
-        stack: error?.stack,
         name: error?.name,
         code: error?.code,
-      });
+      })}`);
       // Re-throw known exceptions
       if (error instanceof UnauthorizedException || error instanceof BadRequestException || error instanceof NotFoundException) {
         throw error;
