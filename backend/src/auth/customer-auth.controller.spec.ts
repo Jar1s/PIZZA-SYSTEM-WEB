@@ -58,6 +58,52 @@ describe('CustomerAuthController', () => {
     jest.clearAllMocks();
   });
 
+  describe('tenant resolution', () => {
+    it('should fall back to host tenant when slug candidate is invalid', async () => {
+      mockTenantsService.getTenantBySlug
+        .mockRejectedValueOnce(new Error('missing tenant'))
+        .mockResolvedValueOnce({
+          id: 'tenant-1',
+          slug: 'pornopizza',
+          theme: {},
+          subdomain: 'pornopizza',
+          domain: 'pornopizza.sk',
+        });
+      mockTenantsService.findTenantByDomain.mockResolvedValueOnce({
+        id: 'tenant-host',
+        slug: 'host-tenant',
+        theme: {},
+        subdomain: 'host-tenant',
+        domain: 'host.pizza.sk',
+      });
+      mockCustomerAuthService.checkEmailExists.mockResolvedValue(false);
+
+      const req = {
+        headers: {
+          'x-tenant': 'missing-tenant',
+          host: 'host.pizza.sk',
+        },
+      } as any;
+
+      await controller.checkEmail(req, { email: 'test@example.com' });
+
+      expect(mockCustomerAuthService.checkEmailExists).toHaveBeenCalledWith(
+        'test@example.com',
+        'tenant-host',
+      );
+    });
+
+    it('should reject requests when no tenant can be resolved', async () => {
+      mockTenantsService.findTenantByDomain.mockResolvedValueOnce(null);
+      mockTenantsService.getTenantBySlug.mockRejectedValueOnce(new Error('missing tenant'));
+
+      const req = { headers: { 'x-tenant': 'missing-tenant' } } as any;
+
+      await expect(controller.checkEmail(req, { email: 'test@example.com' })).resolves.toEqual({ exists: false });
+      expect(mockCustomerAuthService.checkEmailExists).not.toHaveBeenCalled();
+    });
+  });
+
   describe('checkEmail', () => {
     it('should check if email exists', async () => {
       mockCustomerAuthService.checkEmailExists.mockResolvedValue(true);

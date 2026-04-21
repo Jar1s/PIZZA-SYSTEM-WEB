@@ -191,20 +191,25 @@ export class WebhooksController {
       this.logger.error('Raw body not available for WePay webhook');
       return res.status(500).send('Server configuration error');
     }
-    
-    const tenantId = body.tenant_id || req.headers['x-tenant-id'];
-    
-    // CRITICAL: Always verify signature unless explicitly skipped via env variable
-    // This prevents security issues if NODE_ENV is misconfigured
-    if (!appConfig.skipWebhookVerification && signature) {
-      const hmacKey = process.env.WEPAY_HMAC_KEY || '';
-      // Use raw body as string for signature verification
+
+    if (!appConfig.skipWebhookVerification) {
+      if (!signature) {
+        this.logger.error('WePay webhook missing signature header');
+        return res.status(401).send('Missing signature');
+      }
+
+      const hmacKey = (process.env.WEPAY_HMAC_KEY || '').trim();
+      if (!hmacKey) {
+        this.logger.error('WEPAY_HMAC_KEY not configured');
+        return res.status(500).send('Server configuration error');
+      }
+
       const rawBodyString = rawBody.toString('utf8');
       if (!this.wepayService.verifyWebhook(signature, rawBodyString, hmacKey)) {
         this.logger.error('Invalid WePay webhook signature');
         return res.status(401).send('Invalid signature');
       }
-    } else if (appConfig.skipWebhookVerification) {
+    } else {
       this.logger.warn('⚠️  SECURITY WARNING: WePay webhook verification is DISABLED via SKIP_WEBHOOK_VERIFICATION');
     }
 
@@ -261,7 +266,6 @@ export class WebhooksController {
     return false;
   }
 }
-
 
 
 
