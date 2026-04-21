@@ -21,17 +21,21 @@ describe('CustomerAuthController', () => {
     sendVerificationCode: jest.fn(),
   };
   const mockTenantsService = {
-    getTenantBySlug: jest.fn().mockResolvedValue({
+    getTenantBySlug: jest.fn(),
+    findTenantByDomain: jest.fn(),
+  };
+
+  beforeEach(async () => {
+    jest.resetAllMocks();
+    mockTenantsService.getTenantBySlug.mockResolvedValue({
       id: 'tenant-1',
       slug: 'pornopizza',
       theme: {},
       subdomain: 'pornopizza',
       domain: 'pornopizza.sk',
-    }),
-    findTenantByDomain: jest.fn().mockResolvedValue(null),
-  };
+    });
+    mockTenantsService.findTenantByDomain.mockResolvedValue(null);
 
-  beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       controllers: [CustomerAuthController],
       providers: [
@@ -61,15 +65,7 @@ describe('CustomerAuthController', () => {
 
   describe('tenant resolution', () => {
     it('should fall back to host tenant when slug candidate is invalid', async () => {
-      mockTenantsService.getTenantBySlug
-        .mockRejectedValueOnce(new Error('missing tenant'))
-        .mockResolvedValueOnce({
-          id: 'tenant-1',
-          slug: 'pornopizza',
-          theme: {},
-          subdomain: 'pornopizza',
-          domain: 'pornopizza.sk',
-        });
+      mockTenantsService.getTenantBySlug.mockRejectedValueOnce(new Error('missing tenant'));
       mockTenantsService.findTenantByDomain.mockResolvedValueOnce({
         id: 'tenant-host',
         slug: 'host-tenant',
