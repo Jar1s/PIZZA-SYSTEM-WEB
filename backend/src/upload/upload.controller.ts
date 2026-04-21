@@ -25,6 +25,27 @@ const ALLOWED_IMAGE_TYPES = new Map([
   ['image/webp', '.webp'],
 ]);
 
+function getSafeFilename(file: { originalname?: string; mimetype?: string }) {
+  const mimetype = (file.mimetype || '').toLowerCase();
+  const expectedExtension = ALLOWED_IMAGE_TYPES.get(mimetype);
+
+  if (!expectedExtension) {
+    throw new BadRequestException('Only JPG, PNG, GIF, and WEBP image files are allowed');
+  }
+
+  const providedExtension = extname(file.originalname || '').toLowerCase();
+  if (
+    providedExtension &&
+    providedExtension !== expectedExtension &&
+    !(mimetype === 'image/jpeg' && providedExtension === '.jpeg')
+  ) {
+    throw new BadRequestException('File extension does not match MIME type');
+  }
+
+  const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
+  return `product-${uniqueSuffix}${expectedExtension}`;
+}
+
 @Controller('upload')
 export class UploadController {
   private readonly uploadDir: string;
@@ -35,27 +56,6 @@ export class UploadController {
     if (!existsSync(this.uploadDir)) {
       mkdirSync(this.uploadDir, { recursive: true });
     }
-  }
-
-  private getSafeFilename(file: { originalname?: string; mimetype?: string }) {
-    const mimetype = (file.mimetype || '').toLowerCase();
-    const expectedExtension = ALLOWED_IMAGE_TYPES.get(mimetype);
-
-    if (!expectedExtension) {
-      throw new BadRequestException('Only JPG, PNG, GIF, and WEBP image files are allowed');
-    }
-
-    const providedExtension = extname(file.originalname || '').toLowerCase();
-    if (
-      providedExtension &&
-      providedExtension !== expectedExtension &&
-      !(mimetype === 'image/jpeg' && providedExtension === '.jpeg')
-    ) {
-      throw new BadRequestException('File extension does not match MIME type');
-    }
-
-    const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
-    return `product-${uniqueSuffix}${expectedExtension}`;
   }
 
   private resolveUploadPath(filename: string) {
@@ -89,7 +89,7 @@ export class UploadController {
             return cb(new BadRequestException('No file provided'), '');
           }
           try {
-            cb(null, this.getSafeFilename(file));
+            cb(null, getSafeFilename(file));
           } catch (error) {
             cb(error as Error, '');
           }
