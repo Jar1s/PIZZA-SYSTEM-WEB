@@ -572,7 +572,7 @@ export class CustomerAuthService {
   /**
    * Refresh access token using refresh token
    */
-  async refreshToken(refreshToken: string): Promise<{ access_token: string; user: CustomerAuthResult['user'] }> {
+  async refreshToken(refreshToken: string): Promise<{ access_token: string; refresh_token: string; user: CustomerAuthResult['user'] }> {
     if (!refreshToken || !String(refreshToken).trim()) {
       throw new UnauthorizedException('Missing refresh token');
     }
