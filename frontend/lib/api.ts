@@ -613,6 +613,7 @@ type StoryousSyncResult = {
   storyousOrderId?: string;
   storyousState?: string | null;
   message: string;
+  warnings?: string[];
 };
 
 type SyncFromMasterResult = {
@@ -631,6 +632,22 @@ export type StoryousSettings = {
   autoAcceptPrintMode: boolean;
   receiptIncludeModifierLines: boolean;
   receiptIncludeOrderNumber: boolean;
+};
+
+export type StoryousModifierMapping = {
+  id: string;
+  tenantId: string;
+  optionId: string;
+  externalAdditionId: string;
+  labelOverride: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
+export type StoryousModifierMappingInput = {
+  optionId: string;
+  externalAdditionId: string;
+  labelOverride?: string | null;
 };
 
 export type StoryousAutoPrintReadiness = {
@@ -669,6 +686,31 @@ export type WoltAreaCheckResult = {
   fetchedAt?: string;
 };
 
+export type TenantOperationsSettings = {
+  tenantId: string;
+  tenantSlug: string;
+  tenantSubdomain: string;
+  primaryColor: string | null;
+  secondaryColor: string | null;
+  maintenanceMode: boolean;
+  openingHours: any | null;
+};
+
+export type TenantPaymentSettings = {
+  tenantId: string;
+  tenantSlug: string;
+  tenantSubdomain: string;
+  paymentProvider: string | null;
+  paymentConfig: Record<string, any>;
+};
+
+export type TenantDeliverySettings = {
+  tenantId: string;
+  tenantSlug: string;
+  tenantSubdomain: string;
+  deliveryConfig: Record<string, any>;
+};
+
 function getAuthToken(): string | null {
   if (typeof window === 'undefined') return null;
   return localStorage.getItem('auth_token');
@@ -684,6 +726,123 @@ function buildAuthHeaders(includeJson = false): HeadersInit {
     headers['Authorization'] = `Bearer ${token}`;
   }
   return headers;
+}
+
+export async function getTenantOperationsSettings(
+  tenantSlug: string,
+): Promise<TenantOperationsSettings> {
+  const normalizedTenant = normalizeTenantSlug(tenantSlug);
+  const res = await fetch(`${API_URL}/api/settings/tenants/${encodeURIComponent(normalizedTenant)}/operations`, {
+    method: 'GET',
+    headers: buildAuthHeaders(),
+    credentials: 'include',
+  });
+
+  if (!res.ok) {
+    const errorText = await res.text().catch(() => '');
+    throw new Error(errorText || 'Failed to fetch tenant operations settings');
+  }
+
+  return res.json();
+}
+
+export async function updateTenantOperationsSettings(
+  tenantSlug: string,
+  data: {
+    maintenanceMode?: boolean;
+    openingHours?: any | null;
+  },
+): Promise<TenantOperationsSettings> {
+  const normalizedTenant = normalizeTenantSlug(tenantSlug);
+  const res = await fetch(`${API_URL}/api/settings/tenants/${encodeURIComponent(normalizedTenant)}/operations`, {
+    method: 'PUT',
+    headers: buildAuthHeaders(true),
+    credentials: 'include',
+    body: JSON.stringify(data),
+  });
+
+  if (!res.ok) {
+    const errorText = await res.text().catch(() => '');
+    throw new Error(errorText || 'Failed to update tenant operations settings');
+  }
+
+  return res.json();
+}
+
+export async function getTenantPaymentSettings(
+  tenantSlug: string,
+): Promise<TenantPaymentSettings> {
+  const normalizedTenant = normalizeTenantSlug(tenantSlug);
+  const res = await fetch(`${API_URL}/api/settings/tenants/${encodeURIComponent(normalizedTenant)}/payment`, {
+    method: 'GET',
+    headers: buildAuthHeaders(),
+    credentials: 'include',
+  });
+
+  if (!res.ok) {
+    const errorText = await res.text().catch(() => '');
+    throw new Error(errorText || 'Failed to fetch tenant payment settings');
+  }
+
+  return res.json();
+}
+
+export async function updateTenantPaymentSettings(
+  tenantSlug: string,
+  paymentConfig: Record<string, any>,
+): Promise<TenantPaymentSettings> {
+  const normalizedTenant = normalizeTenantSlug(tenantSlug);
+  const res = await fetch(`${API_URL}/api/settings/tenants/${encodeURIComponent(normalizedTenant)}/payment`, {
+    method: 'PUT',
+    headers: buildAuthHeaders(true),
+    credentials: 'include',
+    body: JSON.stringify({ paymentConfig }),
+  });
+
+  if (!res.ok) {
+    const errorText = await res.text().catch(() => '');
+    throw new Error(errorText || 'Failed to update tenant payment settings');
+  }
+
+  return res.json();
+}
+
+export async function getTenantDeliverySettings(
+  tenantSlug: string,
+): Promise<TenantDeliverySettings> {
+  const normalizedTenant = normalizeTenantSlug(tenantSlug);
+  const res = await fetch(`${API_URL}/api/settings/tenants/${encodeURIComponent(normalizedTenant)}/delivery`, {
+    method: 'GET',
+    headers: buildAuthHeaders(),
+    credentials: 'include',
+  });
+
+  if (!res.ok) {
+    const errorText = await res.text().catch(() => '');
+    throw new Error(errorText || 'Failed to fetch tenant delivery settings');
+  }
+
+  return res.json();
+}
+
+export async function updateTenantDeliverySettings(
+  tenantSlug: string,
+  deliveryConfig: Record<string, any>,
+): Promise<TenantDeliverySettings> {
+  const normalizedTenant = normalizeTenantSlug(tenantSlug);
+  const res = await fetch(`${API_URL}/api/settings/tenants/${encodeURIComponent(normalizedTenant)}/delivery`, {
+    method: 'PUT',
+    headers: buildAuthHeaders(true),
+    credentials: 'include',
+    body: JSON.stringify({ deliveryConfig }),
+  });
+
+  if (!res.ok) {
+    const errorText = await res.text().catch(() => '');
+    throw new Error(errorText || 'Failed to update tenant delivery settings');
+  }
+
+  return res.json();
 }
 
 export async function getStoryousSettings(): Promise<StoryousSettings | null> {
@@ -734,6 +893,50 @@ export async function getStoryousAutoPrintReadiness(): Promise<StoryousAutoPrint
   if (!res.ok) {
     const errorText = await res.text().catch(() => '');
     throw new Error(errorText || 'Failed to fetch Storyous auto-print readiness');
+  }
+
+  return res.json();
+}
+
+export async function getStoryousModifierMappings(
+  tenantSlug: string,
+): Promise<StoryousModifierMapping[]> {
+  const normalizedTenant = normalizeTenantSlug(tenantSlug);
+  const res = await fetch(
+    `${API_URL}/api/settings/storyous/modifier-mappings?tenantSlug=${encodeURIComponent(normalizedTenant)}`,
+    {
+      method: 'GET',
+      headers: buildAuthHeaders(),
+      credentials: 'include',
+    },
+  );
+
+  if (!res.ok) {
+    const errorText = await res.text().catch(() => '');
+    throw new Error(errorText || 'Failed to fetch Storyous modifier mappings');
+  }
+
+  return res.json();
+}
+
+export async function updateStoryousModifierMappings(
+  tenantSlug: string,
+  mappings: StoryousModifierMappingInput[],
+): Promise<StoryousModifierMapping[]> {
+  const normalizedTenant = normalizeTenantSlug(tenantSlug);
+  const res = await fetch(
+    `${API_URL}/api/settings/storyous/modifier-mappings?tenantSlug=${encodeURIComponent(normalizedTenant)}`,
+    {
+      method: 'PUT',
+      headers: buildAuthHeaders(true),
+      credentials: 'include',
+      body: JSON.stringify({ mappings }),
+    },
+  );
+
+  if (!res.ok) {
+    const errorText = await res.text().catch(() => '');
+    throw new Error(errorText || 'Failed to update Storyous modifier mappings');
   }
 
   return res.json();
@@ -803,6 +1006,7 @@ export type StoryousReceiptPreview = {
   customerName: string;
   customerDetailLines: string[];
   items: StoryousReceiptPreviewItem[];
+  warnings: string[];
 };
 
 export async function getStoryousReceiptPreview(orderId: string): Promise<StoryousReceiptPreview> {
@@ -815,6 +1019,25 @@ export async function getStoryousReceiptPreview(orderId: string): Promise<Storyo
   if (!res.ok) {
     const errorText = await res.text().catch(() => '');
     throw new Error(errorText || 'Failed to load Storyous receipt preview');
+  }
+
+  return res.json();
+}
+
+export async function getStoryousSampleReceiptPreview(tenantSlug: string): Promise<StoryousReceiptPreview> {
+  const normalizedTenant = normalizeTenantSlug(tenantSlug);
+  const res = await fetch(
+    `${API_URL}/api/orders/storyous-preview-sample/current?tenantSlug=${encodeURIComponent(normalizedTenant)}`,
+    {
+      method: 'GET',
+      headers: buildAuthHeaders(),
+      credentials: 'include',
+    },
+  );
+
+  if (!res.ok) {
+    const errorText = await res.text().catch(() => '');
+    throw new Error(errorText || 'Failed to load Storyous sample receipt preview');
   }
 
   return res.json();

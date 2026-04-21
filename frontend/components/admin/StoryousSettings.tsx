@@ -1,15 +1,50 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   getStoryousSettings,
   updateStoryousSettings,
   getStoryousAutoPrintReadiness,
+  getStoryousModifierMappings,
+  updateStoryousModifierMappings,
   StoryousSettings as StoryousSettingsType,
   StoryousAutoPrintReadiness,
+  StoryousModifierMappingInput,
 } from '@/lib/api';
+import { useAdminContext } from '@/app/admin/admin-context';
+import { getCustomizationOptions } from '@/shared/types/customization-options';
+
+type MappingDraft = {
+  optionId: string;
+  label: string;
+  externalAdditionId: string;
+  labelOverride: string;
+};
+
+const STORYOUS_MAPPING_OPTIONS = (() => {
+  const buckets = [
+    ...getCustomizationOptions('PIZZA'),
+    ...getCustomizationOptions('STANGLE'),
+  ];
+  const seen = new Set<string>();
+  const result: Array<{ optionId: string; label: string }> = [];
+
+  for (const bucket of buckets) {
+    for (const option of bucket.options) {
+      if (seen.has(option.id)) continue;
+      seen.add(option.id);
+      result.push({
+        optionId: option.id,
+        label: option.name,
+      });
+    }
+  }
+
+  return result.sort((a, b) => a.label.localeCompare(b.label, 'sk'));
+})();
 
 export function StoryousSettings() {
+  const { selectedTenant } = useAdminContext();
   const [settings, setSettings] = useState<StoryousSettingsType | null>(null);
   const [clientId, setClientId] = useState('');
   const [clientSecret, setClientSecret] = useState('');
@@ -25,6 +60,10 @@ export function StoryousSettings() {
   const [saving, setSaving] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
   const [readiness, setReadiness] = useState<StoryousAutoPrintReadiness | null>(null);
+  const [mappingDrafts, setMappingDrafts] = useState<Record<string, MappingDraft>>({});
+  const [mappingLoading, setMappingLoading] = useState(false);
+
+  const activeTenantSlug = selectedTenant && selectedTenant !== 'all' ? selectedTenant : null;
 
   useEffect(() => {
     const loadSettings = async () => {
@@ -57,12 +96,57 @@ export function StoryousSettings() {
     loadSettings();
   }, []);
 
+  useEffect(() => {
+    const loadMappings = async () => {
+      if (!activeTenantSlug) {
+        setMappingDrafts({});
+        return;
+      }
+
+      setMappingLoading(true);
+      try {
+        const currentMappings = await getStoryousModifierMappings(activeTenantSlug);
+        const byOptionId = new Map(
+          currentMappings.map((mapping) => [
+            mapping.optionId,
+            {
+              externalAdditionId: mapping.externalAdditionId,
+              labelOverride: mapping.labelOverride || '',
+            },
+          ]),
+        );
+
+        const nextDrafts: Record<string, MappingDraft> = {};
+        for (const option of STORYOUS_MAPPING_OPTIONS) {
+          nextDrafts[option.optionId] = {
+            optionId: option.optionId,
+            label: option.label,
+            externalAdditionId: byOptionId.get(option.optionId)?.externalAdditionId || '',
+            labelOverride: byOptionId.get(option.optionId)?.labelOverride || '',
+          };
+        }
+        setMappingDrafts(nextDrafts);
+      } catch (error) {
+        console.error('Failed to load Storyous modifier mappings:', error);
+      } finally {
+        setMappingLoading(false);
+      }
+    };
+
+    loadMappings();
+  }, [activeTenantSlug]);
+
+  const mappedCount = useMemo(
+    () => Object.values(mappingDrafts).filter((draft) => draft.externalAdditionId.trim().length > 0).length,
+    [mappingDrafts],
+  );
+
   const handleSave = async () => {
     if (!clientId || !clientSecret || !merchantId || !placeId) {
       alert('Vyplňte všetky povinné polia (ClientID, Secret, MerchantID, PlaceID)');
       return;
     }
-    
+
     setSaving(true);
     try {
       const updated = await updateStoryousSettings({
@@ -77,11 +161,23 @@ export function StoryousSettings() {
         receiptIncludeModifierLines,
         receiptIncludeOrderNumber,
       });
-      
+
+      if (activeTenantSlug) {
+        const mappingsToSave: StoryousModifierMappingInput[] = Object.values(mappingDrafts)
+          .filter((draft) => draft.externalAdditionId.trim().length > 0)
+          .map((draft) => ({
+            optionId: draft.optionId,
+            externalAdditionId: draft.externalAdditionId.trim(),
+            labelOverride: draft.labelOverride.trim() || null,
+          }));
+
+        await updateStoryousModifierMappings(activeTenantSlug, mappingsToSave);
+      }
+
       setSettings(updated);
       const readinessData = await getStoryousAutoPrintReadiness();
       setReadiness(readinessData);
-      alert('Nastavenia Storyous boli uložené!');
+      alert('Nastavenia Storyous boli uložené.');
     } catch (error: any) {
       console.error('Failed to update Storyous settings:', error);
       alert('Nepodarilo sa uložiť nastavenia: ' + (error.message || 'Unknown error'));
@@ -96,8 +192,15 @@ export function StoryousSettings() {
 
   return (
     <div className="bg-white rounded-lg shadow p-4">
-      <div className="flex items-center justify-between mb-2">
-        <h3 className="text-sm font-semibold text-gray-900">📦 Storyous</h3>
+      <div className="mb-2 flex items-center justify-between">
+        <div>
+          <h3 className="text-sm font-semibold text-gray-900">Storyous</h3>
+          {activeTenantSlug ? (
+            <div className="text-[11px] text-gray-500">Mappings pre brand: {activeTenantSlug}</div>
+          ) : (
+            <div className="text-[11px] text-gray-500">Vyber brand, ak chceš upravovať addition mappings.</div>
+          )}
+        </div>
         <button
           onClick={() => setIsExpanded(!isExpanded)}
           className="text-xs text-gray-500 hover:text-gray-700"
@@ -105,7 +208,7 @@ export function StoryousSettings() {
           {isExpanded ? '▼' : '▶'}
         </button>
       </div>
-      
+
       {!isExpanded ? (
         <div className="space-y-2">
           <div className="flex items-center gap-2">
@@ -120,7 +223,7 @@ export function StoryousSettings() {
               {enabled ? '✅ Aktivované' : '❌ Deaktivované'}
             </span>
           </div>
-          {enabled && (
+          {enabled ? (
             <>
               <div className="flex items-center gap-2">
                 <input
@@ -135,109 +238,102 @@ export function StoryousSettings() {
               <div className="text-xs text-gray-600">
                 Delivery lead: <span className="font-semibold">{defaultDeliveryLeadMinutes} min</span>
               </div>
-              {readiness && (
+              <div className="text-xs text-gray-600">
+                Modifier mappings: <span className="font-semibold">{mappedCount}/{STORYOUS_MAPPING_OPTIONS.length}</span>
+              </div>
+              {readiness ? (
                 <div
-                  className={`text-xs rounded px-2 py-1 ${
-                    readiness.ready
-                      ? 'bg-emerald-50 text-emerald-700'
-                      : 'bg-amber-50 text-amber-700'
+                  className={`rounded px-2 py-1 text-xs ${
+                    readiness.ready ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'
                   }`}
                 >
                   {readiness.ready ? '✅ Auto-confirm readiness: OK' : '⚠️ Auto-confirm readiness: potrebuje doladiť'}
                 </div>
-              )}
+              ) : null}
             </>
-          )}
+          ) : null}
         </div>
       ) : (
         <div className="space-y-3">
-          {readiness && (
+          {readiness ? (
             <div className="rounded border border-gray-200 bg-gray-50 p-2 text-xs">
               <div className={`font-semibold ${readiness.ready ? 'text-emerald-700' : 'text-amber-700'}`}>
                 {readiness.ready ? '✅ Auto-confirm readiness: OK' : '⚠️ Auto-confirm readiness: nie je úplne pripravené'}
               </div>
-              {readiness.blockers.length > 0 && (
+              {readiness.blockers.length > 0 ? (
                 <div className="mt-1 text-red-700">
                   {readiness.blockers.map((item, idx) => (
                     <div key={`blocker-${idx}`}>• {item}</div>
                   ))}
                 </div>
-              )}
-              {readiness.warnings.length > 0 && (
+              ) : null}
+              {readiness.warnings.length > 0 ? (
                 <div className="mt-1 text-amber-700">
                   {readiness.warnings.map((item, idx) => (
                     <div key={`warning-${idx}`}>• {item}</div>
                   ))}
                 </div>
-              )}
+              ) : null}
             </div>
-          )}
+          ) : null}
+
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">ClientID</label>
+            <label className="mb-1 block text-xs font-medium text-gray-700">ClientID</label>
             <input
               type="text"
               value={clientId}
               onChange={(e) => setClientId(e.target.value)}
               disabled={saving}
-              className="w-full px-2 py-1 text-xs border rounded"
-              placeholder="692eba51dc0b299f172d5893"
+              className="w-full rounded border px-2 py-1 text-xs"
             />
           </div>
+
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">Secret</label>
+            <label className="mb-1 block text-xs font-medium text-gray-700">Secret</label>
             <input
               type="password"
               value={clientSecret}
               onChange={(e) => setClientSecret(e.target.value)}
               disabled={saving}
-              className="w-full px-2 py-1 text-xs border rounded"
-              placeholder="op6V11jOLpHaXq1B"
+              className="w-full rounded border px-2 py-1 text-xs"
             />
           </div>
-          <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">MerchantID</label>
-            <input
-              type="text"
-              value={merchantId}
-              onChange={(e) => setMerchantId(e.target.value)}
-              disabled={saving}
-              className="w-full px-2 py-1 text-xs border rounded"
-              placeholder="690da5715b2744002d9cf9cb"
-            />
+
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div>
+              <label className="mb-1 block text-xs font-medium text-gray-700">MerchantID</label>
+              <input
+                type="text"
+                value={merchantId}
+                onChange={(e) => setMerchantId(e.target.value)}
+                disabled={saving}
+                className="w-full rounded border px-2 py-1 text-xs"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-gray-700">PlaceID</label>
+              <input
+                type="text"
+                value={placeId}
+                onChange={(e) => setPlaceId(e.target.value)}
+                disabled={saving}
+                className="w-full rounded border px-2 py-1 text-xs"
+              />
+            </div>
           </div>
-          <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">PlaceID</label>
-            <input
-              type="text"
-              value={placeId}
-              onChange={(e) => setPlaceId(e.target.value)}
-              disabled={saving}
-              className="w-full px-2 py-1 text-xs border rounded"
-              placeholder="690da5715b2744002d9cf9ce"
-            />
-          </div>
+
           <div className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              checked={enabled}
-              onChange={(e) => setEnabled(e.target.checked)}
-              disabled={saving}
-              className="rounded"
-            />
+            <input type="checkbox" checked={enabled} onChange={(e) => setEnabled(e.target.checked)} disabled={saving} className="rounded" />
             <span className="text-xs text-gray-700">Aktivovať Storyous</span>
           </div>
+
           <div className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              checked={autoSync}
-              onChange={(e) => setAutoSync(e.target.checked)}
-              disabled={saving || !enabled}
-              className="rounded"
-            />
+            <input type="checkbox" checked={autoSync} onChange={(e) => setAutoSync(e.target.checked)} disabled={saving || !enabled} className="rounded" />
             <span className="text-xs text-gray-700">Automatické posielanie</span>
           </div>
+
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">Default delivery lead (min)</label>
+            <label className="mb-1 block text-xs font-medium text-gray-700">Default delivery lead (min)</label>
             <input
               type="number"
               min={1}
@@ -245,46 +341,101 @@ export function StoryousSettings() {
               value={defaultDeliveryLeadMinutes}
               onChange={(e) => setDefaultDeliveryLeadMinutes(Number(e.target.value))}
               disabled={saving}
-              className="w-full px-2 py-1 text-xs border rounded"
+              className="w-full rounded border px-2 py-1 text-xs"
             />
           </div>
+
           <div className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              checked={autoAcceptPrintMode}
-              onChange={(e) => setAutoAcceptPrintMode(e.target.checked)}
-              disabled={saving || !enabled}
-              className="rounded"
-            />
+            <input type="checkbox" checked={autoAcceptPrintMode} onChange={(e) => setAutoAcceptPrintMode(e.target.checked)} disabled={saving || !enabled} className="rounded" />
             <span className="text-xs text-gray-700">Auto-confirm v Storyous</span>
           </div>
+
           <div className="text-[11px] text-gray-500">
-            Backend požiada Storyous, aby objednávka nečakala na ručné prijatie. Samotná tlač ešte závisí od Storyous POS a tlačiarne na prevádzke.
+            Auto-confirm, autoSync a ostatné existujúce Storyous správanie ostáva bezo zmeny. Táto sekcia len dopĺňa modifier addition mappings pre receipt.
           </div>
+
           <div className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              checked={receiptIncludeModifierLines}
-              onChange={(e) => setReceiptIncludeModifierLines(e.target.checked)}
-              disabled={saving || !enabled}
-              className="rounded"
-            />
+            <input type="checkbox" checked={receiptIncludeModifierLines} onChange={(e) => setReceiptIncludeModifierLines(e.target.checked)} disabled={saving || !enabled} className="rounded" />
             <span className="text-xs text-gray-700">Tlačiť + modifikátory na bloček</span>
           </div>
+
           <div className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              checked={receiptIncludeOrderNumber}
-              onChange={(e) => setReceiptIncludeOrderNumber(e.target.checked)}
-              disabled={saving || !enabled}
-              className="rounded"
-            />
+            <input type="checkbox" checked={receiptIncludeOrderNumber} onChange={(e) => setReceiptIncludeOrderNumber(e.target.checked)} disabled={saving || !enabled} className="rounded" />
             <span className="text-xs text-gray-700">Tlačiť číslo objednávky</span>
           </div>
+
+          <div className="rounded border border-gray-200 bg-gray-50 p-3">
+            <div className="mb-1 text-xs font-semibold text-gray-900">Storyous modifier addition mappings</div>
+            {activeTenantSlug ? (
+              <>
+                <div className="mb-2 text-[11px] text-gray-500">
+                  Ak modifier nemá addition ID, backend ho pošle fallbackom cez note. To zachová sync, ale preview ukáže warning.
+                </div>
+                {mappingLoading ? (
+                  <div className="text-xs text-gray-500">Načítavam mappings...</div>
+                ) : (
+                  <div className="max-h-72 space-y-2 overflow-y-auto pr-1">
+                    {STORYOUS_MAPPING_OPTIONS.map((option) => {
+                      const draft = mappingDrafts[option.optionId] || {
+                        optionId: option.optionId,
+                        label: option.label,
+                        externalAdditionId: '',
+                        labelOverride: '',
+                      };
+
+                      return (
+                        <div key={option.optionId} className="rounded border border-gray-200 bg-white p-2">
+                          <div className="text-[11px] font-semibold text-gray-900">{option.label}</div>
+                          <div className="mb-2 text-[10px] uppercase tracking-[0.12em] text-gray-400">{option.optionId}</div>
+                          <div className="grid grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+                            <input
+                              type="text"
+                              value={draft.externalAdditionId}
+                              onChange={(e) =>
+                                setMappingDrafts((prev) => ({
+                                  ...prev,
+                                  [option.optionId]: {
+                                    ...draft,
+                                    externalAdditionId: e.target.value,
+                                  },
+                                }))
+                              }
+                              disabled={saving}
+                              className="rounded border px-2 py-1 text-xs"
+                              placeholder="Storyous additionId"
+                            />
+                            <input
+                              type="text"
+                              value={draft.labelOverride}
+                              onChange={(e) =>
+                                setMappingDrafts((prev) => ({
+                                  ...prev,
+                                  [option.optionId]: {
+                                    ...draft,
+                                    labelOverride: e.target.value,
+                                  },
+                                }))
+                              }
+                              disabled={saving}
+                              className="rounded border px-2 py-1 text-xs"
+                              placeholder="Preview label override"
+                            />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="text-xs text-gray-500">Vyber konkrétny brand v hornej lište. Mappings sú tenant-specific.</div>
+            )}
+          </div>
+
           <button
             onClick={handleSave}
             disabled={saving}
-            className="w-full px-3 py-1.5 bg-purple-600 text-white rounded text-xs font-semibold hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full rounded bg-purple-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-purple-700 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {saving ? 'Ukladá sa...' : 'Uložiť'}
           </button>
