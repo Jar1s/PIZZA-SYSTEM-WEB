@@ -25,6 +25,7 @@ describe('OrdersService', () => {
   const mockPrismaService = {
     user: {
       findUnique: jest.fn(),
+      findFirst: jest.fn(),
       create: jest.fn(),
     },
     address: {
