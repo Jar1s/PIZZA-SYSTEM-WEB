@@ -1,4 +1,3 @@
-import { BadRequestException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { CustomerAuthController } from './customer-auth.controller';
 import { CustomerAuthService } from './customer-auth.service';
@@ -95,15 +94,15 @@ describe('CustomerAuthController', () => {
       );
     });
 
-    it('should reject requests when no tenant can be resolved', async () => {
+    it('should return exists=false when no tenant can be resolved', async () => {
       mockTenantsService.findTenantByDomain.mockResolvedValueOnce(null);
       mockTenantsService.getTenantBySlug.mockRejectedValueOnce(new Error('missing tenant'));
 
       const req = { headers: { 'x-tenant': 'missing-tenant' } } as any;
 
-      await expect(controller.checkEmail(req, { email: 'test@example.com' })).rejects.toThrow(
-        BadRequestException,
-      );
+      await expect(controller.checkEmail(req, { email: 'test@example.com' })).resolves.toEqual({
+        exists: false,
+      });
       expect(mockCustomerAuthService.checkEmailExists).not.toHaveBeenCalled();
     });
   });
@@ -122,15 +121,15 @@ describe('CustomerAuthController', () => {
       );
     });
 
-    it('should throw explicit error when tenant cannot be resolved', async () => {
+    it('should return exists=false when tenant cannot be resolved', async () => {
       mockTenantsService.getTenantBySlug.mockRejectedValueOnce(new Error('Tenant not found'));
       mockTenantsService.findTenantByDomain.mockResolvedValueOnce(null);
 
       const req = { headers: {} } as any;
 
-      await expect(controller.checkEmail(req, { email: 'test@example.com' })).rejects.toThrow(
-        BadRequestException,
-      );
+      await expect(controller.checkEmail(req, { email: 'test@example.com' })).resolves.toEqual({
+        exists: false,
+      });
     });
   });
 
