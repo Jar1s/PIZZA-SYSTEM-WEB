@@ -1,3 +1,4 @@
+import { BadRequestException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { CustomerAuthController } from './customer-auth.controller';
 import { CustomerAuthService } from './customer-auth.service';
@@ -13,6 +14,7 @@ describe('CustomerAuthController', () => {
     checkEmailExists: jest.fn(),
     registerWithEmail: jest.fn(),
     loginWithEmail: jest.fn(),
+    refreshToken: jest.fn(),
     verifySmsAndComplete: jest.fn(),
   };
 
@@ -99,7 +101,9 @@ describe('CustomerAuthController', () => {
 
       const req = { headers: { 'x-tenant': 'missing-tenant' } } as any;
 
-      await expect(controller.checkEmail(req, { email: 'test@example.com' })).resolves.toEqual({ exists: false });
+      await expect(controller.checkEmail(req, { email: 'test@example.com' })).rejects.toThrow(
+        BadRequestException,
+      );
       expect(mockCustomerAuthService.checkEmailExists).not.toHaveBeenCalled();
     });
   });
@@ -115,6 +119,17 @@ describe('CustomerAuthController', () => {
       expect(mockCustomerAuthService.checkEmailExists).toHaveBeenCalledWith(
         'test@example.com',
         'tenant-1',
+      );
+    });
+
+    it('should throw explicit error when tenant cannot be resolved', async () => {
+      mockTenantsService.getTenantBySlug.mockRejectedValueOnce(new Error('Tenant not found'));
+      mockTenantsService.findTenantByDomain.mockResolvedValueOnce(null);
+
+      const req = { headers: {} } as any;
+
+      await expect(controller.checkEmail(req, { email: 'test@example.com' })).rejects.toThrow(
+        BadRequestException,
       );
     });
   });
@@ -189,6 +204,37 @@ describe('CustomerAuthController', () => {
         loginDto,
         'tenant-1',
       );
+    });
+  });
+
+  describe('refresh', () => {
+    it('should return rotated refresh token', async () => {
+      const req = { headers: {}, body: {} } as any;
+      const res = { cookie: jest.fn() } as any;
+      mockCustomerAuthService.refreshToken.mockResolvedValue({
+        access_token: 'new-access-token',
+        refresh_token: 'new-refresh-token',
+        user: {
+          id: 'user123',
+          email: 'test@example.com',
+          name: 'Test User',
+          role: 'CUSTOMER',
+        },
+      });
+
+      const result = await controller.refresh(req, { refresh_token: 'old-refresh-token' }, res);
+
+      expect(result).toEqual({
+        access_token: 'new-access-token',
+        refresh_token: 'new-refresh-token',
+        user: {
+          id: 'user123',
+          email: 'test@example.com',
+          name: 'Test User',
+          role: 'CUSTOMER',
+        },
+      });
+      expect(mockCustomerAuthService.refreshToken).toHaveBeenCalledWith('old-refresh-token');
     });
   });
 
