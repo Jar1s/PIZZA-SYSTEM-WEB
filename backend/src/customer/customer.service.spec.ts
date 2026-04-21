@@ -5,7 +5,6 @@ describe('CustomerService', () => {
   let service: CustomerService;
 
   const mockPrismaService = {
-    $queryRaw: jest.fn(),
     order: {
       findMany: jest.fn(),
     },
@@ -21,7 +20,6 @@ describe('CustomerService', () => {
     await expect(service.getCustomerOrders('user-1', '')).resolves.toEqual([]);
 
     expect((mockPrismaService.order.findMany as jest.Mock)).not.toHaveBeenCalled();
-    expect((mockPrismaService.$queryRaw as jest.Mock)).not.toHaveBeenCalled();
   });
 
   it('queries only authenticated user orders when customer email is not provided', async () => {
@@ -49,12 +47,11 @@ describe('CustomerService', () => {
 
     const result = await service.getCustomerOrders('user-1', 'tenant-1');
 
-    expect(mockPrismaService.$queryRaw).not.toHaveBeenCalled();
     expect(mockPrismaService.order.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: {
           tenantId: 'tenant-1',
-          userId: 'user-1',
+          OR: [{ userId: 'user-1' }, { userId: null }],
         },
       }),
     );
@@ -62,8 +59,7 @@ describe('CustomerService', () => {
     expect(result[0].id).toBe('order-user-1');
   });
 
-  it('includes guest orders by DB-filtered guest email IDs when customer email is provided', async () => {
-    (mockPrismaService.$queryRaw as jest.Mock).mockResolvedValue([{ id: 'order-guest-1' }]);
+  it('includes guest orders whose normalized email matches the authenticated customer', async () => {
     (mockPrismaService.order.findMany as jest.Mock).mockResolvedValue([
       {
         id: 'order-user-1',
@@ -107,18 +103,11 @@ describe('CustomerService', () => {
 
     const result = await service.getCustomerOrders('user-1', 'tenant-1', '  USER@example.com  ');
 
-    expect(mockPrismaService.$queryRaw).toHaveBeenCalledTimes(1);
-    const [rawQuery] = (mockPrismaService.$queryRaw as jest.Mock).mock.calls[0];
-    expect((rawQuery as any).values).toEqual(['tenant-1', 'user@example.com']);
-
     expect(mockPrismaService.order.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: {
           tenantId: 'tenant-1',
-          OR: [
-            { userId: 'user-1' },
-            { id: { in: ['order-guest-1'] } },
-          ],
+          OR: [{ userId: 'user-1' }, { userId: null }],
         },
       }),
     );
@@ -126,18 +115,57 @@ describe('CustomerService', () => {
   });
 
   it('does not include anonymous tenant-wide scope when no guest IDs match', async () => {
-    (mockPrismaService.$queryRaw as jest.Mock).mockResolvedValue([]);
-    (mockPrismaService.order.findMany as jest.Mock).mockResolvedValue([]);
+    (mockPrismaService.order.findMany as jest.Mock).mockResolvedValue([
+      {
+        id: 'order-user-1',
+        tenantId: 'tenant-1',
+        orderNumber: 104,
+        status: 'PAID',
+        customer: { email: 'user@example.com' },
+        address: {},
+        subtotalCents: 1200,
+        taxCents: 240,
+        deliveryFeeCents: 100,
+        totalCents: 1540,
+        paymentRef: null,
+        paymentStatus: null,
+        deliveryId: null,
+        userId: 'user-1',
+        items: [],
+        createdAt: new Date('2026-01-04T10:00:00.000Z'),
+        updatedAt: new Date('2026-01-04T10:00:00.000Z'),
+      },
+      {
+        id: 'order-guest-other',
+        tenantId: 'tenant-1',
+        orderNumber: 105,
+        status: 'DELIVERED',
+        customer: { email: 'other@example.com' },
+        address: {},
+        subtotalCents: 900,
+        taxCents: 180,
+        deliveryFeeCents: 120,
+        totalCents: 1200,
+        paymentRef: null,
+        paymentStatus: null,
+        deliveryId: null,
+        userId: null,
+        items: [],
+        createdAt: new Date('2026-01-05T10:00:00.000Z'),
+        updatedAt: new Date('2026-01-05T10:00:00.000Z'),
+      },
+    ]);
 
-    await service.getCustomerOrders('user-1', 'tenant-1', 'nomatch@example.com');
+    const result = await service.getCustomerOrders('user-1', 'tenant-1', 'nomatch@example.com');
 
     expect(mockPrismaService.order.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: {
           tenantId: 'tenant-1',
-          userId: 'user-1',
+          OR: [{ userId: 'user-1' }, { userId: null }],
         },
       }),
     );
+    expect(result.map((order) => order.id)).toEqual(['order-user-1']);
   });
 });
