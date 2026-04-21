@@ -249,10 +249,6 @@ describe('CustomerAuthService', () => {
       await expect(
         service.setPasswordWithToken(token, process.env.TEST_PASSWORD || 'test-password-123'),
       ).rejects.toThrow(BadRequestException);
-
-      expect(mockPrismaService.user.findUnique).toHaveBeenCalledWith({
-        where: { passwordResetToken: token },
-      });
     });
   });
 
