@@ -704,12 +704,17 @@ describe('OrdersService', () => {
 
       const result = await service.getOrderById('order-1');
 
-      expect(result).toEqual(mockOrder);
+      expect(result).toEqual(expect.objectContaining(mockOrder));
       expect(mockPrismaService.order.findUnique).toHaveBeenCalledWith({
         where: { id: 'order-1' },
         include: {
           items: true,
           delivery: true,
+          statusHistory: {
+            orderBy: {
+              createdAt: 'asc',
+            },
+          },
         },
       });
     });
