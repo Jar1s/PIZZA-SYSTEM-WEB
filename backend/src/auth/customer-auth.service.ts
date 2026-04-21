@@ -572,7 +572,7 @@ export class CustomerAuthService {
   /**
    * Refresh access token using refresh token
    */
-  async refreshToken(refreshToken: string): Promise<{ access_token: string; user: CustomerAuthResult['user'] }> {
+  async refreshToken(refreshToken: string): Promise<{ access_token: string; refresh_token: string; user: CustomerAuthResult['user'] }> {
     if (!refreshToken || !String(refreshToken).trim()) {
       throw new UnauthorizedException('Missing refresh token');
     }
@@ -583,13 +583,42 @@ export class CustomerAuthService {
       include: { user: true },
     });
 
-    if (!tokenRecord || tokenRecord.isRevoked || tokenRecord.expiresAt < new Date()) {
+    if (!tokenRecord) {
+      throw new UnauthorizedException('Invalid or expired refresh token');
+    }
+
+    if (tokenRecord.isRevoked) {
+      this.logger.warn(
+        `Refresh token reuse detected for customer ${tokenRecord.userId} (tokenId: ${tokenRecord.id})`,
+      );
+      throw new UnauthorizedException('Invalid or expired refresh token');
+    }
+
+    if (tokenRecord.expiresAt < new Date()) {
       throw new UnauthorizedException('Invalid or expired refresh token');
     }
 
     if (!tokenRecord.user.isActive || tokenRecord.user.role !== 'CUSTOMER') {
       throw new UnauthorizedException('User is not active or not a customer');
     }
+
+    // Rotate refresh token: revoke used token and issue a new one
+    await this.prisma.refreshToken.update({
+      where: { id: tokenRecord.id },
+      data: { isRevoked: true },
+    });
+
+    const rotatedRefreshToken = crypto.randomBytes(32).toString('hex');
+    const refreshExpiresAt = new Date();
+    refreshExpiresAt.setDate(refreshExpiresAt.getDate() + 7);
+
+    await this.prisma.refreshToken.create({
+      data: {
+        userId: tokenRecord.user.id,
+        token: rotatedRefreshToken,
+        expiresAt: refreshExpiresAt,
+      },
+    });
 
     // Generate new access token
     const payload = {
@@ -602,6 +631,7 @@ export class CustomerAuthService {
 
     return {
       access_token,
+      refresh_token: rotatedRefreshToken,
       user: {
         id: tokenRecord.user.id,
         email: tokenRecord.user.email || '',

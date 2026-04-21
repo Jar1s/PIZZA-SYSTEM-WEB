@@ -11,12 +11,40 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
-import { extname, join } from 'path';
+import { extname, join, resolve } from 'path';
 import { existsSync, mkdirSync } from 'fs';
 import { Response } from 'express';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { Public } from '../auth/decorators/public.decorator';
 import { appConfig } from '../config/app.config';
+
+const ALLOWED_IMAGE_TYPES = new Map([
+  ['image/jpeg', '.jpg'],
+  ['image/png', '.png'],
+  ['image/gif', '.gif'],
+  ['image/webp', '.webp'],
+]);
+
+function getSafeFilename(file: { originalname?: string; mimetype?: string }) {
+  const mimetype = (file.mimetype || '').toLowerCase();
+  const expectedExtension = ALLOWED_IMAGE_TYPES.get(mimetype);
+
+  if (!expectedExtension) {
+    throw new BadRequestException('Only JPG, PNG, GIF, and WEBP image files are allowed');
+  }
+
+  const providedExtension = extname(file.originalname || '').toLowerCase();
+  if (
+    providedExtension &&
+    providedExtension !== expectedExtension &&
+    !(mimetype === 'image/jpeg' && providedExtension === '.jpeg')
+  ) {
+    throw new BadRequestException('File extension does not match MIME type');
+  }
+
+  const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
+  return `product-${uniqueSuffix}${expectedExtension}`;
+}
 
 @Controller('upload')
 export class UploadController {
@@ -28,6 +56,20 @@ export class UploadController {
     if (!existsSync(this.uploadDir)) {
       mkdirSync(this.uploadDir, { recursive: true });
     }
+  }
+
+  private resolveUploadPath(filename: string) {
+    if (!/^[a-zA-Z0-9._-]+$/.test(filename)) {
+      throw new BadRequestException('Invalid filename');
+    }
+
+    const filePath = resolve(this.uploadDir, filename);
+    const uploadRoot = `${resolve(this.uploadDir)}${process.platform === 'win32' ? '\\' : '/'}`;
+    if (!filePath.startsWith(uploadRoot)) {
+      throw new BadRequestException('Invalid filename');
+    }
+
+    return filePath;
   }
 
   @Post('image')
@@ -46,23 +88,33 @@ export class UploadController {
           if (!file) {
             return cb(new BadRequestException('No file provided'), '');
           }
-          // Generate unique filename: timestamp-random-originalname
-          const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-          const ext = extname(file.originalname);
-          cb(null, `product-${uniqueSuffix}${ext}`);
+          try {
+            cb(null, getSafeFilename(file));
+          } catch (error) {
+            cb(error as Error, '');
+          }
         },
       }),
       limits: {
         fileSize: 20 * 1024 * 1024, // 20MB
       },
       fileFilter: (req, file, cb) => {
-        // Accept only image files
-        if (!file.mimetype.match(/\/(jpg|jpeg|png|gif|webp)$/)) {
-          return cb(
-            new BadRequestException('Only image files are allowed'),
-            false,
-          );
+        const mimetype = (file.mimetype || '').toLowerCase();
+        if (!ALLOWED_IMAGE_TYPES.has(mimetype)) {
+          return cb(new BadRequestException('Only JPG, PNG, GIF, and WEBP image files are allowed'), false);
         }
+
+        const extension = extname(file.originalname || '').toLowerCase();
+        const expectedExtension = ALLOWED_IMAGE_TYPES.get(mimetype);
+        if (
+          extension &&
+          expectedExtension &&
+          extension !== expectedExtension &&
+          !(mimetype === 'image/jpeg' && extension === '.jpeg')
+        ) {
+          return cb(new BadRequestException('File extension does not match MIME type'), false);
+        }
+
         cb(null, true);
       },
     }),
@@ -87,15 +139,12 @@ export class UploadController {
   @Get('image/:filename')
   @Public()
   async getImage(@Param('filename') filename: string, @Res() res: Response) {
-    const filePath = join(this.uploadDir, filename);
-    
-    // Check if file exists
+    const filePath = this.resolveUploadPath(filename);
+
     if (!existsSync(filePath)) {
       return res.status(404).json({ message: 'Image not found' });
     }
 
-    // Send file with appropriate content type
     return res.sendFile(filePath);
   }
 }
-

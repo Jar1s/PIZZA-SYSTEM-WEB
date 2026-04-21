@@ -95,15 +95,18 @@ export class CustomerAuthController {
 
   private async resolveTenant(req: Request, options: { stateTenant?: string; queryTenant?: string } = {}) {
     const headerTenant = (req.headers['x-tenant'] as string | undefined)?.toString();
-    const candidateSlug = options.stateTenant || options.queryTenant || headerTenant;
     const host = (req.headers['host'] || '').toString().split(':')[0];
     const hostTenant = host ? await this.tenantsService.findTenantByDomain(host) : null;
 
-    if (candidateSlug) {
+    const tenantCandidates = [options.stateTenant, options.queryTenant, headerTenant]
+      .map((candidate) => candidate?.trim())
+      .filter((candidate): candidate is string => Boolean(candidate));
+
+    for (const candidateSlug of tenantCandidates) {
       try {
         return await this.tenantsService.getTenantBySlug(candidateSlug);
       } catch (e) {
-        // fallthrough to domain
+        // Try the next candidate before falling back to host resolution.
       }
     }
 
@@ -111,7 +114,7 @@ export class CustomerAuthController {
       return hostTenant;
     }
 
-    return await this.tenantsService.getTenantBySlug('pornopizza');
+    throw new BadRequestException('Tenant not provided');
   }
 
   /**

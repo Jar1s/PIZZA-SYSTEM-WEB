@@ -13,6 +13,7 @@ import { SettingsModule } from '../settings/settings.module';
 import { ProductsModule } from '../products/products.module';
 import { DeliveryModule } from '../delivery/delivery.module';
 import { PaymentsModule } from '../payments/payments.module';
+import { getJwtSecret } from '../config/app.config';
 
 @Module({
   imports: [
@@ -26,7 +27,7 @@ import { PaymentsModule } from '../payments/payments.module';
     forwardRef(() => DeliveryModule),
     forwardRef(() => PaymentsModule),
     JwtModule.register({
-      secret: process.env.JWT_SECRET || 'your-secret-key-change-in-production',
+      secret: getJwtSecret(),
       signOptions: { expiresIn: '1h' },
     }),
   ],
@@ -35,4 +36,3 @@ import { PaymentsModule } from '../payments/payments.module';
   exports: [OrdersService, OrderStatusService, OrderNumberService],
 })
 export class OrdersModule {}
-

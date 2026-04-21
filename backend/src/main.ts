@@ -5,27 +5,15 @@ import { ValidationPipe, Logger } from '@nestjs/common';
 import { Request, Response, NextFunction } from 'express';
 import { json } from 'express';
 import { initSentry } from './config/sentry.config';
+import { appConfig, getJwtSecret, isOriginAllowed } from './config/app.config';
 
 async function bootstrap() {
   // Initialize Sentry before creating app (for error tracking)
   initSentry();
   
   const logger = new Logger('Bootstrap');
-  // Baked-in allowlist for known tenant preview/prod domains
-  const extraAllowedOrigins = [
-    'https://partypizza.vercel.app',
-    'https://pizzaparty.sk',
-    'https://www.pizzaparty.sk',
-  ];
-  
-  // Validate JWT_SECRET in production
-  if (process.env.NODE_ENV === 'production' && !process.env.JWT_SECRET) {
-    throw new Error('❌ JWT_SECRET environment variable is required in production!');
-  }
-  
-  if (!process.env.JWT_SECRET || process.env.JWT_SECRET === 'your-secret-key-change-in-production') {
-    logger.warn('⚠️  WARNING: Using default JWT_SECRET. Change it in production!');
-  }
+
+  getJwtSecret();
   
   // Validate JWT_SECRET strength
   if (process.env.JWT_SECRET && process.env.JWT_SECRET.length < 32) {
@@ -50,58 +38,12 @@ async function bootstrap() {
   app.use((req: Request, res: Response, next: NextFunction) => {
     if (req.method === 'OPTIONS') {
       const origin = req.headers.origin;
-      
-      // Check if origin is allowed (same logic as CORS)
-      let allowed = false;
-      if (!origin) {
-        allowed = true; // Allow requests with no origin
-      } else {
-        // Check explicit allowed origins first
-        if (process.env.ALLOWED_ORIGINS) {
-          const allowedOrigins = process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim());
-          if (allowedOrigins.includes(origin)) {
-            allowed = true;
-          } else {
-            // Also check if origin matches any allowed pattern
-            const matchesPattern = allowedOrigins.some(allowed => {
-              if (allowed.includes('*')) {
-                const pattern = allowed.replace(/\*/g, '.*');
-                return new RegExp(`^${pattern}$`).test(origin);
-              }
-              return false;
-            });
-            if (matchesPattern) {
-              allowed = true;
-            }
-          }
-        }
-        // Also allow baked-in extra origins
-        if (!allowed && extraAllowedOrigins.includes(origin)) {
-          allowed = true;
-        }
-        
-        // Only allow .vercel.app domains if explicitly listed in ALLOWED_ORIGINS
-        if (!allowed && origin.endsWith('.vercel.app')) {
-          allowed = false; // Deny by default
-        }
-        
-        // Always allow production domains
-        if (!allowed && (origin.includes('p0rnopizza.sk') || origin.includes('pornopizza.sk') || origin.includes('pizzavnudzi.sk'))) {
-          allowed = true;
-        }
-        
-        // Always allow localhost
-        if (!allowed && (origin.startsWith('http://localhost:') || 
-                         origin.startsWith('http://127.0.0.1:') ||
-                         origin.startsWith('http://pornopizza.localhost:') || 
-                         origin.startsWith('http://pizzavnudzi.localhost:'))) {
-          allowed = true;
-        }
-      }
+      const allowed = isOriginAllowed(origin);
+
       if (allowed) {
         res.header('Access-Control-Allow-Origin', origin || '*');
-        res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
-        res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-tenant');
+        res.header('Access-Control-Allow-Methods', appConfig.corsMethods.join(', '));
+        res.header('Access-Control-Allow-Headers', appConfig.corsAllowedHeaders.join(', '));
         res.header('Access-Control-Allow-Credentials', 'true');
         return res.status(200).end();
       } else {
@@ -144,67 +86,11 @@ async function bootstrap() {
     transform: true,
   }));
   
-  // Enable CORS BEFORE helmet (CORS must be set before security headers)
-  // CORS is restricted to specific domains via ALLOWED_ORIGINS env var
-  // .vercel.app domains are only allowed if explicitly listed in ALLOWED_ORIGINS
   app.enableCors({
-    origin: (origin, callback) => {
-      // Allow requests with no origin (like mobile apps or curl requests)
-      if (!origin) {
-        return callback(null, true);
-      }
-      
-      // Check explicit allowed origins first (includes specific .vercel.app domains)
-      if (process.env.ALLOWED_ORIGINS) {
-        const allowedOrigins = process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim());
-        if (allowedOrigins.includes(origin)) {
-          return callback(null, true);
-        }
-        // Also check if origin matches any allowed pattern (for .vercel.app subdomains)
-        const matchesPattern = allowedOrigins.some(allowed => {
-          if (allowed.includes('*')) {
-            const pattern = allowed.replace(/\*/g, '.*');
-            return new RegExp(`^${pattern}$`).test(origin);
-          }
-          return false;
-        });
-        if (matchesPattern) {
-          return callback(null, true);
-        }
-      }
-      // Also allow baked-in extra origins
-      if (extraAllowedOrigins.includes(origin)) {
-        return callback(null, true);
-      }
-      
-      // Only allow .vercel.app domains if explicitly listed in ALLOWED_ORIGINS
-      // This prevents unauthorized access from any Vercel preview URL
-      if (origin.endsWith('.vercel.app')) {
-        // Deny by default - must be in ALLOWED_ORIGINS
-        return callback(null, false);
-      }
-      
-      // Always allow production domains (p0rnopizza.sk, pornopizza.sk, etc.)
-      if (origin.includes('p0rnopizza.sk') || origin.includes('pornopizza.sk') || origin.includes('pizzavnudzi.sk')) {
-        return callback(null, true);
-      }
-      
-      // Always allow localhost (safe - not publicly accessible)
-      // This allows local development even when backend is in production
-      if (origin.startsWith('http://localhost:') || 
-          origin.startsWith('http://127.0.0.1:') ||
-          origin.startsWith('http://pornopizza.localhost:') || 
-          origin.startsWith('http://pizzavnudzi.localhost:')) {
-        return callback(null, true);
-      }
-      
-      
-      // Deny by default
-      callback(null, false);
-    },
+    origin: appConfig.corsOrigin,
     credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'x-tenant'],
+    methods: appConfig.corsMethods,
+    allowedHeaders: appConfig.corsAllowedHeaders,
     preflightContinue: false,
     optionsSuccessStatus: 200,
   });

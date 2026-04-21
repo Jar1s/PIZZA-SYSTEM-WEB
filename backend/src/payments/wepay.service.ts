@@ -94,28 +94,25 @@ export class WepayService {
   }
 
   verifyWebhook(signature: string, payload: string, secret: string): boolean {
-    // WePay webhook signature verification
-    // WePay uses HMAC-SHA256 similar to Adyen
-    
-    // CRITICAL: Use explicit env variable, not NODE_ENV
-    const skipVerification = process.env.SKIP_WEBHOOK_VERIFICATION === 'true';
-    if (skipVerification) {
-      this.logger.warn('⚠️  SECURITY WARNING: WePay webhook verification is DISABLED via SKIP_WEBHOOK_VERIFICATION');
-      return true;
+    if (!signature) {
+      this.logger.warn('WePay webhook signature missing');
+      return false;
     }
-    
+
     if (!secret) {
-      this.logger.warn('⚠️  WePay HMAC key not configured - skipping verification');
-      return true; // Skip if not configured
+      this.logger.error('WePay HMAC key not configured');
+      return false;
     }
-    
-    // Production verification
+
     const hmac = crypto.createHmac('sha256', secret);
     hmac.update(payload);
     const calculatedSignature = hmac.digest('hex');
-    
-    // Use timing-safe comparison to prevent timing attacks
+
     try {
+      if (signature.length !== calculatedSignature.length) {
+        return false;
+      }
+
       return crypto.timingSafeEqual(
         Buffer.from(signature),
         Buffer.from(calculatedSignature)
@@ -141,7 +138,6 @@ export class WepayService {
     };
   }
 }
-
 
 
 

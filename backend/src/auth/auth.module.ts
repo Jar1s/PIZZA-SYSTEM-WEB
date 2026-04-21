@@ -10,6 +10,7 @@ import { SmsService } from './sms.service';
 import { PrismaModule } from '../prisma/prisma.module';
 import { EmailModule } from '../email/email.module';
 import { TenantsModule } from '../tenants/tenants.module';
+import { getJwtSecret } from '../config/app.config';
 
 @Module({
   imports: [
@@ -18,7 +19,7 @@ import { TenantsModule } from '../tenants/tenants.module';
     EmailModule,
     TenantsModule,
     JwtModule.register({
-      secret: process.env.JWT_SECRET || 'your-secret-key-change-in-production',
+      secret: getJwtSecret(),
       signOptions: { expiresIn: '1h' }, // Short-lived access token (improved security)
     }),
   ],
@@ -27,4 +28,3 @@ import { TenantsModule } from '../tenants/tenants.module';
   exports: [AuthService, CustomerAuthService, SmsService],
 })
 export class AuthModule {}
-

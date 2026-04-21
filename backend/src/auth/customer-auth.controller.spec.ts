@@ -13,6 +13,7 @@ describe('CustomerAuthController', () => {
     checkEmailExists: jest.fn(),
     registerWithEmail: jest.fn(),
     loginWithEmail: jest.fn(),
+    refreshToken: jest.fn(),
     verifySmsAndComplete: jest.fn(),
   };
 
@@ -20,17 +21,21 @@ describe('CustomerAuthController', () => {
     sendVerificationCode: jest.fn(),
   };
   const mockTenantsService = {
-    getTenantBySlug: jest.fn().mockResolvedValue({
+    getTenantBySlug: jest.fn(),
+    findTenantByDomain: jest.fn(),
+  };
+
+  beforeEach(async () => {
+    jest.resetAllMocks();
+    mockTenantsService.getTenantBySlug.mockResolvedValue({
       id: 'tenant-1',
       slug: 'pornopizza',
       theme: {},
       subdomain: 'pornopizza',
       domain: 'pornopizza.sk',
-    }),
-    findTenantByDomain: jest.fn().mockResolvedValue(null),
-  };
+    });
+    mockTenantsService.findTenantByDomain.mockResolvedValue(null);
 
-  beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       controllers: [CustomerAuthController],
       providers: [
@@ -58,6 +63,46 @@ describe('CustomerAuthController', () => {
     jest.clearAllMocks();
   });
 
+  describe('tenant resolution', () => {
+    it('should fall back to host tenant when slug candidate is invalid', async () => {
+      mockTenantsService.getTenantBySlug.mockRejectedValueOnce(new Error('missing tenant'));
+      mockTenantsService.findTenantByDomain.mockResolvedValueOnce({
+        id: 'tenant-host',
+        slug: 'host-tenant',
+        theme: {},
+        subdomain: 'host-tenant',
+        domain: 'host.pizza.sk',
+      });
+      mockCustomerAuthService.checkEmailExists.mockResolvedValue(false);
+
+      const req = {
+        headers: {
+          'x-tenant': 'missing-tenant',
+          host: 'host.pizza.sk',
+        },
+      } as any;
+
+      await controller.checkEmail(req, { email: 'test@example.com' });
+
+      expect(mockCustomerAuthService.checkEmailExists).toHaveBeenCalledWith(
+        'test@example.com',
+        'tenant-host',
+      );
+    });
+
+    it('should return exists=false when no tenant can be resolved', async () => {
+      mockTenantsService.findTenantByDomain.mockResolvedValueOnce(null);
+      mockTenantsService.getTenantBySlug.mockRejectedValueOnce(new Error('missing tenant'));
+
+      const req = { headers: { 'x-tenant': 'missing-tenant' } } as any;
+
+      await expect(controller.checkEmail(req, { email: 'test@example.com' })).resolves.toEqual({
+        exists: false,
+      });
+      expect(mockCustomerAuthService.checkEmailExists).not.toHaveBeenCalled();
+    });
+  });
+
   describe('checkEmail', () => {
     it('should check if email exists', async () => {
       mockCustomerAuthService.checkEmailExists.mockResolvedValue(true);
@@ -70,6 +115,17 @@ describe('CustomerAuthController', () => {
         'test@example.com',
         'tenant-1',
       );
+    });
+
+    it('should return exists=false when tenant cannot be resolved', async () => {
+      mockTenantsService.getTenantBySlug.mockRejectedValueOnce(new Error('Tenant not found'));
+      mockTenantsService.findTenantByDomain.mockResolvedValueOnce(null);
+
+      const req = { headers: {} } as any;
+
+      await expect(controller.checkEmail(req, { email: 'test@example.com' })).resolves.toEqual({
+        exists: false,
+      });
     });
   });
 
@@ -143,6 +199,37 @@ describe('CustomerAuthController', () => {
         loginDto,
         'tenant-1',
       );
+    });
+  });
+
+  describe('refresh', () => {
+    it('should return rotated refresh token', async () => {
+      const req = { headers: {}, body: {} } as any;
+      const res = { cookie: jest.fn() } as any;
+      mockCustomerAuthService.refreshToken.mockResolvedValue({
+        access_token: 'new-access-token',
+        refresh_token: 'new-refresh-token',
+        user: {
+          id: 'user123',
+          email: 'test@example.com',
+          name: 'Test User',
+          role: 'CUSTOMER',
+        },
+      });
+
+      const result = await controller.refresh(req, { refresh_token: 'old-refresh-token' }, res);
+
+      expect(result).toEqual({
+        access_token: 'new-access-token',
+        refresh_token: 'new-refresh-token',
+        user: {
+          id: 'user123',
+          email: 'test@example.com',
+          name: 'Test User',
+          role: 'CUSTOMER',
+        },
+      });
+      expect(mockCustomerAuthService.refreshToken).toHaveBeenCalledWith('old-refresh-token');
     });
   });
 

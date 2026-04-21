@@ -33,7 +33,7 @@ const nextConfig = {
   },
   // Treat ESLint warnings as non-blocking
   typescript: {
-    ignoreBuildErrors: true,
+    ignoreBuildErrors: false,
   },
   // Performance optimizations
   experimental: {
