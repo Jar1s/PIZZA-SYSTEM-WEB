@@ -25,6 +25,8 @@ describe('CustomerAuthService', () => {
       update: jest.fn(),
     },
     refreshToken: {
+      findUnique: jest.fn(),
+      update: jest.fn(),
       create: jest.fn(),
       deleteMany: jest.fn().mockResolvedValue({}),
     },
@@ -239,6 +241,21 @@ describe('CustomerAuthService', () => {
     });
   });
 
+  describe('setPasswordWithToken', () => {
+    it('should lookup user by unique password reset token and throw when token is invalid', async () => {
+      const token = 'invalid-token';
+      mockPrismaService.user.findUnique.mockResolvedValue(null);
+
+      await expect(
+        service.setPasswordWithToken(token, process.env.TEST_PASSWORD || 'test-password-123'),
+      ).rejects.toThrow(BadRequestException);
+
+      expect(mockPrismaService.user.findUnique).toHaveBeenCalledWith({
+        where: { passwordResetToken: token },
+      });
+    });
+  });
+
   describe('verifySmsAndComplete', () => {
     it('should verify SMS code and complete registration', async () => {
       const phone = '+421912345678';
@@ -250,7 +267,7 @@ describe('CustomerAuthService', () => {
         userId,
       });
 
-      mockPrismaService.user.findFirst.mockResolvedValue({
+      mockPrismaService.user.findUnique.mockResolvedValue({
         id: userId,
         email: 'test@example.com',
         name: 'Test User',
@@ -269,6 +286,17 @@ describe('CustomerAuthService', () => {
       expect(result).toHaveProperty('user');
       expect(result.needsSmsVerification).toBe(false);
       expect(mockSmsService.verifyCode).toHaveBeenCalledWith(phone, code, userId);
+      expect(mockPrismaService.user.findUnique).toHaveBeenCalledWith({
+        where: { id: userId },
+        select: {
+          id: true,
+          email: true,
+          name: true,
+          role: true,
+          phone: true,
+          phoneVerified: true,
+        },
+      });
     });
 
     it('should throw BadRequestException if SMS code is invalid', async () => {
@@ -283,6 +311,71 @@ describe('CustomerAuthService', () => {
       await expect(
         service.verifySmsAndComplete(phone, code, userId),
       ).rejects.toThrow(BadRequestException);
+    });
+  });
+
+  describe('refreshToken', () => {
+    it('should rotate refresh token and issue a new pair', async () => {
+      const nowPlus1Day = new Date(Date.now() + 24 * 60 * 60 * 1000);
+      mockPrismaService.refreshToken.findUnique.mockResolvedValue({
+        id: 'rt-1',
+        userId: 'user123',
+        token: 'old-refresh-token',
+        isRevoked: false,
+        expiresAt: nowPlus1Day,
+        user: {
+          id: 'user123',
+          email: 'test@example.com',
+          name: 'Test User',
+          role: 'CUSTOMER',
+          isActive: true,
+          phone: null,
+          phoneVerified: false,
+        },
+      });
+      mockPrismaService.refreshToken.update.mockResolvedValue({});
+      mockPrismaService.refreshToken.create.mockResolvedValue({});
+      mockJwtService.sign.mockReturnValue('new-access-token');
+
+      const result = await service.refreshToken('old-refresh-token');
+
+      expect(result.access_token).toBe('new-access-token');
+      expect(result.refresh_token).toBeDefined();
+      expect(result.refresh_token).not.toBe('old-refresh-token');
+      expect(mockPrismaService.refreshToken.update).toHaveBeenCalledWith({
+        where: { id: 'rt-1' },
+        data: { isRevoked: true },
+      });
+      expect(mockPrismaService.refreshToken.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          userId: 'user123',
+          token: expect.any(String),
+          expiresAt: expect.any(Date),
+        }),
+      });
+    });
+
+    it('should block revoked refresh token reuse', async () => {
+      mockPrismaService.refreshToken.findUnique.mockResolvedValue({
+        id: 'rt-1',
+        userId: 'user123',
+        token: 'used-refresh-token',
+        isRevoked: true,
+        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+        user: {
+          id: 'user123',
+          email: 'test@example.com',
+          name: 'Test User',
+          role: 'CUSTOMER',
+          isActive: true,
+        },
+      });
+
+      await expect(service.refreshToken('used-refresh-token')).rejects.toThrow(
+        UnauthorizedException,
+      );
+      expect(mockPrismaService.refreshToken.update).not.toHaveBeenCalled();
+      expect(mockPrismaService.refreshToken.create).not.toHaveBeenCalled();
     });
   });
 });
