@@ -1,8 +1,10 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAdminContext } from '@/app/admin/admin-context';
+import { getTenantSlug } from '@/lib/tenant-utils';
 import { handleAdmin401Response } from '@/lib/api-helpers';
 
 interface Customer {
@@ -12,6 +14,8 @@ interface Customer {
   phone: string | null;
   phoneVerified: boolean;
   isActive: boolean;
+  tenantSlug: string | null;
+  tenantName: string | null;
   orderCount: number;
   totalSpentCents: number;
   createdAt: string;
@@ -30,6 +34,7 @@ interface CustomersResponse {
 
 export default function CustomersPage() {
   const { user } = useAuth();
+  const router = useRouter();
   const { selectedTenant } = useAdminContext();
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
@@ -303,6 +308,10 @@ export default function CustomersPage() {
                         {customer.email && (
                           <div className="text-xs text-gray-500 mt-1">{customer.email}</div>
                         )}
+                        <div className="text-xs text-gray-500 mt-1">
+                          {customer.tenantName || 'Unknown brand'}
+                          {customer.tenantSlug ? ` · ${customer.tenantSlug}` : ''}
+                        </div>
                       </div>
                     </div>
                     <span
@@ -369,6 +378,9 @@ export default function CustomersPage() {
                       Customer
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Brand
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Contact
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -391,7 +403,7 @@ export default function CustomersPage() {
                 <tbody className="bg-white divide-y divide-gray-200">
                   {customers.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="px-6 py-12 text-center text-gray-500">
+                      <td colSpan={8} className="px-6 py-12 text-center text-gray-500">
                         No customers found
                       </td>
                     </tr>
@@ -413,6 +425,14 @@ export default function CustomersPage() {
                                 <div className="text-sm text-gray-500">{customer.email}</div>
                               )}
                             </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm font-semibold text-gray-900">
+                            {customer.tenantName || 'Unknown'}
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            {customer.tenantSlug || '—'}
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
