@@ -20,8 +20,6 @@ interface Customer {
   totalSpentCents: number;
   createdAt: string;
   updatedAt: string;
-  tenantName?: string | null;
-  tenantSlug?: string | null;
 }
 
 interface CustomersResponse {
