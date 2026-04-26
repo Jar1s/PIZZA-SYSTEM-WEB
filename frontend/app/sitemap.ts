@@ -1,8 +1,26 @@
 import { MetadataRoute } from 'next';
+import { headers } from 'next/headers';
+
+export const dynamic = 'force-dynamic';
+
+type HeaderReader = {
+  get(name: string): string | null;
+};
+
+function getBaseUrl(headersList: HeaderReader): string {
+  const host = headersList.get('host');
+  const protocol = headersList.get('x-forwarded-proto') || 'https';
+
+  if (host) {
+    return `${protocol}://${host}`;
+  }
+
+  return process.env.NEXT_PUBLIC_BASE_URL || 'https://pornopizza.sk';
+}
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3001';
-  const tenants = ['pornopizza', 'pizzavnudzi'];
+  const headersList = await headers();
+  const baseUrl = getBaseUrl(headersList);
   
   const routes: MetadataRoute.Sitemap = [
     {
@@ -10,12 +28,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       lastModified: new Date(),
       changeFrequency: 'daily',
       priority: 1,
-    },
-    {
-      url: `${baseUrl}/auth/login`,
-      lastModified: new Date(),
-      changeFrequency: 'monthly',
-      priority: 0.5,
     },
     {
       url: `${baseUrl}/cookies`,
@@ -37,20 +49,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     },
   ];
 
-  // Add tenant-specific routes without backend dependency during build
-  for (const tenantSlug of tenants) {
-    routes.push({
-      url: `${baseUrl}?tenant=${tenantSlug}`,
-      lastModified: new Date(),
-      changeFrequency: 'daily',
-      priority: 0.9,
-    });
-  }
-
   return routes;
 }
-
-
 
 
 
