@@ -151,4 +151,28 @@ describe('OrderStatusService', () => {
 
     expect(updateSpy).toHaveBeenCalledWith('order-1', OrderStatus.OUT_FOR_DELIVERY, 'storyous');
   });
+  it('does not reconcile Wolt orders from Storyous DISPATCHED because Wolt is delivery source of truth', async () => {
+    mockPrisma.order.findMany.mockResolvedValue([]);
+    mockStoryousService.getOrderState.mockResolvedValue('DISPATCHED');
+
+    const updateSpy = jest
+      .spyOn(service, 'updateStatus')
+      .mockResolvedValue(undefined as never);
+
+    await (service as any).checkAndReconcileStoryousStatuses();
+
+    expect(mockPrisma.order.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          OR: [
+            { deliveryId: null },
+            { delivery: { is: { provider: { not: 'wolt' } } } },
+          ],
+        }),
+      }),
+    );
+    expect(mockStoryousService.getOrderState).not.toHaveBeenCalled();
+    expect(updateSpy).not.toHaveBeenCalled();
+  });
+
 });
