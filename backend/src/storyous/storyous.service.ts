@@ -284,6 +284,10 @@ export class StoryousService {
     return parsed.toLocaleDateString('sk-SK');
   }
 
+  private isWoltDelivery(order: Order): boolean {
+    return String((order as any)?.delivery?.provider || '').toLowerCase() === 'wolt';
+  }
+
   private getPaymentReceiptLabel(order: Order): string {
     const paymentRef = String((order as any)?.paymentRef || '').toLowerCase();
     if (paymentRef === 'cod:card') {
@@ -397,6 +401,7 @@ export class StoryousService {
     const orderSourceWebsite = this.getOrderSourceWebsite(order);
     const isAlreadyPaid = this.isAlreadyPaidForStoryous(order);
     const paymentReceiptLabel = this.getPaymentReceiptLabel(order);
+    const isWoltDelivery = this.isWoltDelivery(order);
     const receiptIncludeModifierLines = settings?.receiptIncludeModifierLines ?? true;
     const modifierMappingsByOptionId = await this.getModifierMappingsByOptionId(
       String((order as any)?.tenantId || ''),
@@ -502,7 +507,15 @@ export class StoryousService {
       return itemData;
     });
 
-    const orderNote = `${orderReference}\nWeb: ${orderSourceWebsite}\nSpôsob platby: ${paymentReceiptLabel}`;
+    const orderNoteLines = [
+      orderReference,
+      `Web: ${orderSourceWebsite}`,
+      `Spôsob platby: ${paymentReceiptLabel}`,
+    ];
+    if (isWoltDelivery) {
+      orderNoteLines.push('Doručuje Wolt kuriér - iba vydať kuriérovi');
+    }
+    const orderNote = orderNoteLines.join('\n');
 
     const orderData: any = {
       items,
@@ -529,7 +542,8 @@ export class StoryousService {
       external_id: (settings?.receiptIncludeOrderNumber ?? true) ? orderReference : order.id,
       reference: orderReference,
       status: this.mapOrderStatus(order.status),
-      deliveryType: 'delivery',
+      deliveryType: isWoltDelivery ? 'pickup' : 'delivery',
+      ...(isWoltDelivery ? { deliveryProvider: 'wolt' } : {}),
       timing: {
         asSoonAsPossible: false,
         requestedPickupTime,
@@ -600,6 +614,7 @@ export class StoryousService {
       requestedPickupTime: orderData.requestedPickupTime,
       orderSourceWebsite: this.getOrderSourceWebsite(order),
       deliveryType: orderData.deliveryType,
+      deliveryProvider: orderData.deliveryProvider,
       timing: orderData.timing,
     });
 
