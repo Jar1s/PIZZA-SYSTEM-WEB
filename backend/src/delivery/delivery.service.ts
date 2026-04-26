@@ -841,76 +841,94 @@ export class DeliveryService implements OnModuleInit, OnModuleDestroy {
     this.assertTenantAccess(order.tenantId, user, 'cancelDeliveryForOrder');
 
     if (!order.delivery) {
-      throw new BadRequestException('Order has no active delivery to cancel');
+      return {
+        success: true,
+        orderId: order.id,
+        message: 'No active delivery to cancel',
+      };
     }
 
     if (order.delivery.provider !== 'wolt') {
       throw new BadRequestException('Cancel endpoint currently supports only Wolt deliveries');
     }
 
-    if (!order.delivery.jobId) {
-      throw new BadRequestException('Missing Wolt jobId on delivery record');
-    }
+    if (order.delivery.jobId) {
+      const tenant = await this.prisma.tenant.findUnique({ where: { id: order.tenantId } });
+      if (!tenant) {
+        throw new BadRequestException('Tenant not found');
+      }
 
-    const tenant = await this.prisma.tenant.findUnique({ where: { id: order.tenantId } });
-    if (!tenant) {
-      throw new BadRequestException('Tenant not found');
-    }
+      const deliveryConfig = tenant.deliveryConfig as DeliveryConfig;
+      const woltConfig = deliveryConfig?.woltConfig;
+      const apiKey = woltConfig?.apiKey ? String(woltConfig.apiKey).trim() : '';
 
-    const deliveryConfig = tenant.deliveryConfig as DeliveryConfig;
-    const woltConfig = deliveryConfig?.woltConfig;
-    const apiKey = woltConfig?.apiKey ? String(woltConfig.apiKey).trim() : '';
+      if (!apiKey) {
+        throw new BadRequestException('Wolt Merchant Key nie je nastavený pre tento tenant.');
+      }
 
-    if (!apiKey) {
-      throw new BadRequestException('Wolt Merchant Key nie je nastavený pre tento tenant.');
-    }
+      const snapshotConfig = this.getWoltApiConfigFromQuote(order.delivery.quote);
+      const cancelConfig = snapshotConfig.venueId || snapshotConfig.apiUrl ? snapshotConfig : woltConfig;
 
-    const snapshotConfig = this.getWoltApiConfigFromQuote(order.delivery.quote);
-    const cancelConfig = snapshotConfig.venueId || snapshotConfig.apiUrl ? snapshotConfig : woltConfig;
-
-    try {
-      await this.woltDrive.cancelDelivery(apiKey, order.delivery.jobId, 3, cancelConfig);
-    } catch (error: any) {
-      this.logger.error('[cancelDeliveryForOrder] Wolt cancel failed', {
-        orderId,
-        deliveryId: order.delivery.id,
-        jobId: order.delivery.jobId,
-        error: error?.message,
-        status: error?.status,
-      });
-      throw new BadRequestException(error?.message || 'Nepodarilo sa zrušiť Wolt doručenie');
+      try {
+        await this.woltDrive.cancelDelivery(apiKey, order.delivery.jobId, 3, cancelConfig);
+      } catch (error: any) {
+        this.logger.error('[cancelDeliveryForOrder] Wolt cancel failed', {
+          orderId,
+          deliveryId: order.delivery.id,
+          jobId: order.delivery.jobId,
+          error: error?.message,
+          status: error?.status,
+        });
+        throw new BadRequestException(error?.message || 'Nepodarilo sa zrušiť Wolt doručenie');
+      }
     }
 
     const existingQuote = this.getQuoteObject(order.delivery.quote);
-    await this.prisma.delivery.update({
-      where: { id: order.delivery.id },
-      data: {
-        status: DeliveryStatus.FAILED,
-        quote: {
-          ...existingQuote,
-          canceledAt: new Date().toISOString(),
-          cancelSource: 'admin',
-        } as Prisma.InputJsonValue,
-      },
-    });
+    const orderUpdateData: Prisma.OrderUncheckedUpdateInput = { deliveryId: null };
+    const transaction: Prisma.PrismaPromise<any>[] = [
+      this.prisma.delivery.update({
+        where: { id: order.delivery.id },
+        data: {
+          status: DeliveryStatus.FAILED,
+          quote: {
+            ...existingQuote,
+            canceledAt: new Date().toISOString(),
+            cancelSource: 'admin',
+          } as Prisma.InputJsonValue,
+        },
+      }),
+    ];
 
-    // Keep order alive after Wolt cancellation.
-    // If order was already "out for delivery", move it back to preparing
-    // so operator can choose another courier flow.
-    await this.prisma.order.update({
-      where: { id: order.id },
-      data: { deliveryId: null },
-    });
-
+    // Keep order alive after Wolt cancellation. If it was already handed to
+    // courier, put it back into the dispatch queue without relaxing public
+    // status transitions.
     if (order.status === OrderStatus.OUT_FOR_DELIVERY) {
-      await this.orderStatusService.updateStatus(order.id, OrderStatus.PREPARING);
+      orderUpdateData.status = OrderStatus.READY;
+      transaction.push(
+        this.prisma.orderStatusHistory.create({
+          data: {
+            orderId: order.id,
+            status: OrderStatus.READY,
+          },
+        }),
+      );
     }
+
+    transaction.push(
+      this.prisma.order.update({
+        where: { id: order.id },
+        data: orderUpdateData,
+      }),
+    );
+
+    await this.prisma.$transaction(transaction);
 
     return {
       success: true,
       orderId: order.id,
       deliveryId: order.delivery.id,
       jobId: order.delivery.jobId,
+      message: 'Wolt delivery canceled',
     };
   }
 
@@ -1139,6 +1157,4 @@ export class DeliveryService implements OnModuleInit, OnModuleDestroy {
     }
   }
 }
-
-
 

@@ -1,8 +1,6 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
-import { TenantsService } from '../tenants/tenants.service';
-import { DeliveryConfig, PaymentConfig, TenantTheme } from '../types/tenant.types';
 
 export interface StoryousSettings {
   clientId: string;
@@ -62,51 +60,23 @@ export interface TenantPaymentSettings {
   tenantSlug: string;
   tenantSubdomain: string;
   paymentProvider: string | null;
-  paymentConfig: PaymentConfig;
+  paymentConfig: Record<string, any>;
 }
 
 export interface TenantDeliverySettings {
   tenantId: string;
   tenantSlug: string;
   tenantSubdomain: string;
-  deliveryConfig: DeliveryConfig;
+  deliveryConfig: Record<string, any>;
 }
 
 @Injectable()
 export class SettingsService {
-  constructor(
-    private prisma: PrismaService,
-    private tenantsService: TenantsService,
-  ) {}
+  constructor(private prisma: PrismaService) {}
 
-  private normalizeTenantSlug(slug: string): string {
-    const trimmed = String(slug || '').trim();
-    if (trimmed === 'p0rnopizza') return 'pornopizza';
-    if (trimmed === 'pizzaparty') return 'partypizza';
-    return trimmed;
-  }
-
-  private getTenantLookupCandidates(slug: string): string[] {
-    const normalized = this.normalizeTenantSlug(slug);
-    const candidates = new Set<string>([normalized]);
-
-    if (normalized === 'pornopizza') candidates.add('p0rnopizza');
-    if (normalized === 'partypizza') candidates.add('pizzaparty');
-    if (normalized === 'p0rnopizza') candidates.add('pornopizza');
-    if (normalized === 'pizzaparty') candidates.add('partypizza');
-
-    return Array.from(candidates);
-  }
-
-  private async getTenantForSettings(tenantSlug: string) {
-    const candidates = this.getTenantLookupCandidates(tenantSlug);
-    const tenant = await this.prisma.tenant.findFirst({
-      where: {
-        OR: [
-          { slug: { in: candidates } },
-          { subdomain: { in: candidates } },
-        ],
-      },
+  private async getTenantBySlug(tenantSlug: string) {
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { slug: tenantSlug },
       select: {
         id: true,
         slug: true,
@@ -119,10 +89,123 @@ export class SettingsService {
     });
 
     if (!tenant) {
-      throw new NotFoundException(`Tenant ${tenantSlug} not found`);
+      throw new BadRequestException(`Tenant ${tenantSlug} not found`);
     }
 
     return tenant;
+  }
+
+  private toRecord(value: unknown): Record<string, any> {
+    return value && typeof value === 'object' && !Array.isArray(value)
+      ? { ...(value as Record<string, any>) }
+      : {};
+  }
+
+  private toNullableRecord(value: unknown): Record<string, any> | null {
+    return value && typeof value === 'object' && !Array.isArray(value)
+      ? { ...(value as Record<string, any>) }
+      : null;
+  }
+
+  async getTenantOperationsSettings(tenantSlug: string): Promise<TenantOperationsSettings> {
+    const tenant = await this.getTenantBySlug(tenantSlug);
+    const theme = this.toRecord(tenant.theme);
+
+    return {
+      tenantId: tenant.id,
+      tenantSlug: tenant.slug,
+      tenantSubdomain: tenant.subdomain,
+      primaryColor: typeof theme.primaryColor === 'string' ? theme.primaryColor : null,
+      secondaryColor: typeof theme.secondaryColor === 'string' ? theme.secondaryColor : null,
+      maintenanceMode: theme.maintenanceMode === true,
+      openingHours: this.toNullableRecord(theme.openingHours),
+    };
+  }
+
+  async updateTenantOperationsSettings(
+    tenantSlug: string,
+    data: { maintenanceMode?: boolean; openingHours?: Record<string, any> | null },
+  ): Promise<TenantOperationsSettings> {
+    const tenant = await this.getTenantBySlug(tenantSlug);
+    const theme = this.toRecord(tenant.theme);
+
+    await this.prisma.tenant.update({
+      where: { id: tenant.id },
+      data: {
+        theme: {
+          ...theme,
+          ...(data.maintenanceMode !== undefined ? { maintenanceMode: data.maintenanceMode } : {}),
+          ...(data.openingHours !== undefined ? { openingHours: data.openingHours } : {}),
+        } as Prisma.InputJsonValue,
+      },
+    });
+
+    return this.getTenantOperationsSettings(tenantSlug);
+  }
+
+  async getTenantPaymentSettings(tenantSlug: string): Promise<TenantPaymentSettings> {
+    const tenant = await this.getTenantBySlug(tenantSlug);
+
+    return {
+      tenantId: tenant.id,
+      tenantSlug: tenant.slug,
+      tenantSubdomain: tenant.subdomain,
+      paymentProvider: tenant.paymentProvider || null,
+      paymentConfig: this.toRecord(tenant.paymentConfig),
+    };
+  }
+
+  async updateTenantPaymentSettings(
+    tenantSlug: string,
+    data: { paymentConfig?: Record<string, any> | null },
+  ): Promise<TenantPaymentSettings> {
+    const tenant = await this.getTenantBySlug(tenantSlug);
+    const currentPaymentConfig = this.toRecord(tenant.paymentConfig);
+    const incomingPaymentConfig = this.toRecord(data.paymentConfig);
+
+    await this.prisma.tenant.update({
+      where: { id: tenant.id },
+      data: {
+        paymentConfig: {
+          ...currentPaymentConfig,
+          ...incomingPaymentConfig,
+        } as Prisma.InputJsonValue,
+      },
+    });
+
+    return this.getTenantPaymentSettings(tenantSlug);
+  }
+
+  async getTenantDeliverySettings(tenantSlug: string): Promise<TenantDeliverySettings> {
+    const tenant = await this.getTenantBySlug(tenantSlug);
+
+    return {
+      tenantId: tenant.id,
+      tenantSlug: tenant.slug,
+      tenantSubdomain: tenant.subdomain,
+      deliveryConfig: this.toRecord(tenant.deliveryConfig),
+    };
+  }
+
+  async updateTenantDeliverySettings(
+    tenantSlug: string,
+    data: { deliveryConfig?: Record<string, any> | null },
+  ): Promise<TenantDeliverySettings> {
+    const tenant = await this.getTenantBySlug(tenantSlug);
+    const currentDeliveryConfig = this.toRecord(tenant.deliveryConfig);
+    const incomingDeliveryConfig = this.toRecord(data.deliveryConfig);
+
+    await this.prisma.tenant.update({
+      where: { id: tenant.id },
+      data: {
+        deliveryConfig: {
+          ...currentDeliveryConfig,
+          ...incomingDeliveryConfig,
+        } as Prisma.InputJsonValue,
+      },
+    });
+
+    return this.getTenantDeliverySettings(tenantSlug);
   }
 
   async getStoryousSettings(): Promise<StoryousSettings | null> {
@@ -286,98 +369,5 @@ export class SettingsService {
     });
 
     return this.getStoryousModifierMappings(tenantId);
-  }
-
-  async getTenantOperationsSettings(tenantSlug: string): Promise<TenantOperationsSettings> {
-    const tenant = await this.getTenantForSettings(tenantSlug);
-    const theme = ((tenant.theme as TenantTheme | null) || {}) as TenantTheme;
-    const themeRecord = (tenant.theme && typeof tenant.theme === 'object'
-      ? tenant.theme
-      : {}) as Record<string, any>;
-
-    return {
-      tenantId: tenant.id,
-      tenantSlug: tenant.slug,
-      tenantSubdomain: tenant.subdomain,
-      primaryColor: theme.primaryColor || null,
-      secondaryColor: theme.secondaryColor || null,
-      maintenanceMode: Boolean(theme.maintenanceMode),
-      openingHours: themeRecord.openingHours || null,
-    };
-  }
-
-  async updateTenantOperationsSettings(
-    tenantSlug: string,
-    data: {
-      maintenanceMode?: boolean;
-      openingHours?: Record<string, any> | null;
-    },
-  ): Promise<TenantOperationsSettings> {
-    const tenant = await this.getTenantForSettings(tenantSlug);
-    const nextTheme: Record<string, any> = {};
-
-    if (data.maintenanceMode !== undefined) {
-      nextTheme.maintenanceMode = Boolean(data.maintenanceMode);
-    }
-    if (data.openingHours !== undefined) {
-      nextTheme.openingHours = data.openingHours;
-    }
-
-    if (Object.keys(nextTheme).length > 0) {
-      await this.tenantsService.updateTenant(tenant.subdomain || tenant.slug, {
-        theme: nextTheme,
-      });
-    }
-
-    return this.getTenantOperationsSettings(tenant.subdomain || tenant.slug);
-  }
-
-  async getTenantPaymentSettings(tenantSlug: string): Promise<TenantPaymentSettings> {
-    const tenant = await this.getTenantForSettings(tenantSlug);
-
-    return {
-      tenantId: tenant.id,
-      tenantSlug: tenant.slug,
-      tenantSubdomain: tenant.subdomain,
-      paymentProvider: tenant.paymentProvider || null,
-      paymentConfig: ((tenant.paymentConfig as PaymentConfig | null) || {}) as PaymentConfig,
-    };
-  }
-
-  async updateTenantPaymentSettings(
-    tenantSlug: string,
-    data: { paymentConfig?: PaymentConfig | null },
-  ): Promise<TenantPaymentSettings> {
-    const tenant = await this.getTenantForSettings(tenantSlug);
-
-    await this.tenantsService.updateTenant(tenant.subdomain || tenant.slug, {
-      paymentConfig: (data.paymentConfig || {}) as Record<string, any>,
-    });
-
-    return this.getTenantPaymentSettings(tenant.subdomain || tenant.slug);
-  }
-
-  async getTenantDeliverySettings(tenantSlug: string): Promise<TenantDeliverySettings> {
-    const tenant = await this.getTenantForSettings(tenantSlug);
-
-    return {
-      tenantId: tenant.id,
-      tenantSlug: tenant.slug,
-      tenantSubdomain: tenant.subdomain,
-      deliveryConfig: ((tenant.deliveryConfig as DeliveryConfig | null) || {}) as DeliveryConfig,
-    };
-  }
-
-  async updateTenantDeliverySettings(
-    tenantSlug: string,
-    data: { deliveryConfig?: DeliveryConfig | null },
-  ): Promise<TenantDeliverySettings> {
-    const tenant = await this.getTenantForSettings(tenantSlug);
-
-    await this.tenantsService.updateTenant(tenant.subdomain || tenant.slug, {
-      deliveryConfig: (data.deliveryConfig || {}) as Record<string, any>,
-    });
-
-    return this.getTenantDeliverySettings(tenant.subdomain || tenant.slug);
   }
 }
