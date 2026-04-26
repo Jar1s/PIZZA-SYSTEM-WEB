@@ -344,6 +344,50 @@ describe('StoryousService', () => {
     );
   });
 
+  it('sends Wolt delivery orders to Storyous as pickup handoff for courier issue', async () => {
+    enableStoryousSettings(true);
+    const fetchMock = mockSuccessfulStoryousCreate('storyous-wolt');
+
+    await service.createOrder(
+      {
+        ...baseOrder,
+        deliveryId: 'delivery-wolt-1',
+        delivery: {
+          id: 'delivery-wolt-1',
+          provider: 'wolt',
+          status: 'ACTIVE',
+          quote: { etaMinutes: 20 },
+        },
+      } as any,
+      'merchant-1',
+      'place-1',
+    );
+
+    const createPayload = JSON.parse((fetchMock.mock.calls[1]?.[1] as RequestInit).body as string);
+    expect(createPayload.deliveryType).toBe('pickup');
+    expect(createPayload.deliveryProvider).toBe('wolt');
+    expect(createPayload.note).toContain('Doručuje Wolt kuriér - iba vydať kuriérovi');
+  });
+
+  it('keeps non-Wolt orders in Storyous delivery flow', async () => {
+    enableStoryousSettings(true);
+    const fetchMock = mockSuccessfulStoryousCreate('storyous-delivery');
+
+    await service.createOrder(
+      {
+        ...baseOrder,
+        deliveryId: 'delivery-custom-1',
+        delivery: { id: 'delivery-custom-1', provider: 'custom', status: 'ACTIVE' },
+      } as any,
+      'merchant-1',
+      'place-1',
+    );
+
+    const createPayload = JSON.parse((fetchMock.mock.calls[1]?.[1] as RequestInit).body as string);
+    expect(createPayload.deliveryType).toBe('delivery');
+    expect(createPayload.deliveryProvider).toBeUndefined();
+  });
+
   it('marks card-on-delivery orders as paid but not fiscalized for Storyous receipt printing', async () => {
     enableStoryousSettings(true);
     const fetchMock = mockSuccessfulStoryousCreate('storyous-card');
