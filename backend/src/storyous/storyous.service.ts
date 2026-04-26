@@ -285,8 +285,29 @@ export class StoryousService {
   }
 
   private getPaymentReceiptLabel(order: Order): string {
+    const paymentRef = String((order as any)?.paymentRef || '').toLowerCase();
+    if (paymentRef === 'cod:card') {
+      return 'karta pri doručení';
+    }
+    if (paymentRef === 'cod:cash') {
+      return 'hotovosť pri doručení';
+    }
+
     const paymentStatus = String((order as any)?.paymentStatus || '').toLowerCase();
     return paymentStatus === 'pending' ? 'pri prevzatí' : 'platené vopred';
+  }
+
+  private isAlreadyPaidForStoryous(order: Order): boolean {
+    const paymentRef = String((order as any)?.paymentRef || '').toLowerCase();
+    if (paymentRef === 'cod:card') {
+      return true;
+    }
+    if (paymentRef === 'cod:cash') {
+      return false;
+    }
+
+    const paymentStatus = String((order as any)?.paymentStatus || '').toLowerCase();
+    return paymentStatus !== 'pending';
   }
 
   private buildCustomerReceiptLines(order: Order, requestedDeliveryAt: string): string[] {
@@ -374,7 +395,8 @@ export class StoryousService {
     const requestedPickupTime = requestedDeliveryAt;
     const orderReference = this.getOrderReference(order);
     const orderSourceWebsite = this.getOrderSourceWebsite(order);
-    const isAlreadyPaid = String((order as any).paymentStatus || '').toLowerCase() !== 'pending';
+    const isAlreadyPaid = this.isAlreadyPaidForStoryous(order);
+    const paymentReceiptLabel = this.getPaymentReceiptLabel(order);
     const receiptIncludeModifierLines = settings?.receiptIncludeModifierLines ?? true;
     const modifierMappingsByOptionId = await this.getModifierMappingsByOptionId(
       String((order as any)?.tenantId || ''),
@@ -480,7 +502,7 @@ export class StoryousService {
       return itemData;
     });
 
-    const orderNote = `${orderReference}\nWeb: ${orderSourceWebsite}`;
+    const orderNote = `${orderReference}\nWeb: ${orderSourceWebsite}\nSpôsob platby: ${paymentReceiptLabel}`;
 
     const orderData: any = {
       items,
@@ -520,6 +542,7 @@ export class StoryousService {
       deliveryAt: requestedDeliveryAt,
       scheduledAt: requestedDeliveryAt,
       alreadyPaid: isAlreadyPaid,
+      paymentAlreadyFiscalized: false,
       timezone: 'Europe/Bratislava',
       note: orderNote,
     };

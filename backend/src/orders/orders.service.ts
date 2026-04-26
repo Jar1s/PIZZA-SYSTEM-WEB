@@ -744,6 +744,11 @@ export class OrdersService {
         userId: userId || null, // Can be null for guest orders
         status: OrderStatus.PENDING,
         paymentStatus: data.paymentMethod ? 'pending' : null, // For cash on delivery
+        paymentRef: data.paymentMethod === 'card'
+          ? 'cod:card'
+          : data.paymentMethod === 'cash'
+            ? 'cod:cash'
+            : null,
         customer: data.customer as unknown as Prisma.InputJsonValue,
         address: {
           ...resolvedAddress,

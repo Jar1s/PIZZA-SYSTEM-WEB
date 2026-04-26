@@ -22,6 +22,43 @@ describe('StoryousService', () => {
       text: jest.fn().mockResolvedValue(JSON.stringify(body)),
     }) as any;
 
+  const enableStoryousSettings = (autoAcceptPrintMode = true) => {
+    mockSettingsService.getStoryousSettings.mockResolvedValue({
+      clientId: 'client',
+      clientSecret: 'secret',
+      enabled: true,
+      autoSync: true,
+      defaultDeliveryLeadMinutes: 45,
+      autoAcceptPrintMode,
+      receiptIncludeModifierLines: true,
+      receiptIncludeOrderNumber: true,
+    });
+  };
+
+  const mockSuccessfulStoryousCreate = (orderId = 'storyous-1') => {
+    const fetchMock = jest.spyOn(global, 'fetch');
+    fetchMock
+      .mockResolvedValueOnce(
+        buildJsonResponse({
+          access_token: 'token-123',
+          expires_at: '2026-04-02T11:00:00.000Z',
+        }),
+      )
+      .mockResolvedValueOnce(
+        buildJsonResponse({
+          orderId,
+          state: 'CONFIRMED',
+        }),
+      )
+      .mockResolvedValueOnce(
+        buildJsonResponse({
+          orderId,
+          state: 'CONFIRMED',
+        }),
+      );
+    return fetchMock;
+  };
+
   const baseOrder = {
     id: 'order-1',
     tenantId: 'tenant-1',
@@ -305,5 +342,58 @@ describe('StoryousService', () => {
     expect(preview.warnings).toContain(
       'Modifier "Paradajkovy" (tomato) nema Storyous addition mapping, preto ostava vo fallback note.',
     );
+  });
+
+  it('marks card-on-delivery orders as paid but not fiscalized for Storyous receipt printing', async () => {
+    enableStoryousSettings(true);
+    const fetchMock = mockSuccessfulStoryousCreate('storyous-card');
+
+    await service.createOrder(
+      {
+        ...baseOrder,
+        paymentRef: 'cod:card',
+        paymentStatus: 'pending',
+      } as any,
+      'merchant-1',
+      'place-1',
+    );
+
+    const createPayload = JSON.parse((fetchMock.mock.calls[1]?.[1] as RequestInit).body as string);
+    expect(createPayload.alreadyPaid).toBe(true);
+    expect(createPayload.paymentAlreadyFiscalized).toBe(false);
+    expect(createPayload.note).toContain('Spôsob platby: karta pri doručení');
+  });
+
+  it('keeps cash-on-delivery orders unpaid for Storyous and labels the receipt preview', async () => {
+    enableStoryousSettings(true);
+    const fetchMock = mockSuccessfulStoryousCreate('storyous-cash');
+
+    await service.createOrder(
+      {
+        ...baseOrder,
+        paymentRef: 'cod:cash',
+        paymentStatus: 'pending',
+      } as any,
+      'merchant-1',
+      'place-1',
+    );
+
+    const createPayload = JSON.parse((fetchMock.mock.calls[1]?.[1] as RequestInit).body as string);
+    expect(createPayload.alreadyPaid).toBe(false);
+    expect(createPayload.paymentAlreadyFiscalized).toBe(false);
+    expect(createPayload.note).toContain('Spôsob platby: hotovosť pri doručení');
+  });
+
+  it('shows card-on-delivery payment method in receipt preview', async () => {
+    enableStoryousSettings(true);
+
+    const preview = await service.getReceiptPreview({
+      ...baseOrder,
+      paymentRef: 'cod:card',
+      paymentStatus: 'pending',
+    } as any);
+
+    expect(preview.noteLines).toContain('Spôsob platby: karta pri doručení');
+    expect(preview.customerDetailLines).toContain('Spôsob platby: karta pri doručení');
   });
 });

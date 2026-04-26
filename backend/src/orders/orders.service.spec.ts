@@ -497,6 +497,7 @@ describe('OrdersService', () => {
         buildOrderResult({
           userId: 'user-1',
           paymentStatus: 'pending',
+          paymentRef: 'cod:cash',
         }),
       );
       mockPrismaService.refreshToken.create.mockResolvedValue({
@@ -534,6 +535,48 @@ describe('OrdersService', () => {
       expect(result).toHaveProperty('authToken');
       expect(result).toHaveProperty('refreshToken');
       expect(result).toHaveProperty('user');
+    });
+
+    it('should store card-on-delivery marker in paymentRef without changing pending payment status', async () => {
+      const cardOrderDto: CreateOrderDto = {
+        ...baseOrderDto,
+        paymentMethod: 'card',
+      };
+
+      mockPrismaService.product.findFirst.mockResolvedValue(mockProduct);
+      mockPrismaService.user.findFirst.mockResolvedValue({
+        id: 'user-card',
+        email: 'john@example.com',
+        name: 'John Doe',
+        phone: '+421912345678',
+        role: 'CUSTOMER',
+      });
+      mockPrismaService.tenant.findUnique.mockResolvedValue(mockTenant);
+      mockPrismaService.order.create.mockResolvedValue(
+        buildOrderResult({
+          userId: 'user-card',
+          paymentStatus: 'pending',
+          paymentRef: 'cod:card',
+        }),
+      );
+      mockPrismaService.refreshToken.create.mockResolvedValue({
+        id: 'refresh-card',
+        userId: 'user-card',
+        token: process.env.TEST_REFRESH_TOKEN || 'test-refresh-token',
+        expiresAt: new Date(),
+      });
+      mockJwtService.sign.mockReturnValue('jwt-token');
+
+      await service.createOrder(tenantId, cardOrderDto);
+
+      expect(mockPrismaService.order.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          userId: 'user-card',
+          paymentStatus: 'pending',
+          paymentRef: 'cod:card',
+        }),
+        include: expect.any(Object),
+      });
     });
 
     it('should auto-login existing user by email', async () => {
