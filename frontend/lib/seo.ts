@@ -1,6 +1,7 @@
-import type { Tenant } from '@pizza-ecosystem/shared';
-
-type TenantLike = Partial<Tenant> | null | undefined;
+type TenantLike = {
+  name?: string | null;
+  description?: string | null;
+} | null | undefined;
 
 function cleanText(value?: string | null): string {
   return String(value || '')
