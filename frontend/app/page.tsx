@@ -1,11 +1,43 @@
+import type { Metadata } from 'next';
 import { headers } from 'next/headers';
 import { getTenantServer, getProductsServer, getTenantSlugFromHeaders } from '@/lib/server-api';
+import { buildSeoDescription, buildSeoTitle } from '@/lib/seo';
 import { HomePageClient } from '@/components/home/HomePageClient';
 import { ProductSkeleton } from '@/components/menu/ProductSkeleton';
 import { Tenant, Product } from '@pizza-ecosystem/shared';
 
 // Force dynamic rendering because we use dynamic tenant resolution
 export const dynamic = 'force-dynamic';
+
+export async function generateMetadata({
+  searchParams,
+}: {
+  searchParams: { tenant?: string };
+}): Promise<Metadata> {
+  const headersList = await headers();
+  const host = headersList.get('host') || '';
+  const allowQueryTenant =
+    host.includes('localhost') ||
+    host.includes('127.0.0.1') ||
+    host.includes('vercel.app');
+  const tenantFromHeader = headersList.get('x-tenant');
+  const tenantFromQuery = allowQueryTenant ? searchParams?.tenant : null;
+  const tenantSlug = tenantFromQuery || tenantFromHeader || getTenantSlugFromHeaders(headersList);
+
+  try {
+    const tenant = await getTenantServer(tenantSlug);
+    const siteName = tenant?.name || 'Pizza Ordering';
+    return {
+      title: buildSeoTitle({ ...tenant, name: siteName }),
+      description: buildSeoDescription(tenant, siteName),
+    };
+  } catch {
+    return {
+      title: 'Pizza Ordering | Rozvoz pizze',
+      description: 'Objednajte pizzu online s rýchlym doručením a čerstvými surovinami.',
+    };
+  }
+}
 
 /**
  * Server Component for SEO optimization

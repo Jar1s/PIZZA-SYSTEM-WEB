@@ -3,6 +3,7 @@ import { Inter } from 'next/font/google';
 import './globals.css';
 import { headers } from 'next/headers';
 import { getTenantServer } from '@/lib/server-api';
+import { buildSeoDescription, buildSeoTitle } from '@/lib/seo';
 import { withTenantThemeDefaults } from '@/lib/tenant-utils';
 import { Providers } from '@/components/Providers';
 import { SafeAnalytics } from '@/components/tracking/SafeAnalytics';
@@ -52,13 +53,17 @@ export async function generateMetadata(): Promise<Metadata> {
     const normalizedTenant = withTenantThemeDefaults(tenantData);
     const siteName = normalizedTenant?.name || 'Pizza Ordering';
     const theme = typeof normalizedTenant?.theme === 'object' && normalizedTenant?.theme !== null ? normalizedTenant.theme as any : {};
-    const description = tenantData.description || (theme.description as string) || `Order delicious pizza online from ${siteName}. Fast delivery, fresh ingredients, and great prices.`;
+    const description = buildSeoDescription({
+      ...tenantData,
+      description: tenantData.description || (theme.description as string),
+    }, siteName);
+    const homeTitle = buildSeoTitle({ ...tenantData, name: siteName });
     const imageUrl = (theme.logo as string) || tenantData.logo || `${baseUrl}/images/og-default.jpg`;
     
     return {
       metadataBase: new URL(baseUrl),
       title: {
-        default: siteName,
+        default: homeTitle,
         template: `%s | ${siteName}`,
       },
       description,
@@ -79,7 +84,7 @@ export async function generateMetadata(): Promise<Metadata> {
         locale: 'sk_SK',
         url: baseUrl,
         siteName,
-        title: siteName,
+        title: homeTitle,
         description,
         images: [
           {
@@ -92,7 +97,7 @@ export async function generateMetadata(): Promise<Metadata> {
       },
       twitter: {
         card: 'summary_large_image',
-        title: siteName,
+        title: homeTitle,
         description,
         images: [imageUrl],
       },
@@ -115,18 +120,18 @@ export async function generateMetadata(): Promise<Metadata> {
   } catch {
     return {
       title: {
-        default: 'Pizza Ordering',
+        default: 'Pizza Ordering | Rozvoz pizze',
         template: '%s | Pizza Ordering',
       },
-      description: 'Order your favorite pizza online. Fast delivery, fresh ingredients, and great prices.',
+      description: 'Objednajte pizzu online s rýchlym doručením a čerstvými surovinami.',
       metadataBase: new URL(baseUrl),
       openGraph: {
         type: 'website',
         locale: 'sk_SK',
         url: baseUrl,
         siteName: 'Pizza Ordering',
-        title: 'Pizza Ordering',
-        description: 'Order your favorite pizza online',
+        title: 'Pizza Ordering | Rozvoz pizze',
+        description: 'Objednajte pizzu online s rýchlym doručením a čerstvými surovinami.',
       },
       robots: {
         index: true,
@@ -189,7 +194,10 @@ export default async function RootLayout({
     '@context': 'https://schema.org',
     '@type': 'Restaurant',
     name: siteName,
-    description: tenantData.description || (theme.description as string) || `Order delicious pizza online from ${siteName}`,
+    description: buildSeoDescription({
+      ...tenantData,
+      description: tenantData.description || (theme.description as string),
+    }, siteName),
     url: baseUrl,
     logo: (theme.logo as string) || tenantData.logo || `${baseUrl}/logo.png`,
     image: (theme.logo as string) || tenantData.logo || `${baseUrl}/images/og-default.jpg`,
