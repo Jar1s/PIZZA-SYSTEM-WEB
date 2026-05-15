@@ -50,7 +50,7 @@ export const HeroSection = ({ tenantName, primaryColor, isDark = false }: HeroSe
       <div className="absolute inset-0" style={{ position: 'absolute', zIndex: 0 }}>
         <Image
           src="/images/hero/pizza-hero.jpg"
-          alt="Delicious pizza"
+          alt={`${tenantName} - rozvoz pizze`}
           fill
           sizes="100vw"
           quality={80}
