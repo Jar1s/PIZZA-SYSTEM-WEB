@@ -46,10 +46,11 @@ export class TelegramNotificationsService implements OnModuleInit {
     if (!this.enabled() || process.env.TELEGRAM_NOTIFY_STARTUP === 'false') return;
 
     await this.send([
-      'Backend started',
-      `Environment: ${process.env.NODE_ENV || 'development'}`,
-      `Time: ${this.date(new Date())}`,
-      `Backend URL: ${process.env.BACKEND_URL || 'not set'}`,
+      '<b>Backend spustený</b>',
+      '',
+      `Prostredie: ${this.escape(process.env.NODE_ENV || 'development')}`,
+      `Čas: ${this.escape(this.date(new Date()))}`,
+      `Backend: ${this.escape(process.env.BACKEND_URL || 'not set')}`,
     ].join('\n'));
   }
 
@@ -60,32 +61,33 @@ export class TelegramNotificationsService implements OnModuleInit {
     const address = this.record(order.address);
     const currency = order.tenant?.currency || 'EUR';
     const items = order.items || [];
+    const tenantName = order.tenant?.name || order.tenant?.slug || 'unknown tenant';
 
     await this.send([
-      'New order',
+      `<b>Nová objednávka ${this.escape(this.shortOrderLabel(order))}</b>`,
+      this.escape(tenantName),
       '',
-      `Tenant: ${order.tenant?.name || order.tenant?.slug || 'unknown tenant'}`,
-      `Order: ${this.orderLabel(order)}`,
-      `Status: ${order.status || 'unknown'}`,
-      `Payment: ${this.payment(order)}`,
-      `Time: ${this.date(order.createdAt || new Date())}`,
+      `Stav: <b>${this.escape(this.statusLabel(order.status))}</b>`,
+      `Platba: ${this.escape(this.payment(order))}`,
+      `Čas: ${this.escape(this.date(order.createdAt || new Date()))}`,
       '',
-      'Customer:',
-      `Name: ${this.value(customer.name)}`,
-      `Phone: ${this.value(customer.phone)}`,
-      `Email: ${this.value(customer.email)}`,
+      '<b>Zákazník</b>',
+      `${this.escape(this.value(customer.name))}`,
+      `${this.escape(this.value(customer.phone))}`,
+      `${this.escape(this.value(customer.email))}`,
       '',
-      'Delivery:',
-      `Street: ${this.value(address.street)} ${this.value(address.houseNumber, '')}`.trim(),
-      `City: ${this.value(address.postalCode, '')} ${this.value(address.city)}`.trim(),
-      `Instructions: ${this.value(address.instructions || address.description)}`,
+      '<b>Doručenie</b>',
+      `${this.escape(`${this.value(address.street)} ${this.value(address.houseNumber, '')}`.trim())}`,
+      `${this.escape(`${this.value(address.postalCode, '')} ${this.value(address.city)}`.trim())}`,
+      `Poznámka: ${this.escape(this.value(address.instructions || address.description, '-'))}`,
       '',
-      'Items:',
+      '<b>Položky</b>',
       ...items.map((item) => this.itemLine(item, currency)),
       '',
-      `Subtotal: ${this.money(order.subtotalCents, currency)}`,
-      `Delivery fee: ${this.money(order.deliveryFeeCents, currency)}`,
-      `Total: ${this.money(order.totalCents, currency)}`,
+      '<b>Súhrn</b>',
+      `Medzisúčet: ${this.escape(this.money(order.subtotalCents, currency))}`,
+      `Doprava: ${this.escape(this.money(order.deliveryFeeCents, currency))}`,
+      `<b>Celkom: ${this.escape(this.money(order.totalCents, currency))}</b>`,
     ].join('\n'));
   }
 
@@ -96,16 +98,15 @@ export class TelegramNotificationsService implements OnModuleInit {
     source: 'dashboard' | 'storyous' | 'system',
   ): Promise<void> {
     if (!this.enabled() || process.env.TELEGRAM_NOTIFY_STATUS_CHANGES === 'false') return;
+    const tenantName = order.tenant?.name || order.tenant?.slug || 'unknown tenant';
 
     await this.send([
-      'Order status changed',
+      `<b>Zmena stavu ${this.escape(this.shortOrderLabel(order))}</b>`,
+      this.escape(tenantName),
       '',
-      `Tenant: ${order.tenant?.name || order.tenant?.slug || 'unknown tenant'}`,
-      `Order: ${this.orderLabel(order)}`,
-      `From: ${fromStatus}`,
-      `To: ${toStatus}`,
-      `Source: ${source}`,
-      `Time: ${this.date(new Date())}`,
+      `${this.escape(this.statusLabel(fromStatus))} → <b>${this.escape(this.statusLabel(toStatus))}</b>`,
+      `Zdroj: ${this.escape(this.sourceLabel(source))}`,
+      `Čas: ${this.escape(this.date(new Date()))}`,
     ].join('\n'));
   }
 
@@ -113,17 +114,17 @@ export class TelegramNotificationsService implements OnModuleInit {
     if (!this.enabled() || process.env.TELEGRAM_NOTIFY_ERRORS === 'false') return;
 
     await this.send([
-      'Backend error',
+      '<b>Backend chyba</b>',
       '',
-      `Title: ${report.title}`,
-      `Message: ${report.message || 'no message'}`,
-      report.statusCode ? `HTTP status: ${report.statusCode}` : '',
-      report.method || report.path ? `Request: ${report.method || ''} ${report.path || ''}`.trim() : '',
-      report.tenantId ? `Tenant ID: ${report.tenantId}` : '',
-      report.orderId ? `Order ID: ${report.orderId}` : '',
-      `Time: ${this.date(new Date())}`,
+      `Typ: ${this.escape(report.title)}`,
+      `Správa: ${this.escape(report.message || 'no message')}`,
+      report.statusCode ? `HTTP: ${this.escape(String(report.statusCode))}` : '',
+      report.method || report.path ? `Request: ${this.escape(`${report.method || ''} ${report.path || ''}`.trim())}` : '',
+      report.tenantId ? `Tenant ID: ${this.escape(report.tenantId)}` : '',
+      report.orderId ? `Order ID: ${this.escape(report.orderId)}` : '',
+      `Čas: ${this.escape(this.date(new Date()))}`,
       ...this.details(report.details),
-      report.stack ? `Stack: ${this.truncate(report.stack, 900)}` : '',
+      report.stack ? `Stack: <code>${this.escape(this.truncate(report.stack, 900))}</code>` : '',
     ].filter(Boolean).join('\n'));
   }
 
@@ -144,6 +145,7 @@ export class TelegramNotificationsService implements OnModuleInit {
           body: JSON.stringify({
             chat_id: process.env.TELEGRAM_CHAT_ID,
             text: this.truncate(text, 3900),
+            parse_mode: 'HTML',
             disable_web_page_preview: true,
           }),
         },
@@ -163,23 +165,29 @@ export class TelegramNotificationsService implements OnModuleInit {
   }
 
   private itemLine(item: NonNullable<TelegramOrder['items']>[number], currency: string): string {
-    const line = `- ${item.quantity || 1}x ${item.productName || 'unknown item'} (${this.money(item.priceCents, currency)}/ks)`;
+    const line = `• <b>${this.escape(String(item.quantity || 1))}× ${this.escape(item.productName || 'unknown item')}</b> · ${this.escape(this.money(item.priceCents, currency))}/ks`;
     if (!item.modifiers || typeof item.modifiers !== 'object') return line;
-    return `${line}\n  Modifiers: ${this.truncate(this.json(item.modifiers), 300)}`;
+    const modifiers = this.modifierLines(item.modifiers);
+    return modifiers.length ? `${line}\n${modifiers.join('\n')}` : line;
   }
 
   private payment(order: TelegramOrder): string {
-    if (order.paymentRef === 'cod:cash') return `cash on delivery (${order.paymentStatus || 'pending'})`;
-    if (order.paymentRef === 'cod:card') return `card on delivery (${order.paymentStatus || 'pending'})`;
-    return order.paymentStatus || order.paymentRef || 'not selected yet';
+    if (order.paymentRef === 'cod:cash') return `hotovosť pri doručení (${this.paymentStatusLabel(order.paymentStatus)})`;
+    if (order.paymentRef === 'cod:card') return `karta pri doručení (${this.paymentStatusLabel(order.paymentStatus)})`;
+    if (order.paymentRef) return `${order.paymentRef} (${this.paymentStatusLabel(order.paymentStatus)})`;
+    return this.paymentStatusLabel(order.paymentStatus);
   }
 
   private details(details?: Record<string, unknown>): string[] {
     if (!details) return [];
     return Object.entries(details).map(([key, value]) => {
       const rendered = typeof value === 'string' ? value : this.json(value);
-      return `${key}: ${this.truncate(rendered || '', 500)}`;
+      return `${this.escape(key)}: ${this.escape(this.truncate(rendered || '', 500))}`;
     });
+  }
+
+  private shortOrderLabel(order: TelegramOrder): string {
+    return order.orderNumber ? `#${order.orderNumber}` : `#${order.id.slice(0, 8)}`;
   }
 
   private orderLabel(order: TelegramOrder): string {
@@ -203,6 +211,91 @@ export class TelegramNotificationsService implements OnModuleInit {
 
   private value(value: unknown, fallback = 'not set'): string {
     return value === null || value === undefined || value === '' ? fallback : String(value);
+  }
+
+  private statusLabel(status: string | null | undefined): string {
+    switch (String(status || '').toUpperCase()) {
+      case 'PENDING':
+        return 'Čaká na platbu';
+      case 'PAID':
+        return 'Zaplatené';
+      case 'PREPARING':
+        return 'V príprave';
+      case 'READY':
+        return 'Pripravené';
+      case 'OUT_FOR_DELIVERY':
+        return 'Na ceste';
+      case 'DELIVERED':
+        return 'Doručené';
+      case 'CANCELED':
+      case 'CANCELLED':
+        return 'Zrušené';
+      default:
+        return status || 'Neznámy';
+    }
+  }
+
+  private paymentStatusLabel(status: string | null | undefined): string {
+    switch (String(status || '').toLowerCase()) {
+      case 'pending':
+        return 'čaká';
+      case 'success':
+      case 'paid':
+        return 'zaplatené';
+      case 'failed':
+        return 'zlyhalo';
+      case 'canceled':
+      case 'cancelled':
+        return 'zrušené';
+      default:
+        return 'zatiaľ nevybraná';
+    }
+  }
+
+  private sourceLabel(source: string): string {
+    switch (source) {
+      case 'dashboard':
+        return 'Dashboard';
+      case 'storyous':
+        return 'Storyous';
+      case 'system':
+        return 'Systém';
+      default:
+        return source;
+    }
+  }
+
+  private modifierLines(modifiers: unknown): string[] {
+    if (!modifiers || typeof modifiers !== 'object') return [];
+    return Object.entries(modifiers as Record<string, unknown>).map(([key, value]) => {
+      const values = Array.isArray(value) ? value : [value];
+      return `  ${this.escape(this.modifierLabel(key))}: ${this.escape(values.map((item) => this.optionLabel(item)).join(', '))}`;
+    });
+  }
+
+  private modifierLabel(key: string): string {
+    const labels: Record<string, string> = {
+      edge: 'Okraj',
+      dough: 'Cesto',
+      sauce: 'Omáčka',
+      cheese: 'Syr',
+    };
+    return labels[key] || this.optionLabel(key);
+  }
+
+  private optionLabel(value: unknown): string {
+    return String(value ?? '')
+      .replace(/[-_]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .replace(/\b\w/g, (character) => character.toUpperCase()) || '-';
+  }
+
+  private escape(value: string): string {
+    return value
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
   }
 
   private json(value: unknown): string {
