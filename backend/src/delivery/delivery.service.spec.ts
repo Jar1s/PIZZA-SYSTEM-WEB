@@ -6,12 +6,13 @@ const mockPrisma = {
     findUnique: jest.fn(),
     update: jest.fn(),
   },
-  tenant: {
-    findUnique: jest.fn(),
-  },
   delivery: {
     findFirst: jest.fn(),
+    findMany: jest.fn(),
     update: jest.fn(),
+  },
+  tenant: {
+    findUnique: jest.fn(),
   },
   orderStatusHistory: {
     create: jest.fn(),
@@ -21,6 +22,7 @@ const mockPrisma = {
 
 const mockWoltDrive = {
   cancelDelivery: jest.fn(),
+  getOrderStatus: jest.fn(),
 };
 
 const mockOrderStatusService = {
@@ -291,5 +293,44 @@ describe('DeliveryService handleWoltWebhook', () => {
     });
     expect(mockOrderStatusService.updateStatus).not.toHaveBeenCalled();
     expect(mockPrisma.order.update).not.toHaveBeenCalled();
+  });
+
+  it('disables stale polling after Wolt permission errors', async () => {
+    mockPrisma.delivery.findMany.mockResolvedValue([
+      {
+        id: 'delivery-1',
+        jobId: 'job-1',
+        status: DeliveryStatus.PENDING,
+        quote: {},
+        tenant: {
+          id: 'tenant-1',
+          deliveryConfig: {
+            woltConfig: {
+              apiKey: 'merchant-key',
+              venueId: 'venue-1',
+            },
+          },
+        },
+        orders: [{ id: 'order-1', status: OrderStatus.PREPARING, tenantId: 'tenant-1' }],
+      },
+    ]);
+    mockWoltDrive.getOrderStatus = jest.fn().mockRejectedValue({
+      status: 403,
+      message: 'Wolt API odmietol požiadavku. Skontrolujte oprávnenia vášho API kľúča.',
+    });
+
+    await (service as any).reconcileStaleWoltDeliveries();
+
+    expect(mockPrisma.delivery.update).toHaveBeenCalledWith({
+      where: { id: 'delivery-1' },
+      data: {
+        quote: expect.objectContaining({
+          woltPollingDisabledAt: expect.any(String),
+          woltPollingDisabledReason: 'permission_denied',
+          lastPolledAt: expect.any(String),
+          lastPolledAuthError: 'Wolt API odmietol požiadavku. Skontrolujte oprávnenia vášho API kľúča.',
+        }),
+      },
+    });
   });
 });

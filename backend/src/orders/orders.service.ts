@@ -1118,15 +1118,6 @@ export class OrdersService {
             || getProductDisplayName(productNameForMapping, 'sk')
             || item.productName;
           
-          this.logger.log('getOrders: Adding displayName to item', {
-            itemId: item.id,
-            productId: item.productId,
-            productName: item.productName,
-            productDbName: product?.name,
-            productDisplayName: product?.displayName,
-            finalDisplayName: displayName,
-          });
-          
           return {
             id: item.id,
             productId: item.productId,

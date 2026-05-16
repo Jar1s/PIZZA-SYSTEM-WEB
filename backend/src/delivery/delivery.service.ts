@@ -589,6 +589,16 @@ export class DeliveryService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
+  private isWoltPollingPermissionError(error: any): boolean {
+    const status = typeof error?.status === 'number' ? error.status : null;
+    if (status === 401 || status === 403) {
+      return true;
+    }
+
+    const message = String(error?.message || '').toLowerCase();
+    return message.includes('autentifik') || message.includes('oprávnen') || message.includes('permission');
+  }
+
   async checkAreaByTenantSlug(
     tenantSlug: string,
     dropoffAddress: any,
@@ -1327,6 +1337,10 @@ export class DeliveryService implements OnModuleInit, OnModuleDestroy {
         }
 
         const quoteObj = this.getQuoteObject(delivery.quote);
+        if (typeof quoteObj.woltPollingDisabledAt === 'string' && quoteObj.woltPollingDisabledAt.trim()) {
+          continue;
+        }
+
         const snapshotConfig = this.getWoltApiConfigFromQuote(quoteObj);
         const statusConfig =
           snapshotConfig.venueId || snapshotConfig.apiUrl || snapshotConfig.merchantId
@@ -1383,6 +1397,31 @@ export class DeliveryService implements OnModuleInit, OnModuleDestroy {
 
         await this.syncOrdersForWoltState(delivery.orders, mappedStatus);
       } catch (error: any) {
+        if (this.isWoltPollingPermissionError(error)) {
+          const disabledAt = new Date().toISOString();
+          const quoteObj = this.getQuoteObject(delivery.quote);
+
+          await this.prisma.delivery.update({
+            where: { id: delivery.id },
+            data: {
+              quote: {
+                ...quoteObj,
+                woltPollingDisabledAt: disabledAt,
+                woltPollingDisabledReason: 'permission_denied',
+                lastPolledAt: disabledAt,
+                lastPolledAuthError: error?.message || 'Wolt polling disabled due to permission error',
+              } as Prisma.InputJsonValue,
+            },
+          });
+
+          this.logger.warn('[reconcileStaleWoltDeliveries] Disabled polling for delivery after Wolt permission error', {
+            deliveryId: delivery.id,
+            jobId: delivery.jobId,
+            error: error?.message,
+          });
+          continue;
+        }
+
         this.logger.warn('[reconcileStaleWoltDeliveries] Failed to reconcile delivery', {
           deliveryId: delivery.id,
           jobId: delivery.jobId,
@@ -1392,4 +1431,3 @@ export class DeliveryService implements OnModuleInit, OnModuleDestroy {
     }
   }
 }
-
