@@ -219,6 +219,38 @@ export function OrderCard({
     setClientPanelOpen(false);
   }, [order.id]);
 
+  useEffect(() => {
+    if (!showWoltModal) return;
+
+    let cancelled = false;
+
+    const loadPromise = async () => {
+      setCheckingWolt(true);
+      setWoltError(null);
+
+      try {
+        const promise = await checkWoltAvailability(order.id, woltPreparationMinutes);
+        if (!cancelled) {
+          setWoltPromise(promise);
+        }
+      } catch (error: any) {
+        if (!cancelled) {
+          setWoltError(error.message || 'Wolt nie je dostupný');
+        }
+      } finally {
+        if (!cancelled) {
+          setCheckingWolt(false);
+        }
+      }
+    };
+
+    void loadPromise();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [showWoltModal, order.id, woltPreparationMinutes]);
+
   const tenantSlugForAreaCheck =
     tenantSlug || (order as any)?.tenant?.slug || (order as any)?.tenant?.subdomain || '';
 
@@ -308,7 +340,11 @@ export function OrderCard({
     ? woltAreaCheck?.reason || 'Adresa zákazníka je mimo doručovacej zóny Wolt.'
     : null;
   const canCreateWoltEffective = canCreateWolt && !isOutsideWoltArea;
-  const canCancelWolt = isWoltDelivery && order.status !== OrderStatus.DELIVERED && order.status !== OrderStatus.CANCELED;
+  const canCancelWolt =
+    isWoltDelivery &&
+    (order.status === OrderStatus.PAID ||
+      order.status === OrderStatus.PREPARING ||
+      order.status === OrderStatus.READY);
   // Show cancel for anything except delivered/canceled
   const canShowCancel = order.status !== OrderStatus.DELIVERED && order.status !== OrderStatus.CANCELED;
   // Desktop already has specialized reject/cancel buttons for some states.
@@ -489,21 +525,11 @@ export function OrderCard({
       return;
     }
 
-    setShowWoltModal(true);
-    setCheckingWolt(true);
+    setWoltPreparationMinutes(20);
     setWoltError(null);
     setWoltPromise(null);
     setWoltMessage(null);
-    setWoltPreparationMinutes(20);
-    
-    try {
-      const promise = await checkWoltAvailability(order.id);
-      setWoltPromise(promise);
-    } catch (error: any) {
-      setWoltError(error.message || 'Wolt nie je dostupný');
-    } finally {
-      setCheckingWolt(false);
-    }
+    setShowWoltModal(true);
   };
 
   const handleConfirmWoltDelivery = async () => {
