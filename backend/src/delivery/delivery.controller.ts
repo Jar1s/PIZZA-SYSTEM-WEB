@@ -53,12 +53,20 @@ export class DeliveryController {
 
   @Post('check-availability')
   async checkAvailability(
-    @Body() data: { orderId: string },
+    @Body() data: { orderId: string; minPreparationTimeMinutes?: number },
     @Req() req: { user?: RequestUser },
   ) {
+    const { minPreparationTimeMinutes } = data;
+
+    if (minPreparationTimeMinutes !== undefined) {
+      if (!Number.isInteger(minPreparationTimeMinutes) || minPreparationTimeMinutes < 0 || minPreparationTimeMinutes > 180) {
+        throw new BadRequestException('minPreparationTimeMinutes must be integer between 0 and 180');
+      }
+    }
+
     this.logger.log(`[checkAvailability] Request for order: ${data.orderId}`);
     try {
-      const result = await this.deliveryService.getShipmentPromiseForOrder(data.orderId, req.user);
+      const result = await this.deliveryService.getShipmentPromiseForOrder(data.orderId, req.user, minPreparationTimeMinutes);
       this.logger.log(`[checkAvailability] Success for order: ${data.orderId}`);
       return result;
     } catch (error: any) {
