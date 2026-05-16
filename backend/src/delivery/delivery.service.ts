@@ -372,6 +372,7 @@ export class DeliveryService implements OnModuleInit, OnModuleDestroy {
     switch (statusRaw) {
       case 'INFO_RECEIVED':
         return { deliveryStatus: DeliveryStatus.PENDING, orderStatus: null, releaseOrderForRedispatch: false };
+      case 'ASSIGNED':
       case 'COURIER_ASSIGNED':
       case 'PICKUP_STARTED':
         return {
@@ -418,8 +419,10 @@ export class DeliveryService implements OnModuleInit, OnModuleDestroy {
   private mapWoltWebhookTypeToStatus(eventTypeRaw: string | null): string | null {
     switch ((eventTypeRaw || '').trim().toLowerCase()) {
       case 'order.received':
-      case 'order.pickup_eta_updated':
         return 'INFO_RECEIVED';
+      case 'order.pickup_eta_updated':
+      case 'order.dropoff_eta_updated':
+        return null;
       case 'order.pickup_started':
       case 'order.courier_assigned':
       case 'order.pickup_arrival':
@@ -438,8 +441,8 @@ export class DeliveryService implements OnModuleInit, OnModuleDestroy {
       case 'order.cancelled':
       case 'order.canceled':
         return 'CANCELLED';
-      case 'order.failed':
       case 'order.customer_no_show':
+      case 'order.failed':
         return 'FAILED';
       default:
         return null;
@@ -462,6 +465,65 @@ export class DeliveryService implements OnModuleInit, OnModuleDestroy {
     }
 
     return this.mapWoltWebhookTypeToStatus(eventTypeRaw);
+  }
+
+  private getWoltReferenceCandidate(value: unknown): string | null {
+    return typeof value === 'string' && value.trim() ? value.trim() : null;
+  }
+
+  private buildWoltDeliveryLookupWhere(webhookData: any): Prisma.DeliveryWhereInput | null {
+    const details = webhookData?.details && typeof webhookData.details === 'object' ? webhookData.details : {};
+    const woltOrderReferenceId =
+      this.getWoltReferenceCandidate(details?.wolt_order_reference_id) ||
+      this.getWoltReferenceCandidate(webhookData?.wolt_order_reference_id) ||
+      this.getWoltReferenceCandidate(webhookData?.delivery_id) ||
+      this.getWoltReferenceCandidate(webhookData?.job_id) ||
+      this.getWoltReferenceCandidate(webhookData?.order?.wolt_order_reference_id);
+    const merchantOrderReferenceId =
+      this.getWoltReferenceCandidate(details?.merchant_order_reference_id) ||
+      this.getWoltReferenceCandidate(webhookData?.merchant_order_reference_id) ||
+      this.getWoltReferenceCandidate(webhookData?.order?.merchant_order_reference_id);
+    const trackingReference =
+      this.getWoltReferenceCandidate(details?.tracking_reference) ||
+      this.getWoltReferenceCandidate(details?.tracking_id) ||
+      this.getWoltReferenceCandidate(webhookData?.tracking_reference) ||
+      this.getWoltReferenceCandidate(webhookData?.tracking_id);
+
+    const or: Prisma.DeliveryWhereInput[] = [];
+
+    if (woltOrderReferenceId) {
+      or.push({ jobId: woltOrderReferenceId });
+      or.push({
+        quote: {
+          path: ['woltOrderReferenceId'],
+          equals: woltOrderReferenceId,
+        },
+      });
+    }
+
+    if (merchantOrderReferenceId) {
+      or.push({
+        quote: {
+          path: ['woltMerchantOrderReferenceIdUsed'],
+          equals: merchantOrderReferenceId,
+        },
+      });
+    }
+
+    if (trackingReference) {
+      or.push({
+        quote: {
+          path: ['woltTrackingId'],
+          equals: trackingReference,
+        },
+      });
+    }
+
+    if (!or.length) {
+      return null;
+    }
+
+    return { provider: 'wolt', OR: or };
   }
 
   private getEtaMinutesFromWebhookValue(value: unknown, referenceTimestampIso: string): number | null {
@@ -502,6 +564,12 @@ export class DeliveryService implements OnModuleInit, OnModuleDestroy {
 
     if (typeof details?.wolt_order_reference_id === 'string' && details.wolt_order_reference_id.trim()) {
       quotePatch.lastWebhookWoltOrderReferenceId = details.wolt_order_reference_id.trim();
+    }
+    if (typeof details?.merchant_order_reference_id === 'string' && details.merchant_order_reference_id.trim()) {
+      quotePatch.lastWebhookMerchantOrderReferenceId = details.merchant_order_reference_id.trim();
+    }
+    if (typeof details?.tracking_reference === 'string' && details.tracking_reference.trim()) {
+      quotePatch.lastWebhookTrackingReference = details.tracking_reference.trim();
     }
 
     const pickupEtaMinutes = this.getEtaMinutesFromWebhookValue(details?.pickup?.eta, eventTimestamp);
@@ -587,6 +655,16 @@ export class DeliveryService implements OnModuleInit, OnModuleDestroy {
         await this.orderStatusService.updateStatus(linkedOrder.id, mapped.orderStatus);
       }
     }
+  }
+
+  private isWoltPollingPermissionError(error: any): boolean {
+    const status = typeof error?.status === 'number' ? error.status : null;
+    if (status === 401 || status === 403) {
+      return true;
+    }
+
+    const message = String(error?.message || '').toLowerCase();
+    return message.includes('autentifik') || message.includes('oprávnen') || message.includes('permission');
   }
 
   async checkAreaByTenantSlug(
@@ -894,6 +972,8 @@ export class DeliveryService implements OnModuleInit, OnModuleDestroy {
     // Create Wolt delivery with tenant-specific pickup address
     // If shipmentPromiseId is provided, use it (proper flow according to documentation)
     let woltDelivery;
+    const woltMerchantOrderReferenceId = order.id;
+    const woltOrderNumber = order.orderNumber != null ? String(order.orderNumber) : null;
     try {
       // Re-check immediately before external API call to reduce duplicate dispatches.
       const existingBeforeCreate = await this.getExistingDeliveryForOrder(order.id);
@@ -915,7 +995,8 @@ export class DeliveryService implements OnModuleInit, OnModuleDestroy {
         {
           promiseSnapshot: promiseData,
           parcelCurrency: promiseData?.currency,
-          orderNumber: order.orderNumber,
+          merchantOrderReferenceId: woltMerchantOrderReferenceId,
+          orderNumber: woltOrderNumber,
         },
       );
     } catch (error: any) {
@@ -952,19 +1033,31 @@ export class DeliveryService implements OnModuleInit, OnModuleDestroy {
     if (typeof currency === 'string') quote.currency = currency;
     if (typeof promiseId === 'string') quote.promiseId = promiseId;
     if (typeof validUntil === 'string') quote.validUntil = validUntil;
+    if (typeof woltDelivery?.woltOrderReferenceId === 'string') {
+      quote.woltOrderReferenceId = woltDelivery.woltOrderReferenceId;
+    }
+    if (typeof woltDelivery?.trackingId === 'string') {
+      quote.woltTrackingId = woltDelivery.trackingId;
+    }
 
     const fallbackQuote: Prisma.JsonObject = { courierEta: woltDelivery?.courierEta ?? null };
     const finalQuote: Prisma.InputJsonValue = Object.keys(quote).length > 0 ? quote : fallbackQuote;
+    const initialWoltStatus = typeof woltDelivery?.status === 'string'
+      ? woltDelivery.status.trim().toUpperCase()
+      : '';
+    const initialMappedStatus = initialWoltStatus ? this.mapWoltStatus(initialWoltStatus) : null;
 
     const delivery = await this.prisma.delivery.create({
       data: {
         tenantId: order.tenantId,
         provider: 'wolt',
         jobId: woltDelivery.jobId,
-        status: DeliveryStatus.PENDING,
+        status: initialMappedStatus?.deliveryStatus || DeliveryStatus.PENDING,
         trackingUrl: woltDelivery.trackingUrl,
         quote: {
           ...(finalQuote as Prisma.JsonObject),
+          woltInitialStatus: initialWoltStatus || null,
+          woltMerchantOrderReferenceIdUsed: woltMerchantOrderReferenceId,
           minPreparationTimeMinutesUsed,
           requestMode: 'asap',
           woltApiUrlUsed: woltConfig?.apiUrl ?? null,
@@ -1177,19 +1270,24 @@ export class DeliveryService implements OnModuleInit, OnModuleDestroy {
       null;
     const eventTimestamp =
       this.parseWebhookTimestamp(
-        webhookData?.created_at ||
+        webhookData?.dispatched_at ||
+          webhookData?.created_at ||
           webhookData?.occurred_at ||
           webhookData?.event_time ||
           webhookData?.timestamp,
       ) || new Date().toISOString();
+    const deliveryLookupWhere = this.buildWoltDeliveryLookupWhere(webhookData);
     const deliveryJobId =
-      details?.wolt_order_reference_id ||
-      webhookData?.wolt_order_reference_id ||
-      webhookData?.delivery_id ||
-      webhookData?.job_id ||
-      webhookData?.order?.wolt_order_reference_id;
+      this.getWoltReferenceCandidate(details?.wolt_order_reference_id) ||
+      this.getWoltReferenceCandidate(webhookData?.wolt_order_reference_id) ||
+      this.getWoltReferenceCandidate(webhookData?.delivery_id) ||
+      this.getWoltReferenceCandidate(webhookData?.job_id) ||
+      this.getWoltReferenceCandidate(webhookData?.order?.wolt_order_reference_id) ||
+      this.getWoltReferenceCandidate(details?.merchant_order_reference_id) ||
+      this.getWoltReferenceCandidate(details?.tracking_reference) ||
+      'unknown';
 
-    if (!deliveryJobId) {
+    if (!deliveryLookupWhere) {
       this.logger.warn('Wolt webhook payload missing delivery identifier', {
         keys: webhookData ? Object.keys(webhookData) : [],
         eventType: eventType || 'unknown',
@@ -1204,7 +1302,7 @@ export class DeliveryService implements OnModuleInit, OnModuleDestroy {
     });
 
     const delivery = await this.prisma.delivery.findFirst({
-      where: { jobId: deliveryJobId },
+      where: deliveryLookupWhere,
       include: { orders: true },
     });
 
@@ -1327,6 +1425,10 @@ export class DeliveryService implements OnModuleInit, OnModuleDestroy {
         }
 
         const quoteObj = this.getQuoteObject(delivery.quote);
+        if (typeof quoteObj.woltPollingDisabledAt === 'string' && quoteObj.woltPollingDisabledAt.trim()) {
+          continue;
+        }
+
         const snapshotConfig = this.getWoltApiConfigFromQuote(quoteObj);
         const statusConfig =
           snapshotConfig.venueId || snapshotConfig.apiUrl || snapshotConfig.merchantId
@@ -1383,6 +1485,31 @@ export class DeliveryService implements OnModuleInit, OnModuleDestroy {
 
         await this.syncOrdersForWoltState(delivery.orders, mappedStatus);
       } catch (error: any) {
+        if (this.isWoltPollingPermissionError(error)) {
+          const disabledAt = new Date().toISOString();
+          const quoteObj = this.getQuoteObject(delivery.quote);
+
+          await this.prisma.delivery.update({
+            where: { id: delivery.id },
+            data: {
+              quote: {
+                ...quoteObj,
+                woltPollingDisabledAt: disabledAt,
+                woltPollingDisabledReason: 'permission_denied',
+                lastPolledAt: disabledAt,
+                lastPolledAuthError: error?.message || 'Wolt polling disabled due to permission error',
+              } as Prisma.InputJsonValue,
+            },
+          });
+
+          this.logger.warn('[reconcileStaleWoltDeliveries] Disabled polling for delivery after Wolt permission error', {
+            deliveryId: delivery.id,
+            jobId: delivery.jobId,
+            error: error?.message,
+          });
+          continue;
+        }
+
         this.logger.warn('[reconcileStaleWoltDeliveries] Failed to reconcile delivery', {
           deliveryId: delivery.id,
           jobId: delivery.jobId,
@@ -1392,4 +1519,3 @@ export class DeliveryService implements OnModuleInit, OnModuleDestroy {
     }
   }
 }
-

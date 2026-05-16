@@ -33,6 +33,7 @@ interface WoltApiEndpoints {
 interface DeliveryCreateContext {
   parcelPriceCents?: number;
   parcelCurrency?: string;
+  merchantOrderReferenceId?: string | number | null;
   orderNumber?: string | number | null;
   supportEmail?: string;
   supportUrl?: string;
@@ -550,7 +551,9 @@ export class WoltDriveService {
       process.env.SMTP_FROM_EMAIL ||
       'support@example.com';
     const supportUrl = context?.supportUrl || process.env.FRONTEND_URL || 'https://example.com';
-    const orderNumber = context?.orderNumber != null ? String(context.orderNumber) : orderId;
+    const merchantOrderReferenceId =
+      context?.merchantOrderReferenceId != null ? String(context.merchantOrderReferenceId) : orderId;
+    const orderNumber = context?.orderNumber != null ? String(context.orderNumber) : null;
 
     const request: Record<string, unknown> = {
       pickup: {
@@ -583,12 +586,16 @@ export class WoltDriveService {
           },
         },
       ],
-      merchant_order_reference_id: orderNumber || orderId,
+      merchant_order_reference_id: merchantOrderReferenceId,
       customer_support: {
         email: supportEmail,
         url: supportUrl,
       },
     };
+
+    if (orderNumber) {
+      request.order_number = orderNumber;
+    }
 
     // Add shipment promise ID if provided (required by Wolt API for proper flow)
     if (effectivePromiseId) {
@@ -653,8 +660,12 @@ export class WoltDriveService {
             ? data.price.currency
             : promiseSnapshot?.currency;
         
+        const woltOrderReferenceId = data.wolt_order_reference_id || data.id || null;
+
         return {
-          jobId: data.wolt_order_reference_id || data.id || null,
+          jobId: woltOrderReferenceId,
+          woltOrderReferenceId,
+          trackingId: data?.tracking?.id || null,
           trackingUrl: data?.tracking?.url || null,
           status: data?.status || 'INFO_RECEIVED',
           courierEta: etaMinutes,
@@ -719,10 +730,7 @@ export class WoltDriveService {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            reason: 'OTHER',
-            reject_reason: 'OTHER',
-            reject_details: 'Cancelled by merchant',
-            details: 'Cancelled by merchant',
+            reason: 'Cancelled by merchant',
           }),
         });
 
@@ -897,8 +905,6 @@ export class WoltDriveService {
     throw lastError || new Error('Wolt API getOrderStatus failed');
   }
 }
-
-
 
 
 

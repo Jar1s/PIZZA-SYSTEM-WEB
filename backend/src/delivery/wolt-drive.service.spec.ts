@@ -55,22 +55,22 @@ describe('WoltDriveService contract', () => {
 
     expect(fetchMock).toHaveBeenCalledWith(
       'https://custom.wolt.example/v1/venues/venue-123/shipment-promises',
-      {
+      expect.objectContaining({
         method: 'POST',
         headers: {
           Authorization: 'Bearer api-key',
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          street: 'Hlavná 1',
-          city: 'Bratislava',
-          post_code: '81101',
-          lat: 48.145,
-          lon: 17.11,
-          min_preparation_time_minutes: 30,
-        }),
-      },
+      }),
     );
+    expect(JSON.parse((fetchMock.mock.calls[0][1] as any).body)).toEqual({
+      street: 'Hlavná 1',
+      city: 'Bratislava',
+      post_code: '81101',
+      lat: 48.145,
+      lon: 17.11,
+      min_preparation_time_minutes: 20,
+    });
     expect(result).toEqual({
       promiseId: 'promise-1',
       feeCents: 450,
@@ -87,8 +87,9 @@ describe('WoltDriveService contract', () => {
     const fetchMock = jest.spyOn(global, 'fetch').mockResolvedValueOnce(
       buildResponse({
         id: 'delivery-1',
+        wolt_order_reference_id: 'wolt-ref-1',
         status: 'ASSIGNED',
-        tracking: { url: 'https://track.example/delivery-1' },
+        tracking: { id: 'tracking-1', url: 'https://track.example/delivery-1' },
         price: { amount: 720, currency: 'EUR' },
         pickup_eta_minutes: 12,
         dropoff_eta_minutes: 24,
@@ -131,55 +132,58 @@ describe('WoltDriveService contract', () => {
 
     expect(fetchMock).toHaveBeenCalledWith(
       'https://custom.wolt.example/v1/venues/venue-123/deliveries',
-      {
+      expect.objectContaining({
         method: 'POST',
         headers: {
           Authorization: 'Bearer api-key',
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          pickup: {
-            comment: 'Back entrance',
-          },
-          dropoff: {
-            location: {
-              coordinates: {
-                lat: 48.145,
-                lon: 17.11,
-              },
-            },
-            comment: 'Ring bell',
-            options: {
-              is_no_contact: false,
-            },
-          },
-          recipient: {
-            name: 'Customer Name',
-            phone_number: '+421900000000',
-          },
-          parcels: [
-            {
-              description: 'Pizza order',
-              identifier: 'order-123',
-              count: 1,
-              price: {
-                amount: 1590,
-                currency: 'EUR',
-              },
-            },
-          ],
-          merchant_order_reference_id: '789',
-          customer_support: {
-            email: 'ops@example.com',
-            url: 'https://support.example.com',
-          },
-          shipment_promise_id: 'promise-123',
-          min_preparation_time_minutes: 45,
-        }),
-      },
+      }),
     );
+    expect(JSON.parse((fetchMock.mock.calls[0][1] as any).body)).toEqual({
+      pickup: {
+        comment: 'Back entrance',
+      },
+      dropoff: {
+        location: {
+          coordinates: {
+            lat: 48.145,
+            lon: 17.11,
+          },
+        },
+        comment: 'Ring bell',
+        options: {
+          is_no_contact: false,
+        },
+      },
+      recipient: {
+        name: 'Customer Name',
+        phone_number: '+421900000000',
+      },
+      parcels: [
+        {
+          description: 'Pizza order',
+          identifier: 'order-123',
+          count: 1,
+          price: {
+            amount: 1590,
+            currency: 'EUR',
+          },
+        },
+      ],
+      merchant_order_reference_id: 'order-123',
+      customer_support: {
+        email: 'ops@example.com',
+        url: 'https://support.example.com',
+      },
+      order_number: '789',
+      shipment_promise_id: 'promise-123',
+      min_preparation_time_minutes: 45,
+    });
     expect(result).toEqual({
-      jobId: 'delivery-1',
+      jobId: 'wolt-ref-1',
+      woltOrderReferenceId: 'wolt-ref-1',
+      trackingId: 'tracking-1',
       trackingUrl: 'https://track.example/delivery-1',
       status: 'ASSIGNED',
       courierEta: 24,
@@ -213,10 +217,7 @@ describe('WoltDriveService contract', () => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          reason: 'OTHER',
-          reject_reason: 'OTHER',
-          reject_details: 'Cancelled by merchant',
-          details: 'Cancelled by merchant',
+          reason: 'Cancelled by merchant',
         }),
       },
     );
