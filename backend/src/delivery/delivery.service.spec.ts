@@ -219,6 +219,84 @@ describe('DeliveryService handleWoltWebhook', () => {
     );
   });
 
+  it('matches documented Wolt webhooks by merchant reference when Wolt reference is absent', async () => {
+    mockPrisma.delivery.findFirst.mockResolvedValue({
+      id: 'delivery-1',
+      jobId: 'job-1',
+      status: DeliveryStatus.PENDING,
+      quote: { woltMerchantOrderReferenceIdUsed: '1234' },
+      orders: [{ id: 'order-1', status: OrderStatus.PREPARING }],
+    });
+
+    await service.handleWoltWebhook({
+      id: 'evt-merchant-ref',
+      dispatched_at: '2026-05-16T10:00:00.000Z',
+      type: 'order.rejected',
+      details: {
+        merchant_order_reference_id: '1234',
+        purchase_rejected_reason: 'GENERIC_VENUE_REQUESTED',
+      },
+    });
+
+    expect(mockPrisma.delivery.findFirst).toHaveBeenCalledWith({
+      where: expect.objectContaining({
+        provider: 'wolt',
+        OR: expect.arrayContaining([
+          {
+            quote: {
+              path: ['woltMerchantOrderReferenceIdUsed'],
+              equals: '1234',
+            },
+          },
+        ]),
+      }),
+      include: { orders: true },
+    });
+    expect(mockPrisma.delivery.update).toHaveBeenCalledWith({
+      where: { id: 'delivery-1' },
+      data: expect.objectContaining({
+        status: DeliveryStatus.FAILED,
+        quote: expect.objectContaining({
+          lastWebhookStatus: 'REJECTED',
+          lastWebhookEventType: 'order.rejected',
+        }),
+      }),
+    });
+  });
+
+  it('does not downgrade active deliveries to pending on Wolt ETA update events', async () => {
+    mockPrisma.delivery.findFirst.mockResolvedValue({
+      id: 'delivery-1',
+      jobId: 'job-1',
+      status: DeliveryStatus.IN_TRANSIT,
+      quote: {},
+      orders: [{ id: 'order-1', status: OrderStatus.OUT_FOR_DELIVERY }],
+    });
+
+    await service.handleWoltWebhook({
+      id: 'evt-eta',
+      dispatched_at: '2026-05-16T10:00:00.000Z',
+      type: 'order.dropoff_eta_updated',
+      details: {
+        wolt_order_reference_id: 'job-1',
+        dropoff: { eta: { max: '2026-05-16T10:20:00.000Z' } },
+      },
+    });
+
+    expect(mockPrisma.delivery.update).toHaveBeenCalledWith({
+      where: { id: 'delivery-1' },
+      data: {
+        quote: expect.objectContaining({
+          lastWebhookEventId: 'evt-eta',
+          lastWebhookEventType: 'order.dropoff_eta_updated',
+          etaMinutes: 20,
+        }),
+      },
+    });
+    expect(mockOrderStatusService.updateStatus).not.toHaveBeenCalled();
+    expect(mockPrisma.order.update).not.toHaveBeenCalled();
+  });
+
   it('releases failed Wolt deliveries back to ready for redispatch', async () => {
     mockPrisma.delivery.findFirst.mockResolvedValue({
       id: 'delivery-1',
