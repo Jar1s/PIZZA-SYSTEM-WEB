@@ -14,6 +14,7 @@ import { ProductsModule } from '../products/products.module';
 import { DeliveryModule } from '../delivery/delivery.module';
 import { PaymentsModule } from '../payments/payments.module';
 import { getJwtSecret } from '../config/app.config';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { getJwtSecret } from '../config/app.config';
     SettingsModule,
     StoryousModule,
     ProductsModule,
+    NotificationsModule,
     forwardRef(() => DeliveryModule),
     forwardRef(() => PaymentsModule),
     JwtModule.register({
