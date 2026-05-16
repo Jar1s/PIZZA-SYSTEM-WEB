@@ -18,6 +18,7 @@ import { TenantTheme } from '../types/tenant.types';
 import { appConfig } from '../config/app.config';
 import { OrderResponseSchema } from '../common/schemas/order.schema';
 import { getProductDisplayName } from '../utils/product-name-mapper';
+import { TelegramNotificationsService } from '../notifications/telegram-notifications.service';
 import * as crypto from 'crypto';
 
 // Type definitions for Prisma JSON fields
@@ -122,6 +123,7 @@ export class OrdersService {
     private deliveryFeeTierService: DeliveryFeeTierService,
     private orderNumberService: OrderNumberService,
     private jwtService: JwtService,
+    private telegramNotifications: TelegramNotificationsService,
   ) {}
 
   private isStatusHistoryUnavailable(error: unknown): boolean {
@@ -844,6 +846,8 @@ export class OrdersService {
       emailConfig, // Pass tenant-specific email config
     );
 
+    await this.telegramNotifications.notifyOrderCreated(order);
+
     // Send password setup email if new account was created without password
     if (createdUser && !createdUser.password && createdUser.passwordResetToken) {
       try {
@@ -1251,6 +1255,17 @@ export class OrdersService {
       };
     } catch (error: any) {
       this.logger.error(`❌ Failed to sync order ${orderId} to Storyous:`, { orderId, error: error.message, stack: error.stack });
+      await this.telegramNotifications.notifyError({
+        title: 'Storyous sync failed',
+        message: error.message || 'Failed to sync order to Storyous',
+        tenantId: orderWithStoryous.tenantId,
+        orderId,
+        details: {
+          storyousOrderId: orderWithStoryous.storyousOrderId,
+          storyousState: (orderWithStoryous as any).storyousOrderState,
+        },
+        stack: error.stack,
+      });
       return {
         success: false,
         message: error.message || 'Failed to sync order to Storyous',

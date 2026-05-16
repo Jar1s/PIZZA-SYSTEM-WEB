@@ -6,6 +6,7 @@ import { TenantsService } from '../tenants/tenants.service';
 import { StoryousService } from '../storyous/storyous.service';
 import { SettingsService } from '../settings/settings.service';
 import { PaymentsService } from '../payments/payments.service';
+import { TelegramNotificationsService } from '../notifications/telegram-notifications.service';
 
 @Injectable()
 export class OrderStatusService implements OnModuleInit, OnModuleDestroy {
@@ -40,6 +41,7 @@ export class OrderStatusService implements OnModuleInit, OnModuleDestroy {
     private settingsService: SettingsService,
     @Inject(forwardRef(() => PaymentsService))
     private paymentsService: PaymentsService,
+    private telegramNotifications: TelegramNotificationsService,
   ) {}
 
   private isAcceptedStoryousState(state: string | null | undefined): boolean {
@@ -128,6 +130,17 @@ export class OrderStatusService implements OnModuleInit, OnModuleDestroy {
         statusSyncSource,
         error: error.message,
       });
+      await this.telegramNotifications.notifyError({
+        title: 'Storyous auto-sync failed',
+        message: error.message || 'Failed to auto-sync order to Storyous',
+        tenantId: order.tenantId,
+        orderId: order.id,
+        details: {
+          statusSyncSource,
+          targetStatus: newStatus,
+        },
+        stack: error.stack,
+      });
     }
   }
 
@@ -198,6 +211,13 @@ export class OrderStatusService implements OnModuleInit, OnModuleDestroy {
     ]);
 
     await this.maybeAutoSyncToStoryous(order, newStatus, statusSyncSource);
+
+    await this.telegramNotifications.notifyOrderStatusChanged(
+      order as any,
+      order.status as string,
+      newStatus,
+      statusSyncSource,
+    );
 
     // Update Storyous order status (if order was sent to Storyous).
     // Use global settings gate to avoid stale tenant.theme flags.
