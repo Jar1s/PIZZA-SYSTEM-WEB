@@ -1043,12 +1043,15 @@ export async function getStoryousSampleReceiptPreview(tenantSlug: string): Promi
   return res.json();
 }
 
-export async function checkWoltAvailability(orderId: string): Promise<WoltAvailabilityResult> {
+export async function checkWoltAvailability(
+  orderId: string,
+  minPreparationTimeMinutes?: number,
+): Promise<WoltAvailabilityResult> {
   const res = await fetch(`${API_URL}/api/delivery/check-availability`, {
     method: 'POST',
     headers: buildAuthHeaders(true),
     credentials: 'include',
-    body: JSON.stringify({ orderId }),
+    body: JSON.stringify({ orderId, minPreparationTimeMinutes }),
   });
 
   if (!res.ok) {
