@@ -39,6 +39,10 @@ describe('OrderStatusService', () => {
     refundGopayPayment: jest.fn(),
   };
 
+  const mockTelegramNotifications = {
+    notifyOrderStatusChanged: jest.fn(),
+  };
+
   const baseOrder = {
     id: 'order-1',
     tenantId: 'tenant-1',
@@ -70,6 +74,7 @@ describe('OrderStatusService', () => {
       mockStoryousService as any,
       mockSettingsService as any,
       mockPaymentsService as any,
+      mockTelegramNotifications as any,
     );
 
     jest.clearAllMocks();
@@ -78,6 +83,7 @@ describe('OrderStatusService', () => {
     mockPrisma.order.update.mockResolvedValue({});
     mockPrisma.orderStatusHistory.create.mockResolvedValue({});
     mockEmailService.sendOrderStatusUpdate.mockResolvedValue(undefined);
+    mockTelegramNotifications.notifyOrderStatusChanged.mockResolvedValue(undefined);
     loggerLogSpy = jest.spyOn(Logger.prototype, 'log').mockImplementation(() => undefined);
     loggerWarnSpy = jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
     mockSettingsService.getStoryousSettings.mockResolvedValue({
@@ -159,7 +165,6 @@ describe('OrderStatusService', () => {
         orderId: 'order-1',
         storyousOrderId: 'storyous-new-1',
         storyousState: 'NEW',
-        statusSyncSource: 'dashboard',
       }),
     );
   });
@@ -282,5 +287,35 @@ describe('OrderStatusService', () => {
     await (service as any).checkAndReconcileStoryousStatuses();
 
     expect(updateSpy).toHaveBeenCalledWith('order-1', OrderStatus.OUT_FOR_DELIVERY, 'storyous');
+  });
+
+  it('does not auto-promote PAID orders to OUT_FOR_DELIVERY from Storyous DISPATCHED', async () => {
+    mockPrisma.order.findMany.mockResolvedValue([
+      { id: 'order-1', status: OrderStatus.PAID, storyousOrderId: 'storyous-99' },
+    ]);
+    mockStoryousService.getOrderState.mockResolvedValue('DISPATCHED');
+
+    const updateSpy = jest
+      .spyOn(service, 'updateStatus')
+      .mockResolvedValue(undefined as never);
+
+    await (service as any).checkAndReconcileStoryousStatuses();
+
+    expect(updateSpy).not.toHaveBeenCalled();
+  });
+
+  it('does not auto-promote PREPARING orders to OUT_FOR_DELIVERY from Storyous DISPATCHED', async () => {
+    mockPrisma.order.findMany.mockResolvedValue([
+      { id: 'order-1', status: OrderStatus.PREPARING, storyousOrderId: 'storyous-99' },
+    ]);
+    mockStoryousService.getOrderState.mockResolvedValue('DISPATCHED');
+
+    const updateSpy = jest
+      .spyOn(service, 'updateStatus')
+      .mockResolvedValue(undefined as never);
+
+    await (service as any).checkAndReconcileStoryousStatuses();
+
+    expect(updateSpy).not.toHaveBeenCalled();
   });
 });

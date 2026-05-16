@@ -1,13 +1,12 @@
 import { Injectable, BadRequestException, Logger, OnModuleInit, OnModuleDestroy, Inject, forwardRef } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { OrderStatus, DeliveryStatus } from '@pizza-ecosystem/shared';
+import { OrderStatus, Order, CustomerInfo, Address, DeliveryStatus } from '@pizza-ecosystem/shared';
 import { EmailService } from '../email/email.service';
 import { TenantsService } from '../tenants/tenants.service';
 import { StoryousService } from '../storyous/storyous.service';
 import { SettingsService } from '../settings/settings.service';
 import { PaymentsService } from '../payments/payments.service';
 import { TelegramNotificationsService } from '../notifications/telegram-notifications.service';
-import { OrdersService } from './orders.service';
 
 @Injectable()
 export class OrderStatusService implements OnModuleInit, OnModuleDestroy {
@@ -43,9 +42,11 @@ export class OrderStatusService implements OnModuleInit, OnModuleDestroy {
     @Inject(forwardRef(() => PaymentsService))
     private paymentsService: PaymentsService,
     private telegramNotifications: TelegramNotificationsService,
-    @Inject(forwardRef(() => OrdersService))
-    private ordersService: OrdersService,
   ) {}
+
+  private isAcceptedStoryousState(state: string | null | undefined): boolean {
+    return state === 'CONFIRMED' || state === 'SCHEDULING_DELIVERY' || state === 'DISPATCHED';
+  }
 
   private shouldAutoSyncToStoryous(currentStatus: OrderStatus, newStatus: OrderStatus): boolean {
     return (
@@ -82,21 +83,44 @@ export class OrderStatusService implements OnModuleInit, OnModuleDestroy {
         return;
       }
 
-      const syncResult = await this.ordersService.syncOrderToStoryous(order.id);
+      const orderForStoryous: Order = {
+        ...order,
+        status: newStatus as OrderStatus,
+        customer: order.customer as unknown as CustomerInfo,
+        address: order.address as unknown as Address,
+      } as unknown as Order;
 
-      if (syncResult.success) {
-        this.logger.log(`✅ Order ${order.id} auto-synced to Storyous: ${syncResult.storyousOrderId}`, {
+      const storyousResult = await this.storyousService.createOrder(
+        orderForStoryous,
+        storyousSettings.merchantId,
+        storyousSettings.placeId,
+      );
+
+      if (!storyousResult?.id) {
+        return;
+      }
+
+      const storyousState = String(storyousResult.storyousState || '').trim().toUpperCase() || null;
+      await this.prisma.order.update({
+        where: { id: order.id },
+        data: {
+          storyousOrderId: storyousResult.id,
+          storyousOrderState: storyousState,
+        },
+      });
+
+      if (this.isAcceptedStoryousState(storyousState)) {
+        this.logger.log(`✅ Order ${order.id} auto-synced to Storyous: ${storyousResult.id}`, {
           orderId: order.id,
-          storyousOrderId: syncResult.storyousOrderId,
-          storyousState: syncResult.storyousState,
+          storyousOrderId: storyousResult.id,
+          storyousState,
           statusSyncSource,
         });
       } else {
-        this.logger.warn(`⚠️ Order ${order.id} Storyous auto-sync needs attention`, {
+        this.logger.warn(`⚠️ Order ${order.id} reached Storyous but still requires attention`, {
           orderId: order.id,
-          storyousOrderId: syncResult.storyousOrderId,
-          storyousState: syncResult.storyousState,
-          message: syncResult.message,
+          storyousOrderId: storyousResult.id,
+          storyousState,
           statusSyncSource,
         });
       }
@@ -420,6 +444,27 @@ export class OrderStatusService implements OnModuleInit, OnModuleDestroy {
     return path;
   }
 
+  private shouldAllowStoryousReconcile(
+    currentStatus: OrderStatus,
+    targetStatus: OrderStatus,
+    remoteState: string | null | undefined,
+  ): boolean {
+    const normalized = String(remoteState || '').trim().toUpperCase();
+
+    // Storyous can report DISPATCHED too early for some flows.
+    // Only trust it as "na ceste" once the local order is already READY.
+    if (normalized === 'DISPATCHED' && targetStatus === OrderStatus.OUT_FOR_DELIVERY) {
+      return currentStatus === OrderStatus.READY;
+    }
+
+    // Do not let Storyous jump a not-yet-dispatched local order straight to delivered.
+    if (normalized === 'DELIVERED' && targetStatus === OrderStatus.DELIVERED) {
+      return currentStatus === OrderStatus.OUT_FOR_DELIVERY;
+    }
+
+    return true;
+  }
+
   private async checkAndReconcileStoryousStatuses(): Promise<void> {
     try {
       const storyousSettings = await this.settingsService.getStoryousSettings();
@@ -459,6 +504,23 @@ export class OrderStatusService implements OnModuleInit, OnModuleDestroy {
           const mappedStatus = this.mapStoryousStateToOrderStatus(remoteState);
 
           if (!mappedStatus || mappedStatus === trackedOrder.status) {
+            continue;
+          }
+
+          if (
+            !this.shouldAllowStoryousReconcile(
+              trackedOrder.status as OrderStatus,
+              mappedStatus,
+              remoteState,
+            )
+          ) {
+            this.logger.log('Skipping Storyous reconcile until local order reaches required state', {
+              orderId: trackedOrder.id,
+              from: trackedOrder.status,
+              to: mappedStatus,
+              storyousState: remoteState,
+              statusSyncSource: 'storyous',
+            });
             continue;
           }
 
@@ -503,7 +565,6 @@ export class OrderStatusService implements OnModuleInit, OnModuleDestroy {
     }
   }
 }
-
 
 
 
