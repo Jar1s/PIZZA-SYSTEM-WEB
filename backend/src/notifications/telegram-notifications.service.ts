@@ -46,7 +46,7 @@ export class TelegramNotificationsService implements OnModuleInit {
     if (!this.enabled() || process.env.TELEGRAM_NOTIFY_STARTUP === 'false') return;
 
     await this.send([
-      '<b>Backend spustený</b>',
+      '🟢 <b>Backend spustený</b>',
       '',
       `Prostredie: ${this.escape(process.env.NODE_ENV || 'development')}`,
       `Čas: ${this.escape(this.date(new Date()))}`,
@@ -64,30 +64,30 @@ export class TelegramNotificationsService implements OnModuleInit {
     const tenantName = order.tenant?.name || order.tenant?.slug || 'unknown tenant';
 
     await this.send([
-      `<b>Nová objednávka ${this.escape(this.shortOrderLabel(order))}</b>`,
+      `🆕 <b>Nová objednávka ${this.escape(this.shortOrderLabel(order))}</b>`,
       this.escape(tenantName),
       '',
-      `Stav: <b>${this.escape(this.statusLabel(order.status))}</b>`,
-      `Platba: ${this.escape(this.payment(order))}`,
-      `Čas: ${this.escape(this.date(order.createdAt || new Date()))}`,
+      `📌 Stav: <b>${this.escape(this.statusLabel(order.status))}</b>`,
+      `💳 Platba: ${this.escape(this.payment(order))}`,
+      `🕒 Čas: ${this.escape(this.date(order.createdAt || new Date()))}`,
       '',
-      '<b>Zákazník</b>',
+      '👤 <b>Zákazník</b>',
       `${this.escape(this.value(customer.name))}`,
       `${this.escape(this.value(customer.phone))}`,
       `${this.escape(this.value(customer.email))}`,
       '',
-      '<b>Doručenie</b>',
+      '📍 <b>Doručenie</b>',
       `${this.escape(`${this.value(address.street)} ${this.value(address.houseNumber, '')}`.trim())}`,
       `${this.escape(`${this.value(address.postalCode, '')} ${this.value(address.city)}`.trim())}`,
       `Poznámka: ${this.escape(this.value(address.instructions || address.description, '-'))}`,
       '',
-      '<b>Položky</b>',
+      '🍕 <b>Položky</b>',
       ...items.map((item) => this.itemLine(item, currency)),
       '',
-      '<b>Súhrn</b>',
+      '🧾 <b>Súhrn</b>',
       `Medzisúčet: ${this.escape(this.money(order.subtotalCents, currency))}`,
       `Doprava: ${this.escape(this.money(order.deliveryFeeCents, currency))}`,
-      `<b>Celkom: ${this.escape(this.money(order.totalCents, currency))}</b>`,
+      `💶 <b>Celkom: ${this.escape(this.money(order.totalCents, currency))}</b>`,
     ].join('\n'));
   }
 
@@ -101,12 +101,12 @@ export class TelegramNotificationsService implements OnModuleInit {
     const tenantName = order.tenant?.name || order.tenant?.slug || 'unknown tenant';
 
     await this.send([
-      `<b>Zmena stavu ${this.escape(this.shortOrderLabel(order))}</b>`,
+      `🔄 <b>Zmena stavu ${this.escape(this.shortOrderLabel(order))}</b>`,
       this.escape(tenantName),
       '',
       `${this.escape(this.statusLabel(fromStatus))} → <b>${this.escape(this.statusLabel(toStatus))}</b>`,
       `Zdroj: ${this.escape(this.sourceLabel(source))}`,
-      `Čas: ${this.escape(this.date(new Date()))}`,
+      `🕒 Čas: ${this.escape(this.date(new Date()))}`,
     ].join('\n'));
   }
 
@@ -114,7 +114,7 @@ export class TelegramNotificationsService implements OnModuleInit {
     if (!this.enabled() || process.env.TELEGRAM_NOTIFY_ERRORS === 'false') return;
 
     await this.send([
-      '<b>Backend chyba</b>',
+      '🚨 <b>Backend chyba</b>',
       '',
       `Typ: ${this.escape(report.title)}`,
       `Správa: ${this.escape(report.message || 'no message')}`,
@@ -216,20 +216,20 @@ export class TelegramNotificationsService implements OnModuleInit {
   private statusLabel(status: string | null | undefined): string {
     switch (String(status || '').toUpperCase()) {
       case 'PENDING':
-        return 'Čaká na platbu';
+        return '⏳ Čaká na platbu';
       case 'PAID':
-        return 'Zaplatené';
+        return '✅ Zaplatené';
       case 'PREPARING':
-        return 'V príprave';
+        return '👨‍🍳 V príprave';
       case 'READY':
-        return 'Pripravené';
+        return '📦 Pripravené';
       case 'OUT_FOR_DELIVERY':
-        return 'Na ceste';
+        return '🚗 Na ceste';
       case 'DELIVERED':
-        return 'Doručené';
+        return '🏁 Doručené';
       case 'CANCELED':
       case 'CANCELLED':
-        return 'Zrušené';
+        return '❌ Zrušené';
       default:
         return status || 'Neznámy';
     }
