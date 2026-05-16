@@ -334,6 +334,7 @@ export class WoltDriveService {
     dropoffAddress: Address,
     maxRetries = 3,
     apiConfig?: WoltApiConfig,
+    minPreparationTimeMinutes = 20,
   ) {
     const dropoffLocation = this.getValidatedLocation(dropoffAddress, 'dropoff');
     const { shipmentPromisesUrl } = this.resolveApiEndpoints(apiConfig);
@@ -348,7 +349,7 @@ export class WoltDriveService {
       post_code: dropoffAddress.postalCode,
       lat: dropoffLocation.lat,
       lon: dropoffLocation.lon,
-      min_preparation_time_minutes: 30,
+      min_preparation_time_minutes: minPreparationTimeMinutes,
     };
 
     let lastError: Error | null = null;
@@ -434,6 +435,7 @@ export class WoltDriveService {
     customerPhone: string,
     maxRetries = 3,
     apiConfig?: WoltApiConfig,
+    minPreparationTimeMinutes = 20,
   ) {
     const dropoffLocation = this.getValidatedLocation(dropoffAddress, 'dropoff');
     const { shipmentPromisesUrl } = this.resolveApiEndpoints(apiConfig);
@@ -444,7 +446,7 @@ export class WoltDriveService {
       post_code: dropoffAddress.postalCode,
       lat: dropoffLocation.lat,
       lon: dropoffLocation.lon,
-      min_preparation_time_minutes: 30,
+      min_preparation_time_minutes: minPreparationTimeMinutes,
     };
 
     let lastError: Error | null = null;

@@ -42,6 +42,95 @@ export class OrderStatusService implements OnModuleInit, OnModuleDestroy {
     private paymentsService: PaymentsService,
   ) {}
 
+  private isAcceptedStoryousState(state: string | null | undefined): boolean {
+    return state === 'CONFIRMED' || state === 'SCHEDULING_DELIVERY' || state === 'DISPATCHED';
+  }
+
+  private shouldAutoSyncToStoryous(currentStatus: OrderStatus, newStatus: OrderStatus): boolean {
+    return (
+      (currentStatus === OrderStatus.PENDING && newStatus === OrderStatus.PAID) ||
+      (currentStatus === OrderStatus.PAID && newStatus === OrderStatus.PREPARING)
+    );
+  }
+
+  private async maybeAutoSyncToStoryous(
+    order: any,
+    newStatus: OrderStatus,
+    statusSyncSource: 'dashboard' | 'storyous' | 'system',
+  ): Promise<void> {
+    if (
+      statusSyncSource === 'storyous' ||
+      !this.shouldAutoSyncToStoryous(order.status as OrderStatus, newStatus)
+    ) {
+      return;
+    }
+
+    if ((order as any).storyousOrderId) {
+      return;
+    }
+
+    try {
+      const storyousSettings = await this.settingsService.getStoryousSettings();
+
+      if (
+        !storyousSettings?.enabled ||
+        !storyousSettings?.autoSync ||
+        !storyousSettings?.merchantId ||
+        !storyousSettings?.placeId
+      ) {
+        return;
+      }
+
+      const orderForStoryous: Order = {
+        ...order,
+        status: newStatus as OrderStatus,
+        customer: order.customer as unknown as CustomerInfo,
+        address: order.address as unknown as Address,
+      } as unknown as Order;
+
+      const storyousResult = await this.storyousService.createOrder(
+        orderForStoryous,
+        storyousSettings.merchantId,
+        storyousSettings.placeId,
+      );
+
+      if (!storyousResult?.id) {
+        return;
+      }
+
+      const storyousState = String(storyousResult.storyousState || '').trim().toUpperCase() || null;
+      await this.prisma.order.update({
+        where: { id: order.id },
+        data: {
+          storyousOrderId: storyousResult.id,
+          storyousOrderState: storyousState,
+        },
+      });
+
+      if (this.isAcceptedStoryousState(storyousState)) {
+        this.logger.log(`✅ Order ${order.id} auto-synced to Storyous: ${storyousResult.id}`, {
+          orderId: order.id,
+          storyousOrderId: storyousResult.id,
+          storyousState,
+          statusSyncSource,
+        });
+      } else {
+        this.logger.warn(`⚠️ Order ${order.id} reached Storyous but still requires attention`, {
+          orderId: order.id,
+          storyousOrderId: storyousResult.id,
+          storyousState,
+          statusSyncSource,
+        });
+      }
+    } catch (error: any) {
+      this.logger.error(`⚠️ Failed to auto-sync order ${order.id} to Storyous:`, {
+        orderId: order.id,
+        statusSyncSource,
+        error: error.message,
+      });
+    }
+  }
+
   async updateStatus(
     orderId: string,
     newStatus: OrderStatus,
@@ -108,79 +197,7 @@ export class OrderStatusService implements OnModuleInit, OnModuleDestroy {
       }),
     ]);
 
-    // Auto-sync to Storyous:
-    // - PREPARING for standard flow
-    // - PAID for delivery-payment custom flow (operator "Prijať")
-    // Runs only when Storyous order does not exist yet.
-    const isDeliveryPayment = String((order as any).paymentStatus || '').toLowerCase() === 'pending';
-    const shouldAutoSyncToStoryous =
-      statusSyncSource !== 'storyous' &&
-      !(order as any).storyousOrderId &&
-      (newStatus === OrderStatus.PREPARING ||
-        (newStatus === OrderStatus.PAID && isDeliveryPayment));
-
-    if (shouldAutoSyncToStoryous) {
-      try {
-        const storyousSettings = await this.settingsService.getStoryousSettings();
-
-        if (
-          storyousSettings?.enabled &&
-          storyousSettings?.autoSync &&
-          storyousSettings?.merchantId &&
-          storyousSettings?.placeId
-        ) {
-          const orderForStoryous: Order = {
-            ...order,
-            status: newStatus as OrderStatus,
-            customer: order.customer as unknown as CustomerInfo,
-            address: order.address as unknown as Address,
-          } as unknown as Order;
-
-          const storyousResult = await this.storyousService.createOrder(
-            orderForStoryous,
-            storyousSettings.merchantId,
-            storyousSettings.placeId,
-          );
-
-          if (storyousResult?.id) {
-            const storyousState =
-              String(storyousResult.storyousState || '').trim().toUpperCase() || null;
-            const storyousAccepted =
-              storyousState === 'CONFIRMED' ||
-              storyousState === 'SCHEDULING_DELIVERY' ||
-              storyousState === 'DISPATCHED';
-            await this.prisma.order.update({
-              where: { id: orderId },
-              data: {
-                storyousOrderId: storyousResult.id,
-                storyousOrderState: storyousState,
-              },
-            });
-            if (storyousAccepted) {
-              this.logger.log(`✅ Order ${orderId} auto-synced to Storyous: ${storyousResult.id}`, {
-                orderId,
-                storyousOrderId: storyousResult.id,
-                storyousState,
-                statusSyncSource,
-              });
-            } else {
-              this.logger.warn(`⚠️ Order ${orderId} reached Storyous but still requires attention`, {
-                orderId,
-                storyousOrderId: storyousResult.id,
-                storyousState,
-                statusSyncSource,
-              });
-            }
-          }
-        }
-      } catch (error: any) {
-        this.logger.error(`⚠️ Failed to auto-sync order ${orderId} to Storyous:`, {
-          orderId,
-          statusSyncSource,
-          error: error.message,
-        });
-      }
-    }
+    await this.maybeAutoSyncToStoryous(order, newStatus, statusSyncSource);
 
     // Update Storyous order status (if order was sent to Storyous).
     // Use global settings gate to avoid stale tenant.theme flags.
@@ -370,6 +387,43 @@ export class OrderStatusService implements OnModuleInit, OnModuleDestroy {
     return null;
   }
 
+  private buildStoryousReconcilePath(
+    currentStatus: OrderStatus,
+    targetStatus: OrderStatus,
+  ): OrderStatus[] | null {
+    const forwardFlow: OrderStatus[] = [
+      OrderStatus.PENDING,
+      OrderStatus.PAID,
+      OrderStatus.PREPARING,
+      OrderStatus.READY,
+      OrderStatus.OUT_FOR_DELIVERY,
+      OrderStatus.DELIVERED,
+    ];
+
+    if (targetStatus === OrderStatus.CANCELED) {
+      return this.transitions[currentStatus]?.includes(targetStatus) ? [targetStatus] : null;
+    }
+
+    const currentIndex = forwardFlow.indexOf(currentStatus);
+    const targetIndex = forwardFlow.indexOf(targetStatus);
+
+    if (currentIndex === -1 || targetIndex === -1 || targetIndex <= currentIndex) {
+      return null;
+    }
+
+    const path: OrderStatus[] = [];
+    for (let index = currentIndex + 1; index <= targetIndex; index += 1) {
+      const step = forwardFlow[index];
+      const previous = index === currentIndex + 1 ? currentStatus : forwardFlow[index - 1];
+      if (!this.transitions[previous]?.includes(step)) {
+        return null;
+      }
+      path.push(step);
+    }
+
+    return path;
+  }
+
   private async checkAndReconcileStoryousStatuses(): Promise<void> {
     try {
       const storyousSettings = await this.settingsService.getStoryousSettings();
@@ -412,8 +466,12 @@ export class OrderStatusService implements OnModuleInit, OnModuleDestroy {
             continue;
           }
 
-          const allowedTransitions = this.transitions[trackedOrder.status as OrderStatus] || [];
-          if (!allowedTransitions.includes(mappedStatus)) {
+          const reconcilePath = this.buildStoryousReconcilePath(
+            trackedOrder.status as OrderStatus,
+            mappedStatus,
+          );
+
+          if (!reconcilePath || reconcilePath.length === 0) {
             this.logger.warn('Skipping Storyous reconcile due to invalid transition', {
               orderId: trackedOrder.id,
               from: trackedOrder.status,
@@ -424,14 +482,18 @@ export class OrderStatusService implements OnModuleInit, OnModuleDestroy {
             continue;
           }
 
-          await this.updateStatus(trackedOrder.id, mappedStatus, 'storyous');
-          this.logger.log('✅ Reconciled order status from Storyous', {
-            orderId: trackedOrder.id,
-            from: trackedOrder.status,
-            to: mappedStatus,
-            storyousState: remoteState,
-            statusSyncSource: 'storyous',
-          });
+          let currentStatus = trackedOrder.status as OrderStatus;
+          for (const nextStatus of reconcilePath) {
+            await this.updateStatus(trackedOrder.id, nextStatus, 'storyous');
+            this.logger.log('✅ Reconciled order status from Storyous', {
+              orderId: trackedOrder.id,
+              from: currentStatus,
+              to: nextStatus,
+              storyousState: remoteState,
+              statusSyncSource: 'storyous',
+            });
+            currentStatus = nextStatus;
+          }
         } catch (error: any) {
           this.logger.warn('⚠️ Storyous reconcile failed for order', {
             orderId: trackedOrder.id,
