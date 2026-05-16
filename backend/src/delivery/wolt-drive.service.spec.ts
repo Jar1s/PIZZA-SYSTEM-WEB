@@ -67,7 +67,7 @@ describe('WoltDriveService contract', () => {
           post_code: '81101',
           lat: 48.145,
           lon: 17.11,
-          min_preparation_time_minutes: 30,
+          min_preparation_time_minutes: 20,
         }),
       },
     );

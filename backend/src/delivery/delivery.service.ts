@@ -367,26 +367,225 @@ export class DeliveryService implements OnModuleInit, OnModuleDestroy {
   private mapWoltStatus(statusRaw: string): {
     deliveryStatus: DeliveryStatus;
     orderStatus: OrderStatus | null;
-  } {
+    releaseOrderForRedispatch: boolean;
+  } | null {
     switch (statusRaw) {
       case 'INFO_RECEIVED':
-        return { deliveryStatus: DeliveryStatus.PENDING, orderStatus: null };
+        return { deliveryStatus: DeliveryStatus.PENDING, orderStatus: null, releaseOrderForRedispatch: false };
       case 'COURIER_ASSIGNED':
-        return { deliveryStatus: DeliveryStatus.COURIER_ASSIGNED, orderStatus: null };
+      case 'PICKUP_STARTED':
+        return {
+          deliveryStatus: DeliveryStatus.COURIER_ASSIGNED,
+          orderStatus: null,
+          releaseOrderForRedispatch: false,
+        };
       case 'ITEM_PICKED_UP':
       case 'PICKED_UP':
-        return { deliveryStatus: DeliveryStatus.PICKED_UP, orderStatus: OrderStatus.OUT_FOR_DELIVERY };
+        return {
+          deliveryStatus: DeliveryStatus.PICKED_UP,
+          orderStatus: OrderStatus.OUT_FOR_DELIVERY,
+          releaseOrderForRedispatch: false,
+        };
       case 'COURIER_LEFT_PICK_UP':
       case 'IN_TRANSIT':
-        return { deliveryStatus: DeliveryStatus.IN_TRANSIT, orderStatus: OrderStatus.OUT_FOR_DELIVERY };
+      case 'DROPOFF_STARTED':
+      case 'DROPOFF_ARRIVED':
+        return {
+          deliveryStatus: DeliveryStatus.IN_TRANSIT,
+          orderStatus: OrderStatus.OUT_FOR_DELIVERY,
+          releaseOrderForRedispatch: false,
+        };
       case 'DELIVERED':
-        return { deliveryStatus: DeliveryStatus.DELIVERED, orderStatus: OrderStatus.DELIVERED };
+      case 'DROPOFF_COMPLETED':
+        return {
+          deliveryStatus: DeliveryStatus.DELIVERED,
+          orderStatus: OrderStatus.DELIVERED,
+          releaseOrderForRedispatch: false,
+        };
       case 'CANCELLED':
       case 'FAILED':
       case 'REJECTED':
-        return { deliveryStatus: DeliveryStatus.FAILED, orderStatus: null };
+        return {
+          deliveryStatus: DeliveryStatus.FAILED,
+          orderStatus: OrderStatus.READY,
+          releaseOrderForRedispatch: true,
+        };
       default:
-        return { deliveryStatus: DeliveryStatus.IN_TRANSIT, orderStatus: null };
+        return null;
+    }
+  }
+
+  private mapWoltWebhookTypeToStatus(eventTypeRaw: string | null): string | null {
+    switch ((eventTypeRaw || '').trim().toLowerCase()) {
+      case 'order.received':
+      case 'order.pickup_eta_updated':
+        return 'INFO_RECEIVED';
+      case 'order.pickup_started':
+      case 'order.courier_assigned':
+      case 'order.pickup_arrival':
+        return 'PICKUP_STARTED';
+      case 'order.picked_up':
+        return 'PICKED_UP';
+      case 'order.dropoff_started':
+        return 'DROPOFF_STARTED';
+      case 'order.dropoff_arrival':
+        return 'DROPOFF_ARRIVED';
+      case 'order.delivered':
+      case 'order.dropoff_completed':
+        return 'DELIVERED';
+      case 'order.rejected':
+        return 'REJECTED';
+      case 'order.cancelled':
+      case 'order.canceled':
+        return 'CANCELLED';
+      case 'order.failed':
+      case 'order.customer_no_show':
+        return 'FAILED';
+      default:
+        return null;
+    }
+  }
+
+  private normalizeWoltStatus(webhookData: any, eventTypeRaw: string | null): string | null {
+    const details = webhookData?.details && typeof webhookData.details === 'object' ? webhookData.details : {};
+    const candidates = [
+      details?.status,
+      webhookData?.status,
+      webhookData?.order?.status,
+      webhookData?.delivery?.status,
+    ];
+
+    for (const candidate of candidates) {
+      if (typeof candidate === 'string' && candidate.trim()) {
+        return candidate.trim().toUpperCase();
+      }
+    }
+
+    return this.mapWoltWebhookTypeToStatus(eventTypeRaw);
+  }
+
+  private getEtaMinutesFromWebhookValue(value: unknown, referenceTimestampIso: string): number | null {
+    const etaIso =
+      this.parseWebhookTimestamp((value as any)?.max) ||
+      this.parseWebhookTimestamp((value as any)?.min) ||
+      this.parseWebhookTimestamp(value);
+
+    if (!etaIso) {
+      return null;
+    }
+
+    const diffMs = new Date(etaIso).getTime() - new Date(referenceTimestampIso).getTime();
+    if (!Number.isFinite(diffMs)) {
+      return null;
+    }
+
+    return Math.max(0, Math.round(diffMs / 60000));
+  }
+
+  private buildWoltWebhookQuotePatch(
+    webhookData: any,
+    eventType: string | null,
+    eventTimestamp: string,
+    status: string | null,
+    eventId: string | null,
+  ): Prisma.JsonObject {
+    const details = webhookData?.details && typeof webhookData.details === 'object' ? webhookData.details : {};
+    const quotePatch: Record<string, unknown> = {
+      lastWebhookTimestamp: eventTimestamp,
+      lastWebhookEventType: eventType || null,
+      lastWebhookEventId: eventId,
+    };
+
+    if (status) {
+      quotePatch.lastWebhookStatus = status;
+    }
+
+    if (typeof details?.wolt_order_reference_id === 'string' && details.wolt_order_reference_id.trim()) {
+      quotePatch.lastWebhookWoltOrderReferenceId = details.wolt_order_reference_id.trim();
+    }
+
+    const pickupEtaMinutes = this.getEtaMinutesFromWebhookValue(details?.pickup?.eta, eventTimestamp);
+    const dropoffEtaMinutes = this.getEtaMinutesFromWebhookValue(details?.dropoff?.eta, eventTimestamp);
+    if (pickupEtaMinutes !== null) {
+      quotePatch.pickupEtaMinutes = pickupEtaMinutes;
+    }
+    if (dropoffEtaMinutes !== null) {
+      quotePatch.dropoffEtaMinutes = dropoffEtaMinutes;
+      quotePatch.etaMinutes = dropoffEtaMinutes;
+    } else if (pickupEtaMinutes !== null) {
+      quotePatch.etaMinutes = pickupEtaMinutes;
+    }
+
+    if (typeof details?.courier === 'object' && details.courier) {
+      if (typeof details.courier.name === 'string' && details.courier.name.trim()) {
+        quotePatch.courierName = details.courier.name.trim();
+      }
+      if (typeof details.courier.phone === 'string' && details.courier.phone.trim()) {
+        quotePatch.courierPhone = details.courier.phone.trim();
+      }
+    }
+
+    return quotePatch as Prisma.JsonObject;
+  }
+
+  private async returnOrderToReadyForWoltRedispatch(
+    orderId: string,
+    currentStatus: OrderStatus | null | undefined,
+  ): Promise<void> {
+    const orderUpdateData: Prisma.OrderUncheckedUpdateInput = { deliveryId: null };
+
+    if (currentStatus === OrderStatus.DELIVERED || currentStatus === OrderStatus.CANCELED) {
+      await this.prisma.order.update({
+        where: { id: orderId },
+        data: orderUpdateData,
+      });
+      return;
+    }
+
+    const transaction: Prisma.PrismaPromise<any>[] = [];
+    if (currentStatus !== OrderStatus.READY) {
+      orderUpdateData.status = OrderStatus.READY;
+      transaction.push(
+        this.prisma.orderStatusHistory.create({
+          data: {
+            orderId,
+            status: OrderStatus.READY,
+          },
+        }),
+      );
+    }
+
+    transaction.push(
+      this.prisma.order.update({
+        where: { id: orderId },
+        data: orderUpdateData,
+      }),
+    );
+
+    await this.prisma.$transaction(transaction);
+  }
+
+  private async syncOrdersForWoltState(
+    linkedOrders: Array<{ id: string; status: any }>,
+    mapped: {
+      deliveryStatus: DeliveryStatus;
+      orderStatus: OrderStatus | null;
+      releaseOrderForRedispatch: boolean;
+    },
+  ): Promise<void> {
+    if (!linkedOrders.length) {
+      return;
+    }
+
+    for (const linkedOrder of linkedOrders) {
+      if (mapped.releaseOrderForRedispatch) {
+        await this.returnOrderToReadyForWoltRedispatch(linkedOrder.id, linkedOrder.status);
+        continue;
+      }
+
+      if (mapped.orderStatus && linkedOrder.status !== mapped.orderStatus) {
+        await this.orderStatusService.updateStatus(linkedOrder.id, mapped.orderStatus);
+      }
     }
   }
 
@@ -530,6 +729,7 @@ export class DeliveryService implements OnModuleInit, OnModuleDestroy {
       normalizedDropoffAddress,
       3,
       woltConfig,
+      20,
     );
   }
 
@@ -537,7 +737,11 @@ export class DeliveryService implements OnModuleInit, OnModuleDestroy {
    * Get shipment promise for an order (check availability and get pricing)
    * This is the proper way according to Wolt Drive API documentation
    */
-  async getShipmentPromiseForOrder(orderId: string, user?: AuthenticatedUser) {
+  async getShipmentPromiseForOrder(
+    orderId: string,
+    user?: AuthenticatedUser,
+    minPreparationTimeMinutes?: number,
+  ) {
     const order = await this.ordersService.getOrderById(orderId);
     this.assertTenantAccess(order.tenantId, user, 'getShipmentPromiseForOrder');
     
@@ -574,6 +778,7 @@ export class DeliveryService implements OnModuleInit, OnModuleDestroy {
         customer.phone,
         3,
         woltConfig,
+        minPreparationTimeMinutes ?? 20,
       );
     } catch (error: any) {
       // Propagate user-friendly error message from WoltDriveService
@@ -673,6 +878,7 @@ export class DeliveryService implements OnModuleInit, OnModuleDestroy {
           customer.phone,
           3,
           woltConfig,
+          minPreparationTimeMinutesUsed,
         );
         effectivePromiseId = promiseData?.promiseId;
       } catch (error: any) {
@@ -955,9 +1161,14 @@ export class DeliveryService implements OnModuleInit, OnModuleDestroy {
   }
 
   async handleWoltWebhook(webhookData: any) {
-    const eventType = webhookData?.event;
-    const orderData = webhookData?.order || {};
-    const status = String(orderData?.status || webhookData?.status || '').toUpperCase();
+    const details = webhookData?.details && typeof webhookData.details === 'object' ? webhookData.details : {};
+    const eventType =
+      typeof webhookData?.type === 'string'
+        ? webhookData.type
+        : typeof webhookData?.event === 'string'
+          ? webhookData.event
+          : null;
+    const status = this.normalizeWoltStatus(webhookData, eventType);
     const eventId =
       webhookData?.event_id ||
       webhookData?.id ||
@@ -966,20 +1177,22 @@ export class DeliveryService implements OnModuleInit, OnModuleDestroy {
       null;
     const eventTimestamp =
       this.parseWebhookTimestamp(
-        webhookData?.event_time ||
-          webhookData?.timestamp ||
-          webhookData?.created_at ||
-          webhookData?.occurred_at,
+        webhookData?.created_at ||
+          webhookData?.occurred_at ||
+          webhookData?.event_time ||
+          webhookData?.timestamp,
       ) || new Date().toISOString();
     const deliveryJobId =
-      orderData?.wolt_order_reference_id ||
+      details?.wolt_order_reference_id ||
       webhookData?.wolt_order_reference_id ||
       webhookData?.delivery_id ||
-      webhookData?.job_id;
+      webhookData?.job_id ||
+      webhookData?.order?.wolt_order_reference_id;
 
     if (!deliveryJobId) {
       this.logger.warn('Wolt webhook payload missing delivery identifier', {
         keys: webhookData ? Object.keys(webhookData) : [],
+        eventType: eventType || 'unknown',
       });
       return;
     }
@@ -987,7 +1200,7 @@ export class DeliveryService implements OnModuleInit, OnModuleDestroy {
     this.logger.log('Processing Wolt webhook event', {
       eventType: eventType || 'unknown',
       deliveryJobId,
-      status,
+      status: status || 'unknown',
     });
 
     const delivery = await this.prisma.delivery.findFirst({
@@ -1021,7 +1234,7 @@ export class DeliveryService implements OnModuleInit, OnModuleDestroy {
       return;
     }
 
-    if (!eventId && lastStatus === status && lastTimestamp === eventTimestamp) {
+    if (!eventId && status && lastStatus === status && lastTimestamp === eventTimestamp) {
       this.logger.debug('Skipping duplicate Wolt webhook by status+timestamp', {
         deliveryId: delivery.id,
         deliveryJobId,
@@ -1031,29 +1244,46 @@ export class DeliveryService implements OnModuleInit, OnModuleDestroy {
       return;
     }
 
-    const { deliveryStatus: newDeliveryStatus, orderStatus: newOrderStatus } = this.mapWoltStatus(status);
+    const quotePatch = this.buildWoltWebhookQuotePatch(
+      webhookData,
+      eventType,
+      eventTimestamp,
+      status,
+      eventId,
+    );
+    const mappedStatus = status ? this.mapWoltStatus(status) : null;
+
+    if (!mappedStatus) {
+      this.logger.warn('Ignoring unknown Wolt webhook status/event', {
+        deliveryId: delivery.id,
+        deliveryJobId,
+        eventType,
+        status,
+      });
+      await this.prisma.delivery.update({
+        where: { id: delivery.id },
+        data: {
+          quote: {
+            ...quoteObj,
+            ...quotePatch,
+          } as Prisma.InputJsonValue,
+        },
+      });
+      return;
+    }
 
     await this.prisma.delivery.update({
       where: { id: delivery.id },
       data: {
-        status: newDeliveryStatus,
+        status: mappedStatus.deliveryStatus,
         quote: {
           ...quoteObj,
-          lastWebhookStatus: status,
-          lastWebhookTimestamp: eventTimestamp,
-          lastWebhookEventId: eventId,
-          lastWebhookEventType: eventType || null,
+          ...quotePatch,
         } as Prisma.InputJsonValue,
       },
     });
 
-    if (newOrderStatus && delivery.orders.length > 0) {
-      for (const linkedOrder of delivery.orders) {
-        if (linkedOrder.status !== newOrderStatus) {
-          await this.orderStatusService.updateStatus(linkedOrder.id, newOrderStatus);
-        }
-      }
-    }
+    await this.syncOrdersForWoltState(delivery.orders, mappedStatus);
   }
 
   private async reconcileStaleWoltDeliveries(): Promise<void> {
@@ -1112,41 +1342,46 @@ export class DeliveryService implements OnModuleInit, OnModuleDestroy {
           continue;
         }
 
-        const { deliveryStatus: mappedDeliveryStatus, orderStatus: mappedOrderStatus } =
-          this.mapWoltStatus(statusRaw);
+        const mappedStatus = this.mapWoltStatus(statusRaw);
+        const polledQuotePatch = {
+          ...quoteObj,
+          lastPolledStatus: statusRaw,
+          lastPolledAt: new Date().toISOString(),
+        } as Prisma.InputJsonValue;
 
-        if (mappedDeliveryStatus !== delivery.status) {
+        if (!mappedStatus) {
+          this.logger.warn('[reconcileStaleWoltDeliveries] Ignoring unknown Wolt status', {
+            deliveryId: delivery.id,
+            jobId: delivery.jobId,
+            statusRaw,
+          });
           await this.prisma.delivery.update({
             where: { id: delivery.id },
             data: {
-              status: mappedDeliveryStatus,
-              quote: {
-                ...quoteObj,
-                lastPolledStatus: statusRaw,
-                lastPolledAt: new Date().toISOString(),
-              } as Prisma.InputJsonValue,
+              quote: polledQuotePatch,
+            },
+          });
+          continue;
+        }
+
+        if (mappedStatus.deliveryStatus !== delivery.status) {
+          await this.prisma.delivery.update({
+            where: { id: delivery.id },
+            data: {
+              status: mappedStatus.deliveryStatus,
+              quote: polledQuotePatch,
             },
           });
         } else {
           await this.prisma.delivery.update({
             where: { id: delivery.id },
             data: {
-              quote: {
-                ...quoteObj,
-                lastPolledStatus: statusRaw,
-                lastPolledAt: new Date().toISOString(),
-              } as Prisma.InputJsonValue,
+              quote: polledQuotePatch,
             },
           });
         }
 
-        if (mappedOrderStatus) {
-          for (const linkedOrder of delivery.orders) {
-            if (linkedOrder.status !== mappedOrderStatus) {
-              await this.orderStatusService.updateStatus(linkedOrder.id, mappedOrderStatus);
-            }
-          }
-        }
+        await this.syncOrdersForWoltState(delivery.orders, mappedStatus);
       } catch (error: any) {
         this.logger.warn('[reconcileStaleWoltDeliveries] Failed to reconcile delivery', {
           deliveryId: delivery.id,
