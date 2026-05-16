@@ -387,6 +387,43 @@ export class OrderStatusService implements OnModuleInit, OnModuleDestroy {
     return null;
   }
 
+  private buildStoryousReconcilePath(
+    currentStatus: OrderStatus,
+    targetStatus: OrderStatus,
+  ): OrderStatus[] | null {
+    const forwardFlow: OrderStatus[] = [
+      OrderStatus.PENDING,
+      OrderStatus.PAID,
+      OrderStatus.PREPARING,
+      OrderStatus.READY,
+      OrderStatus.OUT_FOR_DELIVERY,
+      OrderStatus.DELIVERED,
+    ];
+
+    if (targetStatus === OrderStatus.CANCELED) {
+      return this.transitions[currentStatus]?.includes(targetStatus) ? [targetStatus] : null;
+    }
+
+    const currentIndex = forwardFlow.indexOf(currentStatus);
+    const targetIndex = forwardFlow.indexOf(targetStatus);
+
+    if (currentIndex === -1 || targetIndex === -1 || targetIndex <= currentIndex) {
+      return null;
+    }
+
+    const path: OrderStatus[] = [];
+    for (let index = currentIndex + 1; index <= targetIndex; index += 1) {
+      const step = forwardFlow[index];
+      const previous = index === currentIndex + 1 ? currentStatus : forwardFlow[index - 1];
+      if (!this.transitions[previous]?.includes(step)) {
+        return null;
+      }
+      path.push(step);
+    }
+
+    return path;
+  }
+
   private async checkAndReconcileStoryousStatuses(): Promise<void> {
     try {
       const storyousSettings = await this.settingsService.getStoryousSettings();
@@ -429,8 +466,12 @@ export class OrderStatusService implements OnModuleInit, OnModuleDestroy {
             continue;
           }
 
-          const allowedTransitions = this.transitions[trackedOrder.status as OrderStatus] || [];
-          if (!allowedTransitions.includes(mappedStatus)) {
+          const reconcilePath = this.buildStoryousReconcilePath(
+            trackedOrder.status as OrderStatus,
+            mappedStatus,
+          );
+
+          if (!reconcilePath || reconcilePath.length === 0) {
             this.logger.warn('Skipping Storyous reconcile due to invalid transition', {
               orderId: trackedOrder.id,
               from: trackedOrder.status,
@@ -441,14 +482,18 @@ export class OrderStatusService implements OnModuleInit, OnModuleDestroy {
             continue;
           }
 
-          await this.updateStatus(trackedOrder.id, mappedStatus, 'storyous');
-          this.logger.log('✅ Reconciled order status from Storyous', {
-            orderId: trackedOrder.id,
-            from: trackedOrder.status,
-            to: mappedStatus,
-            storyousState: remoteState,
-            statusSyncSource: 'storyous',
-          });
+          let currentStatus = trackedOrder.status as OrderStatus;
+          for (const nextStatus of reconcilePath) {
+            await this.updateStatus(trackedOrder.id, nextStatus, 'storyous');
+            this.logger.log('✅ Reconciled order status from Storyous', {
+              orderId: trackedOrder.id,
+              from: currentStatus,
+              to: nextStatus,
+              storyousState: remoteState,
+              statusSyncSource: 'storyous',
+            });
+            currentStatus = nextStatus;
+          }
         } catch (error: any) {
           this.logger.warn('⚠️ Storyous reconcile failed for order', {
             orderId: trackedOrder.id,
