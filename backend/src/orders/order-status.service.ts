@@ -1,12 +1,13 @@
 import { Injectable, BadRequestException, Logger, OnModuleInit, OnModuleDestroy, Inject, forwardRef } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { OrderStatus, Order, CustomerInfo, Address, DeliveryStatus } from '@pizza-ecosystem/shared';
+import { OrderStatus, DeliveryStatus } from '@pizza-ecosystem/shared';
 import { EmailService } from '../email/email.service';
 import { TenantsService } from '../tenants/tenants.service';
 import { StoryousService } from '../storyous/storyous.service';
 import { SettingsService } from '../settings/settings.service';
 import { PaymentsService } from '../payments/payments.service';
 import { TelegramNotificationsService } from '../notifications/telegram-notifications.service';
+import { OrdersService } from './orders.service';
 
 @Injectable()
 export class OrderStatusService implements OnModuleInit, OnModuleDestroy {
@@ -42,11 +43,9 @@ export class OrderStatusService implements OnModuleInit, OnModuleDestroy {
     @Inject(forwardRef(() => PaymentsService))
     private paymentsService: PaymentsService,
     private telegramNotifications: TelegramNotificationsService,
+    @Inject(forwardRef(() => OrdersService))
+    private ordersService: OrdersService,
   ) {}
-
-  private isAcceptedStoryousState(state: string | null | undefined): boolean {
-    return state === 'CONFIRMED' || state === 'SCHEDULING_DELIVERY' || state === 'DISPATCHED';
-  }
 
   private shouldAutoSyncToStoryous(currentStatus: OrderStatus, newStatus: OrderStatus): boolean {
     return (
@@ -83,44 +82,21 @@ export class OrderStatusService implements OnModuleInit, OnModuleDestroy {
         return;
       }
 
-      const orderForStoryous: Order = {
-        ...order,
-        status: newStatus as OrderStatus,
-        customer: order.customer as unknown as CustomerInfo,
-        address: order.address as unknown as Address,
-      } as unknown as Order;
+      const syncResult = await this.ordersService.syncOrderToStoryous(order.id);
 
-      const storyousResult = await this.storyousService.createOrder(
-        orderForStoryous,
-        storyousSettings.merchantId,
-        storyousSettings.placeId,
-      );
-
-      if (!storyousResult?.id) {
-        return;
-      }
-
-      const storyousState = String(storyousResult.storyousState || '').trim().toUpperCase() || null;
-      await this.prisma.order.update({
-        where: { id: order.id },
-        data: {
-          storyousOrderId: storyousResult.id,
-          storyousOrderState: storyousState,
-        },
-      });
-
-      if (this.isAcceptedStoryousState(storyousState)) {
-        this.logger.log(`✅ Order ${order.id} auto-synced to Storyous: ${storyousResult.id}`, {
+      if (syncResult.success) {
+        this.logger.log(`✅ Order ${order.id} auto-synced to Storyous: ${syncResult.storyousOrderId}`, {
           orderId: order.id,
-          storyousOrderId: storyousResult.id,
-          storyousState,
+          storyousOrderId: syncResult.storyousOrderId,
+          storyousState: syncResult.storyousState,
           statusSyncSource,
         });
       } else {
-        this.logger.warn(`⚠️ Order ${order.id} reached Storyous but still requires attention`, {
+        this.logger.warn(`⚠️ Order ${order.id} Storyous auto-sync needs attention`, {
           orderId: order.id,
-          storyousOrderId: storyousResult.id,
-          storyousState,
+          storyousOrderId: syncResult.storyousOrderId,
+          storyousState: syncResult.storyousState,
+          message: syncResult.message,
           statusSyncSource,
         });
       }
@@ -527,7 +503,6 @@ export class OrderStatusService implements OnModuleInit, OnModuleDestroy {
     }
   }
 }
-
 
 
 
