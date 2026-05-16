@@ -11,6 +11,7 @@ import { OrderStatus } from '@pizza-ecosystem/shared';
 import { SettingsService } from '../settings/settings.service';
 import { DeliveryFeeTierService } from '../delivery/delivery-fee-tier.service';
 import { OrderNumberService } from './order-number.service';
+import { TelegramNotificationsService } from '../notifications/telegram-notifications.service';
 
 describe('OrdersService', () => {
   let service: OrdersService;
@@ -97,6 +98,12 @@ describe('OrdersService', () => {
     generateOrderNumber: jest.fn().mockResolvedValue(1),
   };
 
+  const mockTelegramNotificationsService = {
+    notifyOrderCreated: jest.fn().mockResolvedValue(undefined),
+    notifyOrderStatusChanged: jest.fn().mockResolvedValue(undefined),
+    notifyError: jest.fn().mockResolvedValue(undefined),
+  };
+
   const mockProductMappingService = {
     resolveToInternalName: jest.fn(),
   };
@@ -140,6 +147,10 @@ describe('OrdersService', () => {
         {
           provide: JwtService,
           useValue: mockJwtService,
+        },
+        {
+          provide: TelegramNotificationsService,
+          useValue: mockTelegramNotificationsService,
         },
       ],
     }).compile();
