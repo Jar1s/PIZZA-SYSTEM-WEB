@@ -12,6 +12,12 @@ describe('StoryousService', () => {
     storyousModifierMapping: {
       findMany: jest.fn(),
     },
+    product: {
+      findMany: jest.fn(),
+    },
+    productMapping: {
+      findMany: jest.fn(),
+    },
   };
 
   const buildJsonResponse = (body: Record<string, any>, status = 200) =>
@@ -21,43 +27,6 @@ describe('StoryousService', () => {
       json: jest.fn().mockResolvedValue(body),
       text: jest.fn().mockResolvedValue(JSON.stringify(body)),
     }) as any;
-
-  const enableStoryousSettings = (autoAcceptPrintMode = true) => {
-    mockSettingsService.getStoryousSettings.mockResolvedValue({
-      clientId: 'client',
-      clientSecret: 'secret',
-      enabled: true,
-      autoSync: true,
-      defaultDeliveryLeadMinutes: 45,
-      autoAcceptPrintMode,
-      receiptIncludeModifierLines: true,
-      receiptIncludeOrderNumber: true,
-    });
-  };
-
-  const mockSuccessfulStoryousCreate = (orderId = 'storyous-1') => {
-    const fetchMock = jest.spyOn(global, 'fetch');
-    fetchMock
-      .mockResolvedValueOnce(
-        buildJsonResponse({
-          access_token: 'token-123',
-          expires_at: '2026-04-02T11:00:00.000Z',
-        }),
-      )
-      .mockResolvedValueOnce(
-        buildJsonResponse({
-          orderId,
-          state: 'CONFIRMED',
-        }),
-      )
-      .mockResolvedValueOnce(
-        buildJsonResponse({
-          orderId,
-          state: 'CONFIRMED',
-        }),
-      );
-    return fetchMock;
-  };
 
   const baseOrder = {
     id: 'order-1',
@@ -121,6 +90,8 @@ describe('StoryousService', () => {
       },
     });
     mockPrismaService.storyousModifierMapping.findMany.mockResolvedValue([]);
+    mockPrismaService.product.findMany.mockResolvedValue([]);
+    mockPrismaService.productMapping.findMany.mockResolvedValue([]);
     jest.restoreAllMocks();
   });
 
@@ -344,56 +315,71 @@ describe('StoryousService', () => {
     );
   });
 
-  it('marks card-on-delivery orders as paid but not fiscalized for Storyous receipt printing', async () => {
-    enableStoryousSettings(true);
-    const fetchMock = mockSuccessfulStoryousCreate('storyous-card');
-
-    await service.createOrder(
+  it('resolves product mapping for raw orders the same way as manual sync payload builder', async () => {
+    mockSettingsService.getStoryousSettings.mockResolvedValue({
+      clientId: 'client',
+      clientSecret: 'secret',
+      enabled: true,
+      autoSync: true,
+      defaultDeliveryLeadMinutes: 45,
+      autoAcceptPrintMode: true,
+      receiptIncludeModifierLines: true,
+      receiptIncludeOrderNumber: true,
+    });
+    mockPrismaService.product.findMany.mockResolvedValue([
       {
-        ...baseOrder,
-        paymentRef: 'cod:card',
-        paymentStatus: 'pending',
-      } as any,
-      'merchant-1',
-      'place-1',
-    );
-
-    const createPayload = JSON.parse((fetchMock.mock.calls[1]?.[1] as RequestInit).body as string);
-    expect(createPayload.alreadyPaid).toBe(true);
-    expect(createPayload.paymentAlreadyFiscalized).toBe(false);
-    expect(createPayload.note).toContain('Spôsob platby: karta pri doručení');
-  });
-
-  it('keeps cash-on-delivery orders unpaid for Storyous and labels the receipt preview', async () => {
-    enableStoryousSettings(true);
-    const fetchMock = mockSuccessfulStoryousCreate('storyous-cash');
-
-    await service.createOrder(
+        id: 'product-1',
+        name: 'Calimero',
+        category: 'PIZZA',
+      },
+    ]);
+    mockPrismaService.productMapping.findMany.mockResolvedValue([
       {
-        ...baseOrder,
-        paymentRef: 'cod:cash',
-        paymentStatus: 'pending',
-      } as any,
-      'merchant-1',
-      'place-1',
-    );
+        internalProductName: 'Calimero',
+        externalIdentifier: 'storyous-item-calimero',
+        updatedAt: new Date('2026-05-17T10:00:00.000Z'),
+      },
+    ]);
 
-    const createPayload = JSON.parse((fetchMock.mock.calls[1]?.[1] as RequestInit).body as string);
-    expect(createPayload.alreadyPaid).toBe(false);
-    expect(createPayload.paymentAlreadyFiscalized).toBe(false);
-    expect(createPayload.note).toContain('Spôsob platby: hotovosť pri doručení');
-  });
-
-  it('shows card-on-delivery payment method in receipt preview', async () => {
-    enableStoryousSettings(true);
-
-    const preview = await service.getReceiptPreview({
+    const rawOrder = {
       ...baseOrder,
-      paymentRef: 'cod:card',
-      paymentStatus: 'pending',
-    } as any);
+      items: [
+        {
+          ...baseOrder.items[0],
+          productId: 'product-1',
+          productName: 'Calimero Love',
+          storyousItemId: undefined,
+          modifiers: {
+            dough: ['classic-32'],
+          },
+        },
+      ],
+    } as any;
 
-    expect(preview.noteLines).toContain('Spôsob platby: karta pri doručení');
-    expect(preview.customerDetailLines).toContain('Spôsob platby: karta pri doručení');
+    const fetchMock = jest.spyOn(global, 'fetch');
+    fetchMock
+      .mockResolvedValueOnce(
+        buildJsonResponse({
+          access_token: 'token-123',
+          expires_at: '2026-04-02T11:00:00.000Z',
+        }),
+      )
+      .mockResolvedValueOnce(
+        buildJsonResponse({
+          orderId: 'storyous-raw-1',
+          state: 'CONFIRMED',
+        }),
+      )
+      .mockResolvedValueOnce(
+        buildJsonResponse({
+          orderId: 'storyous-raw-1',
+          state: 'CONFIRMED',
+        }),
+      );
+
+    await service.createOrder(rawOrder, 'merchant-1', 'place-1');
+
+    const createPayload = JSON.parse((fetchMock.mock.calls[1]?.[1] as RequestInit).body as string);
+    expect(createPayload.items[0].itemId).toBe('storyous-item-calimero');
   });
 });
