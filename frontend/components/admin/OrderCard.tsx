@@ -519,7 +519,13 @@ export function OrderCard({
     }
   };
 
-  const handleCreateWoltDelivery = async () => {
+  const handleWoltPreparationChange = (minutes: number) => {
+    setWoltPreparationMinutes(minutes);
+    setWoltPromise(null);
+    setWoltError(null);
+  };
+
+  const handleCreateWoltDelivery = async (initialPreparationMinutes = 20) => {
     if (isOutsideWoltArea) {
       const message = woltAreaBlockReason || 'Adresa zákazníka je mimo doručovacej zóny Wolt.';
       setWoltMessage(`⚠️ ${message}`);
@@ -527,7 +533,7 @@ export function OrderCard({
       return;
     }
 
-    setWoltPreparationMinutes(20);
+    setWoltPreparationMinutes(initialPreparationMinutes);
     setWoltError(null);
     setWoltPromise(null);
     setWoltMessage(null);
@@ -904,7 +910,7 @@ export function OrderCard({
       )}
       {canCreateWolt && (
         <button
-          onClick={handleCreateWoltDelivery}
+          onClick={() => void handleCreateWoltDelivery()}
           disabled={creatingWolt || !canCreateWoltEffective}
           className="px-3 py-2 bg-orange-600 text-white rounded hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
           title={canCreateWoltEffective ? 'Create Wolt delivery' : (woltAreaBlockReason || 'Wolt dispatch blocked')}
@@ -1056,7 +1062,7 @@ export function OrderCard({
             )}
             {canCreateWolt && (
               <button
-                onClick={handleCreateWoltDelivery}
+                onClick={() => void handleCreateWoltDelivery()}
                 disabled={creatingWolt || !canCreateWoltEffective}
                 className="flex-1 min-w-[120px] px-3 py-2 bg-orange-600 text-white rounded hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-semibold"
                 title={canCreateWoltEffective ? 'Create Wolt delivery' : (woltAreaBlockReason || 'Wolt dispatch blocked')}
@@ -1332,31 +1338,33 @@ export function OrderCard({
                       )}
                     </div>
 
-                    <div className="mt-2 flex flex-wrap gap-1.5">
-                      {woltPreparationQuickOptions.map((minutes) => {
-                        const isActive = woltPreparationMinutes === minutes;
-                        return (
-                          <button
-                            key={minutes}
-                            type="button"
-                            onClick={() => setWoltPreparationMinutes(minutes)}
-                            className={`rounded-xl border px-2.5 py-1.5 text-[10px] font-semibold transition-colors ${
-                              isActive
-                                ? 'border-orange-600 bg-orange-500 text-white'
-                                : 'border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50'
-                            }`}
-                            aria-pressed={isActive}
-                          >
-                            +{minutes}m
-                          </button>
-                        );
-                      })}
-                    </div>
+                    {!isWoltDelivery && (
+                      <div className="mt-2 flex flex-wrap gap-1.5">
+                        {woltPreparationQuickOptions.map((minutes) => {
+                          const isActive = woltPreparationMinutes === minutes;
+                          return (
+                            <button
+                              key={minutes}
+                              type="button"
+                              onClick={() => void handleCreateWoltDelivery(minutes)}
+                              className={`rounded-xl border px-2.5 py-1.5 text-[10px] font-semibold transition-colors ${
+                                isActive
+                                  ? 'border-orange-600 bg-orange-500 text-white'
+                                  : 'border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50'
+                              }`}
+                              aria-pressed={isActive}
+                            >
+                              +{minutes}m
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
 
                     <div className="mt-2 flex flex-wrap items-center gap-2">
                       {canCreateWolt && (
                         <button
-                          onClick={handleCreateWoltDelivery}
+                          onClick={() => void handleCreateWoltDelivery()}
                           disabled={creatingWolt || !canCreateWoltEffective}
                           className="rounded-2xl bg-orange-600 px-3 py-2 text-[10px] font-semibold text-white transition hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-50"
                           title={
@@ -1856,7 +1864,7 @@ export function OrderCard({
                             <button
                               key={minutes}
                               type="button"
-                              onClick={() => setWoltPreparationMinutes(minutes)}
+                              onClick={() => handleWoltPreparationChange(minutes)}
                               className={`px-3 py-1.5 rounded-md border text-sm font-semibold transition-colors ${
                                 isActive
                                   ? 'bg-orange-600 text-white border-orange-600'
@@ -1864,7 +1872,7 @@ export function OrderCard({
                               }`}
                               aria-pressed={isActive}
                             >
-                              {minutes}
+                              +{minutes}m
                             </button>
                           );
                         })}

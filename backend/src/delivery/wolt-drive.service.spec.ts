@@ -143,6 +143,9 @@ describe('WoltDriveService contract', () => {
     expect(JSON.parse((fetchMock.mock.calls[0][1] as any).body)).toEqual({
       pickup: {
         comment: 'Back entrance',
+        options: {
+          min_preparation_time_minutes: 45,
+        },
       },
       dropoff: {
         location: {
@@ -178,7 +181,6 @@ describe('WoltDriveService contract', () => {
       },
       order_number: '789',
       shipment_promise_id: 'promise-123',
-      min_preparation_time_minutes: 45,
     });
     expect(result).toEqual({
       jobId: 'wolt-ref-1',
