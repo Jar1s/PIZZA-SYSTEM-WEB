@@ -17,6 +17,7 @@ export enum DeliveryStatus {
   IN_TRANSIT = 'in_transit',
   DELIVERED = 'delivered',
   FAILED = 'failed',
+  CANCELED = 'cancelled',
 }
 
 export interface DeliveryQuote {
@@ -41,7 +42,6 @@ export interface WoltWebhook {
     wolt_order_reference_id?: string;
   };
 }
-
 
 
 

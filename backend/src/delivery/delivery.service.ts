@@ -404,6 +404,12 @@ export class DeliveryService implements OnModuleInit, OnModuleDestroy {
           releaseOrderForRedispatch: false,
         };
       case 'CANCELLED':
+      case 'CANCELED':
+        return {
+          deliveryStatus: DeliveryStatus.CANCELED,
+          orderStatus: OrderStatus.READY,
+          releaseOrderForRedispatch: true,
+        };
       case 'FAILED':
       case 'REJECTED':
         return {
@@ -1188,7 +1194,7 @@ export class DeliveryService implements OnModuleInit, OnModuleDestroy {
       this.prisma.delivery.update({
         where: { id: order.delivery.id },
         data: {
-          status: DeliveryStatus.FAILED,
+          status: DeliveryStatus.CANCELED,
           quote: {
             ...existingQuote,
             canceledAt: new Date().toISOString(),

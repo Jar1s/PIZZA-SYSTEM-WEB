@@ -342,9 +342,11 @@ export function OrderCard({
   const canCreateWoltEffective = canCreateWolt && !isOutsideWoltArea;
   const canCancelWolt =
     isWoltDelivery &&
+    !['delivered', 'failed', 'cancelled', 'canceled'].includes(String(woltDelivery?.status || '').toLowerCase()) &&
     (order.status === OrderStatus.PAID ||
       order.status === OrderStatus.PREPARING ||
-      order.status === OrderStatus.READY);
+      order.status === OrderStatus.READY ||
+      order.status === OrderStatus.OUT_FOR_DELIVERY);
   // Show cancel for anything except delivered/canceled
   const canShowCancel = order.status !== OrderStatus.DELIVERED && order.status !== OrderStatus.CANCELED;
   // Desktop already has specialized reject/cancel buttons for some states.
