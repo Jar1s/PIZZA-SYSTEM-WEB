@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Order, OrderStatus } from '@pizza-ecosystem/shared';
 import { PrismaService } from '../prisma/prisma.service';
 import { SettingsService } from '../settings/settings.service';
-import { StoryousModifierSelection } from './storyous-modifier.util';
+import { buildStoryousModifierSelections, StoryousModifierSelection } from './storyous-modifier.util';
 
 export interface StoryousReceiptPreviewItem {
   quantity: number;
@@ -285,29 +285,8 @@ export class StoryousService {
   }
 
   private getPaymentReceiptLabel(order: Order): string {
-    const paymentRef = String((order as any)?.paymentRef || '').toLowerCase();
-    if (paymentRef === 'cod:card') {
-      return 'karta pri doručení';
-    }
-    if (paymentRef === 'cod:cash') {
-      return 'hotovosť pri doručení';
-    }
-
     const paymentStatus = String((order as any)?.paymentStatus || '').toLowerCase();
     return paymentStatus === 'pending' ? 'pri prevzatí' : 'platené vopred';
-  }
-
-  private isAlreadyPaidForStoryous(order: Order): boolean {
-    const paymentRef = String((order as any)?.paymentRef || '').toLowerCase();
-    if (paymentRef === 'cod:card') {
-      return true;
-    }
-    if (paymentRef === 'cod:cash') {
-      return false;
-    }
-
-    const paymentStatus = String((order as any)?.paymentStatus || '').toLowerCase();
-    return paymentStatus !== 'pending';
   }
 
   private buildCustomerReceiptLines(order: Order, requestedDeliveryAt: string): string[] {
@@ -373,11 +352,108 @@ export class StoryousService {
     );
   }
 
+  private async enrichOrderForStoryous(order: Order): Promise<Order> {
+    if (!Array.isArray(order.items) || order.items.length === 0) {
+      return order;
+    }
+
+    const needsEnrichment = order.items.some((item: any) => !item?.storyousItemId);
+    const tenantId = String((order as any)?.tenantId || '');
+
+    const products = needsEnrichment && order.items.some((item: any) => !!item?.productId)
+      ? await this.prisma.product.findMany({
+          where: {
+            id: {
+              in: order.items
+                .map((item: any) => item?.productId)
+                .filter((productId: any): productId is string => !!productId),
+            },
+          },
+          select: {
+            id: true,
+            name: true,
+            category: true,
+          },
+        })
+      : [];
+
+    const productById = new Map(products.map((product) => [product.id, product]));
+    const internalNames = needsEnrichment
+      ? Array.from(
+          new Set(
+            order.items
+              .map((item: any) => productById.get(item.productId)?.name || item.productName)
+              .filter((name): name is string => !!name),
+          ),
+        )
+      : [];
+
+    const mappings = needsEnrichment && tenantId && internalNames.length > 0
+      ? await this.prisma.productMapping.findMany({
+          where: {
+            tenantId,
+            source: 'storyous',
+            internalProductName: { in: internalNames },
+          },
+          orderBy: {
+            updatedAt: 'desc',
+          },
+        })
+      : [];
+
+    const mappingByInternalName = new Map<string, (typeof mappings)[number]>();
+    for (const mapping of mappings) {
+      if (!mappingByInternalName.has(mapping.internalProductName)) {
+        mappingByInternalName.set(mapping.internalProductName, mapping);
+      }
+    }
+
+    const tenantTheme = (order as any)?.tenant?.theme;
+    const enrichedItems = order.items.map((item: any) => {
+      const product = productById.get(item.productId);
+      const internalProductName = product?.name || item.productName;
+      const mapping = internalProductName ? mappingByInternalName.get(internalProductName) : undefined;
+      const storyousItemId = item.storyousItemId || item.storyous_item_id || item.storyousId || mapping?.externalIdentifier;
+
+      if (!storyousItemId) {
+        throw new Error(
+          `Storyous mapping missing for product "${internalProductName || item.productName}" (${item.productId}) in tenant ${tenantId} (order ${order.id})`,
+        );
+      }
+
+      const storyousModifierSelections = Array.isArray(item.storyousModifierSelections)
+        ? item.storyousModifierSelections
+        : buildStoryousModifierSelections(
+            item.modifiers as any,
+            product?.category || 'PIZZA',
+            tenantTheme,
+          );
+
+      const resolvedModifierLines = Array.isArray(item.resolvedModifierLines)
+        ? item.resolvedModifierLines
+        : storyousModifierSelections.map((selection) => selection.receiptLabel);
+
+      return {
+        ...item,
+        productName: item.productName || internalProductName,
+        storyousItemId,
+        storyousModifierSelections,
+        resolvedModifierLines,
+      };
+    });
+
+    return {
+      ...order,
+      items: enrichedItems,
+    } as Order;
+  }
+
   private async buildStoryousOrderData(order: Order): Promise<{
     orderData: any;
     preview: StoryousReceiptPreview;
     warnings: string[];
   }> {
+    const enrichedOrder = await this.enrichOrderForStoryous(order);
     const customer = order.customer as any;
     const address = order.address as any;
 
@@ -385,7 +461,7 @@ export class StoryousService {
       throw new Error(`Storyous sync failed: missing delivery address for order ${order.id}`);
     }
 
-    if (!Array.isArray(order.items) || order.items.length === 0) {
+    if (!Array.isArray(enrichedOrder.items) || enrichedOrder.items.length === 0) {
       throw new Error(`Storyous sync failed: order ${order.id} has no items`);
     }
 
@@ -395,8 +471,7 @@ export class StoryousService {
     const requestedPickupTime = requestedDeliveryAt;
     const orderReference = this.getOrderReference(order);
     const orderSourceWebsite = this.getOrderSourceWebsite(order);
-    const isAlreadyPaid = this.isAlreadyPaidForStoryous(order);
-    const paymentReceiptLabel = this.getPaymentReceiptLabel(order);
+    const isAlreadyPaid = String((order as any).paymentStatus || '').toLowerCase() !== 'pending';
     const receiptIncludeModifierLines = settings?.receiptIncludeModifierLines ?? true;
     const modifierMappingsByOptionId = await this.getModifierMappingsByOptionId(
       String((order as any)?.tenantId || ''),
@@ -404,7 +479,7 @@ export class StoryousService {
     const warnings = new Set<string>();
 
     const previewItems: StoryousReceiptPreviewItem[] = [];
-    const items = order.items.map((item: any) => {
+    const items = enrichedOrder.items.map((item: any) => {
       const storyousItemId = item.storyousItemId || item.storyous_item_id || item.storyousId;
       if (!storyousItemId) {
         throw new Error(
@@ -502,7 +577,7 @@ export class StoryousService {
       return itemData;
     });
 
-    const orderNote = `${orderReference}\nWeb: ${orderSourceWebsite}\nSpôsob platby: ${paymentReceiptLabel}`;
+    const orderNote = `${orderReference}\nWeb: ${orderSourceWebsite}`;
 
     const orderData: any = {
       items,
@@ -542,7 +617,6 @@ export class StoryousService {
       deliveryAt: requestedDeliveryAt,
       scheduledAt: requestedDeliveryAt,
       alreadyPaid: isAlreadyPaid,
-      paymentAlreadyFiscalized: false,
       timezone: 'Europe/Bratislava',
       note: orderNote,
     };
