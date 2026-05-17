@@ -11,6 +11,7 @@ import { OrderStatus } from '@pizza-ecosystem/shared';
 import { SettingsService } from '../settings/settings.service';
 import { DeliveryFeeTierService } from '../delivery/delivery-fee-tier.service';
 import { OrderNumberService } from './order-number.service';
+import { TelegramNotificationsService } from '../notifications/telegram-notifications.service';
 
 describe('OrdersService', () => {
   let service: OrdersService;
@@ -105,6 +106,11 @@ describe('OrdersService', () => {
     sign: jest.fn(),
   };
 
+  const mockTelegramNotificationsService = {
+    notifyOrderCreated: jest.fn(),
+    notifyOrderStatusChange: jest.fn(),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -140,6 +146,10 @@ describe('OrdersService', () => {
         {
           provide: JwtService,
           useValue: mockJwtService,
+        },
+        {
+          provide: TelegramNotificationsService,
+          useValue: mockTelegramNotificationsService,
         },
       ],
     }).compile();
@@ -497,7 +507,6 @@ describe('OrdersService', () => {
         buildOrderResult({
           userId: 'user-1',
           paymentStatus: 'pending',
-          paymentRef: 'cod:cash',
         }),
       );
       mockPrismaService.refreshToken.create.mockResolvedValue({
@@ -516,6 +525,7 @@ describe('OrdersService', () => {
         data: expect.objectContaining({
           userId: 'user-1',
           paymentStatus: 'pending',
+          paymentRef: 'cod:cash',
         }),
         include: expect.objectContaining({
           items: true,
