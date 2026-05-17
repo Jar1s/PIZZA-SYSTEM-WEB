@@ -107,7 +107,7 @@ describe('OrdersService', () => {
   };
 
   const mockTelegramNotificationsService = {
-    notifyNewOrder: jest.fn(),
+    notifyOrderCreated: jest.fn(),
     notifyOrderStatusChange: jest.fn(),
   };
 
