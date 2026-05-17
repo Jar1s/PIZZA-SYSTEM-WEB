@@ -93,7 +93,7 @@ describe('DeliveryService cancelDeliveryForOrder', () => {
     expect(mockPrisma.delivery.update).toHaveBeenCalledWith({
       where: { id: 'delivery-1' },
       data: {
-        status: DeliveryStatus.FAILED,
+        status: DeliveryStatus.CANCELED,
         quote: expect.objectContaining({
           woltVenueIdUsed: 'venue-1',
           canceledAt: expect.any(String),

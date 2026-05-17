@@ -558,6 +558,7 @@ export class WoltDriveService {
     const request: Record<string, unknown> = {
       pickup: {
         comment: pickupAddress.instructions || 'Kitchen entrance - call on arrival',
+        options: {},
       },
       dropoff: {
         location: {
@@ -604,13 +605,16 @@ export class WoltDriveService {
 
     // ASAP pickup control - lets operator influence courier arrival to pickup
     if (typeof minPreparationTimeMinutes === 'number' && Number.isFinite(minPreparationTimeMinutes)) {
-      request.min_preparation_time_minutes = minPreparationTimeMinutes;
+      (request.pickup as { options: Record<string, unknown> }).options.min_preparation_time_minutes =
+        minPreparationTimeMinutes;
     }
 
     this.logger.log('[Wolt] Creating delivery request', {
       orderId,
       shipmentPromiseId: shipmentPromiseId || null,
-      minPreparationTimeMinutes: request.min_preparation_time_minutes ?? null,
+      minPreparationTimeMinutes:
+        (request.pickup as { options?: { min_preparation_time_minutes?: number } }).options
+          ?.min_preparation_time_minutes ?? null,
     });
 
     let lastError: Error | null = null;
@@ -905,7 +909,6 @@ export class WoltDriveService {
     throw lastError || new Error('Wolt API getOrderStatus failed');
   }
 }
-
 
 
 

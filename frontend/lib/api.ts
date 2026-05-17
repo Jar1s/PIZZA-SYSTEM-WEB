@@ -668,6 +668,9 @@ type WoltAvailabilityResult = {
   promiseId: string;
   feeCents: number;
   etaMinutes: number;
+  pickupEtaMinutes?: number;
+  dropoffEtaMinutes?: number;
+  distance?: number;
   validUntil: string;
   currency: string;
 };
