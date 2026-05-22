@@ -18,7 +18,6 @@ import { TenantTheme } from '../types/tenant.types';
 import { appConfig } from '../config/app.config';
 import { OrderResponseSchema } from '../common/schemas/order.schema';
 import { getProductDisplayName } from '../utils/product-name-mapper';
-import { TelegramNotificationsService } from '../notifications/telegram-notifications.service';
 import * as crypto from 'crypto';
 
 // Type definitions for Prisma JSON fields
@@ -123,7 +122,6 @@ export class OrdersService {
     private deliveryFeeTierService: DeliveryFeeTierService,
     private orderNumberService: OrderNumberService,
     private jwtService: JwtService,
-    private telegramNotifications: TelegramNotificationsService,
   ) {}
 
   private isStatusHistoryUnavailable(error: unknown): boolean {
@@ -739,55 +737,73 @@ export class OrdersService {
       firstItemModifiersStringified: JSON.stringify(orderItems[0]?.modifiers),
     });
     
-    const order: any = await this.prisma.order.create({
-      data: {
-        tenantId,
-        orderNumber,
-        userId: userId || null, // Can be null for guest orders
-        status: OrderStatus.PENDING,
-        paymentStatus: data.paymentMethod ? 'pending' : null, // For cash on delivery
-        paymentRef: data.paymentMethod === 'card'
-          ? 'cod:card'
-          : data.paymentMethod === 'cash'
-            ? 'cod:cash'
-            : null,
-        customer: data.customer as unknown as Prisma.InputJsonValue,
-        address: {
-          ...resolvedAddress,
-          houseNumber: resolvedAddress.houseNumber, // Include houseNumber
-        } as unknown as Prisma.InputJsonValue,
-        subtotalCents,
-        taxCents,
-        deliveryFeeCents,
-        totalCents,
-        items: {
-          create: orderItems,
-        },
-        statusHistory: {
-          create: [{ status: OrderStatus.PENDING }],
-        },
-      } as any, // Type assertion needed until Prisma types are fully regenerated
-      include: {
-        items: true,
-        statusHistory: {
-          orderBy: {
-            createdAt: 'asc',
+    let order: any;
+    try {
+      order = await this.prisma.order.create({
+        data: {
+          tenantId,
+          orderNumber,
+          userId: userId || null, // Can be null for guest orders
+          status: OrderStatus.PENDING,
+          paymentStatus: data.paymentMethod ? 'pending' : null, // For cash on delivery
+          paymentRef: data.paymentMethod === 'card'
+            ? 'cod:card'
+            : data.paymentMethod === 'cash'
+              ? 'cod:cash'
+              : null,
+          customer: data.customer as unknown as Prisma.InputJsonValue,
+          address: {
+            ...resolvedAddress,
+            houseNumber: resolvedAddress.houseNumber, // Include houseNumber
+          } as unknown as Prisma.InputJsonValue,
+          subtotalCents,
+          taxCents,
+          deliveryFeeCents,
+          totalCents,
+          items: {
+            create: orderItems,
+          },
+          statusHistory: {
+            create: [{ status: OrderStatus.PENDING }],
+          },
+        } as any, // Type assertion needed until Prisma types are fully regenerated
+        include: {
+          items: true,
+          statusHistory: {
+            orderBy: {
+              createdAt: 'asc',
+            },
+          },
+          tenant: {
+            select: {
+              id: true,
+              name: true,
+              slug: true,
+              domain: true,
+              subdomain: true,
+              currency: true, // Currency field added to schema
+              theme: true, // Include theme for email colors and logo
+              emailConfig: true, // Include tenant-specific SMTP settings
+            } as any, // Type assertion needed until Prisma types are fully regenerated
           },
         },
-        tenant: {
-          select: {
-            id: true,
-            name: true,
-            slug: true,
-            domain: true,
-            subdomain: true,
-            currency: true, // Currency field added to schema
-            theme: true, // Include theme for email colors and logo
-            emailConfig: true, // Include tenant-specific SMTP settings
-          } as any, // Type assertion needed until Prisma types are fully regenerated
-        },
-      },
-    } as any);
+      } as any);
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002' &&
+        Array.isArray(error.meta?.target) &&
+        error.meta.target.includes('tenantId') &&
+        error.meta.target.includes('orderNumber')
+      ) {
+        this.logger.error('Invariant violation: duplicate tenant order number generated', {
+          tenantId,
+          orderNumber,
+          error: error.message,
+        });
+      }
+      throw error;
+    }
 
     // Log what was actually saved to database
     this.logger.log('Order created in Prisma, checking saved items', {
@@ -845,8 +861,6 @@ export class OrdersService {
       tenantTheme, // Pass tenant theme for colors and logo
       emailConfig, // Pass tenant-specific email config
     );
-
-    await this.telegramNotifications.notifyOrderCreated(order);
 
     // Send password setup email if new account was created without password
     if (createdUser && !createdUser.password && createdUser.passwordResetToken) {
@@ -1255,17 +1269,6 @@ export class OrdersService {
       };
     } catch (error: any) {
       this.logger.error(`❌ Failed to sync order ${orderId} to Storyous:`, { orderId, error: error.message, stack: error.stack });
-      await this.telegramNotifications.notifyError({
-        title: 'Storyous sync failed',
-        message: error.message || 'Failed to sync order to Storyous',
-        tenantId: orderWithStoryous.tenantId,
-        orderId,
-        details: {
-          storyousOrderId: orderWithStoryous.storyousOrderId,
-          storyousState: (orderWithStoryous as any).storyousOrderState,
-        },
-        stack: error.stack,
-      });
       return {
         success: false,
         message: error.message || 'Failed to sync order to Storyous',
