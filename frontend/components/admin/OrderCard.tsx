@@ -6,7 +6,6 @@ import { getFormattedModifierLines } from '@/lib/format-modifiers';
 import {
   syncOrderToStoryous,
   createWoltDelivery,
-  checkWoltAvailability,
   cancelWoltDelivery,
   checkWoltDeliveryArea,
   WoltAreaCheckResult,
@@ -173,20 +172,7 @@ export function OrderCard({
   const [storyousMessageTone, setStoryousMessageTone] = useState<StoryousMessageTone | null>(null);
   const [creatingWolt, setCreatingWolt] = useState(false);
   const [woltMessage, setWoltMessage] = useState<string | null>(null);
-  const [showWoltModal, setShowWoltModal] = useState(false);
-  const [checkingWolt, setCheckingWolt] = useState(false);
   const [cancelingWolt, setCancelingWolt] = useState(false);
-  const [woltPromise, setWoltPromise] = useState<{
-    promiseId: string;
-    feeCents: number;
-    etaMinutes: number;
-    pickupEtaMinutes?: number;
-    dropoffEtaMinutes?: number;
-    validUntil: string;
-    currency: string;
-    distance?: number;
-  } | null>(null);
-  const [woltError, setWoltError] = useState<string | null>(null);
   const [woltPreparationMinutes, setWoltPreparationMinutes] = useState<number>(20);
   const woltPreparationQuickOptions = [10, 15, 20, 25, 30, 40];
   const [woltAreaCheck, setWoltAreaCheck] = useState<WoltAreaCheckResult | null>(null);
@@ -218,38 +204,6 @@ export function OrderCard({
   useEffect(() => {
     setClientPanelOpen(false);
   }, [order.id]);
-
-  useEffect(() => {
-    if (!showWoltModal) return;
-
-    let cancelled = false;
-
-    const loadPromise = async () => {
-      setCheckingWolt(true);
-      setWoltError(null);
-
-      try {
-        const promise = await checkWoltAvailability(order.id, woltPreparationMinutes);
-        if (!cancelled) {
-          setWoltPromise(promise);
-        }
-      } catch (error: any) {
-        if (!cancelled) {
-          setWoltError(error.message || 'Wolt nie je dostupný');
-        }
-      } finally {
-        if (!cancelled) {
-          setCheckingWolt(false);
-        }
-      }
-    };
-
-    void loadPromise();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [showWoltModal, order.id, woltPreparationMinutes]);
 
   const tenantSlugForAreaCheck =
     tenantSlug || (order as any)?.tenant?.slug || (order as any)?.tenant?.subdomain || '';
@@ -342,11 +296,9 @@ export function OrderCard({
   const canCreateWoltEffective = canCreateWolt && !isOutsideWoltArea;
   const canCancelWolt =
     isWoltDelivery &&
-    !['delivered', 'failed', 'cancelled', 'canceled'].includes(String(woltDelivery?.status || '').toLowerCase()) &&
     (order.status === OrderStatus.PAID ||
       order.status === OrderStatus.PREPARING ||
-      order.status === OrderStatus.READY ||
-      order.status === OrderStatus.OUT_FOR_DELIVERY);
+      order.status === OrderStatus.READY);
   // Show cancel for anything except delivered/canceled
   const canShowCancel = order.status !== OrderStatus.DELIVERED && order.status !== OrderStatus.CANCELED;
   // Desktop already has specialized reject/cancel buttons for some states.
@@ -383,10 +335,6 @@ export function OrderCard({
   const orderDeliveryFeeCents = parseOptionalNumber(order.deliveryFeeCents);
   // Single source of truth for UI: what customer is charged on the order.
   const displayedDeliveryFeeCents = orderDeliveryFeeCents ?? woltFeeCents;
-  // In pre-create Wolt modal fallback to promise fee only if order fee is missing.
-  const modalDeliveryFeeCents =
-    orderDeliveryFeeCents ??
-    parseOptionalNumber(woltPromise?.feeCents);
   const showPickupEtaInAdminHeader =
     woltPickupEtaRemainingMinutes != null &&
     woltPickupEtaRemainingMinutes > 0 &&
@@ -519,32 +467,15 @@ export function OrderCard({
     }
   };
 
-  const handleWoltPreparationChange = (minutes: number) => {
-    setWoltPreparationMinutes(minutes);
-    setWoltPromise(null);
-    setWoltError(null);
-  };
-
-  const handleCreateWoltDelivery = async (initialPreparationMinutes = 20) => {
+  const handleCreateWoltDelivery = async () => {
     if (isOutsideWoltArea) {
       const message = woltAreaBlockReason || 'Adresa zákazníka je mimo doručovacej zóny Wolt.';
       setWoltMessage(`⚠️ ${message}`);
       toastError(message);
       return;
     }
-
-    setWoltPreparationMinutes(initialPreparationMinutes);
-    setWoltError(null);
-    setWoltPromise(null);
     setWoltMessage(null);
-    setShowWoltModal(true);
-  };
-
-  const handleConfirmWoltDelivery = async () => {
-    if (!woltPromise) return;
-    
     setCreatingWolt(true);
-    setWoltError(null);
     try {
       const normalizedPreparationMinutes = Number.isFinite(woltPreparationMinutes)
         ? Math.max(0, Math.min(180, Math.round(woltPreparationMinutes)))
@@ -552,29 +483,26 @@ export function OrderCard({
 
       const woltResult = await createWoltDelivery(
         order.id,
-        woltPromise.promiseId,
+        undefined,
         normalizedPreparationMinutes,
       );
       if (woltResult.success) {
-        setShowWoltModal(false);
         setWoltMessage(`✅ Wolt delivery created! ${woltResult.trackingUrl ? `Tracking: ${woltResult.trackingUrl}` : ''}`);
+        toastSuccess('Wolt delivery bolo vytvorené');
         // Refresh orders in parent without forcing full page reload/reset.
         onOrderRefresh?.();
       } else {
-        setWoltError(woltResult.message || 'Nepodarilo sa vytvoriť doručenie');
+        const message = woltResult.message || 'Nepodarilo sa vytvoriť doručenie';
+        setWoltMessage(`❌ ${message}`);
+        toastError(message);
       }
     } catch (error: any) {
-      setWoltError(error.message || 'Nepodarilo sa vytvoriť doručenie');
+      const message = error.message || 'Nepodarilo sa vytvoriť doručenie';
+      setWoltMessage(`❌ ${message}`);
+      toastError(message);
     } finally {
       setCreatingWolt(false);
     }
-  };
-
-  const handleCancelWoltModal = () => {
-    setShowWoltModal(false);
-    setWoltPromise(null);
-    setWoltError(null);
-    setWoltPreparationMinutes(20);
   };
 
   const handleCancelWoltDelivery = async () => {
@@ -762,8 +690,13 @@ export function OrderCard({
         : 'Current step';
   const dispatchTargetValue =
     dispatchTargetDate != null ? formatTimelineTime(dispatchTargetDate) : getStatusLabel(order.status);
+  const hasLongDispatchTargetValue = dispatchTargetValue.length > 12;
   const dispatchTargetValueClassName =
-    dispatchTargetDate != null ? 'text-[20px] tracking-tight' : 'text-[16px] leading-tight';
+    dispatchTargetDate != null
+      ? 'text-[20px] tracking-tight'
+      : hasLongDispatchTargetValue
+        ? 'text-[12px] leading-[1.05] tracking-tight [overflow-wrap:anywhere]'
+        : 'text-[16px] leading-tight';
   const storyousMessageClassName =
     storyousMessageTone === 'success'
       ? 'bg-green-50 text-green-800 border-green-200'
@@ -910,7 +843,7 @@ export function OrderCard({
       )}
       {canCreateWolt && (
         <button
-          onClick={() => void handleCreateWoltDelivery()}
+          onClick={handleCreateWoltDelivery}
           disabled={creatingWolt || !canCreateWoltEffective}
           className="px-3 py-2 bg-orange-600 text-white rounded hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
           title={canCreateWoltEffective ? 'Create Wolt delivery' : (woltAreaBlockReason || 'Wolt dispatch blocked')}
@@ -1062,7 +995,7 @@ export function OrderCard({
             )}
             {canCreateWolt && (
               <button
-                onClick={() => void handleCreateWoltDelivery()}
+                onClick={handleCreateWoltDelivery}
                 disabled={creatingWolt || !canCreateWoltEffective}
                 className="flex-1 min-w-[120px] px-3 py-2 bg-orange-600 text-white rounded hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-semibold"
                 title={canCreateWoltEffective ? 'Create Wolt delivery' : (woltAreaBlockReason || 'Wolt dispatch blocked')}
@@ -1156,11 +1089,11 @@ export function OrderCard({
                 )}
               </div>
 
-              <div className="rounded-[16px] border border-zinc-200 bg-zinc-50 px-2.5 py-2 text-right">
+              <div className="w-[126px] min-w-[126px] rounded-[16px] border border-zinc-200 bg-zinc-50 px-2.5 py-2 text-right">
                 <div className="text-[8px] font-black uppercase tracking-[0.18em] text-zinc-500">
                   {dispatchTargetLabel}
                 </div>
-                <div className={`mt-1 font-black leading-none text-zinc-950 ${dispatchTargetValueClassName}`}>
+                <div className={`mt-1 ml-auto max-w-full font-black text-zinc-950 ${dispatchTargetValueClassName}`}>
                   {dispatchTargetValue}
                 </div>
                 <div className="mt-0.5 text-[9px] font-semibold text-zinc-500">{dispatchTargetMeta}</div>
@@ -1338,33 +1271,31 @@ export function OrderCard({
                       )}
                     </div>
 
-                    {!isWoltDelivery && (
-                      <div className="mt-2 flex flex-wrap gap-1.5">
-                        {woltPreparationQuickOptions.map((minutes) => {
-                          const isActive = woltPreparationMinutes === minutes;
-                          return (
-                            <button
-                              key={minutes}
-                              type="button"
-                              onClick={() => void handleCreateWoltDelivery(minutes)}
-                              className={`rounded-xl border px-2.5 py-1.5 text-[10px] font-semibold transition-colors ${
-                                isActive
-                                  ? 'border-orange-600 bg-orange-500 text-white'
-                                  : 'border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50'
-                              }`}
-                              aria-pressed={isActive}
-                            >
-                              +{minutes}m
-                            </button>
-                          );
-                        })}
-                      </div>
-                    )}
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      {woltPreparationQuickOptions.map((minutes) => {
+                        const isActive = woltPreparationMinutes === minutes;
+                        return (
+                          <button
+                            key={minutes}
+                            type="button"
+                            onClick={() => setWoltPreparationMinutes(minutes)}
+                            className={`rounded-xl border px-2.5 py-1.5 text-[10px] font-semibold transition-colors ${
+                              isActive
+                                ? 'border-orange-600 bg-orange-500 text-white'
+                                : 'border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50'
+                            }`}
+                            aria-pressed={isActive}
+                          >
+                            +{minutes}m
+                          </button>
+                        );
+                      })}
+                    </div>
 
                     <div className="mt-2 flex flex-wrap items-center gap-2">
                       {canCreateWolt && (
                         <button
-                          onClick={() => void handleCreateWoltDelivery()}
+                          onClick={handleCreateWoltDelivery}
                           disabled={creatingWolt || !canCreateWoltEffective}
                           className="rounded-2xl bg-orange-600 px-3 py-2 text-[10px] font-semibold text-white transition hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-50"
                           title={
@@ -1772,165 +1703,6 @@ export function OrderCard({
           </div>
         ))}
 
-      {/* Wolt Confirmation Modal */}
-      {showWoltModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
-            {/* Header */}
-            <div className="px-6 py-4 border-b border-gray-200">
-              <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-                {woltError ? '❌ Wolt nie je dostupný' : '🚚 Potvrdiť Wolt doručenie?'}
-              </h2>
-            </div>
-
-            {/* Content */}
-            <div className="px-6 py-4">
-              {checkingWolt && (
-                <div className="text-center py-8">
-                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600 mx-auto mb-4"></div>
-                  <p className="text-gray-600">Kontroluje dostupnosť Wolt...</p>
-                </div>
-              )}
-
-              {woltError && !checkingWolt && (
-                <div className="space-y-4">
-                  <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                    <p className="text-red-800 font-semibold mb-2">Dôvod:</p>
-                    <p className="text-red-700">{woltError}</p>
-                  </div>
-                  
-                  <div className="bg-gray-50 rounded-lg p-4">
-                    <p className="text-sm text-gray-600 mb-1">📍 Adresa:</p>
-                    <p className="text-gray-900 font-medium">
-                      {address.street}, {address.postalCode} {address.city}
-                    </p>
-                  </div>
-
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                    <p className="text-sm text-blue-800">
-                      💡 <strong>Tip:</strong> Skontrolujte, či je adresa v rámci doručovacej zóny Wolt.
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              {woltPromise && !woltError && !checkingWolt && (
-                <div className="space-y-4">
-                  {/* Order Info */}
-                  <div className="bg-gray-50 rounded-lg p-4">
-                    <div className="flex justify-between items-center mb-2">
-                      <span className="text-sm text-gray-600">📦 Objednávka:</span>
-                      <span className="font-mono font-semibold text-gray-900">
-                        #{order.orderNumber?.toString().padStart(4, '0') || order.id.slice(0, 8).toUpperCase()}
-                      </span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-gray-600">👤 Zákazník:</span>
-                      <span className="font-semibold text-gray-900">{customer.name}</span>
-                    </div>
-                  </div>
-
-                  <div className="border-t border-gray-200 my-4"></div>
-
-                  {/* Delivery Info */}
-                  <div className="space-y-3">
-                    {modalDeliveryFeeCents != null && (
-                      <div className="flex justify-between items-center">
-                        <span className="text-gray-600">💰 Poplatok za doručenie:</span>
-                        <span className="text-xl font-bold text-orange-600">
-                          {formatEurPrice(modalDeliveryFeeCents)}
-                        </span>
-                      </div>
-                    )}
-                    
-                    <div className="flex justify-between items-center">
-                      <span className="text-gray-600">⏱️ ETA kuriér na prevádzku:</span>
-                      <span className="text-lg font-semibold text-gray-900">
-                        ~{Math.round(
-                          parseOptionalNumber(woltPromise.pickupEtaMinutes) ??
-                            parseOptionalNumber(woltPromise.etaMinutes) ??
-                            0,
-                        )} minút
-                      </span>
-                    </div>
-                    <div>
-                      <label className="block text-gray-700 text-sm font-semibold mb-1">
-                        Kuriér na prevádzku za (min)
-                      </label>
-                      <div className="flex flex-wrap gap-2 mb-2">
-                        {woltPreparationQuickOptions.map((minutes) => {
-                          const isActive = woltPreparationMinutes === minutes;
-                          return (
-                            <button
-                              key={minutes}
-                              type="button"
-                              onClick={() => handleWoltPreparationChange(minutes)}
-                              className={`px-3 py-1.5 rounded-md border text-sm font-semibold transition-colors ${
-                                isActive
-                                  ? 'bg-orange-600 text-white border-orange-600'
-                                  : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
-                              }`}
-                              aria-pressed={isActive}
-                            >
-                              +{minutes}m
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="border-t border-gray-200 my-4"></div>
-
-                  {/* Address */}
-                  <div className="bg-gray-50 rounded-lg p-4">
-                    <p className="text-sm text-gray-600 mb-2">📍 Adresa doručenia:</p>
-                    <p className="text-gray-900 font-medium">
-                      {address.street}
-                    </p>
-                    <p className="text-gray-700">
-                      {address.postalCode} {address.city}
-                    </p>
-                    {address.instructions && (
-                      <p className="text-sm text-gray-500 mt-2">
-                        💬 {address.instructions}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Footer */}
-            <div className="px-6 py-4 border-t border-gray-200 flex gap-3 justify-end">
-              <button
-                onClick={handleCancelWoltModal}
-                disabled={checkingWolt || creatingWolt}
-                className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {woltError ? 'Zavrieť' : 'Zrušiť'}
-              </button>
-              
-              {!woltError && woltPromise && (
-                <button
-                  onClick={handleConfirmWoltDelivery}
-                  disabled={checkingWolt || creatingWolt}
-                  className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 font-semibold disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                >
-                  {creatingWolt ? (
-                    <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                      Vytvára sa...
-                    </>
-                  ) : (
-                    '✅ Potvrdiť'
-                  )}
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
