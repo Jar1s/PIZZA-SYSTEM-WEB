@@ -28,6 +28,7 @@ model Tenant {
   deliveryZones   DeliveryZone[]
   deliveryFeeTiers DeliveryFeeTier[]
   orders          Order[]
+  orderCounter    TenantOrderCounter?
   productMappings ProductMapping[]
   storyousModifierMappings StoryousModifierMapping[]
   products        Product[]
@@ -98,6 +99,16 @@ model Order {
   @@index([paymentRef])
   @@index([userId])
   @@map("orders")
+}
+
+model TenantOrderCounter {
+  tenantId         String   @id
+  lastOrderNumber  Int
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  tenant           Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@map("tenant_order_counters")
 }
 
 model OrderStatusHistory {
