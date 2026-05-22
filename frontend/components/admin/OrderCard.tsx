@@ -289,6 +289,7 @@ export function OrderCard({
   const canCreateWolt =
     !hasDelivery &&
     (order.status === OrderStatus.PAID || order.status === OrderStatus.PREPARING || order.status === OrderStatus.READY);
+  const canAdjustWoltPreparation = canCreateWolt && !isWoltDelivery;
   const isOutsideWoltArea = woltAreaCheck?.insideArea === false;
   const woltAreaBlockReason = isOutsideWoltArea
     ? woltAreaCheck?.reason || 'Adresa zákazníka je mimo doručovacej zóny Wolt.'
@@ -1045,7 +1046,7 @@ export function OrderCard({
       {isDispatchDetailMode ? (
         <div className="hidden shrink-0 md:block">
           <div className="shrink-0 rounded-[20px] border border-zinc-200 bg-white px-3 py-2 shadow-[0_16px_40px_-32px_rgba(15,23,42,0.24)] lg:px-3.5">
-            <div className="grid gap-2 md:grid-cols-[minmax(0,1fr)_96px] md:items-start">
+            <div className="grid gap-2 md:grid-cols-[minmax(0,1fr)_126px] md:items-start">
               <div className="min-w-0">
                 <p className="text-[9px] font-black uppercase tracking-[0.2em] text-orange-600">
                   {dispatchEyebrow}
@@ -1089,7 +1090,7 @@ export function OrderCard({
                 )}
               </div>
 
-              <div className="w-[126px] min-w-[126px] rounded-[16px] border border-zinc-200 bg-zinc-50 px-2.5 py-2 text-right">
+              <div className="w-full min-w-0 rounded-[16px] border border-zinc-200 bg-zinc-50 px-2.5 py-2 text-right">
                 <div className="text-[8px] font-black uppercase tracking-[0.18em] text-zinc-500">
                   {dispatchTargetLabel}
                 </div>
@@ -1255,9 +1256,11 @@ export function OrderCard({
                       <span className="rounded-full border border-zinc-200 bg-white px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-zinc-600">
                         Wolt
                       </span>
-                      <span className="rounded-full border border-zinc-200 bg-white px-2.5 py-1 text-[10px] font-semibold text-zinc-700">
-                        {language === 'sk' ? 'Kuriér' : 'Courier'} {woltPreparationMinutes}m
-                      </span>
+                      {canAdjustWoltPreparation && (
+                        <span className="rounded-full border border-zinc-200 bg-white px-2.5 py-1 text-[10px] font-semibold text-zinc-700">
+                          {language === 'sk' ? 'Príprava' : 'Prep'} {woltPreparationMinutes}m
+                        </span>
+                      )}
                       {renderWoltZoneBadge()}
                       {isWoltDelivery && (
                         <span className="rounded-full border border-orange-200 bg-orange-50 px-2.5 py-1 text-[10px] font-semibold text-orange-800">
@@ -1266,31 +1269,34 @@ export function OrderCard({
                       )}
                       {woltPickupEtaRounded != null && (
                         <span className="rounded-full border border-zinc-200 bg-white px-2.5 py-1 text-[10px] font-semibold text-zinc-700">
-                          Pickup ~{woltPickupEtaRounded}m
+                          {language === 'sk' ? 'Kuriér ~' : 'Pickup ~'}
+                          {woltPickupEtaRounded}m
                         </span>
                       )}
                     </div>
 
-                    <div className="mt-2 flex flex-wrap gap-1.5">
-                      {woltPreparationQuickOptions.map((minutes) => {
-                        const isActive = woltPreparationMinutes === minutes;
-                        return (
-                          <button
-                            key={minutes}
-                            type="button"
-                            onClick={() => setWoltPreparationMinutes(minutes)}
-                            className={`rounded-xl border px-2.5 py-1.5 text-[10px] font-semibold transition-colors ${
-                              isActive
-                                ? 'border-orange-600 bg-orange-500 text-white'
-                                : 'border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50'
-                            }`}
-                            aria-pressed={isActive}
-                          >
-                            +{minutes}m
-                          </button>
-                        );
-                      })}
-                    </div>
+                    {canAdjustWoltPreparation && (
+                      <div className="mt-2 flex flex-wrap gap-1.5">
+                        {woltPreparationQuickOptions.map((minutes) => {
+                          const isActive = woltPreparationMinutes === minutes;
+                          return (
+                            <button
+                              key={minutes}
+                              type="button"
+                              onClick={() => setWoltPreparationMinutes(minutes)}
+                              className={`rounded-xl border px-2.5 py-1.5 text-[10px] font-semibold transition-colors ${
+                                isActive
+                                  ? 'border-orange-600 bg-orange-500 text-white'
+                                  : 'border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50'
+                              }`}
+                              aria-pressed={isActive}
+                            >
+                              +{minutes}m
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
 
                     <div className="mt-2 flex flex-wrap items-center gap-2">
                       {canCreateWolt && (
