@@ -342,11 +342,9 @@ export function OrderCard({
   const canCreateWoltEffective = canCreateWolt && !isOutsideWoltArea;
   const canCancelWolt =
     isWoltDelivery &&
-    !['delivered', 'failed', 'cancelled', 'canceled'].includes(String(woltDelivery?.status || '').toLowerCase()) &&
     (order.status === OrderStatus.PAID ||
       order.status === OrderStatus.PREPARING ||
-      order.status === OrderStatus.READY ||
-      order.status === OrderStatus.OUT_FOR_DELIVERY);
+      order.status === OrderStatus.READY);
   // Show cancel for anything except delivered/canceled
   const canShowCancel = order.status !== OrderStatus.DELIVERED && order.status !== OrderStatus.CANCELED;
   // Desktop already has specialized reject/cancel buttons for some states.
@@ -519,13 +517,7 @@ export function OrderCard({
     }
   };
 
-  const handleWoltPreparationChange = (minutes: number) => {
-    setWoltPreparationMinutes(minutes);
-    setWoltPromise(null);
-    setWoltError(null);
-  };
-
-  const handleCreateWoltDelivery = async (initialPreparationMinutes = 20) => {
+  const handleCreateWoltDelivery = async () => {
     if (isOutsideWoltArea) {
       const message = woltAreaBlockReason || 'Adresa zákazníka je mimo doručovacej zóny Wolt.';
       setWoltMessage(`⚠️ ${message}`);
@@ -533,7 +525,7 @@ export function OrderCard({
       return;
     }
 
-    setWoltPreparationMinutes(initialPreparationMinutes);
+    setWoltPreparationMinutes(20);
     setWoltError(null);
     setWoltPromise(null);
     setWoltMessage(null);
@@ -762,8 +754,13 @@ export function OrderCard({
         : 'Current step';
   const dispatchTargetValue =
     dispatchTargetDate != null ? formatTimelineTime(dispatchTargetDate) : getStatusLabel(order.status);
+  const hasLongDispatchTargetValue = dispatchTargetValue.length > 12;
   const dispatchTargetValueClassName =
-    dispatchTargetDate != null ? 'text-[20px] tracking-tight' : 'text-[16px] leading-tight';
+    dispatchTargetDate != null
+      ? 'text-[20px] tracking-tight'
+      : hasLongDispatchTargetValue
+        ? 'text-[12px] leading-[1.05] tracking-tight [overflow-wrap:anywhere]'
+        : 'text-[16px] leading-tight';
   const storyousMessageClassName =
     storyousMessageTone === 'success'
       ? 'bg-green-50 text-green-800 border-green-200'
@@ -910,7 +907,7 @@ export function OrderCard({
       )}
       {canCreateWolt && (
         <button
-          onClick={() => void handleCreateWoltDelivery()}
+          onClick={handleCreateWoltDelivery}
           disabled={creatingWolt || !canCreateWoltEffective}
           className="px-3 py-2 bg-orange-600 text-white rounded hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
           title={canCreateWoltEffective ? 'Create Wolt delivery' : (woltAreaBlockReason || 'Wolt dispatch blocked')}
@@ -1062,7 +1059,7 @@ export function OrderCard({
             )}
             {canCreateWolt && (
               <button
-                onClick={() => void handleCreateWoltDelivery()}
+                onClick={handleCreateWoltDelivery}
                 disabled={creatingWolt || !canCreateWoltEffective}
                 className="flex-1 min-w-[120px] px-3 py-2 bg-orange-600 text-white rounded hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-semibold"
                 title={canCreateWoltEffective ? 'Create Wolt delivery' : (woltAreaBlockReason || 'Wolt dispatch blocked')}
@@ -1156,11 +1153,11 @@ export function OrderCard({
                 )}
               </div>
 
-              <div className="rounded-[16px] border border-zinc-200 bg-zinc-50 px-2.5 py-2 text-right">
+              <div className="w-[126px] min-w-[126px] rounded-[16px] border border-zinc-200 bg-zinc-50 px-2.5 py-2 text-right">
                 <div className="text-[8px] font-black uppercase tracking-[0.18em] text-zinc-500">
                   {dispatchTargetLabel}
                 </div>
-                <div className={`mt-1 font-black leading-none text-zinc-950 ${dispatchTargetValueClassName}`}>
+                <div className={`mt-1 ml-auto max-w-full font-black text-zinc-950 ${dispatchTargetValueClassName}`}>
                   {dispatchTargetValue}
                 </div>
                 <div className="mt-0.5 text-[9px] font-semibold text-zinc-500">{dispatchTargetMeta}</div>
@@ -1338,33 +1335,31 @@ export function OrderCard({
                       )}
                     </div>
 
-                    {!isWoltDelivery && (
-                      <div className="mt-2 flex flex-wrap gap-1.5">
-                        {woltPreparationQuickOptions.map((minutes) => {
-                          const isActive = woltPreparationMinutes === minutes;
-                          return (
-                            <button
-                              key={minutes}
-                              type="button"
-                              onClick={() => void handleCreateWoltDelivery(minutes)}
-                              className={`rounded-xl border px-2.5 py-1.5 text-[10px] font-semibold transition-colors ${
-                                isActive
-                                  ? 'border-orange-600 bg-orange-500 text-white'
-                                  : 'border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50'
-                              }`}
-                              aria-pressed={isActive}
-                            >
-                              +{minutes}m
-                            </button>
-                          );
-                        })}
-                      </div>
-                    )}
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      {woltPreparationQuickOptions.map((minutes) => {
+                        const isActive = woltPreparationMinutes === minutes;
+                        return (
+                          <button
+                            key={minutes}
+                            type="button"
+                            onClick={() => setWoltPreparationMinutes(minutes)}
+                            className={`rounded-xl border px-2.5 py-1.5 text-[10px] font-semibold transition-colors ${
+                              isActive
+                                ? 'border-orange-600 bg-orange-500 text-white'
+                                : 'border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50'
+                            }`}
+                            aria-pressed={isActive}
+                          >
+                            +{minutes}m
+                          </button>
+                        );
+                      })}
+                    </div>
 
                     <div className="mt-2 flex flex-wrap items-center gap-2">
                       {canCreateWolt && (
                         <button
-                          onClick={() => void handleCreateWoltDelivery()}
+                          onClick={handleCreateWoltDelivery}
                           disabled={creatingWolt || !canCreateWoltEffective}
                           className="rounded-2xl bg-orange-600 px-3 py-2 text-[10px] font-semibold text-white transition hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-50"
                           title={
@@ -1864,7 +1859,7 @@ export function OrderCard({
                             <button
                               key={minutes}
                               type="button"
-                              onClick={() => handleWoltPreparationChange(minutes)}
+                              onClick={() => setWoltPreparationMinutes(minutes)}
                               className={`px-3 py-1.5 rounded-md border text-sm font-semibold transition-colors ${
                                 isActive
                                   ? 'bg-orange-600 text-white border-orange-600'
@@ -1872,7 +1867,7 @@ export function OrderCard({
                               }`}
                               aria-pressed={isActive}
                             >
-                              +{minutes}m
+                              {minutes}
                             </button>
                           );
                         })}
