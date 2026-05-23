@@ -7,6 +7,7 @@ import {
   syncOrderToStoryous,
   createWoltDelivery,
   cancelWoltDelivery,
+  rebookWoltDelivery,
   checkWoltDeliveryArea,
   WoltAreaCheckResult,
 } from '@/lib/api';
@@ -171,6 +172,7 @@ export function OrderCard({
   const [storyousMessage, setStoryousMessage] = useState<string | null>(null);
   const [storyousMessageTone, setStoryousMessageTone] = useState<StoryousMessageTone | null>(null);
   const [creatingWolt, setCreatingWolt] = useState(false);
+  const [rebookingWolt, setRebookingWolt] = useState(false);
   const [woltMessage, setWoltMessage] = useState<string | null>(null);
   const [cancelingWolt, setCancelingWolt] = useState(false);
   const [woltPreparationMinutes, setWoltPreparationMinutes] = useState<number>(20);
@@ -289,7 +291,10 @@ export function OrderCard({
   const canCreateWolt =
     !hasDelivery &&
     (order.status === OrderStatus.PAID || order.status === OrderStatus.PREPARING || order.status === OrderStatus.READY);
-  const canAdjustWoltPreparation = canCreateWolt && !isWoltDelivery;
+  const canRebookWolt =
+    isWoltDelivery &&
+    (order.status === OrderStatus.PAID || order.status === OrderStatus.PREPARING || order.status === OrderStatus.READY);
+  const canAdjustWoltPreparation = canCreateWolt || canRebookWolt;
   const isOutsideWoltArea = woltAreaCheck?.insideArea === false;
   const woltAreaBlockReason = isOutsideWoltArea
     ? woltAreaCheck?.reason || 'Adresa zákazníka je mimo doručovacej zóny Wolt.'
@@ -526,6 +531,35 @@ export function OrderCard({
       toastError(message);
     } finally {
       setCancelingWolt(false);
+    }
+  };
+
+  const handleRebookWoltDelivery = async () => {
+    setRebookingWolt(true);
+    setWoltMessage(null);
+    try {
+      const normalizedPreparationMinutes = Number.isFinite(woltPreparationMinutes)
+        ? Math.max(0, Math.min(180, Math.round(woltPreparationMinutes)))
+        : 20;
+
+      const result = await rebookWoltDelivery(order.id, normalizedPreparationMinutes);
+      if (result.success) {
+        setWoltMessage(
+          `✅ Wolt delivery bolo presunuté.${result.trackingUrl ? ` Tracking: ${result.trackingUrl}` : ''}`,
+        );
+        toastSuccess('Wolt delivery bolo presunuté');
+        onOrderRefresh?.();
+      } else {
+        const message = result.message || 'Nepodarilo sa presunúť kuriéra';
+        setWoltMessage(`❌ ${message}`);
+        toastError(message);
+      }
+    } catch (error: any) {
+      const message = error?.message || 'Nepodarilo sa presunúť kuriéra';
+      setWoltMessage(`❌ ${message}`);
+      toastError(message);
+    } finally {
+      setRebookingWolt(false);
     }
   };
 
@@ -1004,10 +1038,20 @@ export function OrderCard({
                 {creatingWolt ? '⏳' : '🚚 Wolt'}
               </button>
             )}
+            {canRebookWolt && (
+              <button
+                onClick={handleRebookWoltDelivery}
+                disabled={rebookingWolt}
+                className="flex-1 min-w-[120px] px-3 py-2 bg-orange-600 text-white rounded hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-semibold"
+                title="Zrušiť a vytvoriť nové Wolt delivery s novým časom"
+              >
+                {rebookingWolt ? '⏳ Presúvam…' : '🚚 Posunúť kuriéra'}
+              </button>
+            )}
             {canCancelWolt && (
               <button
                 onClick={handleCancelWoltDelivery}
-                disabled={cancelingWolt}
+                disabled={cancelingWolt || rebookingWolt}
                 className="flex-1 min-w-[120px] px-3 py-2 bg-orange-100 text-orange-800 border border-orange-300 rounded hover:bg-orange-200 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-semibold"
                 title="Zrušiť Wolt delivery"
               >
@@ -1313,10 +1357,20 @@ export function OrderCard({
                           {creatingWolt ? '⏳ Kontrolujem' : 'Vytvoriť Wolt'}
                         </button>
                       )}
+                      {canRebookWolt && (
+                        <button
+                          onClick={handleRebookWoltDelivery}
+                          disabled={rebookingWolt}
+                          className="rounded-2xl bg-orange-600 px-3 py-2 text-[10px] font-semibold text-white transition hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-50"
+                          title="Zrušiť a vytvoriť nové Wolt delivery s novým časom"
+                        >
+                          {rebookingWolt ? '⏳ Presúvam' : 'Posunúť kuriéra'}
+                        </button>
+                      )}
                       {canCancelWolt && (
                         <button
                           onClick={handleCancelWoltDelivery}
-                          disabled={cancelingWolt}
+                          disabled={cancelingWolt || rebookingWolt}
                           className="rounded-2xl border border-orange-300 bg-white px-3 py-2 text-[10px] font-semibold text-orange-800 transition hover:bg-orange-100 disabled:cursor-not-allowed disabled:opacity-50"
                           title="Zrušiť Wolt delivery"
                         >

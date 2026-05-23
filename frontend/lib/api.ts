@@ -668,9 +668,6 @@ type WoltAvailabilityResult = {
   promiseId: string;
   feeCents: number;
   etaMinutes: number;
-  pickupEtaMinutes?: number;
-  dropoffEtaMinutes?: number;
-  distance?: number;
   validUntil: string;
   currency: string;
 };
@@ -1100,6 +1097,29 @@ export async function cancelWoltDelivery(orderId: string): Promise<WoltCreateRes
   if (!res.ok) {
     const errorText = await res.text().catch(() => '');
     throw new Error(errorText || 'Failed to cancel Wolt delivery');
+  }
+
+  const data = await res.json();
+  return {
+    success: true,
+    ...data,
+  };
+}
+
+export async function rebookWoltDelivery(
+  orderId: string,
+  minPreparationTimeMinutes: number,
+): Promise<WoltCreateResult> {
+  const res = await fetch(`${API_URL}/api/delivery/rebook`, {
+    method: 'POST',
+    headers: buildAuthHeaders(true),
+    credentials: 'include',
+    body: JSON.stringify({ orderId, minPreparationTimeMinutes }),
+  });
+
+  if (!res.ok) {
+    const errorText = await res.text().catch(() => '');
+    throw new Error(errorText || 'Failed to rebook Wolt delivery');
   }
 
   const data = await res.json();
