@@ -111,6 +111,28 @@ export class DeliveryController {
     return this.deliveryService.cancelDeliveryForOrder(data.orderId, req.user);
   }
 
+  @Post('rebook')
+  async rebookDelivery(
+    @Body() data: { orderId: string; minPreparationTimeMinutes: number },
+    @Req() req: { user?: RequestUser },
+  ) {
+    const { minPreparationTimeMinutes } = data;
+
+    if (!data?.orderId || typeof data.orderId !== 'string') {
+      throw new BadRequestException('orderId is required');
+    }
+
+    if (!Number.isInteger(minPreparationTimeMinutes) || minPreparationTimeMinutes < 0 || minPreparationTimeMinutes > 180) {
+      throw new BadRequestException('minPreparationTimeMinutes must be integer between 0 and 180');
+    }
+
+    return this.deliveryService.rebookDeliveryForOrder(
+      data.orderId,
+      minPreparationTimeMinutes,
+      req.user,
+    );
+  }
+
   @Post('check-area')
   async checkArea(
     @Body() data: CheckAreaBody,
@@ -147,7 +169,6 @@ export class DeliveryController {
     return this.deliveryService.getDeliveryById(id, req.user);
   }
 }
-
 
 
 
