@@ -76,16 +76,17 @@ export default function AdminSettingsPage() {
   const previewTenantSlug = selectedTenant && selectedTenant !== 'all' ? selectedTenant : null;
 
   return (
-    <div className="space-y-5 text-gray-900">
-      <div>
+    <div className="space-y-6 text-gray-900">
+      <div className="max-w-3xl">
         <p className="text-[11px] font-black uppercase tracking-[0.28em] text-orange-600">Operations</p>
-        <h1 className="mt-1 text-2xl font-black tracking-tight text-gray-900">Settings</h1>
-        <p className="mt-1 text-sm text-gray-500">
-          Dashboard ostava zamerany na objednavky. Prevadzkove a integracne nastavenia su tu.
+        <h1 className="mt-1 text-3xl font-black tracking-tight text-gray-900">Settings</h1>
+        <p className="mt-2 text-sm leading-6 text-gray-500">
+          Prevádzkové prepínače, objednávkové pravidlá a integračné nastavenia sú teraz na jednom mieste.
+          Nechávam rovnakú funkcionalitu, len ich skladám do jedného konzistentného admin rozhrania.
         </p>
       </div>
 
-      <div className="grid grid-cols-1 gap-3 xl:grid-cols-6">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
         <ErrorBoundary>
           <Suspense fallback={<div className="animate-pulse rounded-xl bg-gray-200 h-24" />}>
             <MaintenanceBanner />
@@ -123,7 +124,7 @@ export default function AdminSettingsPage() {
         </ErrorBoundary>
       </div>
 
-      <div className="grid grid-cols-1 gap-5 2xl:grid-cols-[minmax(0,420px)_minmax(0,1fr)]">
+      <div className="grid grid-cols-1 gap-5 2xl:grid-cols-[minmax(0,440px)_minmax(0,1fr)]">
         <ErrorBoundary>
           <Suspense fallback={<div className="animate-pulse rounded-xl bg-gray-200 h-72" />}>
             <DeliveryFeeTiersSettings />

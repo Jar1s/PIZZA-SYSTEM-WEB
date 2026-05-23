@@ -24,18 +24,18 @@ export function StoryousReceiptPreview({
   headerLeftLabel = 'Stôl: CD',
 }: StoryousReceiptPreviewProps) {
   return (
-    <div className={['rounded-xl border border-gray-200 bg-gray-50 p-4', className].filter(Boolean).join(' ')}>
+    <div className={['rounded-[28px] border border-zinc-200 bg-white p-5 shadow-[0_1px_0_rgba(15,23,42,0.03)]', className].filter(Boolean).join(' ')}>
       <div className="mb-4 flex items-center justify-between gap-3">
         <div>
-          <div className="text-sm font-semibold text-gray-900">{title}</div>
-          <div className="text-xs text-gray-500">{subtitle}</div>
+          <div className="text-lg font-black tracking-tight text-gray-900">{title}</div>
+          <div className="mt-1 text-sm text-gray-500">{subtitle}</div>
         </div>
         {onReload && (
           <button
             type="button"
             onClick={onReload}
             disabled={loading}
-            className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-60"
+            className="rounded-full border border-zinc-200 bg-white px-4 py-2 text-xs font-semibold text-zinc-700 transition hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {loading ? 'Nacitavam...' : 'Obnovit'}
           </button>

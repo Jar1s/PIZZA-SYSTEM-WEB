@@ -323,6 +323,7 @@ type CreateOrderPayload = {
   paymentMethod?: string | null;
   saveAccount?: boolean;
   deliveryFeeCents?: number;
+  clientRequestId?: string;
 };
 
 type CreateOrderResult = Order | {

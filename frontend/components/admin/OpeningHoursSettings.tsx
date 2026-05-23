@@ -9,6 +9,7 @@ import {
   TenantOperationsSettings,
 } from '@/lib/api';
 import { OpeningHours, getDefaultOpeningHours } from '@/lib/opening-hours';
+import { SettingsBadge, SettingsCard, SettingsCardHeader, SettingsIconButton, SettingsToggle } from '@/components/admin/SettingsCard';
 
 const DAYS: Array<{ key: keyof OpeningHours['days']; label: string }> = [
   { key: 'monday', label: 'Pondelok' },
@@ -134,49 +135,39 @@ export function OpeningHoursSettings() {
     );
   }
 
-  const primaryColor = tenantSettings?.primaryColor || 'var(--color-primary)';
-  const secondaryColor = tenantSettings?.secondaryColor || '#fefaf5';
-
   return (
-    <div className="rounded-lg p-4 border" style={{ backgroundColor: secondaryColor, borderColor: primaryColor }}>
-      <div className="flex items-center justify-between mb-3">
-        <div>
-          <h2 className="text-base font-bold mb-1" style={{ color: primaryColor }}>Otváracie hodiny</h2>
-          <div className="flex items-center gap-2">
-            <span className={`text-sm font-semibold ${openingHours.enabled ? 'text-green-400' : 'text-gray-200'}`}>
-              {openingHours.enabled ? 'Zap.' : 'Vyp.'}
-            </span>
-            <button
-              onClick={handleToggleEnabled}
-              className={`relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${
-                openingHours.enabled ? 'bg-green-600' : 'bg-gray-200'
-              }`}
-            >
-              <span
-                className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                  openingHours.enabled ? 'translate-x-4' : 'translate-x-0'
-                }`}
-              />
-            </button>
+    <SettingsCard tone="soft-dark" className="min-h-[214px]">
+      <SettingsCardHeader
+        eyebrow="Operations"
+        title="Otváracie hodiny"
+        subtitle={`Brand: ${tenantSettings?.tenantSubdomain || tenantSlug}`}
+        action={
+          <div className="flex items-center gap-3">
+            <SettingsToggle checked={openingHours.enabled} onClick={handleToggleEnabled} />
+            <SettingsIconButton onClick={() => setIsExpanded((v) => !v)}>
+              {isExpanded ? 'Zbaliť' : 'Rozbaliť'}
+            </SettingsIconButton>
           </div>
-        </div>
-        <button
-          onClick={() => setIsExpanded((v) => !v)}
-          className="text-sm px-3 py-1.5 rounded font-semibold"
-          style={{ backgroundColor: primaryColor, color: 'white' }}
-        >
-          {isExpanded ? 'Zbaliť' : 'Rozbaliť'}
-        </button>
+        }
+      />
+
+      <div className="mt-5 flex flex-wrap gap-2">
+        <SettingsBadge tone={openingHours.enabled ? 'success' : 'neutral'}>
+          {openingHours.enabled ? 'Prevádzkové hodiny aktívne' : 'Časy sú vypnuté'}
+        </SettingsBadge>
+        <SettingsBadge tone="neutral" className="border-white/10 bg-white/5 text-zinc-300">
+          {openingHours.timezone || 'Europe/Bratislava'}
+        </SettingsBadge>
       </div>
 
       {isExpanded && (
-        <div className="mt-3 space-y-4">
+        <div className="mt-5 space-y-4 border-t border-white/10 pt-5">
           <div>
             <label className="block text-sm font-semibold mb-1 text-gray-100">Časové pásmo</label>
             <select
               value={openingHours.timezone || 'Europe/Bratislava'}
               onChange={(e) => setOpeningHours((prev) => ({ ...prev, timezone: e.target.value }))}
-              className="w-full text-sm p-2 border rounded bg-white text-gray-900"
+              className="w-full rounded-2xl border border-white/15 bg-white/95 px-3 py-2.5 text-sm text-gray-900"
             >
               <option value="Europe/Bratislava">Europe/Bratislava</option>
               <option value="UTC">UTC</option>
@@ -196,7 +187,7 @@ export function OpeningHoursSettings() {
               return (
                 <div
                   key={day.key}
-                  className="rounded-md border border-white/30 bg-black/35 p-2 md:grid md:grid-cols-[130px_140px_1fr_1fr] md:items-center md:gap-2"
+                  className="rounded-2xl border border-white/10 bg-white/5 p-3 md:grid md:grid-cols-[130px_140px_1fr_1fr] md:items-center md:gap-3"
                 >
                   <div className="text-sm font-semibold text-white mb-2 md:mb-0">{day.label}</div>
                   <label className="flex items-center gap-2 text-sm text-gray-100 mb-2 md:mb-0">
@@ -216,7 +207,7 @@ export function OpeningHoursSettings() {
                           type="time"
                           value={schedule?.open || '10:00'}
                           onChange={(e) => handleDayChange(day.key, 'open', e.target.value)}
-                          className="w-full p-2 border rounded text-sm bg-white text-gray-900"
+                          className="w-full rounded-xl border border-white/15 bg-white px-3 py-2 text-sm text-gray-900"
                         />
                       </div>
                       <div>
@@ -225,7 +216,7 @@ export function OpeningHoursSettings() {
                           type="time"
                           value={schedule?.close || '22:00'}
                           onChange={(e) => handleDayChange(day.key, 'close', e.target.value)}
-                          className="w-full p-2 border rounded text-sm bg-white text-gray-900"
+                          className="w-full rounded-xl border border-white/15 bg-white px-3 py-2 text-sm text-gray-900"
                         />
                       </div>
                     </>
@@ -243,13 +234,18 @@ export function OpeningHoursSettings() {
           <button
             onClick={handleSave}
             disabled={saving}
-            className="w-full py-2.5 rounded text-sm font-semibold text-white"
-            style={{ backgroundColor: primaryColor }}
+            className="w-full rounded-2xl bg-orange-500 py-3 text-sm font-semibold text-white transition hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {saving ? 'Ukladám...' : 'Uložiť'}
           </button>
         </div>
       )}
-    </div>
+
+      {!isExpanded && (
+        <div className="mt-5 rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-zinc-300">
+          Rozbalením upravíš týždenný režim, časové pásmo a zavretia po dňoch. Toggle hore ostáva okamžitý.
+        </div>
+      )}
+    </SettingsCard>
   );
 }

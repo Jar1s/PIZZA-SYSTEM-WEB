@@ -102,6 +102,114 @@ type StoryousSyncOrder = Prisma.OrderGetPayload<{
 export class OrdersService {
   private readonly logger = new Logger(OrdersService.name);
 
+  private getPrismaErrorMetaTarget(error: unknown): string[] {
+    const target = (error as any)?.meta?.target;
+    if (!Array.isArray(target)) {
+      return [];
+    }
+
+    return target.map((entry) => String(entry));
+  }
+
+  private isPrismaKnownRequestError(error: unknown, code: string): boolean {
+    return typeof (error as any)?.code === 'string' && (error as any).code === code;
+  }
+
+  private isUniqueConstraintErrorForFields(error: unknown, fields: string[]): boolean {
+    if (!this.isPrismaKnownRequestError(error, 'P2002')) {
+      return false;
+    }
+
+    const targetFields = this.getPrismaErrorMetaTarget(error);
+    return fields.every((field) => targetFields.includes(field));
+  }
+
+  private async getExistingOrderByClientRequestId(
+    tenantId: string,
+    clientRequestId?: string | null,
+  ): Promise<Order | null> {
+    const normalizedClientRequestId = clientRequestId?.trim();
+    if (!normalizedClientRequestId) {
+      return null;
+    }
+
+    const existingOrder = await this.prisma.order.findFirst({
+      where: {
+        tenantId,
+        clientRequestId: normalizedClientRequestId,
+      } as any,
+      select: {
+        id: true,
+      },
+    });
+
+    if (!existingOrder) {
+      return null;
+    }
+
+    return this.getOrderById(existingOrder.id);
+  }
+
+  private async buildCreateOrderResponse(
+    order: any,
+    tenantId: string,
+    shouldReturnAuthToken: boolean,
+    createdUser: UserWithPasswordReset | null,
+  ): Promise<Order | { order: Order; authToken?: string; refreshToken?: string; user?: any }> {
+    let validatedOrder: Order;
+    try {
+      validatedOrder = OrderResponseSchema.parse(order) as unknown as Order;
+    } catch (error) {
+      this.logger.error(`Order response validation failed`, { error, orderId: order?.id, tenantId });
+      validatedOrder = order as unknown as Order;
+    }
+
+    if (shouldReturnAuthToken && createdUser) {
+      const payload = {
+        userId: createdUser.id,
+        email: createdUser.email,
+        role: createdUser.role,
+      };
+
+      const access_token = this.jwtService.sign(payload);
+      const refreshToken = crypto.randomBytes(32).toString('hex');
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + 7);
+
+      await this.prisma.refreshToken.deleteMany({
+        where: {
+          userId: createdUser.id,
+          expiresAt: {
+            lt: new Date(),
+          },
+        },
+      });
+
+      await this.prisma.refreshToken.create({
+        data: {
+          userId: createdUser.id,
+          token: refreshToken,
+          expiresAt,
+        },
+      });
+
+      return {
+        order: validatedOrder,
+        authToken: access_token,
+        refreshToken,
+        user: {
+          id: createdUser.id,
+          email: createdUser.email || '',
+          name: createdUser.name,
+          phone: createdUser.phone || undefined,
+          role: createdUser.role,
+        },
+      };
+    }
+
+    return validatedOrder;
+  }
+
   private collectUniqueProductIds(rawProductIds: unknown[]): string[] {
     return [
       ...new Set(
@@ -347,6 +455,19 @@ export class OrdersService {
       }
 
       userId = user.id;
+    }
+
+    const existingOrder = await this.getExistingOrderByClientRequestId(
+      tenantId,
+      data.clientRequestId,
+    );
+    if (existingOrder) {
+      this.logger.warn('Duplicate checkout request returned existing order before create', {
+        tenantId,
+        clientRequestId: data.clientRequestId,
+        orderId: existingOrder.id,
+      });
+      return this.buildCreateOrderResponse(existingOrder, tenantId, shouldReturnAuthToken, createdUser);
     }
 
     const resolvedAddress = await this.resolveOrderAddressForCreation(userId, data);
@@ -743,6 +864,7 @@ export class OrdersService {
         data: {
           tenantId,
           orderNumber,
+          clientRequestId: data.clientRequestId?.trim() || null,
           userId: userId || null, // Can be null for guest orders
           status: OrderStatus.PENDING,
           paymentStatus: data.paymentMethod ? 'pending' : null, // For cash on delivery
@@ -789,17 +911,27 @@ export class OrdersService {
         },
       } as any);
     } catch (error) {
-      if (
-        error instanceof Prisma.PrismaClientKnownRequestError &&
-        error.code === 'P2002' &&
-        Array.isArray(error.meta?.target) &&
-        error.meta.target.includes('tenantId') &&
-        error.meta.target.includes('orderNumber')
-      ) {
+      if (this.isUniqueConstraintErrorForFields(error, ['tenantId', 'clientRequestId'])) {
+        const duplicateOrder = await this.getExistingOrderByClientRequestId(
+          tenantId,
+          data.clientRequestId,
+        );
+
+        if (duplicateOrder) {
+          this.logger.warn('Duplicate checkout request deduplicated after unique conflict', {
+            tenantId,
+            clientRequestId: data.clientRequestId,
+            orderId: duplicateOrder.id,
+          });
+          return this.buildCreateOrderResponse(duplicateOrder, tenantId, shouldReturnAuthToken, createdUser);
+        }
+      }
+
+      if (this.isUniqueConstraintErrorForFields(error, ['tenantId', 'orderNumber'])) {
         this.logger.error('Invariant violation: duplicate tenant order number generated', {
           tenantId,
           orderNumber,
-          error: error.message,
+          error: error instanceof Error ? error.message : String(error),
         });
       }
       throw error;
@@ -887,74 +1019,7 @@ export class OrdersService {
     // Storyous sync removed - now happens only when order is confirmed (PREPARING status)
     // or manually via button in admin dashboard
 
-    // If auto-login happened, return auth token
-    if (shouldReturnAuthToken && createdUser) {
-      const payload = {
-        userId: createdUser.id,
-        email: createdUser.email,
-        role: createdUser.role,
-      };
-
-      const access_token = this.jwtService.sign(payload);
-      const refreshToken = crypto.randomBytes(32).toString('hex');
-      const expiresAt = new Date();
-      expiresAt.setDate(expiresAt.getDate() + 7); // 7 days
-
-      // Clean up expired refresh tokens for this user
-      await this.prisma.refreshToken.deleteMany({
-        where: {
-          userId: createdUser.id,
-          expiresAt: {
-            lt: new Date(), // Delete tokens that have already expired
-          },
-        },
-      });
-
-      // Store refresh token
-      await this.prisma.refreshToken.create({
-        data: {
-          userId: createdUser.id,
-          token: refreshToken,
-          expiresAt,
-        },
-      });
-
-      // Validate order response with Zod
-      let validatedOrder: Order;
-      try {
-        validatedOrder = OrderResponseSchema.parse(order) as unknown as Order;
-      } catch (error) {
-        this.logger.error(`Order response validation failed`, { error, orderId: order.id, tenantId });
-        validatedOrder = order as unknown as Order; // Fallback
-      }
-
-      return {
-        order: validatedOrder,
-        authToken: access_token,
-        refreshToken: refreshToken,
-        user: {
-          id: createdUser.id,
-          email: createdUser.email || '',
-          name: createdUser.name,
-          phone: createdUser.phone || undefined,
-          role: createdUser.role,
-        },
-      };
-    }
-
-    // Validate order response with Zod
-    try {
-      return OrderResponseSchema.parse(order) as unknown as Order;
-    } catch (error) {
-      this.logger.error(`Order response validation failed`, { error, orderId: order.id, tenantId });
-      // Validate order response with Zod
-    try {
-      return OrderResponseSchema.parse(order) as unknown as Order;
-    } catch (error) {
-      this.logger.error(`Order response validation failed`, { error, orderId: order.id });
-      return order as unknown as Order; // Fallback
-    } // Fallback
-    }
+    return this.buildCreateOrderResponse(order, tenantId, shouldReturnAuthToken, createdUser);
   }
 
   async getOrderById(id: string): Promise<Order> {

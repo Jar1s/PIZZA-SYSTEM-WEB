@@ -46,6 +46,7 @@ describe('OrdersService', () => {
     order: {
       create: jest.fn(),
       update: jest.fn(),
+      findFirst: jest.fn(),
       findMany: jest.fn(),
       findUnique: jest.fn(),
     },
@@ -232,6 +233,7 @@ describe('OrdersService', () => {
     it('should create order with correct pricing (no modifiers)', async () => {
       mockPrismaService.product.findFirst.mockResolvedValue(mockProduct);
       mockPrismaService.tenant.findUnique.mockResolvedValue(mockTenant);
+      mockPrismaService.order.findFirst.mockResolvedValue(null);
       mockPrismaService.order.create.mockResolvedValue(buildOrderResult());
 
       const result = await service.createOrder(tenantId, baseOrderDto);
@@ -258,6 +260,45 @@ describe('OrdersService', () => {
           }),
         }),
       });
+    });
+
+    it('should deduplicate repeated clientRequestId and return existing order', async () => {
+      const duplicateDto: CreateOrderDto = {
+        ...baseOrderDto,
+        clientRequestId: 'checkout-request-1',
+      };
+
+      mockPrismaService.product.findFirst.mockResolvedValue(mockProduct);
+      mockPrismaService.tenant.findUnique.mockResolvedValue(mockTenant);
+      mockPrismaService.order.findFirst
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce({ id: 'order-1' });
+      mockPrismaService.order.findUnique.mockResolvedValue(
+        buildOrderResult({
+          id: 'order-1',
+          items: [],
+          delivery: null,
+          statusHistory: [],
+        }),
+      );
+      mockPrismaService.order.create.mockRejectedValue({
+        code: 'P2002',
+        meta: {
+          target: ['tenantId', 'clientRequestId'],
+        },
+      });
+
+      const result = await service.createOrder(tenantId, duplicateDto);
+
+      expect(mockPrismaService.order.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            clientRequestId: 'checkout-request-1',
+          }),
+        }),
+      );
+      expect(mockPrismaService.order.findFirst).toHaveBeenCalledTimes(2);
+      expect((result as any).id).toBe('order-1');
     });
 
     it('should use saved address coordinates as backend fallback for logged-in user orders', async () => {

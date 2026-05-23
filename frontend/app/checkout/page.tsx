@@ -120,6 +120,8 @@ export default function CheckoutPage() {
   const [addressFormError, setAddressFormError] = useState<string | null>(null);
   const [phoneFormError, setPhoneFormError] = useState<string | null>(null);
   const addressCoordinateRequestsRef = useRef(new Map<string, Promise<Address>>());
+  const submitLockRef = useRef(false);
+  const checkoutRequestIdRef = useRef<string | null>(null);
 
   // Validate phone number function (must be declared before useMemo hooks)
   const validatePhone = (phone: string, prefix: string): { isValid: boolean; message?: string } => {
@@ -1163,121 +1165,113 @@ export default function CheckoutPage() {
   };
 
   const handlePay = async () => {
-    // Validate guest data if user is not logged in
-    if (!user) {
-      if (!guestData.name || !guestData.email || !guestData.phone || !guestData.street || !guestData.city || !guestData.postalCode) {
-        alert('Prosím, vyplňte všetky povinné polia.');
-        return;
-      }
-      
-      // Validate name
-      const nameValidation = validateName(guestData.name);
-      if (!nameValidation.isValid) {
-        alert(nameValidation.message);
-        return;
-      }
-      
-      // Validate email
-      const emailValidation = validateEmail(guestData.email);
-      if (!emailValidation.isValid) {
-        alert(emailValidation.message);
-        return;
-      }
-      
-      // Validate phone
-      const phoneValidation = validatePhone(guestData.phone, guestData.phonePrefix);
-      if (!phoneValidation.isValid) {
-        alert(phoneValidation.message);
-        return;
-      }
-      
-      // Validate Bratislava address with geocoding
-      const addressValidation = await validateBratislavaAddress(
-        guestData.street,
-        guestData.city,
-        guestData.postalCode,
-        guestData.country || 'SK',
-        true // Use geocoding
-      );
-      if (!addressValidation.isValid) {
-        alert(addressValidation.message);
-        return;
-      }
-      if (addressValidation.message) {
-        // Warning but allow to continue
-        const confirmed = confirm(`${addressValidation.message}\n\nChcete pokračovať?`);
-        if (!confirmed) return;
-      }
-      
-      // If cash on delivery, payment method must be selected
-      if (paymentType === 'cash_on_delivery') {
-        if (!cashOnDeliveryMethod) {
+    if (submitLockRef.current) {
+      return;
+    }
+
+    submitLockRef.current = true;
+    let redirected = false;
+
+    try {
+      if (!user) {
+        if (!guestData.name || !guestData.email || !guestData.phone || !guestData.street || !guestData.city || !guestData.postalCode) {
+          alert('Prosím, vyplňte všetky povinné polia.');
+          return;
+        }
+        
+        const nameValidation = validateName(guestData.name);
+        if (!nameValidation.isValid) {
+          alert(nameValidation.message);
+          return;
+        }
+        
+        const emailValidation = validateEmail(guestData.email);
+        if (!emailValidation.isValid) {
+          alert(emailValidation.message);
+          return;
+        }
+        
+        const phoneValidation = validatePhone(guestData.phone, guestData.phonePrefix);
+        if (!phoneValidation.isValid) {
+          alert(phoneValidation.message);
+          return;
+        }
+        
+        const addressValidation = await validateBratislavaAddress(
+          guestData.street,
+          guestData.city,
+          guestData.postalCode,
+          guestData.country || 'SK',
+          true
+        );
+        if (!addressValidation.isValid) {
+          alert(addressValidation.message);
+          return;
+        }
+        if (addressValidation.message) {
+          const confirmed = confirm(`${addressValidation.message}\n\nChcete pokračovať?`);
+          if (!confirmed) return;
+        }
+        
+        if (paymentType === 'cash_on_delivery' && !cashOnDeliveryMethod) {
           alert('Prosím, vyberte spôsob platby pri dodaní.');
           return;
         }
-      }
-    } else {
-      // User is logged in - check phone and address
-      if (!user.phone) {
-        alert('Musíte mať vyplnené telefónne číslo pred vytvorením objednávky. Prosím, vyplňte telefónne číslo vyššie.');
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-        return;
+      } else {
+        if (!user.phone) {
+          alert('Musíte mať vyplnené telefónne číslo pred vytvorením objednávky. Prosím, vyplňte telefónne číslo vyššie.');
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+          return;
+        }
+
+        if (loadingAddresses) {
+          alert('Načítavajú sa adresy, prosím počkajte...');
+          return;
+        }
+        
+        if (addresses.length === 0) {
+          alert('Musíte mať vyplnenú adresu pred vytvorením objednávky. Prosím, pridajte adresu pomocou formulára nižšie.');
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+          return;
+        }
+
+        if (!selectedAddressId) {
+          alert('Prosím, vyberte adresu pre doručenie.');
+          return;
+        }
+
+        const selectedAddress = addresses.find(addr => addr.id === selectedAddressId);
+        if (!selectedAddress) {
+          alert('Vybraná adresa nebola nájdená. Prosím, vyberte inú adresu.');
+          return;
+        }
+
+        const resolvedAddress = await ensureSavedAddressCoordinates(selectedAddress);
+
+        if (minOrderCents !== null && total < minOrderCents) {
+          alert(`Minimálna objednávka pre ${zoneName || 'túto zónu'} je ${(minOrderCents / 100).toFixed(2)}€. Vaša objednávka je ${(total / 100).toFixed(2)}€.`);
+          return;
+        }
+        
+        const addressValidation = await validateBratislavaAddress(
+          resolvedAddress.street,
+          resolvedAddress.city,
+          resolvedAddress.postalCode,
+          resolvedAddress.country || 'SK',
+          true
+        );
+        if (!addressValidation.isValid) {
+          alert(addressValidation.message);
+          return;
+        }
+        if (addressValidation.message) {
+          const confirmed = confirm(`${addressValidation.message}\n\nChcete pokračovať?`);
+          if (!confirmed) return;
+        }
       }
 
-      // Wait for addresses to finish loading before checking
-      if (loadingAddresses) {
-        alert('Načítavajú sa adresy, prosím počkajte...');
-        return;
-      }
-      
-      if (addresses.length === 0) {
-        alert('Musíte mať vyplnenú adresu pred vytvorením objednávky. Prosím, pridajte adresu pomocou formulára nižšie.');
-        // Scroll to top to show the address message
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-        return;
-      }
+      setLoading(true);
 
-      if (!selectedAddressId) {
-        alert('Prosím, vyberte adresu pre doručenie.');
-        return;
-      }
-
-      const selectedAddress = addresses.find(addr => addr.id === selectedAddressId);
-      if (!selectedAddress) {
-        alert('Vybraná adresa nebola nájdená. Prosím, vyberte inú adresu.');
-        return;
-      }
-
-      const resolvedAddress = await ensureSavedAddressCoordinates(selectedAddress);
-
-      // Validate minimum order for delivery zone
-      if (minOrderCents !== null && total < minOrderCents) {
-        alert(`Minimálna objednávka pre ${zoneName || 'túto zónu'} je ${(minOrderCents / 100).toFixed(2)}€. Vaša objednávka je ${(total / 100).toFixed(2)}€.`);
-        return;
-      }
-      
-      // Validate Bratislava address for logged-in users with geocoding
-      const addressValidation = await validateBratislavaAddress(
-        resolvedAddress.street,
-        resolvedAddress.city,
-        resolvedAddress.postalCode,
-        resolvedAddress.country || 'SK',
-        true // Use geocoding
-      );
-      if (!addressValidation.isValid) {
-        alert(addressValidation.message);
-        return;
-      }
-      if (addressValidation.message) {
-        // Warning but allow to continue
-        const confirmed = confirm(`${addressValidation.message}\n\nChcete pokračovať?`);
-        if (!confirmed) return;
-      }
-    }
-
-    setLoading(true);
-    
-    try {
       // Prepare order data
       const selectedAddress = user
         ? await ensureSavedAddressCoordinates(addresses.find(addr => addr.id === selectedAddressId)!)
@@ -1348,7 +1342,17 @@ export default function CheckoutPage() {
         orderData.saveAccount = saveAccount;
       }
 
-      const result = await createOrder(tenantSlug, orderData);
+      const clientRequestId =
+        checkoutRequestIdRef.current ||
+        (typeof globalThis.crypto?.randomUUID === 'function'
+          ? globalThis.crypto.randomUUID()
+          : `checkout-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+      checkoutRequestIdRef.current = clientRequestId;
+
+      const result = await createOrder(tenantSlug, {
+        ...orderData,
+        clientRequestId,
+      });
       
       // Handle auto-login if auth token is returned
       let order: any;
@@ -1377,6 +1381,7 @@ export default function CheckoutPage() {
           if (payment.redirectUrl) {
             // Redirect to payment gateway (Adyen, GoPay, or WePay)
             clearCart();
+            redirected = true;
             window.location.href = payment.redirectUrl;
             return;
           }
@@ -1387,6 +1392,7 @@ export default function CheckoutPage() {
           const paymentMessage = paymentError instanceof Error ? paymentError.message : 'Unknown payment error';
           alert(`Platobnú bránu sa nepodarilo inicializovať: ${paymentMessage}`);
           clearCart();
+          redirected = true;
           router.push(`/order/${order.id}?tenant=${tenantSlug}&paymentInitFailed=1`);
           return;
         }
@@ -1395,6 +1401,7 @@ export default function CheckoutPage() {
       // If no redirect URL, go to success page
       console.log('[Checkout] Order created successfully, redirecting to success page:', { orderId: order.id });
       clearCart();
+      redirected = true;
       router.push(`/order/success?orderId=${order.id}&tenant=${tenantSlug}`);
     } catch (error) {
       console.error('Checkout error:', error);
@@ -1411,6 +1418,9 @@ export default function CheckoutPage() {
       }
     } finally {
       setLoading(false);
+      if (!redirected) {
+        submitLockRef.current = false;
+      }
     }
   };
   
