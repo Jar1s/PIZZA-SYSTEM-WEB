@@ -117,8 +117,12 @@ export class CreateOrderDto {
   @IsOptional()
   @IsString()
   paymentMethod?: 'cash' | 'card'; // For cash on delivery
-}
 
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
+  clientRequestId?: string;
+}
 
 
 

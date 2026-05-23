@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { SettingsBadge, SettingsCard, SettingsCardHeader, SettingsToggle } from '@/components/admin/SettingsCard';
 
 const SOUND_NOTIFICATION_KEY = 'admin_sound_notifications_enabled';
 
@@ -33,52 +34,35 @@ export function SoundNotificationSettings() {
   }
 
   return (
-    <div className="bg-blue-50 rounded-lg p-3 border border-blue-200" style={{ backgroundColor: '#eff6ff', borderColor: '#bfdbfe' }}>
-      <div className="flex items-center justify-between">
-        <div className="flex-1 min-w-0">
-          <h2 className="text-sm font-bold text-blue-700 mb-1" style={{ color: '#1d4ed8' }}>
-            Zvukové upozornenia
-          </h2>
-          <div className="flex items-center gap-1.5 text-gray-600" style={{ color: '#4b5563' }}>
-            <svg
-              className="w-3.5 h-3.5 flex-shrink-0"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"
-              />
-            </svg>
-            <span className="text-xs truncate" style={{ color: '#4b5563' }}>
-              Zvuk pri novej objednávke
-            </span>
+    <SettingsCard className="min-h-[214px]">
+      <SettingsCardHeader
+        eyebrow="Dashboard"
+        title="Zvukové upozornenia"
+        subtitle="Lokálna preferencia pre nové objednávky v tomto prehliadači."
+        action={<SettingsToggle checked={soundEnabled} onClick={handleToggle} />}
+      />
+
+      <div className="mt-6 space-y-4">
+        <div className="flex flex-wrap gap-2">
+          <SettingsBadge tone={soundEnabled ? 'accent' : 'neutral'}>
+            {soundEnabled ? 'Zvuk zapnutý' : 'Zvuk vypnutý'}
+          </SettingsBadge>
+          <SettingsBadge tone="neutral">Len tento browser</SettingsBadge>
+        </div>
+
+        <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
+          <div className="text-[11px] font-black uppercase tracking-[0.18em] text-zinc-400">Správanie</div>
+          <div className="mt-2 text-sm font-semibold text-zinc-900">Zvuk pri novej objednávke</div>
+          <div className="mt-2 text-sm text-zinc-500">
+            Používa sa rovnaký dashboard flow, len bez backend nastavení. Vhodné na tichý office alebo hlasnú kuchyňu.
           </div>
         </div>
-        
-        <div className="ml-3 flex items-center gap-2 flex-shrink-0">
-          <span className={`text-xs font-medium ${soundEnabled ? 'text-blue-600' : 'text-gray-500'}`} style={{ color: soundEnabled ? '#2563eb' : '#6b7280' }}>
-            {soundEnabled ? 'Zap.' : 'Vyp.'}
-          </span>
-          <button
-            onClick={handleToggle}
-            className={`relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 ${
-              soundEnabled ? 'bg-blue-600' : 'bg-gray-200'
-            }`}
-          >
-            <span
-              className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                soundEnabled ? 'translate-x-4' : 'translate-x-0'
-              }`}
-            />
-          </button>
+
+        <div className="rounded-2xl bg-orange-50 px-4 py-3 text-sm text-orange-700">
+          Zmena sa uloží okamžite do local storage a platí po obnovení stránky.
         </div>
       </div>
-    </div>
+    </SettingsCard>
   );
 }
 
@@ -88,4 +72,3 @@ export function isSoundNotificationEnabled(): boolean {
   const saved = localStorage.getItem(SOUND_NOTIFICATION_KEY);
   return saved === null ? true : saved === 'true'; // Default: enabled
 }
-

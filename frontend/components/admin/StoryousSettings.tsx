@@ -13,6 +13,7 @@ import {
 } from '@/lib/api';
 import { useAdminContext } from '@/app/admin/admin-context';
 import { getCustomizationOptions } from '@/shared/types/customization-options';
+import { SettingsBadge, SettingsCard, SettingsCardHeader, SettingsIconButton } from '@/components/admin/SettingsCard';
 
 type MappingDraft = {
   optionId: string;
@@ -187,76 +188,56 @@ export function StoryousSettings() {
   };
 
   if (loading) {
-    return <div className="animate-pulse bg-gray-200 h-24 rounded-lg" />;
+    return <div className="animate-pulse bg-gray-200 h-24 rounded-[28px]" />;
   }
 
   return (
-    <div className="bg-white rounded-lg shadow p-4">
-      <div className="mb-2 flex items-center justify-between">
-        <div>
-          <h3 className="text-sm font-semibold text-gray-900">Storyous</h3>
-          {activeTenantSlug ? (
-            <div className="text-[11px] text-gray-500">Mappings pre brand: {activeTenantSlug}</div>
-          ) : (
-            <div className="text-[11px] text-gray-500">Vyber brand, ak chceš upravovať addition mappings.</div>
-          )}
-        </div>
-        <button
-          onClick={() => setIsExpanded(!isExpanded)}
-          className="text-xs text-gray-500 hover:text-gray-700"
-        >
-          {isExpanded ? '▼' : '▶'}
-        </button>
-      </div>
+    <SettingsCard className="min-h-[214px]">
+      <SettingsCardHeader
+        eyebrow="POS"
+        title="Storyous"
+        subtitle={
+          activeTenantSlug
+            ? `Mappings pre brand: ${activeTenantSlug}`
+            : 'Vyber brand, ak chceš upravovať addition mappings.'
+        }
+        action={<SettingsIconButton onClick={() => setIsExpanded(!isExpanded)}>{isExpanded ? 'Zbaliť' : 'Rozbaliť'}</SettingsIconButton>}
+      />
 
       {!isExpanded ? (
-        <div className="space-y-2">
-          <div className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              checked={enabled}
-              onChange={(e) => setEnabled(e.target.checked)}
-              disabled={saving}
-              className="rounded"
-            />
-            <span className="text-xs text-gray-700">
-              {enabled ? '✅ Aktivované' : '❌ Deaktivované'}
-            </span>
+        <div className="mt-6 space-y-4">
+          <div className="flex flex-wrap gap-2">
+            <SettingsBadge tone={enabled ? 'success' : 'neutral'}>
+              {enabled ? 'Aktivované' : 'Deaktivované'}
+            </SettingsBadge>
+            <SettingsBadge tone={autoSync ? 'accent' : 'neutral'}>
+              Auto-sync {autoSync ? 'zap.' : 'vyp.'}
+            </SettingsBadge>
           </div>
           {enabled ? (
             <>
-              <div className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={autoSync}
-                  onChange={(e) => setAutoSync(e.target.checked)}
-                  disabled={saving}
-                  className="rounded"
-                />
-                <span className="text-xs text-gray-700">Automatické posielanie</span>
-              </div>
-              <div className="text-xs text-gray-600">
-                Delivery lead: <span className="font-semibold">{defaultDeliveryLeadMinutes} min</span>
-              </div>
-              <div className="text-xs text-gray-600">
-                Modifier mappings: <span className="font-semibold">{mappedCount}/{STORYOUS_MAPPING_OPTIONS.length}</span>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
+                  <div className="text-[11px] font-black uppercase tracking-[0.18em] text-zinc-400">Delivery lead</div>
+                  <div className="mt-2 text-lg font-black text-zinc-900">{defaultDeliveryLeadMinutes} min</div>
+                </div>
+                <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
+                  <div className="text-[11px] font-black uppercase tracking-[0.18em] text-zinc-400">Modifier mappings</div>
+                  <div className="mt-2 text-lg font-black text-zinc-900">{mappedCount}/{STORYOUS_MAPPING_OPTIONS.length}</div>
+                </div>
               </div>
               {readiness ? (
-                <div
-                  className={`rounded px-2 py-1 text-xs ${
-                    readiness.ready ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'
-                  }`}
-                >
-                  {readiness.ready ? '✅ Auto-confirm readiness: OK' : '⚠️ Auto-confirm readiness: potrebuje doladiť'}
-                </div>
+                <SettingsBadge tone={readiness.ready ? 'success' : 'warning'}>
+                  {readiness.ready ? 'Auto-confirm readiness OK' : 'Auto-confirm readiness treba doladiť'}
+                </SettingsBadge>
               ) : null}
             </>
           ) : null}
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="mt-6 space-y-4 border-t border-zinc-200 pt-5">
           {readiness ? (
-            <div className="rounded border border-gray-200 bg-gray-50 p-2 text-xs">
+            <div className="rounded-2xl border border-gray-200 bg-gray-50 p-3 text-xs">
               <div className={`font-semibold ${readiness.ready ? 'text-emerald-700' : 'text-amber-700'}`}>
                 {readiness.ready ? '✅ Auto-confirm readiness: OK' : '⚠️ Auto-confirm readiness: nie je úplne pripravené'}
               </div>
@@ -284,7 +265,7 @@ export function StoryousSettings() {
               value={clientId}
               onChange={(e) => setClientId(e.target.value)}
               disabled={saving}
-              className="w-full rounded border px-2 py-1 text-xs"
+              className="w-full rounded-2xl border border-zinc-200 px-3 py-2 text-xs"
             />
           </div>
 
@@ -295,7 +276,7 @@ export function StoryousSettings() {
               value={clientSecret}
               onChange={(e) => setClientSecret(e.target.value)}
               disabled={saving}
-              className="w-full rounded border px-2 py-1 text-xs"
+              className="w-full rounded-2xl border border-zinc-200 px-3 py-2 text-xs"
             />
           </div>
 
@@ -307,7 +288,7 @@ export function StoryousSettings() {
                 value={merchantId}
                 onChange={(e) => setMerchantId(e.target.value)}
                 disabled={saving}
-                className="w-full rounded border px-2 py-1 text-xs"
+                className="w-full rounded-2xl border border-zinc-200 px-3 py-2 text-xs"
               />
             </div>
             <div>
@@ -317,7 +298,7 @@ export function StoryousSettings() {
                 value={placeId}
                 onChange={(e) => setPlaceId(e.target.value)}
                 disabled={saving}
-                className="w-full rounded border px-2 py-1 text-xs"
+                className="w-full rounded-2xl border border-zinc-200 px-3 py-2 text-xs"
               />
             </div>
           </div>
@@ -341,7 +322,7 @@ export function StoryousSettings() {
               value={defaultDeliveryLeadMinutes}
               onChange={(e) => setDefaultDeliveryLeadMinutes(Number(e.target.value))}
               disabled={saving}
-              className="w-full rounded border px-2 py-1 text-xs"
+              className="w-full rounded-2xl border border-zinc-200 px-3 py-2 text-xs"
             />
           </div>
 
@@ -364,7 +345,7 @@ export function StoryousSettings() {
             <span className="text-xs text-gray-700">Tlačiť číslo objednávky</span>
           </div>
 
-          <div className="rounded border border-gray-200 bg-gray-50 p-3">
+          <div className="rounded-[24px] border border-gray-200 bg-gray-50 p-3">
             <div className="mb-1 text-xs font-semibold text-gray-900">Storyous modifier addition mappings</div>
             {activeTenantSlug ? (
               <>
@@ -384,7 +365,7 @@ export function StoryousSettings() {
                       };
 
                       return (
-                        <div key={option.optionId} className="rounded border border-gray-200 bg-white p-2">
+                        <div key={option.optionId} className="rounded-2xl border border-gray-200 bg-white p-3">
                           <div className="text-[11px] font-semibold text-gray-900">{option.label}</div>
                           <div className="mb-2 text-[10px] uppercase tracking-[0.12em] text-gray-400">{option.optionId}</div>
                           <div className="grid grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
@@ -401,7 +382,7 @@ export function StoryousSettings() {
                                 }))
                               }
                               disabled={saving}
-                              className="rounded border px-2 py-1 text-xs"
+                              className="rounded-xl border border-zinc-200 px-2 py-1.5 text-xs"
                               placeholder="Storyous additionId"
                             />
                             <input
@@ -417,7 +398,7 @@ export function StoryousSettings() {
                                 }))
                               }
                               disabled={saving}
-                              className="rounded border px-2 py-1 text-xs"
+                              className="rounded-xl border border-zinc-200 px-2 py-1.5 text-xs"
                               placeholder="Preview label override"
                             />
                           </div>
@@ -435,12 +416,12 @@ export function StoryousSettings() {
           <button
             onClick={handleSave}
             disabled={saving}
-            className="w-full rounded bg-purple-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-purple-700 disabled:cursor-not-allowed disabled:opacity-50"
+            className="w-full rounded-2xl bg-orange-500 px-4 py-3 text-sm font-semibold text-white transition hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {saving ? 'Ukladá sa...' : 'Uložiť'}
           </button>
         </div>
       )}
-    </div>
+    </SettingsCard>
   );
 }
