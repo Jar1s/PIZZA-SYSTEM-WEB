@@ -11,6 +11,7 @@ import {
   StoryousSettings as StoryousSettingsType,
   StoryousAutoPrintReadiness,
   StoryousModifierMappingInput,
+  StoryousModifierAutoFillResult,
 } from '@/lib/api';
 import { useAdminContext } from '@/app/admin/admin-context';
 import { getCustomizationOptions } from '@/shared/types/customization-options';
@@ -65,6 +66,7 @@ export function StoryousSettings() {
   const [mappingDrafts, setMappingDrafts] = useState<Record<string, MappingDraft>>({});
   const [mappingLoading, setMappingLoading] = useState(false);
   const [autoFillingMappings, setAutoFillingMappings] = useState(false);
+  const [autoFillResult, setAutoFillResult] = useState<StoryousModifierAutoFillResult | null>(null);
 
   const activeTenantSlug = selectedTenant && selectedTenant !== 'all' ? selectedTenant : null;
 
@@ -101,10 +103,11 @@ export function StoryousSettings() {
 
   useEffect(() => {
     const loadMappings = async () => {
-      if (!activeTenantSlug) {
-        setMappingDrafts({});
-        return;
-      }
+    if (!activeTenantSlug) {
+      setMappingDrafts({});
+      setAutoFillResult(null);
+      return;
+    }
 
       setMappingLoading(true);
       try {
@@ -224,6 +227,7 @@ export function StoryousSettings() {
       }
 
       setMappingDrafts(nextDrafts);
+      setAutoFillResult(result);
       alert(
         `Auto-fill hotový. Spárované: ${result.matchedCount}, nejednoznačné: ${result.ambiguousCount}, bez zhody: ${result.unmatchedCount}.`,
       );
@@ -415,6 +419,52 @@ export function StoryousSettings() {
                     Načíta additions z aktuálneho Storyous menu a doplní len jednoznačné zhody podľa názvu.
                   </span>
                 </div>
+                {autoFillResult ? (
+                  <div className="mb-3 space-y-3">
+                    {autoFillResult.unmatchedOptions.length > 0 ? (
+                      <div className="rounded-2xl border border-amber-200 bg-amber-50/80 p-3">
+                        <div className="text-xs font-semibold text-amber-900">
+                          Bez zhody po auto-fill: {autoFillResult.unmatchedOptions.length}
+                        </div>
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {autoFillResult.unmatchedOptions.map((option) => (
+                            <span
+                              key={option.optionId}
+                              className="inline-flex items-center rounded-full border border-amber-200 bg-white px-2.5 py-1 text-xs font-medium text-amber-900"
+                            >
+                              {option.label}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    ) : null}
+
+                    {autoFillResult.ambiguousOptions.length > 0 ? (
+                      <div className="rounded-2xl border border-rose-200 bg-rose-50/80 p-3">
+                        <div className="text-xs font-semibold text-rose-900">
+                          Nejednoznačné zhody: {autoFillResult.ambiguousOptions.length}
+                        </div>
+                        <div className="mt-2 space-y-2">
+                          {autoFillResult.ambiguousOptions.map((option) => (
+                            <div key={option.optionId} className="rounded-xl border border-rose-200 bg-white p-2">
+                              <div className="text-xs font-semibold text-zinc-900">{option.label}</div>
+                              <div className="mt-1 flex flex-wrap gap-2">
+                                {option.matches.map((match) => (
+                                  <span
+                                    key={`${option.optionId}-${match.additionId}`}
+                                    className="inline-flex items-center rounded-full border border-zinc-200 bg-zinc-50 px-2 py-1 text-[11px] text-zinc-700"
+                                  >
+                                    {match.title} · {match.additionId}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
+                ) : null}
                 {mappingLoading ? (
                   <div className="text-xs text-gray-500">Načítavam mappings...</div>
                 ) : (
