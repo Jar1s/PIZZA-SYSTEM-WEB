@@ -60,8 +60,8 @@ export function SettingsCardHeader({
   eyebrow,
 }: SettingsCardHeaderProps) {
   return (
-    <div className="flex items-start justify-between gap-4">
-      <div className="min-w-0">
+    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+      <div className="min-w-0 flex-1">
         {eyebrow ? (
           <p className="text-[11px] font-black uppercase tracking-[0.24em] text-orange-600">
             {eyebrow}
@@ -70,7 +70,7 @@ export function SettingsCardHeader({
         <h2 className="mt-1 text-lg font-black tracking-tight text-inherit">{title}</h2>
         {subtitle ? <p className="mt-1 text-sm text-zinc-500">{subtitle}</p> : null}
       </div>
-      {action ? <div className="shrink-0">{action}</div> : null}
+      {action ? <div className="shrink-0 self-start">{action}</div> : null}
     </div>
   );
 }

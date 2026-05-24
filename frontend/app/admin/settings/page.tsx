@@ -86,7 +86,7 @@ export default function AdminSettingsPage() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 2xl:grid-cols-3">
         <ErrorBoundary>
           <Suspense fallback={<div className="animate-pulse rounded-xl bg-gray-200 h-24" />}>
             <MaintenanceBanner />

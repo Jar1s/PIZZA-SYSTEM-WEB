@@ -263,58 +263,51 @@ export default function DeliveryFeeTiersSettings() {
         </div>
       )}
 
-      <div className="mt-5 rounded-[24px] border border-zinc-200 bg-zinc-50/70 p-3">
-        <div className="overflow-hidden rounded-[20px] border border-zinc-200 bg-white shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]">
-          <div className="overflow-x-auto">
-        <table className="w-full min-w-[720px] border-collapse">
-          <thead>
-            <tr className="bg-zinc-50">
-              <th className="border-b border-zinc-200 px-4 py-3 text-left text-sm font-black text-zinc-700">Distance Range</th>
-              <th className="border-b border-zinc-200 px-4 py-3 text-left text-sm font-black text-zinc-700">Fee (€)</th>
-              <th className="border-b border-zinc-200 px-4 py-3 text-left text-sm font-black text-zinc-700">Priority</th>
-              <th className="border-b border-zinc-200 px-4 py-3 text-left text-sm font-black text-zinc-700">Status</th>
-              <th className="border-b border-zinc-200 px-4 py-3 text-left text-sm font-black text-zinc-700">Scope</th>
-              <th className="border-b border-zinc-200 px-4 py-3 text-left text-sm font-black text-zinc-700">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {tiers.map((tier) => (
-              <tr key={tier.id} className="bg-white transition-colors hover:bg-zinc-50/60">
-                <td className="border-b border-zinc-100 px-4 py-4 text-sm text-zinc-900">
+      <div className="mt-5 space-y-3">
+        {tiers.map((tier) => (
+          <div
+            key={tier.id}
+            className="rounded-[24px] border border-zinc-200 bg-zinc-50/70 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]"
+          >
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <div className="text-[11px] font-black uppercase tracking-[0.18em] text-zinc-400">Distance range</div>
+                <div className="mt-2 text-base font-black text-zinc-900">
                   {tier.minDistanceMeters}m - {tier.maxDistanceMeters}m
-                </td>
-                <td className="border-b border-zinc-100 px-4 py-4 text-sm text-zinc-900">{(tier.deliveryFeeCents / 100).toFixed(2)}</td>
-                <td className="border-b border-zinc-100 px-4 py-4 text-sm text-zinc-900">{tier.priority}</td>
-                <td className="border-b border-zinc-100 px-4 py-4 text-sm">
-                  {tier.isActive ? (
-                    <SettingsBadge tone="success">Active</SettingsBadge>
-                  ) : (
-                    <SettingsBadge tone="neutral">Inactive</SettingsBadge>
-                  )}
-                </td>
-                <td className="border-b border-zinc-100 px-4 py-4 text-sm">
-                  <SettingsBadge tone="neutral">{tier.tenantId ? 'Tenant-specific' : 'Global'}</SettingsBadge>
-                </td>
-                <td className="border-b border-zinc-100 px-4 py-4">
-                  <button
-                    onClick={() => handleEdit(tier)}
-                    className="mr-2 rounded-full bg-zinc-900 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-zinc-800"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    onClick={() => handleDelete(tier.id)}
-                    className="rounded-full border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-semibold text-rose-700 transition hover:bg-rose-100"
-                  >
-                    Delete
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        </div>
-        </div>
+                </div>
+              </div>
+              <div>
+                <div className="text-[11px] font-black uppercase tracking-[0.18em] text-zinc-400">Fee</div>
+                <div className="mt-2 text-base font-black text-zinc-900">
+                  €{(tier.deliveryFeeCents / 100).toFixed(2)}
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-4 flex flex-wrap gap-2">
+              <SettingsBadge tone={tier.isActive ? 'success' : 'neutral'}>
+                {tier.isActive ? 'Active' : 'Inactive'}
+              </SettingsBadge>
+              <SettingsBadge tone="neutral">Priority {tier.priority}</SettingsBadge>
+              <SettingsBadge tone="neutral">{tier.tenantId ? 'Tenant-specific' : 'Global'}</SettingsBadge>
+            </div>
+
+            <div className="mt-4 flex flex-wrap gap-2">
+              <button
+                onClick={() => handleEdit(tier)}
+                className="rounded-full bg-zinc-900 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-zinc-800"
+              >
+                Edit
+              </button>
+              <button
+                onClick={() => handleDelete(tier.id)}
+                className="rounded-full border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-semibold text-rose-700 transition hover:bg-rose-100"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        ))}
       </div>
     </SettingsCard>
   );

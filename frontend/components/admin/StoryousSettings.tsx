@@ -246,7 +246,7 @@ export function StoryousSettings() {
         title="Storyous"
         subtitle={
           activeTenantSlug
-            ? `Mappings pre brand: ${activeTenantSlug}`
+            ? `Brand: ${activeTenantSlug}`
             : 'Vyber brand, ak chceš upravovať addition mappings.'
         }
         action={<SettingsIconButton onClick={() => setIsExpanded(!isExpanded)}>{isExpanded ? 'Zbaliť' : 'Rozbaliť'}</SettingsIconButton>}
@@ -268,10 +268,12 @@ export function StoryousSettings() {
                 <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
                   <div className="text-[11px] font-black uppercase tracking-[0.18em] text-zinc-400">Delivery lead</div>
                   <div className="mt-2 text-lg font-black text-zinc-900">{defaultDeliveryLeadMinutes} min</div>
+                  <div className="mt-1 text-xs text-zinc-500">Predvolený lead pre auto-sync a preview.</div>
                 </div>
                 <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
                   <div className="text-[11px] font-black uppercase tracking-[0.18em] text-zinc-400">Modifier mappings</div>
                   <div className="mt-2 text-lg font-black text-zinc-900">{mappedCount}/{STORYOUS_MAPPING_OPTIONS.length}</div>
+                  <div className="mt-1 text-xs text-zinc-500">Naspárované additions pre receipt sync.</div>
                 </div>
               </div>
               {readiness ? (
