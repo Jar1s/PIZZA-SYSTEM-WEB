@@ -24,17 +24,50 @@ export type StoryousAutoFillResult = {
   additionsCount: number;
 };
 
-function normalizeStoryousLabel(value: string): string {
+const LABEL_SYNONYMS: Record<string, string[]> = {
+  'baby spenat': ['spenat'],
+  niva: ['gorgonzola'],
+  gorgonzola: ['niva'],
+};
+
+function stripMarketingSuffix(value: string): string {
   return String(value || '')
+    .replace(/\s+[–—-]\s+.*$/u, '')
+    .trim();
+}
+
+function stripParentheticalContent(value: string): string {
+  return String(value || '').replace(/\s*\([^)]*\)\s*/g, ' ').trim();
+}
+
+function normalizeStoryousLabel(value: string): string {
+  const stripped = stripParentheticalContent(stripMarketingSuffix(String(value || '')));
+
+  return stripped
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
     .replace(/["'`]/g, '')
-    .replace(/\s*\([^)]*\)\s*/g, ' ')
-    .replace(/[–—-]/g, ' ')
+    .replace(/[^\p{L}\p{N}\s–—-]/gu, ' ')
+    .replace(/\s+[–—-]\s+/gu, ' ')
     .replace(/[^\p{L}\p{N}\s]/gu, ' ')
     .replace(/\s+/g, ' ')
     .trim()
     .toLowerCase();
+}
+
+function getCandidateLabels(value: string): string[] {
+  const primary = normalizeStoryousLabel(value);
+  if (!primary) return [];
+
+  const candidates = new Set<string>([primary]);
+  for (const alias of LABEL_SYNONYMS[primary] || []) {
+    const normalizedAlias = normalizeStoryousLabel(alias);
+    if (normalizedAlias) {
+      candidates.add(normalizedAlias);
+    }
+  }
+
+  return Array.from(candidates);
 }
 
 function getStoryousMappingOptions(): StoryousAutoFillOption[] {
@@ -79,22 +112,29 @@ export function autoFillStoryousModifierMappings(
   const ambiguousOptions: StoryousAutoFillResult['ambiguousOptions'] = [];
 
   for (const option of options) {
-    const normalizedOption = normalizeStoryousLabel(option.label);
-    const matches = additionsByNormalizedTitle.get(normalizedOption) || [];
+    const matches = new Map<string, StoryousCatalogAddition>();
 
-    if (matches.length === 1) {
+    for (const candidate of getCandidateLabels(option.label)) {
+      for (const match of additionsByNormalizedTitle.get(candidate) || []) {
+        matches.set(match.additionId, match);
+      }
+    }
+
+    const matchList = Array.from(matches.values());
+
+    if (matchList.length === 1) {
       mappings.push({
         optionId: option.optionId,
-        externalAdditionId: matches[0].additionId,
+        externalAdditionId: matchList[0].additionId,
         labelOverride: null,
       });
       continue;
     }
 
-    if (matches.length > 1) {
+    if (matchList.length > 1) {
       ambiguousOptions.push({
         ...option,
-        matches,
+        matches: matchList,
       });
       continue;
     }

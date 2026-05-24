@@ -36,4 +36,40 @@ describe('autoFillStoryousModifierMappings', () => {
       ]),
     );
   });
+
+  it('ignores marketing suffixes and emoji when matching', () => {
+    const result = autoFillStoryousModifierMappings([
+      { additionId: '51', title: 'Paradajkový' },
+      { additionId: '52', title: 'Smotanový' },
+      { additionId: '53', title: 'Med-chilli' },
+      { additionId: '54', title: 'BBQ paradajkový' },
+      { additionId: '55', title: 'Bez základu' },
+      { additionId: '56', title: 'Klasické 32 cm' },
+    ]);
+
+    expect(result.mappings).toEqual(
+      expect.arrayContaining([
+        { optionId: 'tomato', externalAdditionId: '51', labelOverride: null },
+        { optionId: 'cream', externalAdditionId: '52', labelOverride: null },
+        { optionId: 'honey-chilli', externalAdditionId: '53', labelOverride: null },
+        { optionId: 'bbq', externalAdditionId: '54', labelOverride: null },
+        { optionId: 'no-sauce', externalAdditionId: '55', labelOverride: null },
+        { optionId: 'classic-32', externalAdditionId: '56', labelOverride: null },
+      ]),
+    );
+  });
+
+  it('supports safe synonyms for selected labels', () => {
+    const result = autoFillStoryousModifierMappings([
+      { additionId: '61', title: 'Špenát' },
+      { additionId: '62', title: 'Gorgonzola' },
+    ]);
+
+    expect(result.mappings).toEqual(
+      expect.arrayContaining([
+        { optionId: 'spinach', externalAdditionId: '61', labelOverride: null },
+        { optionId: 'gorgonzola', externalAdditionId: '62', labelOverride: null },
+      ]),
+    );
+  });
 });
