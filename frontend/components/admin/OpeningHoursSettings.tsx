@@ -142,7 +142,7 @@ export function OpeningHoursSettings() {
         title="Otváracie hodiny"
         subtitle={`Brand: ${tenantSettings?.tenantSubdomain || tenantSlug}`}
         action={
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <SettingsToggle checked={openingHours.enabled} onClick={handleToggleEnabled} />
             <SettingsIconButton onClick={() => setIsExpanded((v) => !v)}>
               {isExpanded ? 'Zbaliť' : 'Rozbaliť'}
@@ -174,7 +174,7 @@ export function OpeningHoursSettings() {
             </select>
           </div>
 
-          <div className="hidden md:grid md:grid-cols-[130px_140px_1fr_1fr] md:items-center gap-2 text-sm font-semibold text-gray-100 px-2">
+          <div className="hidden md:grid md:grid-cols-[140px_140px_1fr_1fr] md:items-center gap-2 text-sm font-semibold text-gray-100 px-2">
             <span>Deň</span>
             <span>Stav</span>
             <span>Otvorené od</span>
@@ -187,7 +187,7 @@ export function OpeningHoursSettings() {
               return (
                 <div
                   key={day.key}
-                  className="rounded-2xl border border-white/10 bg-white/5 p-3 md:grid md:grid-cols-[130px_140px_1fr_1fr] md:items-center md:gap-3"
+                  className="rounded-2xl border border-white/10 bg-white/5 p-3 md:grid md:grid-cols-[140px_140px_1fr_1fr] md:items-center md:gap-3"
                 >
                   <div className="text-sm font-semibold text-white mb-2 md:mb-0">{day.label}</div>
                   <label className="flex items-center gap-2 text-sm text-gray-100 mb-2 md:mb-0">

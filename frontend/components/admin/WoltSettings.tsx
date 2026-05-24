@@ -17,6 +17,13 @@ function normalizeSlug(slug: string | null): string {
   return slug;
 }
 
+function compactValue(value: string, visible = 6): string {
+  const normalized = String(value || '').trim();
+  if (!normalized) return 'n/a';
+  if (normalized.length <= visible * 2 + 1) return normalized;
+  return `${normalized.slice(0, visible)}…${normalized.slice(-visible)}`;
+}
+
 export function WoltSettings() {
   const { selectedTenant } = useAdminContext();
   const [tenantSlug, setTenantSlug] = useState('pornopizza');
@@ -149,18 +156,22 @@ export function WoltSettings() {
             <SettingsBadge tone={venueId ? 'success' : 'warning'}>Venue {venueId ? 'OK' : 'chýba'}</SettingsBadge>
             <SettingsBadge tone={merchantId ? 'success' : 'warning'}>Merchant {merchantId ? 'OK' : 'chýba'}</SettingsBadge>
           </div>
-          <div className="grid gap-3 sm:grid-cols-3">
-            <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
-              <div className="text-[11px] font-black uppercase tracking-[0.18em] text-zinc-400">Venue</div>
-              <div className="mt-2 break-all text-sm font-semibold text-zinc-900">{venueId || 'n/a'}</div>
+          <div className="rounded-[24px] border border-zinc-200 bg-zinc-50 p-4">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="rounded-2xl border border-zinc-200 bg-white px-4 py-3">
+                <div className="text-[11px] font-black uppercase tracking-[0.18em] text-zinc-400">Venue ID</div>
+                <div className="mt-2 text-sm font-semibold text-zinc-900">{compactValue(venueId)}</div>
+              </div>
+              <div className="rounded-2xl border border-zinc-200 bg-white px-4 py-3">
+                <div className="text-[11px] font-black uppercase tracking-[0.18em] text-zinc-400">Merchant ID</div>
+                <div className="mt-2 text-sm font-semibold text-zinc-900">{compactValue(merchantId)}</div>
+              </div>
             </div>
-            <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
-              <div className="text-[11px] font-black uppercase tracking-[0.18em] text-zinc-400">Merchant</div>
-              <div className="mt-2 break-all text-sm font-semibold text-zinc-900">{merchantId || 'n/a'}</div>
-            </div>
-            <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4">
-              <div className="text-[11px] font-black uppercase tracking-[0.18em] text-zinc-400">Pickup</div>
-              <div className="mt-2 text-sm font-semibold text-zinc-900">{pickupStreet || 'n/a'}</div>
+            <div className="mt-3 rounded-2xl border border-zinc-200 bg-white px-4 py-3">
+              <div className="text-[11px] font-black uppercase tracking-[0.18em] text-zinc-400">Pickup adresa</div>
+              <div className="mt-2 text-sm font-semibold text-zinc-900">
+                {pickupStreet ? `${pickupStreet}${pickupCity ? `, ${pickupCity}` : ''}` : 'n/a'}
+              </div>
             </div>
           </div>
         </div>
