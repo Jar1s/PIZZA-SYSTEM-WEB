@@ -179,7 +179,7 @@ export default function DeliveryFeeTiersSettings() {
   }
 
   return (
-    <SettingsCard className="h-full">
+    <SettingsCard className="h-full min-h-[640px]">
       <SettingsCardHeader
         eyebrow="Delivery"
         title="Delivery Fee Tiers"
@@ -263,8 +263,9 @@ export default function DeliveryFeeTiersSettings() {
         </div>
       )}
 
-      <div className="mt-5 overflow-hidden rounded-[24px] border border-zinc-200">
-        <div className="overflow-x-auto">
+      <div className="mt-5 rounded-[24px] border border-zinc-200 bg-zinc-50/70 p-3">
+        <div className="overflow-hidden rounded-[20px] border border-zinc-200 bg-white shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]">
+          <div className="overflow-x-auto">
         <table className="w-full min-w-[720px] border-collapse">
           <thead>
             <tr className="bg-zinc-50">
@@ -278,7 +279,7 @@ export default function DeliveryFeeTiersSettings() {
           </thead>
           <tbody>
             {tiers.map((tier) => (
-              <tr key={tier.id} className="bg-white">
+              <tr key={tier.id} className="bg-white transition-colors hover:bg-zinc-50/60">
                 <td className="border-b border-zinc-100 px-4 py-4 text-sm text-zinc-900">
                   {tier.minDistanceMeters}m - {tier.maxDistanceMeters}m
                 </td>
@@ -312,6 +313,7 @@ export default function DeliveryFeeTiersSettings() {
             ))}
           </tbody>
         </table>
+        </div>
         </div>
       </div>
     </SettingsCard>

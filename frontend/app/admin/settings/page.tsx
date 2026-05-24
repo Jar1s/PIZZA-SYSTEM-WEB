@@ -124,7 +124,7 @@ export default function AdminSettingsPage() {
         </ErrorBoundary>
       </div>
 
-      <div className="grid grid-cols-1 gap-5 2xl:grid-cols-[minmax(0,440px)_minmax(0,1fr)]">
+      <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,460px)_minmax(0,1fr)] 2xl:grid-cols-[minmax(0,500px)_minmax(0,1fr)]">
         <ErrorBoundary>
           <Suspense fallback={<div className="animate-pulse rounded-xl bg-gray-200 h-72" />}>
             <DeliveryFeeTiersSettings />

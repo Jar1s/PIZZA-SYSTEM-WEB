@@ -49,7 +49,7 @@ export function StoryousReceiptPreview({
       )}
 
       {preview && preview.warnings.length > 0 ? (
-        <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+        <div className="mb-4 rounded-2xl border border-amber-200 bg-amber-50/80 px-4 py-3 text-xs text-amber-800">
           {preview.warnings.map((warning, index) => (
             <div key={`${warning}-${index}`}>• {warning}</div>
           ))}
@@ -63,7 +63,9 @@ export function StoryousReceiptPreview({
       ) : null}
 
       {preview && (
-        <div className="mx-auto max-w-[420px] rounded-sm border border-stone-300 bg-[#f9f7f1] px-5 py-4 text-black shadow-sm">
+        <div className="rounded-[24px] border border-zinc-200 bg-[radial-gradient(circle_at_top,#fff7ed,white_28%,#f8fafc_78%)] p-4 sm:p-6">
+          <div className="mx-auto flex max-w-[520px] justify-center">
+            <div className="w-full max-w-[420px] rounded-[18px] border border-stone-300/90 bg-[#f9f7f1] px-5 py-4 text-black shadow-[0_18px_45px_rgba(15,23,42,0.08)]">
           <div className="flex items-end justify-between">
             <span className="text-[22px] font-semibold tracking-tight">{headerLeftLabel}</span>
             <span className="text-[70px] font-semibold leading-none tracking-[-0.06em]">{preview.printedTime}</span>
@@ -127,6 +129,8 @@ export function StoryousReceiptPreview({
                 {line}
               </div>
             ))}
+          </div>
+        </div>
           </div>
         </div>
       )}

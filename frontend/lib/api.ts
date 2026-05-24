@@ -651,6 +651,25 @@ export type StoryousModifierMappingInput = {
   labelOverride?: string | null;
 };
 
+export type StoryousModifierAutoFillResult = {
+  mappings: StoryousModifierMapping[];
+  matchedCount: number;
+  unmatchedCount: number;
+  ambiguousCount: number;
+  additionsCount: number;
+  unmatchedOptions: Array<{ optionId: string; label: string }>;
+  ambiguousOptions: Array<{
+    optionId: string;
+    label: string;
+    matches: Array<{
+      additionId: string;
+      title: string;
+      additionCategoryId?: string;
+      categoryTitle?: string;
+    }>;
+  }>;
+};
+
 export type StoryousAutoPrintReadiness = {
   ready: boolean;
   blockers: string[];
@@ -938,6 +957,27 @@ export async function updateStoryousModifierMappings(
   if (!res.ok) {
     const errorText = await res.text().catch(() => '');
     throw new Error(errorText || 'Failed to update Storyous modifier mappings');
+  }
+
+  return res.json();
+}
+
+export async function autoFillStoryousModifierMappings(
+  tenantSlug: string,
+): Promise<StoryousModifierAutoFillResult> {
+  const normalizedTenant = normalizeTenantSlug(tenantSlug);
+  const res = await fetch(
+    `${API_URL}/api/settings/storyous/modifier-mappings/autofill?tenantSlug=${encodeURIComponent(normalizedTenant)}`,
+    {
+      method: 'POST',
+      headers: buildAuthHeaders(),
+      credentials: 'include',
+    },
+  );
+
+  if (!res.ok) {
+    const errorText = await res.text().catch(() => '');
+    throw new Error(errorText || 'Failed to auto-fill Storyous modifier mappings');
   }
 
   return res.json();

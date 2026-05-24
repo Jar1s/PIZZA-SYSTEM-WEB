@@ -43,6 +43,13 @@ export interface StoryousCreateOrderResult {
   raw: Record<string, any>;
 }
 
+export interface StoryousCatalogAddition {
+  additionId: string;
+  title: string;
+  additionCategoryId?: string;
+  categoryTitle?: string;
+}
+
 @Injectable()
 export class StoryousService {
   private readonly logger = new Logger(StoryousService.name);
@@ -69,6 +76,54 @@ export class StoryousService {
     }
 
     return `${merchant}-${place}`;
+  }
+
+  async getMenuAdditions(merchantId: string, placeId: string): Promise<StoryousCatalogAddition[]> {
+    const token = await this.getAccessToken();
+    const query = new URLSearchParams({
+      placeId: String(placeId || '').trim(),
+      depth: '-1',
+    });
+
+    const response = await fetch(
+      `${this.apiBaseUrl}/menu/${encodeURIComponent(String(merchantId || '').trim())}?${query.toString()}`,
+      {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      },
+    );
+
+    if (!response.ok) {
+      const error = await response.text().catch(() => '');
+      throw new Error(error || 'Failed to fetch Storyous menu additions');
+    }
+
+    const payload = await response.json();
+    const additionCategories = Array.isArray(payload?.additionCategories) ? payload.additionCategories : [];
+    const additions: StoryousCatalogAddition[] = [];
+
+    for (const category of additionCategories) {
+      const categoryTitle = String(category?.title || '').trim();
+      const additionCategoryId = String(category?.additionCategoryId || '').trim();
+      const items = Array.isArray(category?.additions) ? category.additions : [];
+
+      for (const item of items) {
+        const additionId = String(item?.additionId || '').trim();
+        const title = String(item?.title || '').trim();
+        if (!additionId || !title) continue;
+
+        additions.push({
+          additionId,
+          title,
+          additionCategoryId: additionCategoryId || undefined,
+          categoryTitle: categoryTitle || undefined,
+        });
+      }
+    }
+
+    return additions;
   }
 
   private async getConfig() {
