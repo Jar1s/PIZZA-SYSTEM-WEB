@@ -7,6 +7,7 @@ import {
   getStoryousAutoPrintReadiness,
   getStoryousModifierMappings,
   updateStoryousModifierMappings,
+  autoFillStoryousModifierMappings,
   StoryousSettings as StoryousSettingsType,
   StoryousAutoPrintReadiness,
   StoryousModifierMappingInput,
@@ -63,6 +64,7 @@ export function StoryousSettings() {
   const [readiness, setReadiness] = useState<StoryousAutoPrintReadiness | null>(null);
   const [mappingDrafts, setMappingDrafts] = useState<Record<string, MappingDraft>>({});
   const [mappingLoading, setMappingLoading] = useState(false);
+  const [autoFillingMappings, setAutoFillingMappings] = useState(false);
 
   const activeTenantSlug = selectedTenant && selectedTenant !== 'all' ? selectedTenant : null;
 
@@ -184,6 +186,52 @@ export function StoryousSettings() {
       alert('Nepodarilo sa uložiť nastavenia: ' + (error.message || 'Unknown error'));
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleAutoFillMappings = async () => {
+    if (!activeTenantSlug) {
+      alert('Vyber najprv konkrétny brand.');
+      return;
+    }
+
+    if (!clientId || !clientSecret || !merchantId || !placeId) {
+      alert('Najprv doplňte a uložte Storyous credentials a merchant/place.');
+      return;
+    }
+
+    setAutoFillingMappings(true);
+    try {
+      const result = await autoFillStoryousModifierMappings(activeTenantSlug);
+      const byOptionId = new Map(
+        result.mappings.map((mapping) => [
+          mapping.optionId,
+          {
+            externalAdditionId: mapping.externalAdditionId,
+            labelOverride: mapping.labelOverride || '',
+          },
+        ]),
+      );
+
+      const nextDrafts: Record<string, MappingDraft> = {};
+      for (const option of STORYOUS_MAPPING_OPTIONS) {
+        nextDrafts[option.optionId] = {
+          optionId: option.optionId,
+          label: option.label,
+          externalAdditionId: byOptionId.get(option.optionId)?.externalAdditionId || '',
+          labelOverride: byOptionId.get(option.optionId)?.labelOverride || '',
+        };
+      }
+
+      setMappingDrafts(nextDrafts);
+      alert(
+        `Auto-fill hotový. Spárované: ${result.matchedCount}, nejednoznačné: ${result.ambiguousCount}, bez zhody: ${result.unmatchedCount}.`,
+      );
+    } catch (error: any) {
+      console.error('Failed to auto-fill Storyous mappings:', error);
+      alert('Nepodarilo sa načítať Storyous additions: ' + (error.message || 'Unknown error'));
+    } finally {
+      setAutoFillingMappings(false);
     }
   };
 
@@ -351,6 +399,19 @@ export function StoryousSettings() {
               <>
                 <div className="mb-2 text-[11px] text-gray-500">
                   Ak modifier nemá addition ID, backend ho pošle fallbackom cez note. To zachová sync, ale preview ukáže warning.
+                </div>
+                <div className="mb-3 flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handleAutoFillMappings}
+                    disabled={saving || mappingLoading || autoFillingMappings}
+                    className="rounded-xl border border-zinc-200 bg-white px-3 py-1.5 text-xs font-semibold text-zinc-700 transition hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {autoFillingMappings ? 'Načítavam additions...' : 'Auto-fill zo Storyous'}
+                  </button>
+                  <span className="text-[11px] text-gray-500">
+                    Načíta additions z aktuálneho Storyous menu a doplní len jednoznačné zhody podľa názvu.
+                  </span>
                 </div>
                 {mappingLoading ? (
                   <div className="text-xs text-gray-500">Načítavam mappings...</div>

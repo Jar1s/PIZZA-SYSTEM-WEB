@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { StoryousCatalogAddition, autoFillStoryousModifierMappings } from './storyous-mapping.util';
 
 export interface StoryousSettings {
   clientId: string;
@@ -29,6 +30,20 @@ export interface StoryousModifierMappingInput {
   optionId: string;
   externalAdditionId: string;
   labelOverride?: string | null;
+}
+
+export interface StoryousModifierAutoFillResponse {
+  mappings: StoryousModifierMappingRecord[];
+  matchedCount: number;
+  unmatchedCount: number;
+  ambiguousCount: number;
+  additionsCount: number;
+  unmatchedOptions: Array<{ optionId: string; label: string }>;
+  ambiguousOptions: Array<{
+    optionId: string;
+    label: string;
+    matches: StoryousCatalogAddition[];
+  }>;
 }
 
 export interface StoryousAutoPrintReadiness {
@@ -369,5 +384,23 @@ export class SettingsService {
     });
 
     return this.getStoryousModifierMappings(tenantId);
+  }
+
+  async autoFillStoryousModifierMappings(
+    tenantId: string,
+    additions: StoryousCatalogAddition[],
+  ): Promise<StoryousModifierAutoFillResponse> {
+    const result = autoFillStoryousModifierMappings(additions);
+    const mappings = await this.replaceStoryousModifierMappings(tenantId, result.mappings);
+
+    return {
+      mappings,
+      matchedCount: result.matchedCount,
+      unmatchedCount: result.unmatchedOptions.length,
+      ambiguousCount: result.ambiguousOptions.length,
+      additionsCount: result.additionsCount,
+      unmatchedOptions: result.unmatchedOptions,
+      ambiguousOptions: result.ambiguousOptions,
+    };
   }
 }
