@@ -210,6 +210,80 @@ export class OrdersService {
     return validatedOrder;
   }
 
+  private normalizeCustomerEmail(email: string | null | undefined): string {
+    return String(email || '').toLowerCase().trim();
+  }
+
+  private normalizeCustomerPhone(phone: string | null | undefined): string | null {
+    const normalized = String(phone || '').trim();
+    return normalized || null;
+  }
+
+  private async findExistingCheckoutCustomer(
+    tenantId: string,
+    email: string,
+    phone: string | null,
+  ): Promise<User | null> {
+    const filters: Prisma.UserWhereInput[] = [];
+
+    if (email) {
+      filters.push({ email });
+    }
+    if (phone) {
+      filters.push({ phone });
+    }
+    if (filters.length === 0) {
+      return null;
+    }
+
+    return this.prisma.user.findFirst({
+      where: {
+        tenantId,
+        role: UserRole.CUSTOMER,
+        OR: filters,
+      },
+      orderBy: { createdAt: 'asc' },
+    });
+  }
+
+  private async updateCheckoutCustomerIfSafe(
+    user: User,
+    customer: CreateOrderDto['customer'],
+    normalizedEmail: string,
+    normalizedPhone: string | null,
+  ): Promise<User> {
+    const updateData: Prisma.UserUpdateInput = {};
+    const incomingName = String(customer.name || '').trim();
+
+    if (!user.email && normalizedEmail) {
+      updateData.email = normalizedEmail;
+    }
+    if (!user.phone && normalizedPhone) {
+      updateData.phone = normalizedPhone;
+    }
+    if (!user.name && incomingName) {
+      updateData.name = incomingName;
+    }
+
+    if (Object.keys(updateData).length === 0) {
+      return user;
+    }
+
+    try {
+      return await this.prisma.user.update({
+        where: { id: user.id },
+        data: updateData,
+      });
+    } catch (error) {
+      this.logger.warn('Unable to enrich existing checkout customer, continuing with existing user', {
+        userId: user.id,
+        tenantId: user.tenantId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      return user;
+    }
+  }
+
   private collectUniqueProductIds(rawProductIds: unknown[]): string[] {
     return [
       ...new Set(
@@ -415,12 +489,12 @@ export class OrdersService {
     // If paymentMethod exists (cash on delivery) → mandatory registration
     // If saveAccount === true (online payment) → optional registration
     if (data.paymentMethod || (data.saveAccount && !userId)) {
-      const normalizedEmail = data.customer.email.toLowerCase().trim();
+      const normalizedEmail = this.normalizeCustomerEmail(data.customer.email);
+      const normalizedPhone = this.normalizeCustomerPhone(data.customer.phone);
       
-      // Find existing user by email scoped to tenant
-      let user = await this.prisma.user.findFirst({
-        where: { email: normalizedEmail, tenantId, role: UserRole.CUSTOMER },
-      });
+      // Find existing user by email or phone scoped to tenant. The DB has unique
+      // constraints for both, so checkout must not blindly create on email miss.
+      let user = await this.findExistingCheckoutCustomer(tenantId, normalizedEmail, normalizedPhone);
 
       if (!user) {
         // Generate password reset token for account setup
@@ -428,29 +502,63 @@ export class OrdersService {
         const passwordResetExpires = new Date();
         passwordResetExpires.setDate(passwordResetExpires.getDate() + 7); // 7 days validity
         
-        // Create new user (without password - user will set it later)
-        user = await this.prisma.user.create({
-          data: {
-            tenantId,
-            name: data.customer.name,
-            email: normalizedEmail,
-            phone: data.customer.phone || null,
-            phoneVerified: false, // SMS verification disabled
-            role: UserRole.CUSTOMER,
-            password: null, // User will set password later
-            isActive: true,
-            passwordResetToken: passwordResetToken,
-            passwordResetExpires: passwordResetExpires,
-          },
-        });
-        this.logger.log(`Created new user for guest checkout: ${user.id}`, { userId: user.id, email: data.customer.email, tenantId });
-        
-        // Store password reset token for email sending later
-        createdUser = { ...user, passwordResetToken } as UserWithPasswordReset;
+        try {
+          // Create new user (without password - user will set password later)
+          user = await this.prisma.user.create({
+            data: {
+              tenantId,
+              name: data.customer.name,
+              email: normalizedEmail,
+              phone: normalizedPhone,
+              phoneVerified: false, // SMS verification disabled
+              role: UserRole.CUSTOMER,
+              password: null, // User will set password later
+              isActive: true,
+              passwordResetToken: passwordResetToken,
+              passwordResetExpires: passwordResetExpires,
+            },
+          });
+          this.logger.log(`Created new user for guest checkout: ${user.id}`, { userId: user.id, email: data.customer.email, tenantId });
+
+          // Store password reset token for email sending later
+          createdUser = { ...user, passwordResetToken } as UserWithPasswordReset;
+        } catch (error) {
+          if (
+            this.isUniqueConstraintErrorForFields(error, ['tenantId', 'email']) ||
+            this.isUniqueConstraintErrorForFields(error, ['tenantId', 'phone'])
+          ) {
+            user = await this.findExistingCheckoutCustomer(tenantId, normalizedEmail, normalizedPhone);
+            if (user) {
+              this.logger.warn('Checkout customer create hit unique constraint; reused existing customer', {
+                userId: user.id,
+                tenantId,
+                email: normalizedEmail,
+                phone: normalizedPhone,
+              });
+              shouldReturnAuthToken = true;
+              createdUser = user as UserWithPasswordReset;
+            } else {
+              throw error;
+            }
+          } else {
+            throw error;
+          }
+        }
       } else {
+        user = await this.updateCheckoutCustomerIfSafe(
+          user,
+          data.customer,
+          normalizedEmail,
+          normalizedPhone,
+        );
         // Email exists → automatically log in
         shouldReturnAuthToken = true;
-        this.logger.log(`Auto-login for existing user: ${user.id}`, { userId: user.id, email: data.customer.email, tenantId });
+        this.logger.log(`Auto-login for existing user: ${user.id}`, {
+          userId: user.id,
+          email: data.customer.email,
+          phone: normalizedPhone,
+          tenantId,
+        });
         createdUser = user as UserWithPasswordReset;
       }
 

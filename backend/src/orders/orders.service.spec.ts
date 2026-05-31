@@ -28,6 +28,7 @@ describe('OrdersService', () => {
       findUnique: jest.fn(),
       findFirst: jest.fn(),
       create: jest.fn(),
+      update: jest.fn(),
     },
     address: {
       findFirst: jest.fn(),
@@ -164,6 +165,15 @@ describe('OrdersService', () => {
 
     // Reset all mocks
     jest.clearAllMocks();
+    mockPrismaService.user.update.mockImplementation(({ data }) => ({
+      id: 'updated-user',
+      tenantId: 'tenant-123',
+      email: 'john@example.com',
+      name: 'John Doe',
+      phone: '+421912345678',
+      role: 'CUSTOMER',
+      ...data,
+    }));
   });
 
   describe('createOrder', () => {
@@ -662,10 +672,137 @@ describe('OrdersService', () => {
 
       expect(mockPrismaService.user.create).not.toHaveBeenCalled();
       expect(mockPrismaService.user.findFirst).toHaveBeenCalledWith({
-        where: { email: 'john@example.com', tenantId, role: 'CUSTOMER' },
+        where: {
+          tenantId,
+          role: 'CUSTOMER',
+          OR: [
+            { email: 'john@example.com' },
+            { phone: '+421912345678' },
+          ],
+        },
+        orderBy: { createdAt: 'asc' },
       });
       expect(result).toHaveProperty('authToken');
       expect(result).toHaveProperty('refreshToken');
+    });
+
+    it('should reuse existing customer by phone when email differs', async () => {
+      const guestOrderDto: CreateOrderDto = {
+        ...baseOrderDto,
+        customer: {
+          ...baseOrderDto.customer,
+          email: 'new-email@example.com',
+          phone: '+421912345678',
+        },
+        paymentMethod: 'card',
+      };
+      const existingUser = {
+        id: 'existing-phone-user',
+        tenantId,
+        email: 'old-email@example.com',
+        name: 'John Doe',
+        phone: '+421912345678',
+        role: 'CUSTOMER',
+      };
+
+      mockPrismaService.product.findFirst.mockResolvedValue(mockProduct);
+      mockPrismaService.user.findFirst.mockResolvedValue(existingUser);
+      mockPrismaService.tenant.findUnique.mockResolvedValue(mockTenant);
+      mockPrismaService.order.create.mockResolvedValue(
+        buildOrderResult({
+          userId: 'existing-phone-user',
+          paymentStatus: 'pending',
+          paymentRef: 'cod:card',
+        }),
+      );
+      mockPrismaService.refreshToken.create.mockResolvedValue({
+        id: 'refresh-phone',
+        userId: 'existing-phone-user',
+        token: process.env.TEST_REFRESH_TOKEN || 'test-refresh-token',
+        expiresAt: new Date(),
+      });
+      mockJwtService.sign.mockReturnValue('jwt-token');
+
+      const result = await service.createOrder(tenantId, guestOrderDto);
+
+      expect(mockPrismaService.user.findFirst).toHaveBeenCalledWith({
+        where: {
+          tenantId,
+          role: 'CUSTOMER',
+          OR: [
+            { email: 'new-email@example.com' },
+            { phone: '+421912345678' },
+          ],
+        },
+        orderBy: { createdAt: 'asc' },
+      });
+      expect(mockPrismaService.user.create).not.toHaveBeenCalled();
+      expect(mockPrismaService.order.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          userId: 'existing-phone-user',
+          paymentStatus: 'pending',
+          paymentRef: 'cod:card',
+        }),
+        include: expect.any(Object),
+      });
+      expect(result).toHaveProperty('authToken');
+    });
+
+    it('should recover from concurrent customer create phone conflict', async () => {
+      const guestOrderDto: CreateOrderDto = {
+        ...baseOrderDto,
+        customer: {
+          ...baseOrderDto.customer,
+          email: 'race@example.com',
+          phone: '+421912345678',
+        },
+        paymentMethod: 'card',
+      };
+      const existingUser = {
+        id: 'race-phone-user',
+        tenantId,
+        email: 'race@example.com',
+        name: 'John Doe',
+        phone: '+421912345678',
+        role: 'CUSTOMER',
+      };
+
+      mockPrismaService.product.findFirst.mockResolvedValue(mockProduct);
+      mockPrismaService.user.findFirst
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce(existingUser);
+      mockPrismaService.user.create.mockRejectedValue({
+        code: 'P2002',
+        meta: { target: ['tenantId', 'phone'] },
+      });
+      mockPrismaService.tenant.findUnique.mockResolvedValue(mockTenant);
+      mockPrismaService.order.create.mockResolvedValue(
+        buildOrderResult({
+          userId: 'race-phone-user',
+          paymentStatus: 'pending',
+          paymentRef: 'cod:card',
+        }),
+      );
+      mockPrismaService.refreshToken.create.mockResolvedValue({
+        id: 'refresh-race',
+        userId: 'race-phone-user',
+        token: process.env.TEST_REFRESH_TOKEN || 'test-refresh-token',
+        expiresAt: new Date(),
+      });
+      mockJwtService.sign.mockReturnValue('jwt-token');
+
+      await service.createOrder(tenantId, guestOrderDto);
+
+      expect(mockPrismaService.user.create).toHaveBeenCalledTimes(1);
+      expect(mockPrismaService.user.findFirst).toHaveBeenCalledTimes(2);
+      expect(mockPrismaService.order.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          userId: 'race-phone-user',
+          paymentStatus: 'pending',
+          paymentRef: 'cod:card',
+        }),
+        include: expect.any(Object),
+      });
     });
 
     it('should include houseNumber in address', async () => {
