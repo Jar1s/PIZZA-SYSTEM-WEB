@@ -1,6 +1,8 @@
-import { Controller, Get, Param, Query, Post, Body, Patch, NotFoundException, Logger } from '@nestjs/common';
+import { Controller, Get, Param, Query, Post, Body, Patch, NotFoundException, Logger, UseGuards } from '@nestjs/common';
 import { TenantsService } from './tenants.service';
 import { Public } from '../auth/decorators/public.decorator';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { RolesGuard } from '../auth/guards/roles.guard';
 
 @Controller('tenants')
 export class TenantsController {
@@ -8,10 +10,42 @@ export class TenantsController {
 
   constructor(private tenantsService: TenantsService) {}
 
+  private redactPublicTenant(tenant: any) {
+    if (!tenant || typeof tenant !== 'object') {
+      return tenant;
+    }
+
+    const paymentConfig = tenant.paymentConfig && typeof tenant.paymentConfig === 'object'
+      ? tenant.paymentConfig
+      : {};
+    const deliveryConfig = tenant.deliveryConfig && typeof tenant.deliveryConfig === 'object'
+      ? tenant.deliveryConfig
+      : {};
+
+    const publicPaymentConfig = {
+      provider: paymentConfig.provider,
+      environment: paymentConfig.environment,
+      cardOnDeliveryEnabled: paymentConfig.cardOnDeliveryEnabled,
+      cashOnDeliveryEnabled: paymentConfig.cashOnDeliveryEnabled,
+    };
+
+    const publicDeliveryConfig = {
+      provider: deliveryConfig.provider,
+    };
+
+    return {
+      ...tenant,
+      paymentConfig: publicPaymentConfig,
+      deliveryConfig: publicDeliveryConfig,
+      emailConfig: undefined,
+    };
+  }
+
   @Public()
   @Get()
   async getAllTenants(@Query('includeInactive') includeInactive?: string) {
-    return this.tenantsService.getAllTenants(includeInactive === 'true');
+    const tenants = await this.tenantsService.getAllTenants(includeInactive === 'true');
+    return tenants.map((tenant) => this.redactPublicTenant(tenant));
   }
 
   @Public()
@@ -41,7 +75,8 @@ export class TenantsController {
   @Get(':slug')
   async getTenant(@Param('slug') slug: string) {
     try {
-      return await this.tenantsService.getTenantBySlug(slug);
+      const tenant = await this.tenantsService.getTenantBySlug(slug);
+      return this.redactPublicTenant(tenant);
     } catch (error: any) {
       this.logger.error('[getTenant] Error resolving tenant', {
         slug,
@@ -58,8 +93,9 @@ export class TenantsController {
     return this.tenantsService.createTenant(data);
   }
 
-  @Public()
   @Patch(':slug')
+  @UseGuards(RolesGuard)
+  @Roles('ADMIN')
   async updateTenant(@Param('slug') slug: string, @Body() data: any) {
     return this.tenantsService.updateTenant(slug, data);
   }
@@ -99,7 +135,6 @@ export class TenantsController {
     return this.tenantsService.syncFromMaster(data.masterSlug, data.targetSlugs);
   }
 }
-
 
 
 
