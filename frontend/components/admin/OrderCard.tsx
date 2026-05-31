@@ -1302,7 +1302,7 @@ export function OrderCard({
                       </span>
                       {canAdjustWoltPreparation && (
                         <span className="rounded-full border border-zinc-200 bg-white px-2.5 py-1 text-[10px] font-semibold text-zinc-700">
-                          {language === 'sk' ? 'Príprava' : 'Prep'} {woltPreparationMinutes}m
+                          {language === 'sk' ? 'Ready za' : 'Ready in'} {woltPreparationMinutes}m
                         </span>
                       )}
                       {renderWoltZoneBadge()}
@@ -1313,7 +1313,7 @@ export function OrderCard({
                       )}
                       {woltPickupEtaRounded != null && (
                         <span className="rounded-full border border-zinc-200 bg-white px-2.5 py-1 text-[10px] font-semibold text-zinc-700">
-                          {language === 'sk' ? 'Kuriér ~' : 'Pickup ~'}
+                          {language === 'sk' ? 'Wolt ETA ~' : 'Wolt ETA ~'}
                           {woltPickupEtaRounded}m
                         </span>
                       )}
@@ -1362,9 +1362,9 @@ export function OrderCard({
                           onClick={handleRebookWoltDelivery}
                           disabled={rebookingWolt}
                           className="rounded-2xl bg-orange-600 px-3 py-2 text-[10px] font-semibold text-white transition hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-50"
-                          title="Zrušiť a vytvoriť nové Wolt delivery s novým časom"
+                          title="Zrušiť aktuálne Wolt delivery a vytvoriť nové s novým časom pripravenia kuchyne"
                         >
-                          {rebookingWolt ? '⏳ Presúvam' : 'Posunúť kuriéra'}
+                          {rebookingWolt ? '⏳ Preobjednávam' : 'Preobjednať Wolt'}
                         </button>
                       )}
                       {canCancelWolt && (

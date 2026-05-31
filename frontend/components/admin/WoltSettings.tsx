@@ -24,6 +24,10 @@ function compactValue(value: string, visible = 6): string {
   return `${normalized.slice(0, visible)}…${normalized.slice(-visible)}`;
 }
 
+function isPresent(value: string): boolean {
+  return Boolean(String(value || '').trim());
+}
+
 export function WoltSettings() {
   const { selectedTenant } = useAdminContext();
   const [tenantSlug, setTenantSlug] = useState('pornopizza');
@@ -153,8 +157,13 @@ export function WoltSettings() {
       {!isExpanded ? (
         <div className="mt-6 space-y-4">
           <div className="flex flex-wrap gap-2">
-            <SettingsBadge tone={venueId ? 'success' : 'warning'}>Venue {venueId ? 'OK' : 'chýba'}</SettingsBadge>
-            <SettingsBadge tone={merchantId ? 'success' : 'warning'}>Merchant {merchantId ? 'OK' : 'chýba'}</SettingsBadge>
+            <SettingsBadge tone={isPresent(apiKey) ? 'success' : 'warning'}>API key {isPresent(apiKey) ? 'OK' : 'chýba'}</SettingsBadge>
+            <SettingsBadge tone={isPresent(apiUrl) ? 'success' : 'warning'}>API URL {isPresent(apiUrl) ? 'OK' : 'chýba'}</SettingsBadge>
+            <SettingsBadge tone={isPresent(venueId) ? 'success' : 'warning'}>Venue {isPresent(venueId) ? 'OK' : 'chýba'}</SettingsBadge>
+            <SettingsBadge tone={isPresent(merchantId) ? 'success' : 'warning'}>Merchant {isPresent(merchantId) ? 'OK' : 'chýba'}</SettingsBadge>
+            <SettingsBadge tone={isPresent(pickupStreet) && isPresent(pickupCity) && isPresent(pickupPostalCode) ? 'success' : 'warning'}>
+              Pickup {isPresent(pickupStreet) && isPresent(pickupCity) && isPresent(pickupPostalCode) ? 'OK' : 'chýba'}
+            </SettingsBadge>
           </div>
           <div className="rounded-[24px] border border-zinc-200 bg-zinc-50 p-4">
             <div className="grid gap-3 sm:grid-cols-2">
