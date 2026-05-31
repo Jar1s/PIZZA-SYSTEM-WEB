@@ -545,17 +545,17 @@ export function OrderCard({
       const result = await rebookWoltDelivery(order.id, normalizedPreparationMinutes);
       if (result.success) {
         setWoltMessage(
-          `✅ Wolt delivery bolo presunuté.${result.trackingUrl ? ` Tracking: ${result.trackingUrl}` : ''}`,
+          `✅ Wolt delivery bolo preobjednané.${result.trackingUrl ? ` Tracking: ${result.trackingUrl}` : ''}`,
         );
-        toastSuccess('Wolt delivery bolo presunuté');
+        toastSuccess('Wolt delivery bolo preobjednané');
         onOrderRefresh?.();
       } else {
-        const message = result.message || 'Nepodarilo sa presunúť kuriéra';
+        const message = result.message || 'Nepodarilo sa preobjednať Wolt';
         setWoltMessage(`❌ ${message}`);
         toastError(message);
       }
     } catch (error: any) {
-      const message = error?.message || 'Nepodarilo sa presunúť kuriéra';
+      const message = error?.message || 'Nepodarilo sa preobjednať Wolt';
       setWoltMessage(`❌ ${message}`);
       toastError(message);
     } finally {
@@ -1045,7 +1045,7 @@ export function OrderCard({
                 className="flex-1 min-w-[120px] px-3 py-2 bg-orange-600 text-white rounded hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-semibold"
                 title="Zrušiť a vytvoriť nové Wolt delivery s novým časom"
               >
-                {rebookingWolt ? '⏳ Presúvam…' : '🚚 Posunúť kuriéra'}
+                {rebookingWolt ? '⏳ Preobjednávam…' : '🚚 Preobjednať Wolt'}
               </button>
             )}
             {canCancelWolt && (
@@ -1182,7 +1182,7 @@ export function OrderCard({
             {woltPickupEtaRounded != null && (
               <div className="rounded-lg border border-orange-300 bg-orange-50 px-3 py-2 text-center min-w-[96px]">
                 <div className="text-[10px] font-bold uppercase tracking-wide text-orange-700">
-                  Kuriér
+                  Wolt ETA
                 </div>
                 <div className="text-2xl font-extrabold leading-none text-orange-700 mt-0.5">
                   {woltPickupEtaRounded}
