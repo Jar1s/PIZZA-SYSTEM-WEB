@@ -6,6 +6,37 @@ import * as crypto from 'crypto';
 export class GopayService {
   private readonly logger = new Logger(GopayService.name);
 
+  private getStringField(value: unknown): string | undefined {
+    if (typeof value !== 'string') {
+      return undefined;
+    }
+
+    const trimmed = value.trim();
+    return trimmed ? trimmed : undefined;
+  }
+
+  private buildPayer(order: Order): { contact: Record<string, string> } | undefined {
+    const customer = (order as any).customer;
+    if (!customer || typeof customer !== 'object') {
+      return undefined;
+    }
+
+    const fullName = this.getStringField(customer.name);
+    const nameParts = fullName?.split(/\s+/).filter(Boolean) || [];
+    const firstName = nameParts[0];
+    const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : undefined;
+    const email = this.getStringField(customer.email);
+    const phoneNumber = this.getStringField(customer.phone);
+
+    const contact: Record<string, string> = {};
+    if (firstName) contact.first_name = firstName;
+    if (lastName) contact.last_name = lastName;
+    if (email) contact.email = email;
+    if (phoneNumber) contact.phone_number = phoneNumber;
+
+    return Object.keys(contact).length > 0 ? { contact } : undefined;
+  }
+
   private getTenantFrontendBaseUrl(tenant: Tenant): string {
     const rawDomain = (tenant.domain || '').trim();
     if (rawDomain) {
@@ -115,31 +146,39 @@ export class GopayService {
 
       const frontendBaseUrl = this.getTenantFrontendBaseUrl(tenant);
       const backendBaseUrl = this.getBackendBaseUrl();
+      const payer = this.buildPayer(order);
+      const paymentBody: any = {
+        target: {
+          type: 'ACCOUNT',
+          goid: goId,
+        },
+        amount: order.totalCents, // GoPay uses cents
+        currency: currency,
+        order_number: order.id,
+        order_description: `Objednávka ${order.id}`,
+        items: order.items.map(item => ({
+          name: item.productName,
+          amount: item.priceCents * item.quantity,
+          count: item.quantity,
+        })),
+        callback: {
+          return_url: `${frontendBaseUrl}/checkout/return`,
+          notification_url: `${backendBaseUrl}/api/webhooks/gopay`,
+        },
+      };
+
+      if (payer) {
+        paymentBody.payer = payer;
+      }
       
       const paymentResponse = await fetch(`${apiUrl}/api/payments/payment`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${accessToken}`,
           'Content-Type': 'application/json',
+          'Accept': 'application/json',
         },
-        body: JSON.stringify({
-          target: {
-            type: 'ACCOUNT',
-            goid: goId,
-          },
-          amount: order.totalCents, // GoPay uses cents
-          currency: currency,
-          order_number: order.id,
-          items: order.items.map(item => ({
-            name: item.productName,
-            amount: item.priceCents * item.quantity,
-            count: item.quantity,
-          })),
-          callback: {
-            return_url: `${frontendBaseUrl}/checkout/return`,
-            notification_url: `${backendBaseUrl}/api/webhooks/gopay`,
-          },
-        }),
+        body: JSON.stringify(paymentBody),
       });
 
       if (!paymentResponse.ok) {
@@ -424,7 +463,6 @@ export class GopayService {
     }
   }
 }
-
 
 
 
