@@ -36,7 +36,7 @@ Set these in the Render Cron Job service:
 | `SUPABASE_DB_URL` | yes | Supabase Session Pooler URI, port `5432` |
 | `BACKUP_GPG_PASSPHRASE` | yes | Long random passphrase, stored in password manager |
 | `GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON_BASE64` | yes | Base64 encoded Google service account JSON |
-| `GOOGLE_DRIVE_FOLDER_ID` | yes | Google Drive folder ID where backups are uploaded |
+| `GOOGLE_DRIVE_FOLDER_ID` | yes | `11aOtnxPUY-bicyJmNa4ts9tRLO9uJXtE` |
 | `BACKUP_S3_PREFIX` | no | Defaults to `postgres`; also used as Drive folder prefix |
 
 S3/B2 env vars still exist as fallback if `BACKUP_TARGET=s3`, but the intended
@@ -72,10 +72,10 @@ to one Drive folder that you explicitly share with it.
 6. In your Google Drive, create a folder, e.g. `Pizza DB Backups`.
 7. Share that folder with the service account email from the JSON file. It looks
    like `something@project.iam.gserviceaccount.com`.
-8. Copy the folder ID from the Drive URL:
+8. This project is configured to upload to this Drive folder:
 
 ```text
-https://drive.google.com/drive/folders/<THIS_IS_THE_FOLDER_ID>
+https://drive.google.com/drive/folders/11aOtnxPUY-bicyJmNa4ts9tRLO9uJXtE
 ```
 
 9. Convert the downloaded JSON key to base64 locally:
