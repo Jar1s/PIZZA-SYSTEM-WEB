@@ -303,7 +303,7 @@ export default function OrderTrackingPage() {
     return () => {
       clearInterval(interval);
     };
-  }, [order?.delivery?.provider, order?.delivery?.id]);
+  }, [order?.delivery?.provider, order?.delivery?.id, order?.status]);
 
   // Get tenant theme - Force dark theme for tracking page
   const normalizedTenant = withTenantThemeDefaults(tenant);
