@@ -2,7 +2,6 @@ import { Controller, Post, Get, Query, Body, Headers, Req, Res, HttpCode, NotFou
 import { Request, Response } from 'express';
 import { PaymentsService } from './payments.service';
 import { AdyenService } from './adyen.service';
-import { GopayService } from './gopay.service';
 import { WepayService } from './wepay.service';
 import { appConfig } from '../config/app.config';
 import { Public } from '../auth/decorators/public.decorator';
@@ -14,7 +13,6 @@ export class WebhooksController {
   constructor(
     private paymentsService: PaymentsService,
     private adyenService: AdyenService,
-    private gopayService: GopayService,
     private wepayService: WepayService,
   ) {}
 
@@ -68,77 +66,6 @@ export class WebhooksController {
 
     // Adyen requires [accepted] response
     return res.status(200).send('[accepted]');
-  }
-
-  @Public()
-  @Post('gopay')
-  @HttpCode(200)
-  async handleGopayWebhook(
-    @Body() body: any,
-    @Headers('signature') signature: string,
-    @Headers('x-gopay-signature') xGopaySignature: string,
-    @Req() req: Request,
-    @Res() res: Response,
-  ) {
-    // SECURITY FIX: Use raw body for signature verification
-    const rawBody = (req as any).rawBody;
-    if (!rawBody) {
-      this.logger.error('Raw body not available for GoPay webhook');
-      return res.status(500).send('Server configuration error');
-    }
-    
-    // GoPay may use either 'signature' or 'X-GoPay-Signature' header
-    const webhookSignature = signature || xGopaySignature;
-    
-    if (!webhookSignature) {
-      this.logger.error('GoPay webhook missing signature header (checked both "signature" and "X-GoPay-Signature")');
-      return res.status(401).send('Missing signature');
-    }
-    
-    // Use raw body as string for signature verification
-    const rawBodyString = rawBody.toString('utf8');
-    const orderNumber = body?.order_number ? String(body.order_number) : '';
-
-    const candidateSecrets: string[] = [];
-    const defaultSecret = (process.env.GOPAY_CLIENT_SECRET || '').trim();
-    if (defaultSecret) {
-      candidateSecrets.push(defaultSecret);
-    }
-
-    if (orderNumber) {
-      const tenantSecret = await this.paymentsService.getGopayClientSecretForOrder(orderNumber);
-      if (tenantSecret && !candidateSecrets.includes(tenantSecret)) {
-        candidateSecrets.push(tenantSecret);
-      }
-    }
-
-    const isSignatureValid = candidateSecrets.some((secret) =>
-      this.gopayService.verifyWebhook(webhookSignature, rawBodyString, secret)
-    );
-
-    if (!isSignatureValid) {
-      if (candidateSecrets.length === 0) {
-        this.logger.error('No GoPay webhook secret available (neither GOPAY_CLIENT_SECRET nor tenant secret)');
-      }
-      this.logger.error('Invalid GoPay webhook signature');
-      return res.status(401).send('Invalid signature');
-    }
-
-    try {
-      await this.paymentsService.handleGopayWebhook(body);
-    } catch (error) {
-      // Distinguish between fatal and transient errors
-      const isTransientError = this.isTransientError(error);
-      if (isTransientError) {
-        this.logger.error('Transient error processing GoPay webhook (will retry):', error);
-        return res.status(500).send('Internal server error');
-      } else {
-        this.logger.error('Fatal error processing GoPay webhook (no retry):', error);
-        // Continue to return 200 for fatal errors
-      }
-    }
-
-    return res.status(200).send('OK');
   }
 
   @Public()
@@ -266,7 +193,6 @@ export class WebhooksController {
     return false;
   }
 }
-
 
 
 

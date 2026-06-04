@@ -15,10 +15,6 @@ describe('WebhooksController', () => {
     verifyWebhookSignature: jest.fn(),
   } as any;
 
-  const gopayService = {
-    verifyWebhook: jest.fn(),
-  } as any;
-
   const wepayService = {
     verifyWebhook: jest.fn(),
   } as any;
@@ -28,7 +24,6 @@ describe('WebhooksController', () => {
     controller = new WebhooksController(
       paymentsService,
       adyenService,
-      gopayService,
       wepayService,
     );
   });

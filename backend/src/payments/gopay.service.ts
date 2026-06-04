@@ -1,6 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Order, Tenant } from '@pizza-ecosystem/shared';
-import * as crypto from 'crypto';
 
 @Injectable()
 export class GopayService {
@@ -233,47 +232,6 @@ export class GopayService {
     }
   }
 
-  verifyWebhook(signature: string, payload: string, clientSecret?: string): boolean {
-    // GoPay signature verification
-    // GoPay uses HMAC-SHA256 with client secret
-    
-    // CRITICAL: Use explicit env variable, not NODE_ENV
-    const skipVerification = process.env.SKIP_WEBHOOK_VERIFICATION === 'true';
-    if (skipVerification) {
-      this.logger.warn('⚠️  SECURITY WARNING: GoPay webhook verification is DISABLED via SKIP_WEBHOOK_VERIFICATION');
-      return true;
-    }
-
-    // Get client secret from parameter or env
-    const secret = clientSecret || process.env.GOPAY_CLIENT_SECRET;
-
-    if (!secret) {
-      this.logger.warn('⚠️  GoPay client secret not configured - rejecting webhook');
-      return false; // Reject if not configured in production
-    }
-
-    if (!signature) {
-      this.logger.warn('⚠️  GoPay webhook missing signature header');
-      return false;
-    }
-
-    // GoPay uses HMAC-SHA256, signature is hex-encoded
-    const hmac = crypto.createHmac('sha256', secret);
-    hmac.update(payload);
-    const calculatedSignature = hmac.digest('hex');
-
-    // Use timing-safe comparison to prevent timing attacks
-    try {
-      return crypto.timingSafeEqual(
-        Buffer.from(signature),
-        Buffer.from(calculatedSignature)
-      );
-    } catch (error) {
-      this.logger.error('GoPay signature verification error:', error);
-      return false;
-    }
-  }
-
   parseWebhook(data: any) {
     const state = data.state?.toUpperCase();
     
@@ -463,7 +421,6 @@ export class GopayService {
     }
   }
 }
-
 
 
 
