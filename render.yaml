@@ -15,7 +15,7 @@ services:
         sync: false
       - key: BACKUP_GPG_PASSPHRASE
         sync: false
-      - key: GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON_BASE64
+      - key: GOOGLE_DRIVE_RCLONE_CONFIG_BASE64
         sync: false
       - key: GOOGLE_DRIVE_FOLDER_ID
         value: 11aOtnxPUY-bicyJmNa4ts9tRLO9uJXtE
@@ -25,4 +25,3 @@ services:
         value: "30"
       - key: BACKUP_PRUNE_ENABLED
         value: "false"
-

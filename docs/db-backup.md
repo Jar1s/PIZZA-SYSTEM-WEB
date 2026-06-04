@@ -35,8 +35,9 @@ Set these in the Render Cron Job service:
 | `BACKUP_TARGET` | yes | `google_drive` |
 | `SUPABASE_DB_URL` | yes | Supabase Session Pooler URI, port `5432` |
 | `BACKUP_GPG_PASSPHRASE` | yes | Long random passphrase, stored in password manager |
-| `GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON_BASE64` | yes | Base64 encoded Google service account JSON |
-| `GOOGLE_DRIVE_FOLDER_ID` | yes | `11aOtnxPUY-bicyJmNa4ts9tRLO9uJXtE` |
+| `GOOGLE_DRIVE_RCLONE_CONFIG_BASE64` | yes | Base64 encoded rclone config authenticated as your Google account |
+| `GOOGLE_DRIVE_FOLDER_ID` | optional fallback | `11aOtnxPUY-bicyJmNa4ts9tRLO9uJXtE` if using service account fallback |
+| `GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON_BASE64` | optional fallback | Service account JSON; not recommended for personal Drive because service accounts have no storage quota |
 | `BACKUP_S3_PREFIX` | no | Defaults to `postgres`; also used as Drive folder prefix |
 
 S3/B2 env vars still exist as fallback if `BACKUP_TARGET=s3`, but the intended
@@ -61,31 +62,60 @@ Important:
 
 ## Google Drive setup
 
-This uses a Google Cloud **service account**. The service account gets access only
-to one Drive folder that you explicitly share with it.
+For a personal Google Drive, use **rclone OAuth**. Do not use a service account
+as the primary method: Google service accounts have no personal Drive storage
+quota and uploads fail with `storageQuotaExceeded`.
 
-1. Go to Google Cloud Console: https://console.cloud.google.com
-2. Create/select a project, e.g. `pizza-db-backups`.
-3. Enable **Google Drive API** for that project.
-4. Create a **Service Account**.
-5. Create a JSON key for that service account and download it.
-6. In your Google Drive, create a folder, e.g. `Pizza DB Backups`.
-7. Share that folder with the service account email from the JSON file. It looks
-   like `something@project.iam.gserviceaccount.com`.
-8. This project is configured to upload to this Drive folder:
+1. Install rclone locally if needed:
+
+```bash
+brew install rclone
+```
+
+2. Create an rclone remote named exactly `gdrive`:
+
+```bash
+rclone config
+```
+
+Use these choices:
+
+- `n` - new remote
+- name: `gdrive`
+- storage: `drive`
+- scope: `drive.file` is enough, `drive` also works if you prefer simpler setup
+- service account file: leave empty
+- advanced config: no
+- auto config: yes
+- log in with the Google account that owns the backup folder
+
+3. Restrict the remote to this folder by editing the generated config and adding
+`root_folder_id` under `[gdrive]`:
+
+```text
+root_folder_id = 11aOtnxPUY-bicyJmNa4ts9tRLO9uJXtE
+```
+
+The rclone config is usually here:
+
+```bash
+~/.config/rclone/rclone.conf
+```
+
+4. Base64 encode the rclone config:
+
+```bash
+base64 -i ~/.config/rclone/rclone.conf | tr -d '\n'
+```
+
+Put that value into Render as `GOOGLE_DRIVE_RCLONE_CONFIG_BASE64`.
+Do not commit `rclone.conf` to git; it contains an OAuth token.
+
+Target folder:
 
 ```text
 https://drive.google.com/drive/folders/11aOtnxPUY-bicyJmNa4ts9tRLO9uJXtE
 ```
-
-9. Convert the downloaded JSON key to base64 locally:
-
-```bash
-base64 -i service-account.json | tr -d '\n'
-```
-
-Put that value into Render as `GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON_BASE64`.
-Do not commit the JSON key to git.
 
 ## Render setup
 
@@ -93,7 +123,7 @@ Option A - Blueprint:
 
 1. Push `render.yaml` to GitHub.
 2. Render Dashboard -> **Blueprints** -> apply/update the blueprint for this repo.
-3. Fill the `sync: false` env vars for `pizza-db-backup`.
+3. Fill `SUPABASE_DB_URL`, `BACKUP_GPG_PASSPHRASE`, and `GOOGLE_DRIVE_RCLONE_CONFIG_BASE64` for `pizza-db-backup`.
 4. Open the `pizza-db-backup` Cron Job and click **Trigger Run**.
 5. Confirm encrypted backup files appeared in your Google Drive folder.
 

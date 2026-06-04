@@ -10,10 +10,18 @@ required=(
 
 case "$backup_target" in
   google_drive)
-    required+=(
-      GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON_BASE64
-      GOOGLE_DRIVE_FOLDER_ID
-    )
+    if [[ -n "${GOOGLE_DRIVE_RCLONE_CONFIG_BASE64:-}" ]]; then
+      :
+    elif [[ -n "${GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON_BASE64:-}" || -n "${GOOGLE_DRIVE_FOLDER_ID:-}" ]]; then
+      required+=(
+        GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON_BASE64
+        GOOGLE_DRIVE_FOLDER_ID
+      )
+    else
+      required+=(
+        GOOGLE_DRIVE_RCLONE_CONFIG_BASE64
+      )
+    fi
     ;;
   s3)
     required+=(
@@ -95,18 +103,24 @@ backup_key="${backup_prefix}/${date_path}/backup-${stamp}.dump.gpg"
 checksum_key="${backup_key}.sha256"
 
 if [[ "$backup_target" == "google_drive" ]]; then
-  printf '%s' "$GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON_BASE64" | base64 -d > "$service_account_file"
-  cat > "$rclone_config_file" <<EOF
+  if [[ -n "${GOOGLE_DRIVE_RCLONE_CONFIG_BASE64:-}" ]]; then
+    printf '%s' "$GOOGLE_DRIVE_RCLONE_CONFIG_BASE64" | base64 -d > "$rclone_config_file"
+    echo "Using OAuth rclone Google Drive config"
+  else
+    printf '%s' "$GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON_BASE64" | base64 -d > "$service_account_file"
+    cat > "$rclone_config_file" <<EOF
 [gdrive]
 type = drive
 scope = drive.file
 service_account_file = $service_account_file
 root_folder_id = $GOOGLE_DRIVE_FOLDER_ID
 EOF
+    echo "Using service account Google Drive config"
+  fi
 
   rclone --config "$rclone_config_file" copyto "$encrypted_file" "gdrive:${backup_key}" --drive-stop-on-upload-limit
   rclone --config "$rclone_config_file" copyto "$checksum_file" "gdrive:${checksum_key}" --drive-stop-on-upload-limit
-  echo "Uploaded encrypted backup and checksum to Google Drive folder ${GOOGLE_DRIVE_FOLDER_ID}"
+  echo "Uploaded encrypted backup and checksum to Google Drive"
   echo "Pruning is intentionally disabled for Google Drive. Use manual cleanup or Drive retention tooling."
 else
   export AWS_ACCESS_KEY_ID="$BACKUP_S3_ACCESS_KEY_ID"
