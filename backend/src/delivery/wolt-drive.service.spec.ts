@@ -189,8 +189,8 @@ describe('WoltDriveService contract', () => {
         currency: 'EUR',
       },
       sms_notifications: {
-        received: 'Vaša objednávka bola odovzdaná kuriérovi Wolt. Tracking: {{tracking_url}}',
-        picked_up: 'Kuriér Wolt už prevzal vašu objednávku. Tracking: {{tracking_url}}',
+        received: 'Vaša objednávka bola prijatá a čoskoro ju vyzdvihne kuriér Wolt. Sledovanie: TRACKING_LINK',
+        picked_up: 'Kuriér Wolt už prevzal vašu objednávku. Sledovanie: TRACKING_LINK',
       },
       order_number: '789',
       shipment_promise_id: 'promise-123',

@@ -605,8 +605,8 @@ export class WoltDriveService {
         ...(supportPhone ? { phone_number: supportPhone } : {}),
       },
       sms_notifications: {
-        received: 'Vaša objednávka bola odovzdaná kuriérovi Wolt. Tracking: {{tracking_url}}',
-        picked_up: 'Kuriér Wolt už prevzal vašu objednávku. Tracking: {{tracking_url}}',
+        received: 'Vaša objednávka bola prijatá a čoskoro ju vyzdvihne kuriér Wolt. Sledovanie: TRACKING_LINK',
+        picked_up: 'Kuriér Wolt už prevzal vašu objednávku. Sledovanie: TRACKING_LINK',
       },
     };
 
@@ -1080,4 +1080,3 @@ export class WoltDriveService {
     throw lastError || new Error('Wolt API getOrderStatus failed');
   }
 }
-
