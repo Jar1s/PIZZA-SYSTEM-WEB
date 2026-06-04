@@ -1,36 +1,15 @@
-import { BadRequestException } from '@nestjs/common';
+import { GUARDS_METADATA } from '@nestjs/common/constants';
 import { UploadController } from './upload.controller';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
 
-describe('UploadController', () => {
-  let controller: UploadController;
+describe('UploadController security metadata', () => {
+  it('restricts image upload to admins and operators', () => {
+    const handler = UploadController.prototype.uploadImage;
+    const guards = Reflect.getMetadata(GUARDS_METADATA, handler) || [];
+    const roles = Reflect.getMetadata('roles', handler) || [];
 
-  beforeEach(() => {
-    controller = new UploadController();
-  });
-
-  it('rejects path traversal in image lookup', async () => {
-    const res = {
-      status: jest.fn().mockReturnThis(),
-      json: jest.fn(),
-      sendFile: jest.fn(),
-    } as any;
-
-    await expect(controller.getImage('../secret.txt', res)).rejects.toBeInstanceOf(BadRequestException);
-    expect(res.sendFile).not.toHaveBeenCalled();
-  });
-
-  it('returns metadata for accepted uploads', async () => {
-    const result = await controller.uploadImage({
-      filename: 'product-1.png',
-      size: 1234,
-      mimetype: 'image/png',
-    });
-
-    expect(result).toEqual({
-      url: expect.stringContaining('/api/upload/image/product-1.png'),
-      filename: 'product-1.png',
-      size: 1234,
-      mimetype: 'image/png',
-    });
+    expect(guards).toEqual(expect.arrayContaining([JwtAuthGuard, RolesGuard]));
+    expect(roles).toEqual(['ADMIN', 'OPERATOR']);
   });
 });

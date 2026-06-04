@@ -3,6 +3,7 @@ import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
 import * as crypto from 'crypto';
 import * as jwt from 'jsonwebtoken';
+import { JwksClient } from 'jwks-rsa';
 import { PrismaService } from '../prisma/prisma.service';
 import { SmsService } from './sms.service';
 import { EmailService } from '../email/email.service';
@@ -36,6 +37,14 @@ export interface CustomerAuthResult {
 @Injectable()
 export class CustomerAuthService {
   private readonly logger = new Logger(CustomerAuthService.name);
+  private readonly appleJwksClient = new JwksClient({
+    jwksUri: 'https://appleid.apple.com/auth/keys',
+    cache: true,
+    cacheMaxEntries: 5,
+    cacheMaxAge: 10 * 60 * 1000,
+    rateLimit: true,
+    jwksRequestsPerMinute: 10,
+  });
 
   constructor(
     private prisma: PrismaService,
@@ -315,41 +324,15 @@ export class CustomerAuthService {
    */
   async loginWithApple(idToken: string, tenantId: string, userInfo?: { name?: { firstName?: string; lastName?: string }; email?: string } | null): Promise<CustomerAuthResult> {
     try {
-      // Verify the token with Apple's public keys
-      // For production, you should fetch Apple's public keys and verify the token
-      // For now, we'll decode and verify locally (Apple tokens are signed with ES256)
-      
       const clientId = process.env.APPLE_CLIENT_ID || process.env.APPLE_SERVICE_ID;
-
-      // Decode token without verification first to get header
-      const decoded = jwt.decode(idToken, { complete: true });
-      if (!decoded || typeof decoded === 'string') {
-        throw new BadRequestException('Invalid Apple token');
+      if (!clientId) {
+        throw new BadRequestException('Apple OAuth is not configured');
       }
 
-      // In production, you should:
-      // 1. Fetch Apple's public keys from https://appleid.apple.com/auth/keys
-      // 2. Verify the token signature using the appropriate key
-      // 3. Verify the token claims (iss, aud, exp, etc.)
-      
-      // For now, we'll do basic verification
-      // Note: In production, implement proper token verification with Apple's public keys
-      const payload = decoded.payload;
-
-      if (!payload || typeof payload === 'string') {
-        throw new BadRequestException('Invalid Apple token payload');
-      }
-
-      // Verify token is for our app
-      const aud = typeof payload.aud === 'string' ? payload.aud : Array.isArray(payload.aud) ? payload.aud[0] : '';
-      if (aud !== clientId && aud !== process.env.APPLE_SERVICE_ID) {
-        throw new BadRequestException('Token audience mismatch');
-      }
-
-      // Verify token issuer
-      if (payload.iss !== 'https://appleid.apple.com') {
-        throw new BadRequestException('Invalid token issuer');
-      }
+      const audience = Array.from(
+        new Set([clientId, process.env.APPLE_SERVICE_ID].filter(Boolean)),
+      ) as string[];
+      const payload = await this.verifyAppleIdToken(idToken, audience);
 
       // Extract user info
       const appleId = payload.sub; // Apple user ID
@@ -398,6 +381,62 @@ export class CustomerAuthService {
       }
       throw new BadRequestException(`Apple OAuth error: ${error.message}`);
     }
+  }
+
+  private async verifyAppleIdToken(
+    idToken: string,
+    audience: string[],
+  ): Promise<jwt.JwtPayload> {
+    const verifyAudience = audience.length === 1
+      ? audience[0]
+      : audience as [string, ...string[]];
+
+    return new Promise((resolve, reject) => {
+      const getKey: jwt.GetPublicKeyOrSecret = (header, callback) => {
+        if (!header.kid) {
+          callback(new Error('Apple token missing key id'));
+          return;
+        }
+
+        this.appleJwksClient.getSigningKey(header.kid, (error, key) => {
+          if (error) {
+            callback(error);
+            return;
+          }
+
+          const signingKey = key?.getPublicKey();
+          if (!signingKey) {
+            callback(new Error('Apple signing key not found'));
+            return;
+          }
+
+          callback(null, signingKey);
+        });
+      };
+
+      jwt.verify(
+        idToken,
+        getKey,
+        {
+          algorithms: ['RS256'],
+          audience: verifyAudience,
+          issuer: 'https://appleid.apple.com',
+        },
+        (error, decoded) => {
+          if (error) {
+            reject(new BadRequestException('Invalid Apple token'));
+            return;
+          }
+
+          if (!decoded || typeof decoded === 'string') {
+            reject(new BadRequestException('Invalid Apple token payload'));
+            return;
+          }
+
+          resolve(decoded);
+        },
+      );
+    });
   }
 
   /**

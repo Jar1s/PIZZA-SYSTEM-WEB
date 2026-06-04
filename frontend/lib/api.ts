@@ -150,13 +150,19 @@ export async function getAllTenants(includeInactive: boolean = false): Promise<T
     const url = includeInactive 
       ? `${API_URL}/api/tenants?includeInactive=true`
       : `${API_URL}/api/tenants`;
+    const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json',
+    };
+
+    if (token) {
+      headers.Authorization = `Bearer ${token}`;
+    }
     
     console.log(`[getAllTenants] Fetching: ${url}`);
     
     const res = await fetch(url, {
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers,
     });
     
     if (!res.ok) {

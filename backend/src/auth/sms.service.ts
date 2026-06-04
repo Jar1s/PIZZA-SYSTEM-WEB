@@ -41,6 +41,11 @@ export class SmsService {
    */
   private async sendSms(phone: string, code: string): Promise<void> {
     const formattedPhone = this.formatPhoneNumber(phone);
+    const productionProviderError = this.getProductionSmsProviderError();
+
+    if (productionProviderError) {
+      throw new BadRequestException(productionProviderError);
+    }
     
     // If Twilio is not configured, log the code instead of sending SMS
     if (!process.env.TWILIO_ACCOUNT_SID || !process.env.TWILIO_AUTH_TOKEN || !process.env.TWILIO_PHONE_NUMBER) {
@@ -77,6 +82,10 @@ export class SmsService {
       this.logger.error(`Failed to send SMS to ${formattedPhone}:`, error);
       // If error is about invalid phone number, log code instead
       if (error.message && error.message.includes('not a Twilio phone number')) {
+        if (process.env.NODE_ENV === 'production') {
+          throw new BadRequestException('SMS provider phone number is invalid');
+        }
+
         this.logger.warn(`Twilio phone number invalid. Logging code instead: ${code}`);
         this.logger.log(`[DEV MODE] SMS Verification Code for ${formattedPhone}: ${code}`);
         return;
@@ -92,6 +101,15 @@ export class SmsService {
   async sendVerificationCode(phoneOrPhoneNumber: string, userId?: string): Promise<{ success: boolean; message: string }> {
     const phone = phoneOrPhoneNumber;
     const formattedPhone = this.formatPhoneNumber(phone);
+    const productionProviderError = this.getProductionSmsProviderError();
+
+    if (productionProviderError) {
+      throw new BadRequestException(productionProviderError);
+    }
+
+    if (userId) {
+      await this.assertUserOwnsPhone(userId, formattedPhone);
+    }
 
     // Rate limiting: Check for recent codes (max 1 per minute per phone)
     const recentCode = await (this.prisma as any).smsVerificationCode.findFirst({
@@ -151,6 +169,10 @@ export class SmsService {
   async verifyCode(phone: string, code: string, userId?: string): Promise<{ valid: boolean; userId?: string }> {
     const formattedPhone = this.formatPhoneNumber(phone);
 
+    if (userId) {
+      await this.assertUserOwnsPhone(userId, formattedPhone);
+    }
+
     // Find the most recent unused code for this phone
     const verificationCode = await (this.prisma as any).smsVerificationCode.findFirst({
       where: {
@@ -209,6 +231,46 @@ export class SmsService {
     };
   }
 
+  private async assertUserOwnsPhone(userId: string, formattedPhone: string): Promise<void> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        phone: true,
+        isActive: true,
+      } as any,
+    }) as any;
+
+    if (!user || user.isActive === false) {
+      throw new BadRequestException('User not found');
+    }
+
+    const existingPhone = typeof user.phone === 'string' && user.phone.trim()
+      ? this.formatPhoneNumber(user.phone)
+      : '';
+
+    if (!existingPhone || existingPhone !== formattedPhone) {
+      throw new BadRequestException('Phone number does not match this account');
+    }
+  }
+
+  private getProductionSmsProviderError(): string | null {
+    if (process.env.NODE_ENV !== 'production') {
+      return null;
+    }
+
+    if (!process.env.TWILIO_ACCOUNT_SID || !process.env.TWILIO_AUTH_TOKEN || !process.env.TWILIO_PHONE_NUMBER) {
+      return 'SMS provider is not configured';
+    }
+
+    const twilioPhoneNumber = process.env.TWILIO_PHONE_NUMBER;
+    if (twilioPhoneNumber === '+15005550006' || twilioPhoneNumber === '15005550006') {
+      return 'SMS provider test number cannot be used in production';
+    }
+
+    return null;
+  }
+
   /**
    * Clean up expired verification codes (should be called periodically)
    */
@@ -225,4 +287,3 @@ export class SmsService {
     return { deleted: result.count };
   }
 }
-

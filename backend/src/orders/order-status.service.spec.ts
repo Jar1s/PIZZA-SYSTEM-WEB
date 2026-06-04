@@ -233,6 +233,31 @@ describe('OrderStatusService', () => {
     expect(mockStoryousService.updateOrderStatus).toHaveBeenCalledWith('storyous-123', OrderStatus.CANCELED);
   });
 
+  it('selects tenant paymentProvider so GoPay refund can run on manual cancellation', async () => {
+    mockPrisma.order.findUnique.mockResolvedValue({
+      ...baseOrder,
+      status: OrderStatus.PAID,
+      paymentStatus: 'success',
+      paymentRef: 'gopay-payment-1',
+      storyousOrderId: null,
+    });
+
+    await service.updateStatus('order-1', OrderStatus.CANCELED);
+
+    expect(mockPrisma.order.findUnique).toHaveBeenCalledWith(
+      expect.objectContaining({
+        include: expect.objectContaining({
+          tenant: expect.objectContaining({
+            select: expect.objectContaining({
+              paymentProvider: true,
+            }),
+          }),
+        }),
+      }),
+    );
+    expect(mockPaymentsService.refundGopayPayment).toHaveBeenCalledWith('order-1');
+  });
+
   it('does not call Storyous status update on cancel when storyousOrderId is missing', async () => {
     mockPrisma.order.findUnique.mockResolvedValue({
       ...baseOrder,

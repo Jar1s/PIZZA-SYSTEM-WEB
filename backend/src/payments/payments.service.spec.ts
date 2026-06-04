@@ -28,6 +28,7 @@ describe('PaymentsService', () => {
 
   const mockGopayService = {
     createPayment: jest.fn(),
+    getPaymentStatus: jest.fn(),
     parseWebhook: jest.fn(),
     verifyWebhook: jest.fn(),
   };
@@ -40,7 +41,10 @@ describe('PaymentsService', () => {
 
   const mockOrdersService = {
     getOrderById: jest.fn(),
+    getOrderByPaymentRef: jest.fn(),
     updatePaymentRef: jest.fn(),
+    tryStartPaymentSession: jest.fn(),
+    clearPaymentSessionLock: jest.fn(),
   };
 
   const mockOrderStatusService = {
@@ -49,6 +53,7 @@ describe('PaymentsService', () => {
 
   const mockTenantsService = {
     getTenantById: jest.fn(),
+    getAllTenants: jest.fn(),
   };
 
   const mockDeliveryService = {
@@ -100,6 +105,8 @@ describe('PaymentsService', () => {
     deliveryService = module.get<DeliveryService>(DeliveryService);
 
     jest.clearAllMocks();
+    mockOrdersService.tryStartPaymentSession.mockResolvedValue(true);
+    mockOrdersService.clearPaymentSessionLock.mockResolvedValue(undefined);
   });
 
   describe('createPaymentSession', () => {
@@ -129,6 +136,10 @@ describe('PaymentsService', () => {
       expect(mockOrdersService.getOrderById).toHaveBeenCalledWith('order-123');
       expect(mockTenantsService.getTenantById).toHaveBeenCalledWith('tenant-123');
       expect(mockAdyenService.createPaymentSession).toHaveBeenCalledWith(mockOrder, mockTenant);
+      expect(mockOrdersService.tryStartPaymentSession).toHaveBeenCalledWith(
+        'order-123',
+        expect.stringMatching(/^initializing:/),
+      );
       expect(mockOrdersService.updatePaymentRef).toHaveBeenCalledWith(
         'order-123',
         'adyen-session-123',
@@ -153,6 +164,10 @@ describe('PaymentsService', () => {
       const result = await service.createPaymentSession('order-123');
 
       expect(mockGopayService.createPayment).toHaveBeenCalledWith(mockOrder, gopayTenant);
+      expect(mockOrdersService.tryStartPaymentSession).toHaveBeenCalledWith(
+        'order-123',
+        expect.stringMatching(/^initializing:/),
+      );
       expect(mockOrdersService.updatePaymentRef).toHaveBeenCalledWith(
         'order-123',
         'gopay-123',
@@ -173,6 +188,10 @@ describe('PaymentsService', () => {
       const result = await service.createPaymentSession('order-123');
 
       expect(mockWepayService.createPayment).toHaveBeenCalledWith(mockOrder, wepayTenant);
+      expect(mockOrdersService.tryStartPaymentSession).toHaveBeenCalledWith(
+        'order-123',
+        expect.stringMatching(/^initializing:/),
+      );
       expect(mockOrdersService.updatePaymentRef).toHaveBeenCalledWith(
         'order-123',
         'wepay-123',
@@ -190,6 +209,50 @@ describe('PaymentsService', () => {
       );
       await expect(service.createPaymentSession('order-123')).rejects.toThrow(
         'Order already processed',
+      );
+    });
+
+    it('should reject duplicate payment session for order with existing pending payment ref', async () => {
+      mockOrdersService.getOrderById.mockResolvedValue({
+        ...mockOrder,
+        paymentStatus: 'pending',
+        paymentRef: 'gopay-123',
+      });
+      mockTenantsService.getTenantById.mockResolvedValue({ ...mockTenant, paymentProvider: 'gopay' });
+
+      await expect(service.createPaymentSession('order-123')).rejects.toThrow(
+        'Payment session already initialized for this order',
+      );
+
+      expect(mockOrdersService.tryStartPaymentSession).not.toHaveBeenCalled();
+      expect(mockGopayService.createPayment).not.toHaveBeenCalled();
+    });
+
+    it('should reject concurrent payment session when lock is already held', async () => {
+      mockOrdersService.getOrderById.mockResolvedValue(mockOrder);
+      mockTenantsService.getTenantById.mockResolvedValue({ ...mockTenant, paymentProvider: 'gopay' });
+      mockOrdersService.tryStartPaymentSession.mockResolvedValue(false);
+
+      await expect(service.createPaymentSession('order-123')).rejects.toThrow(
+        'Payment session already initialized for this order',
+      );
+
+      expect(mockGopayService.createPayment).not.toHaveBeenCalled();
+    });
+
+    it('should clear payment initialization lock when provider create fails', async () => {
+      const gopayTenant = { ...mockTenant, paymentProvider: 'gopay' };
+      mockOrdersService.getOrderById.mockResolvedValue(mockOrder);
+      mockTenantsService.getTenantById.mockResolvedValue(gopayTenant);
+      mockGopayService.createPayment.mockRejectedValue(new Error('provider down'));
+
+      await expect(service.createPaymentSession('order-123')).rejects.toThrow(
+        'Payment session failed: provider down',
+      );
+
+      expect(mockOrdersService.clearPaymentSessionLock).toHaveBeenCalledWith(
+        'order-123',
+        expect.stringMatching(/^initializing:/),
       );
     });
 
@@ -473,6 +536,103 @@ describe('PaymentsService', () => {
         OrderStatus.CANCELED,
       );
       expect(mockDeliveryService.createDeliveryForOrder).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('syncGopayPaymentById', () => {
+    const gopayTenant = {
+      id: 'tenant-123',
+      slug: 'pornopizza',
+      paymentProvider: 'gopay',
+    };
+
+    it('syncs GoPay payment by existing paymentRef', async () => {
+      const order = {
+        id: 'order-123',
+        tenantId: 'tenant-123',
+        status: OrderStatus.PENDING,
+        paymentRef: 'gopay-123',
+        paymentStatus: 'pending',
+      };
+      const paymentData = {
+        id: 'gopay-123',
+        order_number: 'order-123',
+        state: 'PAID',
+      };
+
+      mockOrdersService.getOrderByPaymentRef.mockResolvedValue(order);
+      mockTenantsService.getTenantById.mockResolvedValue(gopayTenant);
+      mockGopayService.getPaymentStatus.mockResolvedValue(paymentData);
+      mockGopayService.parseWebhook.mockReturnValue({
+        eventType: 'PAID',
+        success: true,
+        paymentRef: 'gopay-123',
+        merchantReference: 'order-123',
+      });
+      mockOrdersService.getOrderById.mockResolvedValue(order);
+      mockOrdersService.updatePaymentRef.mockResolvedValue(undefined);
+      mockOrderStatusService.updateStatus.mockResolvedValue(undefined);
+      mockDeliveryService.createDeliveryForOrder.mockResolvedValue(undefined);
+
+      const result = await service.syncGopayPaymentById('gopay-123');
+
+      expect(result).toEqual({
+        orderId: 'order-123',
+        tenantSlug: 'pornopizza',
+        state: 'PAID',
+      });
+      expect(mockGopayService.getPaymentStatus).toHaveBeenCalledWith('gopay-123', gopayTenant);
+    });
+
+    it('recovers GoPay return when paymentRef is not stored yet by using order_number from status response', async () => {
+      const order = {
+        id: 'order-123',
+        tenantId: 'tenant-123',
+        status: OrderStatus.PENDING,
+        paymentRef: null,
+        paymentStatus: 'initializing',
+      };
+      const paymentData = {
+        id: 'gopay-123',
+        order_number: 'order-123',
+        state: 'CREATED',
+      };
+
+      mockOrdersService.getOrderByPaymentRef.mockResolvedValue(null);
+      mockTenantsService.getAllTenants.mockResolvedValue([gopayTenant]);
+      mockGopayService.getPaymentStatus.mockResolvedValue(paymentData);
+      mockOrdersService.getOrderById.mockResolvedValue(order);
+      mockOrdersService.updatePaymentRef.mockResolvedValue(undefined);
+      mockGopayService.parseWebhook.mockReturnValue({
+        eventType: 'CREATED',
+        success: false,
+        paymentRef: 'gopay-123',
+        merchantReference: 'order-123',
+      });
+
+      const result = await service.syncGopayPaymentById('gopay-123');
+
+      expect(result).toEqual({
+        orderId: 'order-123',
+        tenantSlug: 'pornopizza',
+        state: 'CREATED',
+      });
+      expect(mockOrdersService.updatePaymentRef).toHaveBeenCalledWith(
+        'order-123',
+        'gopay-123',
+        'pending',
+      );
+      expect(mockGopayService.getPaymentStatus).toHaveBeenCalledTimes(1);
+    });
+
+    it('throws not found when no GoPay tenant can resolve payment id', async () => {
+      mockOrdersService.getOrderByPaymentRef.mockResolvedValue(null);
+      mockTenantsService.getAllTenants.mockResolvedValue([gopayTenant]);
+      mockGopayService.getPaymentStatus.mockRejectedValue(new Error('not found'));
+
+      await expect(service.syncGopayPaymentById('missing-payment')).rejects.toThrow(
+        'Order for GoPay payment missing-payment not found',
+      );
     });
   });
 });

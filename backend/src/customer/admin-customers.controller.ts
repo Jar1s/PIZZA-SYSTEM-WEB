@@ -12,9 +12,12 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { OrderStatus } from '@pizza-ecosystem/shared';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
 
 @Controller('admin/customers')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles('ADMIN')
 export class AdminCustomersController {
   constructor(private prisma: PrismaService) {}
 
@@ -202,4 +205,3 @@ export class AdminCustomersController {
     };
   }
 }
-

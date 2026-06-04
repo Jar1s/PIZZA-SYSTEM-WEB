@@ -167,6 +167,7 @@ export class OrderStatusService implements OnModuleInit, OnModuleDestroy {
             domain: true,
             subdomain: true,
             slug: true,
+            paymentProvider: true,
             emailConfig: true,
           },
         },
@@ -565,7 +566,6 @@ export class OrderStatusService implements OnModuleInit, OnModuleDestroy {
     }
   }
 }
-
 
 
 

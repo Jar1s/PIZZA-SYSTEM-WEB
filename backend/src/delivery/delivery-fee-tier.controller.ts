@@ -1,6 +1,8 @@
 import { Controller, Get, Post, Patch, Delete, Body, Param, UseGuards, Logger, Query } from '@nestjs/common';
 import { DeliveryFeeTierService, AddressForGeocoding } from './delivery-fee-tier.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
 import { Public } from '../auth/decorators/public.decorator';
 import { Throttle } from '@nestjs/throttler';
 import { TenantsService } from '../tenants/tenants.service';
@@ -18,6 +20,8 @@ export class DeliveryFeeTierController {
   ) {}
 
   @Get()
+  @UseGuards(RolesGuard)
+  @Roles('ADMIN', 'OPERATOR')
   async getAllTiers(@Query('tenantSlug') tenantSlug?: string) {
     let tenantId: string | null = null;
 
@@ -41,6 +45,8 @@ export class DeliveryFeeTierController {
   }
 
   @Post()
+  @UseGuards(RolesGuard)
+  @Roles('ADMIN', 'OPERATOR')
   async createTier(@Body() body: {
     tenantId?: string | null;
     minDistanceMeters: number;
@@ -62,6 +68,8 @@ export class DeliveryFeeTierController {
   }
 
   @Patch(':id')
+  @UseGuards(RolesGuard)
+  @Roles('ADMIN', 'OPERATOR')
   async updateTier(
     @Param('id') id: string,
     @Body() body: {
@@ -79,6 +87,8 @@ export class DeliveryFeeTierController {
   }
 
   @Delete(':id')
+  @UseGuards(RolesGuard)
+  @Roles('ADMIN', 'OPERATOR')
   async deleteTier(@Param('id') id: string) {
     return this.prisma.deliveryFeeTier.delete({
       where: { id },

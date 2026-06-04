@@ -15,6 +15,8 @@ import { extname, join, resolve } from 'path';
 import { existsSync, mkdirSync } from 'fs';
 import { Response } from 'express';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
 import { Public } from '../auth/decorators/public.decorator';
 import { appConfig } from '../config/app.config';
 
@@ -73,7 +75,8 @@ export class UploadController {
   }
 
   @Post('image')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN', 'OPERATOR')
   @UseInterceptors(
     FileInterceptor('image', {
       storage: diskStorage({

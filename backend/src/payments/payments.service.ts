@@ -7,6 +7,7 @@ import { OrderStatusService } from '../orders/order-status.service';
 import { TenantsService } from '../tenants/tenants.service';
 import { DeliveryService } from '../delivery/delivery.service';
 import { OrderStatus } from '@pizza-ecosystem/shared';
+import * as crypto from 'crypto';
 
 @Injectable()
 export class PaymentsService {
@@ -43,21 +44,42 @@ export class PaymentsService {
         throw new BadRequestException('Order already processed');
       }
 
-      let paymentSession: any;
-
-      switch (tenant.paymentProvider) {
-        case 'adyen':
-          paymentSession = await this.adyenService.createPaymentSession(order, tenant);
-          break;
-        case 'gopay':
-          paymentSession = await this.gopayService.createPayment(order, tenant);
-          break;
-        case 'wepay':
-          paymentSession = await this.wepayService.createPayment(order, tenant);
-          break;
-        default:
-          throw new BadRequestException('Unsupported payment provider');
+      const existingPaymentStatus = String((order as any).paymentStatus || '').toLowerCase();
+      const existingPaymentRef = String((order as any).paymentRef || '').trim();
+      if (existingPaymentStatus === 'pending' && existingPaymentRef) {
+        throw new BadRequestException('Payment session already initialized for this order');
       }
+
+      let paymentSession: any;
+      const paymentLockRef = `initializing:${crypto.randomUUID()}`;
+      const lockAcquired = await this.ordersService.tryStartPaymentSession(
+        normalizedOrderId,
+        paymentLockRef,
+      );
+
+      if (!lockAcquired) {
+        throw new BadRequestException('Payment session already initialized for this order');
+      }
+
+      try {
+        switch (tenant.paymentProvider) {
+          case 'adyen':
+            paymentSession = await this.adyenService.createPaymentSession(order, tenant);
+            break;
+          case 'gopay':
+            paymentSession = await this.gopayService.createPayment(order, tenant);
+            break;
+          case 'wepay':
+            paymentSession = await this.wepayService.createPayment(order, tenant);
+            break;
+          default:
+            throw new BadRequestException('Unsupported payment provider');
+        }
+      } catch (error) {
+        await this.ordersService.clearPaymentSessionLock(normalizedOrderId, paymentLockRef);
+        throw error;
+      }
+
       await this.ordersService.updatePaymentRef(
         normalizedOrderId,
         paymentSession.sessionId || paymentSession.paymentId,
@@ -232,23 +254,72 @@ export class PaymentsService {
     await new Promise((resolve) => setTimeout(resolve, ms));
   }
 
+  private async resolveGopayPaymentContext(paymentId: string): Promise<{
+    order: any;
+    tenant: any;
+    paymentData?: any;
+  }> {
+    const existingOrder = await this.ordersService.getOrderByPaymentRef(paymentId);
+    if (existingOrder) {
+      const tenant = await this.tenantsService.getTenantById(existingOrder.tenantId);
+      if (tenant.paymentProvider !== 'gopay') {
+        throw new BadRequestException(`Tenant payment provider is ${tenant.paymentProvider}, not gopay`);
+      }
+      return { order: existingOrder, tenant };
+    }
+
+    // GoPay return/notification contains only payment id. If the paymentRef write
+    // has not completed yet, recover via GoPay status and its order_number.
+    const tenants = await this.tenantsService.getAllTenants(false);
+    const gopayTenants = tenants.filter((tenant: any) => tenant.paymentProvider === 'gopay');
+
+    for (const tenant of gopayTenants) {
+      try {
+        const paymentData = await this.gopayService.getPaymentStatus(paymentId, tenant);
+        const orderId = paymentData?.order_number ? String(paymentData.order_number).trim() : '';
+        if (!orderId) {
+          continue;
+        }
+
+        const order = await this.ordersService.getOrderById(orderId);
+        if (order.tenantId !== tenant.id) {
+          this.logger.warn('GoPay payment order_number resolved to a different tenant', {
+            paymentId,
+            orderId,
+            paymentTenantId: tenant.id,
+            orderTenantId: order.tenantId,
+          });
+          continue;
+        }
+
+        if (!(order as any).paymentRef) {
+          await this.ordersService.updatePaymentRef(order.id, paymentId, 'pending');
+        }
+
+        return { order, tenant, paymentData };
+      } catch (error: any) {
+        this.logger.debug('GoPay payment fallback lookup failed for tenant', {
+          paymentId,
+          tenantId: tenant.id,
+          tenantSlug: tenant.slug,
+          error: error?.message || String(error),
+        });
+      }
+    }
+
+    throw new NotFoundException(`Order for GoPay payment ${paymentId} not found`);
+  }
+
   async syncGopayPaymentById(paymentId: string): Promise<{ orderId: string; tenantSlug: string; state: string }> {
     const normalizedPaymentId = (paymentId || '').trim();
     if (!normalizedPaymentId) {
       throw new BadRequestException('Missing GoPay payment id');
     }
 
-    const order = await this.ordersService.getOrderByPaymentRef(normalizedPaymentId);
-    if (!order) {
-      throw new NotFoundException(`Order for GoPay payment ${normalizedPaymentId} not found`);
-    }
-
-    const tenant = await this.tenantsService.getTenantById(order.tenantId);
-    if (tenant.paymentProvider !== 'gopay') {
-      throw new BadRequestException(`Tenant payment provider is ${tenant.paymentProvider}, not gopay`);
-    }
-
-    const paymentData = await this.gopayService.getPaymentStatus(normalizedPaymentId, tenant);
+    const { order, tenant, paymentData: resolvedPaymentData } =
+      await this.resolveGopayPaymentContext(normalizedPaymentId);
+    const paymentData =
+      resolvedPaymentData || await this.gopayService.getPaymentStatus(normalizedPaymentId, tenant);
     await this.handleGopayWebhook(paymentData);
 
     return {

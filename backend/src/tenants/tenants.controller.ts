@@ -41,8 +41,9 @@ export class TenantsController {
     };
   }
 
-  @Public()
   @Get()
+  @UseGuards(RolesGuard)
+  @Roles('ADMIN', 'OPERATOR')
   async getAllTenants(@Query('includeInactive') includeInactive?: string) {
     const tenants = await this.tenantsService.getAllTenants(includeInactive === 'true');
     return tenants.map((tenant) => this.redactPublicTenant(tenant));
@@ -89,6 +90,8 @@ export class TenantsController {
   }
 
   @Post()
+  @UseGuards(RolesGuard)
+  @Roles('ADMIN')
   async createTenant(@Body() data: any) {
     return this.tenantsService.createTenant(data);
   }
@@ -105,6 +108,8 @@ export class TenantsController {
    * POST /api/tenants/:slug/clone
    */
   @Post(':slug/clone')
+  @UseGuards(RolesGuard)
+  @Roles('ADMIN')
   async cloneTenant(
     @Param('slug') slug: string,
     @Body() cloneData: {
@@ -126,6 +131,8 @@ export class TenantsController {
    * POST /api/tenants/sync-from-master
    */
   @Post('sync-from-master')
+  @UseGuards(RolesGuard)
+  @Roles('ADMIN')
   async syncFromMaster(
     @Body() data: {
       masterSlug: string;
@@ -135,8 +142,6 @@ export class TenantsController {
     return this.tenantsService.syncFromMaster(data.masterSlug, data.targetSlugs);
   }
 }
-
-
 
 
 

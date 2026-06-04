@@ -98,8 +98,7 @@ export const appConfig = {
   skipWebhookVerification: (() => {
     const skip = process.env.SKIP_WEBHOOK_VERIFICATION === 'true';
     if (skip && process.env.NODE_ENV === 'production') {
-      console.warn('⚠️  CRITICAL SECURITY WARNING: Webhook verification is DISABLED in PRODUCTION!');
-      console.warn('⚠️  This should only be used for testing. Enable webhook verification immediately.');
+      throw new Error('SKIP_WEBHOOK_VERIFICATION must not be enabled in production');
     }
     return skip;
   })(),

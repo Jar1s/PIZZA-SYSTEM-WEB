@@ -5,6 +5,7 @@ import { CustomerAuthService } from './customer-auth.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { SmsService } from './sms.service';
 import * as bcrypt from 'bcryptjs';
+import * as jwt from 'jsonwebtoken';
 import { EmailService } from '../email/email.service';
 import { TenantsService } from '../tenants/tenants.service';
 
@@ -41,6 +42,7 @@ describe('CustomerAuthService', () => {
   };
 
   const mockEmailService = {
+    sendWelcomeEmail: jest.fn(),
     sendPasswordResetEmail: jest.fn(),
     sendOrderConfirmation: jest.fn(),
     sendPasswordSetupEmail: jest.fn(),
@@ -55,6 +57,15 @@ describe('CustomerAuthService', () => {
       subdomain: 'tenant-1',
       domain: 'tenant-1.local',
       theme: {},
+    }),
+    findById: jest.fn().mockResolvedValue({
+      id: 'tenant-1',
+      name: 'Tenant 1',
+      slug: 'tenant-1',
+      subdomain: 'tenant-1',
+      domain: 'tenant-1.local',
+      theme: {},
+      emailConfig: null,
     }),
   };
 
@@ -241,10 +252,102 @@ describe('CustomerAuthService', () => {
     });
   });
 
+  describe('loginWithApple', () => {
+    const originalAppleClientId = process.env.APPLE_CLIENT_ID;
+    const originalAppleServiceId = process.env.APPLE_SERVICE_ID;
+
+    afterEach(() => {
+      process.env.APPLE_CLIENT_ID = originalAppleClientId;
+      process.env.APPLE_SERVICE_ID = originalAppleServiceId;
+    });
+
+    it('verifies Apple ID token signature and claims before logging in', async () => {
+      process.env.APPLE_CLIENT_ID = 'apple-client-id';
+      delete process.env.APPLE_SERVICE_ID;
+      const existingCustomer = {
+        id: 'user123',
+        email: 'apple@example.com',
+        name: 'Apple User',
+        googleId: null,
+        appleId: 'apple-user-id',
+        role: 'CUSTOMER',
+        phone: null,
+        phoneVerified: false,
+        isActive: true,
+        username: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+      const verifySpy = jest.spyOn(jwt, 'verify').mockImplementation(((
+        _token: string,
+        _getKey: any,
+        options: any,
+        callback: any,
+      ) => {
+        expect(options).toEqual(
+          expect.objectContaining({
+            algorithms: ['RS256'],
+            audience: 'apple-client-id',
+            issuer: 'https://appleid.apple.com',
+          }),
+        );
+        callback(null, {
+          sub: 'apple-user-id',
+          email: 'apple@example.com',
+          aud: 'apple-client-id',
+          iss: 'https://appleid.apple.com',
+        });
+        return undefined;
+      }) as any);
+
+      mockPrismaService.user.findFirst.mockResolvedValue(existingCustomer);
+      mockJwtService.sign.mockReturnValue('access_token');
+      mockPrismaService.refreshToken.create.mockResolvedValue({});
+
+      const result = await service.loginWithApple('apple-id-token', tenantId);
+
+      expect(result.user.email).toBe('apple@example.com');
+      expect(verifySpy).toHaveBeenCalled();
+      expect(mockPrismaService.user.findFirst).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            tenantId,
+            OR: expect.arrayContaining([
+              { email: 'apple@example.com' },
+              { appleId: 'apple-user-id' },
+            ]),
+          }),
+        }),
+      );
+
+      verifySpy.mockRestore();
+    });
+
+    it('rejects invalid Apple ID tokens before customer lookup', async () => {
+      process.env.APPLE_CLIENT_ID = 'apple-client-id';
+      const verifySpy = jest.spyOn(jwt, 'verify').mockImplementation(((
+        _token: string,
+        _getKey: any,
+        _options: any,
+        callback: any,
+      ) => {
+        callback(new Error('bad signature'));
+        return undefined;
+      }) as any);
+
+      await expect(service.loginWithApple('bad-token', tenantId)).rejects.toThrow(
+        BadRequestException,
+      );
+      expect(mockPrismaService.user.findFirst).not.toHaveBeenCalled();
+
+      verifySpy.mockRestore();
+    });
+  });
+
   describe('setPasswordWithToken', () => {
     it('should lookup user by unique password reset token and throw when token is invalid', async () => {
       const token = 'invalid-token';
-      mockPrismaService.user.findUnique.mockResolvedValue(null);
+      mockPrismaService.user.findFirst.mockResolvedValue(null);
 
       await expect(
         service.setPasswordWithToken(token, process.env.TEST_PASSWORD || 'test-password-123'),

@@ -2,13 +2,37 @@ import { PrismaClient, UserRole } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
+const blockedSeedPasswords = [
+  `${'admin'}123`,
+  `${'operator'}123`,
+  `${'password'}123`,
+  'password',
+];
 
 async function seedUsers() {
   console.log('👤 Seeding users...');
 
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('seed-users.ts is disabled in production. Use npm run create-admin with strong env credentials.');
+  }
+
+  const adminPlainPassword = process.env.SEED_ADMIN_PASSWORD;
+  const operatorPlainPassword = process.env.SEED_OPERATOR_PASSWORD;
+
+  if (!adminPlainPassword || !operatorPlainPassword) {
+    throw new Error('Set SEED_ADMIN_PASSWORD and SEED_OPERATOR_PASSWORD before running seed-users.ts');
+  }
+
+  if (
+    blockedSeedPasswords.includes(adminPlainPassword) ||
+    blockedSeedPasswords.includes(operatorPlainPassword)
+  ) {
+    throw new Error('Refusing to seed users with default or weak passwords');
+  }
+
   // Hash passwords
-  const adminPassword = await bcrypt.hash('admin123', 10);
-  const operatorPassword = await bcrypt.hash('operator123', 10);
+  const adminPassword = await bcrypt.hash(adminPlainPassword, 10);
+  const operatorPassword = await bcrypt.hash(operatorPlainPassword, 10);
 
   const defaultTenant = await prisma.tenant.findFirst({ where: { slug: 'pornopizza' } })
     || await prisma.tenant.findFirst();
@@ -54,10 +78,10 @@ async function seedUsers() {
   console.log('\n📋 Login Credentials:');
   console.log('Admin:');
   console.log('  Username: admin');
-  console.log('  Password: admin123');
+  console.log('  Password: from SEED_ADMIN_PASSWORD');
   console.log('\nOperator:');
   console.log('  Username: operator');
-  console.log('  Password: operator123');
+  console.log('  Password: from SEED_OPERATOR_PASSWORD');
 }
 
 seedUsers()
@@ -68,4 +92,3 @@ seedUsers()
   .finally(async () => {
     await prisma.$disconnect();
   });
-

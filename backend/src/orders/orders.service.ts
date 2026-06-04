@@ -1487,6 +1487,44 @@ export class OrdersService {
     }
   }
 
+  async tryStartPaymentSession(orderId: string, lockRef: string): Promise<boolean> {
+    const staleInitializingBefore = new Date(Date.now() - 10 * 60 * 1000);
+    const result = await this.prisma.order.updateMany({
+      where: {
+        id: orderId,
+        status: OrderStatus.PENDING,
+        OR: [
+          { paymentStatus: null },
+          { paymentStatus: 'failed' },
+          {
+            paymentStatus: 'initializing',
+            updatedAt: { lt: staleInitializingBefore },
+          },
+        ],
+      },
+      data: {
+        paymentRef: lockRef,
+        paymentStatus: 'initializing',
+      },
+    });
+
+    return result.count === 1;
+  }
+
+  async clearPaymentSessionLock(orderId: string, lockRef: string): Promise<void> {
+    await this.prisma.order.updateMany({
+      where: {
+        id: orderId,
+        paymentRef: lockRef,
+        paymentStatus: 'initializing',
+      },
+      data: {
+        paymentRef: null,
+        paymentStatus: null,
+      },
+    });
+  }
+
   async updateDeliveryRef(orderId: string, deliveryId: string): Promise<Order> {
     const order = await this.prisma.order.update({
       where: { id: orderId },
