@@ -37,6 +37,20 @@ interface ShipmentPromiseData {
   distance?: number;
 }
 
+interface WoltWebhookCandidate {
+  id?: string;
+  webhook_id?: string;
+  callback_url?: string;
+  disabled?: boolean;
+  [key: string]: any;
+}
+
+type TenantWithOperationalTheme = {
+  id: string;
+  slug?: string;
+  theme?: Prisma.JsonValue | null;
+};
+
 @Injectable()
 export class DeliveryService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(DeliveryService.name);
@@ -95,6 +109,107 @@ export class DeliveryService implements OnModuleInit, OnModuleDestroy {
         `Wolt konfigurácia je nekompletná pre tenant ${tenant.slug}. Chýba: ${missing.join(', ')}.`,
       );
     }
+  }
+
+  private getConfiguredWoltWebhookUrl(): string {
+    const explicit = String(process.env.WOLT_WEBHOOK_URL || '').trim();
+    if (explicit) {
+      return explicit;
+    }
+
+    const backendUrl = String(process.env.BACKEND_URL || process.env.API_URL || '').trim().replace(/\/+$/, '');
+    if (backendUrl) {
+      return `${backendUrl}/api/webhooks/wolt`;
+    }
+
+    return 'https://api.p0rnopizza.sk/api/webhooks/wolt';
+  }
+
+  private getWoltWebhookSecret(woltConfig: any): string {
+    return String(process.env.WOLT_WEBHOOK_SECRET || woltConfig?.webhookSecret || '').trim();
+  }
+
+  private assertTenantCanDispatchWolt(tenant: TenantWithOperationalTheme): void {
+    const theme = this.getQuoteObject(tenant.theme);
+    if (theme.maintenanceMode === true) {
+      throw new BadRequestException('Prevádzka je v maintenance móde. Wolt doručenie nie je možné vytvoriť.');
+    }
+
+    const openingHours =
+      theme.openingHours && typeof theme.openingHours === 'object' && !Array.isArray(theme.openingHours)
+        ? (theme.openingHours as Record<string, any>)
+        : null;
+
+    if (!openingHours || openingHours.enabled !== true) {
+      return;
+    }
+
+    if (!this.isWithinOpeningHours(openingHours)) {
+      throw new BadRequestException('Prevádzka je aktuálne zatvorená. Wolt doručenie vytvorte počas otváracích hodín.');
+    }
+  }
+
+  private isWithinOpeningHours(openingHours: Record<string, any>, at = new Date()): boolean {
+    const timezone =
+      typeof openingHours.timezone === 'string' && openingHours.timezone.trim()
+        ? openingHours.timezone.trim()
+        : 'Europe/Bratislava';
+    const days = openingHours.days && typeof openingHours.days === 'object' ? openingHours.days : {};
+    const current = this.getZonedDateParts(at, timezone);
+    const schedule = days[current.dayName];
+
+    if (!schedule || schedule.closed === true) {
+      return false;
+    }
+
+    const openMinutes = this.parseTimeToMinutes(schedule.open);
+    const closeMinutes = this.parseTimeToMinutes(schedule.close);
+    if (openMinutes == null || closeMinutes == null) {
+      return false;
+    }
+
+    if (closeMinutes < openMinutes) {
+      return current.minutes >= openMinutes || current.minutes < closeMinutes;
+    }
+
+    return current.minutes >= openMinutes && current.minutes < closeMinutes;
+  }
+
+  private getZonedDateParts(date: Date, timezone: string): { dayName: string; minutes: number } {
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone: timezone,
+      weekday: 'long',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    }).formatToParts(date);
+    const weekday = parts.find((part) => part.type === 'weekday')?.value || 'Sunday';
+    const hour = Number(parts.find((part) => part.type === 'hour')?.value || 0);
+    const minute = Number(parts.find((part) => part.type === 'minute')?.value || 0);
+
+    return {
+      dayName: weekday.toLowerCase(),
+      minutes: hour * 60 + minute,
+    };
+  }
+
+  private parseTimeToMinutes(value: unknown): number | null {
+    if (typeof value !== 'string') {
+      return null;
+    }
+
+    const match = value.trim().match(/^(\d{1,2}):(\d{2})$/);
+    if (!match) {
+      return null;
+    }
+
+    const hours = Number(match[1]);
+    const minutes = Number(match[2]);
+    if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) {
+      return null;
+    }
+
+    return hours * 60 + minutes;
   }
 
   private assertTenantAccess(
@@ -724,6 +839,7 @@ export class DeliveryService implements OnModuleInit, OnModuleDestroy {
     const deliveryConfig = tenant.deliveryConfig as DeliveryConfig;
     const woltConfig = deliveryConfig.woltConfig;
     this.assertWoltConfig(tenant, woltConfig);
+    this.assertTenantCanDispatchWolt(tenant);
 
     // Get tenant-specific pickup address
     const pickupAddress = this.getPickupAddress(tenantId, deliveryConfig);
@@ -766,6 +882,7 @@ export class DeliveryService implements OnModuleInit, OnModuleDestroy {
     const deliveryConfig = tenant.deliveryConfig as DeliveryConfig;
     const woltConfig = deliveryConfig.woltConfig;
     this.assertWoltConfig(tenant, woltConfig);
+    this.assertTenantCanDispatchWolt(tenant);
 
     // Get tenant-specific pickup address
     const pickupAddress = this.getPickupAddress(order.tenantId, deliveryConfig);
@@ -839,6 +956,7 @@ export class DeliveryService implements OnModuleInit, OnModuleDestroy {
     const deliveryConfig = tenant.deliveryConfig as DeliveryConfig;
     const woltConfig = deliveryConfig.woltConfig;
     this.assertWoltConfig(tenant, woltConfig);
+    this.assertTenantCanDispatchWolt(tenant);
 
     // Get tenant-specific pickup address
     const pickupAddress = this.getPickupAddress(order.tenantId, deliveryConfig);
@@ -924,8 +1042,11 @@ export class DeliveryService implements OnModuleInit, OnModuleDestroy {
         woltConfig,
         {
           promiseSnapshot: promiseData,
+          parcelPriceCents: typeof (order as any).totalCents === 'number' ? (order as any).totalCents : undefined,
           parcelCurrency: promiseData?.currency,
           orderNumber: order.orderNumber,
+          supportPhone: pickupAddress.phone,
+          recipientEmail: customer.email,
         },
       );
     } catch (error: any) {
@@ -1219,6 +1340,160 @@ export class DeliveryService implements OnModuleInit, OnModuleDestroy {
     this.assertTenantAccess(delivery.tenantId, user, 'getDeliveryById');
 
     return delivery;
+  }
+
+  async listWoltWebhooksForTenantSlug(tenantSlug: string, user?: AuthenticatedUser) {
+    const tenant = await this.prisma.tenant.findFirst({
+      where: { slug: String(tenantSlug || '').trim().toLowerCase() },
+    });
+
+    if (!tenant) {
+      throw new BadRequestException(`Tenant ${tenantSlug} not found`);
+    }
+
+    this.assertTenantAccess(tenant.id, user, 'listWoltWebhooksForTenantSlug');
+
+    const deliveryConfig = (tenant.deliveryConfig as DeliveryConfig) || {};
+    const woltConfig = deliveryConfig?.woltConfig || {};
+    this.assertWoltConfig(tenant, woltConfig);
+
+    const merchantId = String(woltConfig.merchantId || '').trim();
+    if (!merchantId) {
+      throw new BadRequestException('Wolt Merchant ID nie je nastavený pre tento tenant.');
+    }
+
+    const result = await this.woltDrive.listWebhooks(
+      String(woltConfig.apiKey).trim(),
+      merchantId,
+      2,
+      woltConfig,
+    );
+
+    return {
+      ok: true,
+      callbackUrl: this.getConfiguredWoltWebhookUrl(),
+      webhooks: this.extractWoltWebhooks(result),
+      raw: result,
+    };
+  }
+
+  async registerWoltWebhookForTenantSlug(tenantSlug: string, user?: AuthenticatedUser) {
+    const tenant = await this.prisma.tenant.findFirst({
+      where: { slug: String(tenantSlug || '').trim().toLowerCase() },
+    });
+
+    if (!tenant) {
+      throw new BadRequestException(`Tenant ${tenantSlug} not found`);
+    }
+
+    this.assertTenantAccess(tenant.id, user, 'registerWoltWebhookForTenantSlug');
+
+    const deliveryConfig = (tenant.deliveryConfig as DeliveryConfig) || {};
+    const woltConfig = deliveryConfig?.woltConfig || {};
+    this.assertWoltConfig(tenant, woltConfig);
+
+    const merchantId = String(woltConfig.merchantId || '').trim();
+    if (!merchantId) {
+      throw new BadRequestException('Wolt Merchant ID nie je nastavený pre tento tenant.');
+    }
+
+    const clientSecret = this.getWoltWebhookSecret(woltConfig);
+    if (!clientSecret) {
+      throw new BadRequestException(
+        'Wolt webhook secret chýba. Nastavte WOLT_WEBHOOK_SECRET v Render env alebo webhookSecret v Wolt nastaveniach.',
+      );
+    }
+
+    const apiKey = String(woltConfig.apiKey).trim();
+    const callbackUrl = this.getConfiguredWoltWebhookUrl();
+    const listResult = await this.woltDrive.listWebhooks(apiKey, merchantId, 2, woltConfig);
+    const existing = this.extractWoltWebhooks(listResult).find((webhook) => {
+      return String(webhook.callback_url || '').trim() === callbackUrl;
+    });
+
+    const webhookId = existing?.id || existing?.webhook_id;
+    const result = webhookId
+      ? await this.woltDrive.updateWebhook(apiKey, merchantId, String(webhookId), callbackUrl, clientSecret, 2, woltConfig)
+      : await this.woltDrive.createWebhook(apiKey, merchantId, callbackUrl, clientSecret, 2, woltConfig);
+
+    return {
+      ok: true,
+      action: webhookId ? 'updated' : 'created',
+      callbackUrl,
+      webhookId: webhookId || result?.id || result?.webhook_id || null,
+      result,
+    };
+  }
+
+  async resolveWoltWebhookSecretForUnsignedPayload(webhookData: any): Promise<string | null> {
+    const envSecret = String(process.env.WOLT_WEBHOOK_SECRET || '').trim();
+    if (envSecret) {
+      return envSecret;
+    }
+
+    const details = webhookData?.details && typeof webhookData.details === 'object' ? webhookData.details : {};
+    const deliveryJobId =
+      details?.wolt_order_reference_id ||
+      webhookData?.wolt_order_reference_id ||
+      webhookData?.delivery_id ||
+      webhookData?.job_id ||
+      webhookData?.order?.wolt_order_reference_id;
+
+    if (deliveryJobId) {
+      const delivery = await this.prisma.delivery.findFirst({
+        where: { jobId: String(deliveryJobId) },
+        select: {
+          tenant: {
+            select: { deliveryConfig: true },
+          },
+        },
+      });
+      const secret = this.getWoltWebhookSecret((delivery?.tenant?.deliveryConfig as DeliveryConfig)?.woltConfig);
+      if (secret) {
+        return secret;
+      }
+    }
+
+    const merchantId =
+      webhookData?.merchant_id ||
+      webhookData?.merchantId ||
+      details?.merchant_id ||
+      details?.merchantId ||
+      webhookData?.order?.merchant_id;
+
+    if (merchantId) {
+      const tenants = await this.prisma.tenant.findMany({
+        select: { deliveryConfig: true },
+      });
+
+      for (const tenant of tenants) {
+        const woltConfig = ((tenant.deliveryConfig as DeliveryConfig) || {})?.woltConfig || {};
+        if (String(woltConfig.merchantId || '').trim() === String(merchantId).trim()) {
+          const secret = this.getWoltWebhookSecret(woltConfig);
+          if (secret) {
+            return secret;
+          }
+        }
+      }
+    }
+
+    return null;
+  }
+
+  private extractWoltWebhooks(raw: any): WoltWebhookCandidate[] {
+    if (Array.isArray(raw)) {
+      return raw;
+    }
+    if (Array.isArray(raw?.webhooks)) {
+      return raw.webhooks;
+    }
+    if (Array.isArray(raw?.items)) {
+      return raw.items;
+    }
+    if (Array.isArray(raw?.data)) {
+      return raw.data;
+    }
+    return [];
   }
 
   async handleWoltWebhook(webhookData: any) {

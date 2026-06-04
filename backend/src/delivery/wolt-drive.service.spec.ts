@@ -127,6 +127,11 @@ describe('WoltDriveService contract', () => {
         orderNumber: '789',
         supportEmail: 'ops@example.com',
         supportUrl: 'https://support.example.com',
+        promiseSnapshot: {
+          promiseId: 'promise-123',
+          feeCents: 720,
+          currency: 'EUR',
+        },
       },
     );
 
@@ -179,6 +184,14 @@ describe('WoltDriveService contract', () => {
         email: 'ops@example.com',
         url: 'https://support.example.com',
       },
+      price: {
+        amount: 720,
+        currency: 'EUR',
+      },
+      sms_notifications: {
+        received: 'Vaša objednávka bola odovzdaná kuriérovi Wolt. Tracking: {{tracking_url}}',
+        picked_up: 'Kuriér Wolt už prevzal vašu objednávku. Tracking: {{tracking_url}}',
+      },
       order_number: '789',
       shipment_promise_id: 'promise-123',
     });
@@ -227,6 +240,58 @@ describe('WoltDriveService contract', () => {
       id: 'job-1',
       status: 'CANCELLED',
     });
+  });
+
+  it('manages merchant webhooks through Wolt webhook endpoints', async () => {
+    const fetchMock = jest.spyOn(global, 'fetch')
+      .mockResolvedValueOnce(buildResponse({ webhooks: [{ id: 'hook-1', callback_url: 'https://old.example/wolt' }] }))
+      .mockResolvedValueOnce(buildResponse({ id: 'hook-2', callback_url: 'https://api.example/api/webhooks/wolt' }))
+      .mockResolvedValueOnce(buildResponse({ id: 'hook-2', callback_url: 'https://api.example/api/webhooks/wolt' }));
+
+    const listed = await service.listWebhooks('api-key', 'merchant-1', 1, apiConfig);
+    const created = await service.createWebhook(
+      'api-key',
+      'merchant-1',
+      'https://api.example/api/webhooks/wolt',
+      'secret',
+      1,
+      apiConfig,
+    );
+    const updated = await service.updateWebhook(
+      'api-key',
+      'merchant-1',
+      'hook-2',
+      'https://api.example/api/webhooks/wolt',
+      'secret',
+      1,
+      apiConfig,
+    );
+
+    expect(fetchMock.mock.calls[0][0]).toBe('https://custom.wolt.example/v1/merchants/merchant-1/webhooks');
+    expect(fetchMock.mock.calls[0][1]).toMatchObject({
+      method: 'GET',
+      headers: {
+        Authorization: 'Bearer api-key',
+        'Content-Type': 'application/json',
+      },
+    });
+    expect(fetchMock.mock.calls[1][0]).toBe('https://custom.wolt.example/v1/merchants/merchant-1/webhooks');
+    expect(JSON.parse((fetchMock.mock.calls[1][1] as any).body)).toMatchObject({
+      callback_url: 'https://api.example/api/webhooks/wolt',
+      client_secret: 'secret',
+      disabled: false,
+      callback_config: {
+        exponential_retry_backoff: {
+          exponent_base: 5,
+          max_retry_count: 3,
+        },
+      },
+    });
+    expect(fetchMock.mock.calls[2][0]).toBe('https://custom.wolt.example/v1/merchants/merchant-1/webhooks/hook-2');
+    expect((fetchMock.mock.calls[2][1] as any).method).toBe('PATCH');
+    expect(listed).toEqual({ webhooks: [{ id: 'hook-1', callback_url: 'https://old.example/wolt' }] });
+    expect(created).toEqual({ id: 'hook-2', callback_url: 'https://api.example/api/webhooks/wolt' });
+    expect(updated).toEqual({ id: 'hook-2', callback_url: 'https://api.example/api/webhooks/wolt' });
   });
 
   it('loads delivery areas from the merchant delivery-areas endpoint', async () => {

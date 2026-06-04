@@ -5,8 +5,11 @@ import { useAdminContext } from '@/app/admin/admin-context';
 import { getTenantSlug } from '@/lib/tenant-utils';
 import {
   getTenantDeliverySettings,
+  listWoltWebhooks,
+  registerWoltWebhook,
   updateTenantDeliverySettings,
   TenantDeliverySettings,
+  WoltWebhookRegistrationResult,
 } from '@/lib/api';
 import { SettingsBadge, SettingsCard, SettingsCardHeader, SettingsIconButton } from '@/components/admin/SettingsCard';
 
@@ -34,6 +37,8 @@ export function WoltSettings() {
   const [tenantSettings, setTenantSettings] = useState<TenantDeliverySettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [webhookSyncing, setWebhookSyncing] = useState(false);
+  const [webhookStatus, setWebhookStatus] = useState<WoltWebhookRegistrationResult | null>(null);
   const [isExpanded, setIsExpanded] = useState(false);
 
   const [apiKey, setApiKey] = useState('');
@@ -141,6 +146,31 @@ export function WoltSettings() {
     }
   };
 
+  const handleListWebhooks = async () => {
+    setWebhookSyncing(true);
+    try {
+      const result = await listWoltWebhooks(tenantSlug);
+      setWebhookStatus(result);
+    } catch (error: any) {
+      alert(`Nepodarilo sa načítať Wolt webhooky: ${error?.message || 'Unknown error'}`);
+    } finally {
+      setWebhookSyncing(false);
+    }
+  };
+
+  const handleRegisterWebhook = async () => {
+    setWebhookSyncing(true);
+    try {
+      const result = await registerWoltWebhook(tenantSlug);
+      setWebhookStatus(result);
+      alert(`Wolt webhook bol ${result.action === 'updated' ? 'aktualizovaný' : 'vytvorený'}.`);
+    } catch (error: any) {
+      alert(`Nepodarilo sa registrovať Wolt webhook: ${error?.message || 'Unknown error'}`);
+    } finally {
+      setWebhookSyncing(false);
+    }
+  };
+
   if (loading) {
     return <div className="animate-pulse rounded-[28px] bg-gray-200 h-24" />;
   }
@@ -161,6 +191,7 @@ export function WoltSettings() {
             <SettingsBadge tone={isPresent(apiUrl) ? 'success' : 'warning'}>API URL {isPresent(apiUrl) ? 'OK' : 'chýba'}</SettingsBadge>
             <SettingsBadge tone={isPresent(venueId) ? 'success' : 'warning'}>Venue {isPresent(venueId) ? 'OK' : 'chýba'}</SettingsBadge>
             <SettingsBadge tone={isPresent(merchantId) ? 'success' : 'warning'}>Merchant {isPresent(merchantId) ? 'OK' : 'chýba'}</SettingsBadge>
+            <SettingsBadge tone={isPresent(webhookSecret) ? 'success' : 'warning'}>Webhook secret {isPresent(webhookSecret) ? 'OK' : 'env/DB chýba?'}</SettingsBadge>
             <SettingsBadge tone={isPresent(pickupStreet) && isPresent(pickupCity) && isPresent(pickupPostalCode) ? 'success' : 'warning'}>
               Pickup {isPresent(pickupStreet) && isPresent(pickupCity) && isPresent(pickupPostalCode) ? 'OK' : 'chýba'}
             </SettingsBadge>
@@ -206,11 +237,53 @@ export function WoltSettings() {
             <div>
               <label className="mb-1 block text-xs font-semibold text-gray-700">Webhook secret</label>
               <input value={webhookSecret} onChange={(e) => setWebhookSecret(e.target.value)} className="w-full rounded-2xl border border-zinc-200 px-3 py-2.5 text-sm" />
+              <div className="mt-1 text-[11px] text-zinc-500">
+                Backend použije najprv Render env WOLT_WEBHOOK_SECRET, potom túto tenant hodnotu.
+              </div>
             </div>
             <div>
               <label className="mb-1 block text-xs font-semibold text-gray-700">Default fee (cents)</label>
               <input value={defaultFeeCents} onChange={(e) => setDefaultFeeCents(e.target.value)} className="w-full rounded-2xl border border-zinc-200 px-3 py-2.5 text-sm" type="number" min="0" />
             </div>
+          </div>
+
+          <div className="rounded-[24px] border border-zinc-200 bg-white p-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <div className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">Wolt webhook</div>
+                <div className="mt-1 text-sm text-zinc-600">
+                  Registruje callback do Woltu cez merchant webhook endpoint.
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={handleListWebhooks}
+                  disabled={webhookSyncing}
+                  className="rounded-2xl border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-800 transition hover:bg-zinc-50 disabled:opacity-50"
+                >
+                  Skontrolovať
+                </button>
+                <button
+                  type="button"
+                  onClick={handleRegisterWebhook}
+                  disabled={webhookSyncing}
+                  className="rounded-2xl bg-zinc-950 px-4 py-2 text-sm font-semibold text-white transition hover:bg-zinc-800 disabled:opacity-50"
+                >
+                  {webhookSyncing ? 'Pracujem...' : 'Registrovať webhook'}
+                </button>
+              </div>
+            </div>
+            {webhookStatus && (
+              <div className="mt-4 rounded-2xl bg-zinc-50 p-3 text-xs text-zinc-700">
+                <div><strong>Callback:</strong> {webhookStatus.callbackUrl}</div>
+                {webhookStatus.action && <div><strong>Akcia:</strong> {webhookStatus.action}</div>}
+                {webhookStatus.webhookId && <div><strong>Webhook ID:</strong> {compactValue(webhookStatus.webhookId, 10)}</div>}
+                {Array.isArray(webhookStatus.webhooks) && (
+                  <div><strong>Počet webhookov:</strong> {webhookStatus.webhooks.length}</div>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="rounded-[24px] border border-zinc-200 bg-zinc-50 p-4">

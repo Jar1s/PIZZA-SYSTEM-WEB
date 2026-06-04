@@ -706,6 +706,16 @@ export type WoltAreaCheckResult = {
   fetchedAt?: string;
 };
 
+export type WoltWebhookRegistrationResult = {
+  ok: boolean;
+  action?: 'created' | 'updated';
+  callbackUrl: string;
+  webhookId?: string | null;
+  webhooks?: Array<Record<string, any>>;
+  result?: Record<string, any>;
+  raw?: any;
+};
+
 export type TenantOperationsSettings = {
   tenantId: string;
   tenantSlug: string;
@@ -1204,6 +1214,38 @@ export async function refreshWoltDeliveryAreas(tenantSlug: string): Promise<{
   if (!res.ok) {
     const errorText = await res.text().catch(() => '');
     throw new Error(errorText || 'Failed to refresh Wolt delivery areas');
+  }
+
+  return res.json();
+}
+
+export async function listWoltWebhooks(tenantSlug: string): Promise<WoltWebhookRegistrationResult> {
+  const res = await fetch(`${API_URL}/api/delivery/webhooks/list`, {
+    method: 'POST',
+    headers: buildAuthHeaders(true),
+    credentials: 'include',
+    body: JSON.stringify({ tenantSlug }),
+  });
+
+  if (!res.ok) {
+    const errorText = await res.text().catch(() => '');
+    throw new Error(errorText || 'Failed to load Wolt webhooks');
+  }
+
+  return res.json();
+}
+
+export async function registerWoltWebhook(tenantSlug: string): Promise<WoltWebhookRegistrationResult> {
+  const res = await fetch(`${API_URL}/api/delivery/webhooks/register`, {
+    method: 'POST',
+    headers: buildAuthHeaders(true),
+    credentials: 'include',
+    body: JSON.stringify({ tenantSlug }),
+  });
+
+  if (!res.ok) {
+    const errorText = await res.text().catch(() => '');
+    throw new Error(errorText || 'Failed to register Wolt webhook');
   }
 
   return res.json();

@@ -170,6 +170,58 @@ describe('DeliveryService cancelDeliveryForOrder', () => {
   });
 });
 
+describe('DeliveryService Wolt opening-hours guard', () => {
+  let service: DeliveryService;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    service = buildService();
+  });
+
+  afterEach(() => {
+    service.onModuleDestroy();
+  });
+
+  it('blocks Wolt dispatch when tenant opening hours are enabled and currently closed', () => {
+    const closedTenant = {
+      id: 'tenant-1',
+      slug: 'pornopizza',
+      theme: {
+        openingHours: {
+          enabled: true,
+          timezone: 'UTC',
+          days: {
+            thursday: { open: '10:00', close: '12:00', closed: false },
+          },
+        },
+      },
+    };
+
+    jest.spyOn(service as any, 'getZonedDateParts').mockReturnValue({
+      dayName: 'thursday',
+      minutes: 13 * 60,
+    });
+
+    expect(() => (service as any).assertTenantCanDispatchWolt(closedTenant)).toThrow(
+      'Prevádzka je aktuálne zatvorená',
+    );
+  });
+
+  it('allows Wolt dispatch when opening-hours automation is disabled', () => {
+    expect(() =>
+      (service as any).assertTenantCanDispatchWolt({
+        id: 'tenant-1',
+        slug: 'pornopizza',
+        theme: {
+          openingHours: {
+            enabled: false,
+          },
+        },
+      }),
+    ).not.toThrow();
+  });
+});
+
 
 describe('DeliveryService handleWoltWebhook', () => {
   let service: DeliveryService;

@@ -76,7 +76,17 @@ export class WebhooksController {
     let webhookPayload: any;
 
     if (!appConfig.skipWebhookVerification) {
-      const secret = process.env.WOLT_WEBHOOK_SECRET;
+      let unsignedPayload: any = null;
+      try {
+        unsignedPayload = this.decodePayloadWithoutVerification(token);
+      } catch (error: any) {
+        this.logger.error('Failed to decode Wolt webhook token before verification', {
+          error: error?.message || String(error),
+        });
+        return res.status(400).send('Invalid webhook token payload');
+      }
+
+      const secret = await this.deliveryService.resolveWoltWebhookSecretForUnsignedPayload(unsignedPayload);
       if (!secret) {
         this.logger.error('Wolt webhook secret not configured');
         return res.status(500).send('Webhook secret not configured');

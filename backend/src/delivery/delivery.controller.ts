@@ -164,13 +164,35 @@ export class DeliveryController {
     return this.deliveryService.refreshAreasForTenantSlug(data.tenantSlug, req.user);
   }
 
+  @Post('webhooks/list')
+  async listWoltWebhooks(
+    @Body() data: { tenantSlug: string },
+    @Req() req: { user?: RequestUser },
+  ): Promise<any> {
+    if (!data?.tenantSlug || typeof data.tenantSlug !== 'string') {
+      throw new BadRequestException('tenantSlug is required');
+    }
+
+    return this.deliveryService.listWoltWebhooksForTenantSlug(data.tenantSlug, req.user);
+  }
+
+  @Post('webhooks/register')
+  async registerWoltWebhook(
+    @Body() data: { tenantSlug: string },
+    @Req() req: { user?: RequestUser },
+  ): Promise<any> {
+    if (!data?.tenantSlug || typeof data.tenantSlug !== 'string') {
+      throw new BadRequestException('tenantSlug is required');
+    }
+
+    return this.deliveryService.registerWoltWebhookForTenantSlug(data.tenantSlug, req.user);
+  }
+
   @Get(':id')
   async getDelivery(@Param('id') id: string, @Req() req: { user?: RequestUser }) {
     return this.deliveryService.getDeliveryById(id, req.user);
   }
 }
-
-
 
 
 

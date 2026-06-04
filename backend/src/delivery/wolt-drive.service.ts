@@ -36,7 +36,9 @@ interface DeliveryCreateContext {
   merchantOrderReferenceId?: string | number | null;
   orderNumber?: string | number | null;
   supportEmail?: string;
+  supportPhone?: string;
   supportUrl?: string;
+  recipientEmail?: string | null;
   promiseSnapshot?: ShipmentPromiseSnapshot;
 }
 
@@ -169,6 +171,13 @@ export class WoltDriveService {
       pickupEtaMinutes,
       dropoffEtaMinutes,
     };
+  }
+
+  private getWoltRootUrl(apiConfig?: WoltApiConfig): string {
+    const rawApiUrl = apiConfig?.apiUrl?.trim();
+    const normalized = (rawApiUrl || 'https://daas-public-api.wolt.com').replace(/\/+$/, '');
+    const v1Index = normalized.indexOf('/v1');
+    return v1Index >= 0 ? normalized.slice(0, v1Index) : normalized;
   }
   
   /**
@@ -550,6 +559,7 @@ export class WoltDriveService {
       process.env.WOLT_SUPPORT_EMAIL ||
       process.env.SMTP_FROM_EMAIL ||
       'support@example.com';
+    const supportPhone = context?.supportPhone || pickupAddress.phone || process.env.KITCHEN_PHONE;
     const supportUrl = context?.supportUrl || process.env.FRONTEND_URL || 'https://example.com';
     const merchantOrderReferenceId =
       context?.merchantOrderReferenceId != null ? String(context.merchantOrderReferenceId) : orderId;
@@ -575,6 +585,7 @@ export class WoltDriveService {
       recipient: {
         name: customerName,
         phone_number: customerPhone,
+        ...(context?.recipientEmail ? { email: context.recipientEmail } : {}),
       },
       parcels: [
         {
@@ -591,8 +602,20 @@ export class WoltDriveService {
       customer_support: {
         email: supportEmail,
         url: supportUrl,
+        ...(supportPhone ? { phone_number: supportPhone } : {}),
+      },
+      sms_notifications: {
+        received: 'Vaša objednávka bola odovzdaná kuriérovi Wolt. Tracking: {{tracking_url}}',
+        picked_up: 'Kuriér Wolt už prevzal vašu objednávku. Tracking: {{tracking_url}}',
       },
     };
+
+    if (typeof promiseSnapshot?.feeCents === 'number') {
+      request.price = {
+        amount: promiseSnapshot.feeCents,
+        currency: promiseSnapshot.currency || parcelCurrency,
+      };
+    }
 
     if (orderNumber) {
       request.order_number = orderNumber;
@@ -785,6 +808,154 @@ export class WoltDriveService {
     throw lastError || new Error('Wolt API cancelDelivery failed');
   }
 
+  async listWebhooks(apiKey: string, merchantId: string, maxRetries = 2, apiConfig?: WoltApiConfig) {
+    const trimmedMerchantId = String(merchantId || '').trim();
+    if (!trimmedMerchantId) {
+      throw new BadRequestException('Wolt Merchant ID nie je nastavený pre tento tenant.');
+    }
+
+    const url = `${this.getWoltRootUrl(apiConfig)}/v1/merchants/${encodeURIComponent(trimmedMerchantId)}/webhooks`;
+    return this.fetchWoltWebhookEndpoint(apiKey, url, { method: 'GET' }, maxRetries, 'listWebhooks');
+  }
+
+  async createWebhook(
+    apiKey: string,
+    merchantId: string,
+    callbackUrl: string,
+    clientSecret: string,
+    maxRetries = 2,
+    apiConfig?: WoltApiConfig,
+  ) {
+    const trimmedMerchantId = String(merchantId || '').trim();
+    if (!trimmedMerchantId) {
+      throw new BadRequestException('Wolt Merchant ID nie je nastavený pre tento tenant.');
+    }
+
+    const url = `${this.getWoltRootUrl(apiConfig)}/v1/merchants/${encodeURIComponent(trimmedMerchantId)}/webhooks`;
+    return this.fetchWoltWebhookEndpoint(
+      apiKey,
+      url,
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          callback_config: {
+            exponential_retry_backoff: {
+              exponent_base: 5,
+              max_retry_count: 3,
+            },
+          },
+          callback_url: callbackUrl,
+          client_secret: clientSecret,
+          disabled: false,
+        }),
+      },
+      maxRetries,
+      'createWebhook',
+    );
+  }
+
+  async updateWebhook(
+    apiKey: string,
+    merchantId: string,
+    webhookId: string,
+    callbackUrl: string,
+    clientSecret: string,
+    maxRetries = 2,
+    apiConfig?: WoltApiConfig,
+  ) {
+    const trimmedMerchantId = String(merchantId || '').trim();
+    const trimmedWebhookId = String(webhookId || '').trim();
+    if (!trimmedMerchantId) {
+      throw new BadRequestException('Wolt Merchant ID nie je nastavený pre tento tenant.');
+    }
+    if (!trimmedWebhookId) {
+      throw new BadRequestException('Wolt webhook ID is required.');
+    }
+
+    const url = `${this.getWoltRootUrl(apiConfig)}/v1/merchants/${encodeURIComponent(trimmedMerchantId)}/webhooks/${encodeURIComponent(trimmedWebhookId)}`;
+    return this.fetchWoltWebhookEndpoint(
+      apiKey,
+      url,
+      {
+        method: 'PATCH',
+        body: JSON.stringify({
+          callback_config: {
+            exponential_retry_backoff: {
+              exponent_base: 5,
+              max_retry_count: 3,
+            },
+          },
+          callback_url: callbackUrl,
+          client_secret: clientSecret,
+          disabled: false,
+        }),
+      },
+      maxRetries,
+      'updateWebhook',
+    );
+  }
+
+  private async fetchWoltWebhookEndpoint(
+    apiKey: string,
+    url: string,
+    init: RequestInit,
+    maxRetries: number,
+    operation: string,
+  ) {
+    let lastError: Error | null = null;
+
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+      try {
+        const response = await fetch(url, {
+          ...init,
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+            'Content-Type': 'application/json',
+            ...(init.headers || {}),
+          },
+        });
+
+        if (!response.ok) {
+          const error = await this.buildApiError(response);
+          if (!this.isRetryableError(error, response)) {
+            throw error;
+          }
+          lastError = error;
+          throw error;
+        }
+
+        if (response.status === 204) {
+          return { ok: true };
+        }
+
+        return await response.json();
+      } catch (error: any) {
+        lastError = error instanceof Error ? error : new Error(String(error));
+
+        if (!this.isRetryableError(error, undefined)) {
+          this.logger.error(`Non-retryable error from Wolt API ${operation}`, {
+            error: lastError.message,
+            status: (error as any)?.status,
+            originalError: (error as any)?.originalError,
+          });
+          throw lastError;
+        }
+
+        if (attempt === maxRetries - 1) {
+          this.logger.error(`Wolt API ${operation} failed after ${maxRetries} attempts`, {
+            error: lastError.message,
+            attempts: maxRetries,
+          });
+          throw lastError;
+        }
+
+        await this.delay(Math.pow(2, attempt) * 1000);
+      }
+    }
+
+    throw lastError || new Error(`Wolt API ${operation} failed`);
+  }
+
   async getDeliveryAreas(
     apiKey: string,
     merchantId: string,
@@ -909,6 +1080,4 @@ export class WoltDriveService {
     throw lastError || new Error('Wolt API getOrderStatus failed');
   }
 }
-
-
 
