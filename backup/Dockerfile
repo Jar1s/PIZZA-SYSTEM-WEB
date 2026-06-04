@@ -7,6 +7,7 @@ RUN apt-get update \
     ca-certificates \
     coreutils \
     gnupg \
+    rclone \
   && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app

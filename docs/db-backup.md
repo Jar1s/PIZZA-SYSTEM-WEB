@@ -1,9 +1,8 @@
-# Database backups (Supabase Free + Render Cron)
+# Database backups (Supabase Free + Render Cron + Google Drive)
 
 Supabase Free does not give you managed database backups. This project therefore
-uses an independent **Render Cron Job** that runs `pg_dump`, verifies the dump,
-encrypts it with GPG AES-256, and uploads it to S3-compatible storage
-(AWS S3 or Backblaze B2).
+uses a Render Cron Job that runs `pg_dump`, verifies the dump, encrypts it with
+GPG AES-256, and uploads it to your Google Drive.
 
 The GitHub Actions backup workflow was removed on purpose: production DB
 credentials should live in Render for this setup, not in GitHub Actions.
@@ -11,8 +10,8 @@ credentials should live in Render for this setup, not in GitHub Actions.
 ## What is in this repo
 
 - [`scripts/backup-db.sh`](../scripts/backup-db.sh) - backup script
-- [`backup/Dockerfile`](../backup/Dockerfile) - pinned backup runtime with
-  PostgreSQL 17 client, `pg_restore`, `gpg`, and `awscli`
+- [`backup/Dockerfile`](../backup/Dockerfile) - backup runtime with PostgreSQL 17
+  client, `pg_restore`, `gpg`, `rclone`, and `awscli`
 - [`render.yaml`](../render.yaml) - Render Cron Job definition:
   `pizza-db-backup`, daily at `02:00 UTC`
 
@@ -22,10 +21,10 @@ The script:
 2. validates the archive with `pg_restore --list`
 3. rejects empty/suspicious dumps
 4. encrypts the dump with `BACKUP_GPG_PASSPHRASE`
-5. uploads `.dump.gpg` and `.sha256` to your S3/B2 bucket
+5. uploads `.dump.gpg` and `.sha256` to Google Drive
 
-By default it **does not delete old backups**. Set retention/lifecycle rules in
-the bucket instead. This lets the storage key avoid delete permissions.
+The uploaded file is encrypted before it leaves Render. Google Drive only stores
+the encrypted `.gpg` file.
 
 ## Render environment variables
 
@@ -33,16 +32,15 @@ Set these in the Render Cron Job service:
 
 | Env var | Required | Value |
 |---|---:|---|
+| `BACKUP_TARGET` | yes | `google_drive` |
 | `SUPABASE_DB_URL` | yes | Supabase Session Pooler URI, port `5432` |
 | `BACKUP_GPG_PASSPHRASE` | yes | Long random passphrase, stored in password manager |
-| `BACKUP_S3_ACCESS_KEY_ID` | yes | S3/B2 access key |
-| `BACKUP_S3_SECRET_ACCESS_KEY` | yes | S3/B2 secret key |
-| `BACKUP_S3_BUCKET` | yes | Bucket name, e.g. `pizza-db-backups` |
-| `BACKUP_S3_REGION` | yes | Region, e.g. `eu-central-003` for B2 |
-| `BACKUP_S3_ENDPOINT` | B2/non-AWS only | e.g. `https://s3.eu-central-003.backblazeb2.com` |
-| `BACKUP_S3_PREFIX` | no | Defaults to `postgres` |
-| `BACKUP_RETENTION_DAYS` | no | Defaults to `30`; used only if pruning is enabled |
-| `BACKUP_PRUNE_ENABLED` | no | Defaults to `false`; keep false if bucket lifecycle handles retention |
+| `GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON_BASE64` | yes | Base64 encoded Google service account JSON |
+| `GOOGLE_DRIVE_FOLDER_ID` | yes | Google Drive folder ID where backups are uploaded |
+| `BACKUP_S3_PREFIX` | no | Defaults to `postgres`; also used as Drive folder prefix |
+
+S3/B2 env vars still exist as fallback if `BACKUP_TARGET=s3`, but the intended
+setup for this project is Google Drive.
 
 ## Supabase connection string
 
@@ -61,22 +59,33 @@ Important:
 - do not use `6543`, because transaction poolers are not suitable for `pg_dump`
 - if your password has special characters, URL-encode it in the connection string
 
-## Backblaze B2 setup
+## Google Drive setup
 
-Recommended for this project:
+This uses a Google Cloud **service account**. The service account gets access only
+to one Drive folder that you explicitly share with it.
 
-1. Create a private B2 bucket, e.g. `pizza-db-backups`.
-2. Add a lifecycle rule: delete objects older than 30 days.
-3. Create an Application Key limited to this bucket.
-4. Prefer permissions that allow write/list/read but avoid delete if lifecycle
-   handles retention.
-5. Put the key values into the Render Cron Job env vars.
-
-Example B2 endpoint:
+1. Go to Google Cloud Console: https://console.cloud.google.com
+2. Create/select a project, e.g. `pizza-db-backups`.
+3. Enable **Google Drive API** for that project.
+4. Create a **Service Account**.
+5. Create a JSON key for that service account and download it.
+6. In your Google Drive, create a folder, e.g. `Pizza DB Backups`.
+7. Share that folder with the service account email from the JSON file. It looks
+   like `something@project.iam.gserviceaccount.com`.
+8. Copy the folder ID from the Drive URL:
 
 ```text
-https://s3.eu-central-003.backblazeb2.com
+https://drive.google.com/drive/folders/<THIS_IS_THE_FOLDER_ID>
 ```
+
+9. Convert the downloaded JSON key to base64 locally:
+
+```bash
+base64 -i service-account.json | tr -d '\n'
+```
+
+Put that value into Render as `GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON_BASE64`.
+Do not commit the JSON key to git.
 
 ## Render setup
 
@@ -86,7 +95,7 @@ Option A - Blueprint:
 2. Render Dashboard -> **Blueprints** -> apply/update the blueprint for this repo.
 3. Fill the `sync: false` env vars for `pizza-db-backup`.
 4. Open the `pizza-db-backup` Cron Job and click **Trigger Run**.
-5. Confirm a `.dump.gpg` and `.sha256` appeared in the bucket.
+5. Confirm encrypted backup files appeared in your Google Drive folder.
 
 Option B - Manual Cron Job:
 
@@ -102,11 +111,8 @@ Option B - Manual Cron Job:
 ## Restore
 
 ```bash
-# 1. Download backup + checksum
-aws s3 cp s3://<bucket>/postgres/YYYY/MM/DD/backup-<stamp>.dump.gpg . \
-  [--endpoint-url <endpoint>]
-aws s3 cp s3://<bucket>/postgres/YYYY/MM/DD/backup-<stamp>.dump.gpg.sha256 . \
-  [--endpoint-url <endpoint>]
+# 1. Download backup + checksum from Google Drive
+# Use Drive UI, rclone, or Google Takeout/admin tooling.
 
 # 2. Verify checksum
 sha256sum -c backup-<stamp>.dump.gpg.sha256
