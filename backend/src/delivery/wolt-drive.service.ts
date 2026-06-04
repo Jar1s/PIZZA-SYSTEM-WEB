@@ -996,9 +996,10 @@ export class WoltDriveService {
         lastError = error instanceof Error ? error : new Error(String(error));
 
         if (!this.isRetryableError(error, undefined)) {
-          this.logger.error('Non-retryable error from Wolt API', {
+          this.logger.warn('Wolt delivery areas endpoint unavailable', {
             error: lastError.message,
             merchantId: trimmedMerchantId,
+            status: (error as any)?.status,
           });
           throw lastError;
         }
