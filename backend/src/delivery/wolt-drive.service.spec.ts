@@ -316,7 +316,7 @@ describe('WoltDriveService contract', () => {
     const result = await service.getDeliveryAreas('api-key', 'merchant-1', 1, apiConfig);
 
     expect(fetchMock).toHaveBeenCalledWith(
-      'https://custom.wolt.example/v1/merchants/merchant-1/delivery-areas',
+      'https://custom.wolt.example/merchants/merchant-1/delivery-areas',
       {
         method: 'GET',
         headers: {

@@ -73,7 +73,8 @@ export class WoltDriveService {
       shipmentPromisesUrl: `${venuePath}/shipment-promises`,
       // Live order endpoints are not under /v1 in Wolt Drive docs.
       orderStatusUrl: `${orderRoot || normalized}/order`,
-      merchantAreasUrl: `${apiBase}/merchants`,
+      // Delivery areas are documented under the root merchant path, not /v1.
+      merchantAreasUrl: `${orderRoot || normalized}/merchants`,
     };
   }
   
