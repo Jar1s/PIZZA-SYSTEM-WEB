@@ -545,7 +545,7 @@ export class EmailService {
     };
     
     // Build logo URL
-    let logoUrl =
+    const logoUrl =
       buildAssetUrl(tenantTheme?.logo) ||
       buildAssetUrl('/PORNO PIZZA PINK GRANDIENT.png') ||
       '';
@@ -818,7 +818,7 @@ export class EmailService {
     const primaryColor = tenantTheme?.primaryColor || '#E91E63';
     
     // Build logo URL
-    let logoUrl =
+    const logoUrl =
       buildAssetUrl(tenantTheme?.logo) ||
       buildAssetUrl('/PORNO PIZZA PINK GRANDIENT.png') ||
       '';
@@ -1322,7 +1322,7 @@ export class EmailService {
     };
     
     // Build logo URL
-    let logoUrl =
+    const logoUrl =
       buildAssetUrl(tenantTheme?.logo) ||
       buildAssetUrl('/PORNO PIZZA PINK GRANDIENT.png') ||
       '';
@@ -1487,7 +1487,7 @@ export class EmailService {
     };
     
     // Build logo URL - try multiple paths
-    let logoUrl =
+    const logoUrl =
       buildAssetUrl(tenantTheme?.logo) ||
       buildAssetUrl('/logos/pornopizza.svg') ||
       buildAssetUrl('/logo-pornopizza.svg') ||

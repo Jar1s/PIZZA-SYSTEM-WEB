@@ -54,7 +54,7 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
       }
 
       // Log connection attempt (without sensitive data)
-      let databaseUrl = process.env.DATABASE_URL;
+      const databaseUrl = process.env.DATABASE_URL;
       const safeUrl = databaseUrl.replace(/:[^:@]+@/, ':****@');
       this.logger.log(`🔌 Connecting to database: ${safeUrl.substring(0, 120)}...`);
       
