@@ -1,17 +1,17 @@
-# Database backups (Supabase Free + Render Cron + Google Drive)
+# Database backups (Supabase Free + Render Cron + Cloudflare R2)
 
 Supabase Free does not give you managed database backups. This project therefore
 uses a Render Cron Job that runs `pg_dump`, verifies the dump, encrypts it with
-GPG AES-256, and uploads it to your Google Drive.
+GPG AES-256, and uploads it to **Cloudflare R2** using its S3-compatible API.
 
-The GitHub Actions backup workflow was removed on purpose: production DB
-credentials should live in Render for this setup, not in GitHub Actions.
+The uploaded file is encrypted before it leaves Render. R2 stores only encrypted
+`.dump.gpg` files and checksum files.
 
 ## What is in this repo
 
 - [`scripts/backup-db.sh`](../scripts/backup-db.sh) - backup script
 - [`backup/Dockerfile`](../backup/Dockerfile) - backup runtime with PostgreSQL 17
-  client, `pg_restore`, `gpg`, `rclone`, and `awscli`
+  client, `pg_restore`, `gpg`, and `awscli`
 - [`render.yaml`](../render.yaml) - Render Cron Job definition:
   `pizza-db-backup`, daily at `02:00 UTC`
 
@@ -21,10 +21,7 @@ The script:
 2. validates the archive with `pg_restore --list`
 3. rejects empty/suspicious dumps
 4. encrypts the dump with `BACKUP_GPG_PASSPHRASE`
-5. uploads `.dump.gpg` and `.sha256` to Google Drive
-
-The uploaded file is encrypted before it leaves Render. Google Drive only stores
-the encrypted `.gpg` file.
+5. uploads `.dump.gpg` and `.sha256` to Cloudflare R2
 
 ## Render environment variables
 
@@ -32,16 +29,17 @@ Set these in the Render Cron Job service:
 
 | Env var | Required | Value |
 |---|---:|---|
-| `BACKUP_TARGET` | yes | `google_drive` |
+| `BACKUP_TARGET` | yes | `s3` |
 | `SUPABASE_DB_URL` | yes | Supabase Session Pooler URI, port `5432` |
 | `BACKUP_GPG_PASSPHRASE` | yes | Long random passphrase, stored in password manager |
-| `GOOGLE_DRIVE_RCLONE_CONFIG_BASE64` | yes | Base64 encoded rclone config authenticated as your Google account |
-| `GOOGLE_DRIVE_FOLDER_ID` | optional fallback | `11aOtnxPUY-bicyJmNa4ts9tRLO9uJXtE` if using service account fallback |
-| `GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON_BASE64` | optional fallback | Service account JSON; not recommended for personal Drive because service accounts have no storage quota |
-| `BACKUP_S3_PREFIX` | no | Defaults to `postgres`; also used as Drive folder prefix |
-
-S3/B2 env vars still exist as fallback if `BACKUP_TARGET=s3`, but the intended
-setup for this project is Google Drive.
+| `BACKUP_S3_ACCESS_KEY_ID` | yes | Cloudflare R2 access key ID |
+| `BACKUP_S3_SECRET_ACCESS_KEY` | yes | Cloudflare R2 secret access key |
+| `BACKUP_S3_BUCKET` | yes | `pizza-db-backups` |
+| `BACKUP_S3_REGION` | yes | `auto` |
+| `BACKUP_S3_ENDPOINT` | yes | `https://<ACCOUNT_ID>.r2.cloudflarestorage.com` |
+| `BACKUP_S3_PREFIX` | no | Defaults to `postgres` |
+| `BACKUP_RETENTION_DAYS` | no | Defaults to `30`; used only if pruning is enabled |
+| `BACKUP_PRUNE_ENABLED` | no | Defaults to `false`; keep false unless the token may delete objects |
 
 ## Supabase connection string
 
@@ -60,62 +58,33 @@ Important:
 - do not use `6543`, because transaction poolers are not suitable for `pg_dump`
 - if your password has special characters, URL-encode it in the connection string
 
-## Google Drive setup
+## Cloudflare R2 setup
 
-For a personal Google Drive, use **rclone OAuth**. Do not use a service account
-as the primary method: Google service accounts have no personal Drive storage
-quota and uploads fail with `storageQuotaExceeded`.
-
-1. Install rclone locally if needed:
-
-```bash
-brew install rclone
-```
-
-2. Create an rclone remote named exactly `gdrive`:
-
-```bash
-rclone config
-```
-
-Use these choices:
-
-- `n` - new remote
-- name: `gdrive`
-- storage: `drive`
-- scope: `drive.file` is enough, `drive` also works if you prefer simpler setup
-- service account file: leave empty
-- advanced config: no
-- auto config: yes
-- log in with the Google account that owns the backup folder
-
-3. Restrict the remote to this folder by editing the generated config and adding
-`root_folder_id` under `[gdrive]`:
+1. Open Cloudflare Dashboard -> **R2 Object Storage**.
+2. Create a bucket:
 
 ```text
-root_folder_id = 11aOtnxPUY-bicyJmNa4ts9tRLO9uJXtE
+pizza-db-backups
 ```
 
-The rclone config is usually here:
-
-```bash
-~/.config/rclone/rclone.conf
-```
-
-4. Base64 encode the rclone config:
-
-```bash
-base64 -i ~/.config/rclone/rclone.conf | tr -d '\n'
-```
-
-Put that value into Render as `GOOGLE_DRIVE_RCLONE_CONFIG_BASE64`.
-Do not commit `rclone.conf` to git; it contains an OAuth token.
-
-Target folder:
+3. Copy your Account ID. It is used in the endpoint:
 
 ```text
-https://drive.google.com/drive/folders/11aOtnxPUY-bicyJmNa4ts9tRLO9uJXtE
+https://<ACCOUNT_ID>.r2.cloudflarestorage.com
 ```
+
+4. Create an R2 API token / access key.
+
+Recommended permissions for the first test:
+
+- Object Read
+- Object Write
+- Bucket read/list
+
+Do **not** grant delete permission unless you intentionally enable pruning.
+This repo defaults `BACKUP_PRUNE_ENABLED=false`, so delete is not needed.
+
+5. Put the R2 values into the Render Cron Job env vars.
 
 ## Render setup
 
@@ -123,9 +92,21 @@ Option A - Blueprint:
 
 1. Push `render.yaml` to GitHub.
 2. Render Dashboard -> **Blueprints** -> apply/update the blueprint for this repo.
-3. Fill `SUPABASE_DB_URL`, `BACKUP_GPG_PASSPHRASE`, and `GOOGLE_DRIVE_RCLONE_CONFIG_BASE64` for `pizza-db-backup`.
+3. Fill these secrets for `pizza-db-backup`:
+
+```text
+SUPABASE_DB_URL
+BACKUP_GPG_PASSPHRASE
+BACKUP_S3_ACCESS_KEY_ID
+BACKUP_S3_SECRET_ACCESS_KEY
+BACKUP_S3_ENDPOINT
+```
+
+`BACKUP_TARGET=s3`, `BACKUP_S3_BUCKET=pizza-db-backups`, and
+`BACKUP_S3_REGION=auto` are already set in `render.yaml`.
+
 4. Open the `pizza-db-backup` Cron Job and click **Trigger Run**.
-5. Confirm encrypted backup files appeared in your Google Drive folder.
+5. Confirm encrypted backup files appeared in the R2 bucket.
 
 Option B - Manual Cron Job:
 
@@ -141,8 +122,11 @@ Option B - Manual Cron Job:
 ## Restore
 
 ```bash
-# 1. Download backup + checksum from Google Drive
-# Use Drive UI, rclone, or Google Takeout/admin tooling.
+# 1. Download backup + checksum from R2
+aws s3 cp s3://pizza-db-backups/postgres/YYYY/MM/DD/backup-<stamp>.dump.gpg . \
+  --endpoint-url https://<ACCOUNT_ID>.r2.cloudflarestorage.com
+aws s3 cp s3://pizza-db-backups/postgres/YYYY/MM/DD/backup-<stamp>.dump.gpg.sha256 . \
+  --endpoint-url https://<ACCOUNT_ID>.r2.cloudflarestorage.com
 
 # 2. Verify checksum
 sha256sum -c backup-<stamp>.dump.gpg.sha256

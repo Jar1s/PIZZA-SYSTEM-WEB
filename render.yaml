@@ -10,15 +10,21 @@ services:
     dockerCommand: /app/scripts/backup-db.sh
     envVars:
       - key: BACKUP_TARGET
-        value: google_drive
+        value: s3
       - key: SUPABASE_DB_URL
         sync: false
       - key: BACKUP_GPG_PASSPHRASE
         sync: false
-      - key: GOOGLE_DRIVE_RCLONE_CONFIG_BASE64
+      - key: BACKUP_S3_ACCESS_KEY_ID
         sync: false
-      - key: GOOGLE_DRIVE_FOLDER_ID
-        value: 11aOtnxPUY-bicyJmNa4ts9tRLO9uJXtE
+      - key: BACKUP_S3_SECRET_ACCESS_KEY
+        sync: false
+      - key: BACKUP_S3_BUCKET
+        value: pizza-db-backups
+      - key: BACKUP_S3_REGION
+        value: auto
+      - key: BACKUP_S3_ENDPOINT
+        sync: false
       - key: BACKUP_S3_PREFIX
         value: postgres
       - key: BACKUP_RETENTION_DAYS
