@@ -33,8 +33,27 @@ export class TenantsController {
       provider: deliveryConfig.provider,
     };
 
+    // Strip secrets nested in the theme. The storefront needs the theme for
+    // rendering (colors, logo, layout, labels) but must NOT receive the Google
+    // OAuth client secret. Keep only the public OAuth fields.
+    const theme = tenant.theme && typeof tenant.theme === 'object' ? tenant.theme : null;
+    const publicTheme = theme
+      ? {
+          ...theme,
+          googleOAuthConfig:
+            theme.googleOAuthConfig && typeof theme.googleOAuthConfig === 'object'
+              ? {
+                  clientId: theme.googleOAuthConfig.clientId,
+                  redirectUri: theme.googleOAuthConfig.redirectUri,
+                  enabled: theme.googleOAuthConfig.enabled,
+                }
+              : theme.googleOAuthConfig,
+        }
+      : theme;
+
     return {
       ...tenant,
+      theme: publicTheme,
       paymentConfig: publicPaymentConfig,
       deliveryConfig: publicDeliveryConfig,
       emailConfig: undefined,
