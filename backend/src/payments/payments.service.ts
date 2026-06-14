@@ -138,12 +138,40 @@ export class PaymentsService {
       return;
     }
 
-    if (parsed.success && parsed.eventType === 'AUTHORISATION') {
+    if (parsed.eventType !== 'AUTHORISATION') {
+      // Other Adyen events (CAPTURE, REFUND, ...) are not handled here.
+      console.log(`Adyen webhook ${parsed.eventType} for order ${order.id}, no action taken`);
+      return;
+    }
+
+    if (parsed.success) {
+      // Idempotency: Adyen retries webhooks and may deliver duplicates. Never
+      // reprocess an order that is already paid / in the paid flow.
+      if ((order as any).paymentStatus === 'success' || this.isPaidFlowOrderStatus(order.status as OrderStatus)) {
+        this.logger.log(`Adyen payment already processed for order ${order.id}, skipping duplicate AUTHORISATION`);
+        return;
+      }
+
+      // Order was canceled before the success arrived: record the payment but do
+      // NOT re-activate the order — a refund is required.
+      if (order.status === OrderStatus.CANCELED) {
+        await this.ordersService.updatePaymentRef(order.id, parsed.paymentRef, 'success');
+        this.logger.warn(
+          `Adyen AUTHORISATION arrived after order ${order.id} was canceled - order kept canceled, manual refund required`,
+        );
+        return;
+      }
+
+      // Verify the paid amount matches the order before fulfilling.
+      if (!this.isWebhookAmountValid(order, parsed)) {
+        return;
+      }
+
       // Payment successful
       await this.ordersService.updatePaymentRef(order.id, parsed.paymentRef, 'success');
       await this.orderStatusService.updateStatus(order.id, OrderStatus.PAID);
-      
-      // 🚀 CREATE DELIVERY - Automatically dispatch courier
+
+      // 🚀 CREATE DELIVERY - Automatically dispatch courier (idempotent: no-op if one exists)
       try {
         await this.deliveryService.createDeliveryForOrder(order.id);
         console.log(`Payment successful for order ${order.id}, delivery created`);
@@ -151,11 +179,18 @@ export class PaymentsService {
         console.error('Failed to create delivery:', error);
         // Don't fail the payment, admin can manually dispatch
       }
-    } else if (!parsed.success && parsed.eventType === 'AUTHORISATION') {
-      // Payment failed
+    } else {
+      // Payment failed. Never flip an already-paid/dispatched order to CANCELED
+      // on a late or duplicate failure event.
+      if (this.isPaidFlowOrderStatus(order.status as OrderStatus)) {
+        this.logger.warn(
+          `Ignoring Adyen failed AUTHORISATION for already processed order ${order.id} (status=${order.status})`,
+        );
+        return;
+      }
       await this.ordersService.updatePaymentRef(order.id, parsed.paymentRef, 'failed');
       await this.orderStatusService.updateStatus(order.id, OrderStatus.CANCELED);
-      
+
       console.log(`Payment failed for order ${order.id}`);
     }
   }
@@ -195,10 +230,15 @@ export class PaymentsService {
         return;
       }
 
+      // Verify the paid amount matches the order before fulfilling.
+      if (!this.isWebhookAmountValid(order, parsed)) {
+        return;
+      }
+
       // Payment successful
       await this.ordersService.updatePaymentRef(order.id, parsed.paymentRef, 'success');
       await this.orderStatusService.updateStatus(order.id, OrderStatus.PAID);
-      
+
       // 🚀 CREATE DELIVERY - Automatically dispatch courier
       try {
         await this.deliveryService.createDeliveryForOrder(order.id);
@@ -248,6 +288,29 @@ export class PaymentsService {
       OrderStatus.OUT_FOR_DELIVERY,
       OrderStatus.DELIVERED,
     ].includes(status);
+  }
+
+  /**
+   * Verify the webhook-reported amount (in cents) matches the persisted order
+   * total before fulfilling. All providers report the amount in cents. If the
+   * webhook does not carry an amount we cannot verify, so we don't block. On a
+   * real mismatch we refuse to mark PAID / dispatch and log for manual review
+   * (the alert reaches Sentry/Telegram via the error logger).
+   */
+  private isWebhookAmountValid(order: any, parsed: any): boolean {
+    const reported = parsed?.amount;
+    if (typeof reported !== 'number' || !Number.isFinite(reported)) {
+      return true;
+    }
+    const expected = order?.totalCents;
+    if (typeof expected === 'number' && reported === expected) {
+      return true;
+    }
+    this.logger.error(
+      `Payment amount mismatch for order ${order?.id}: expected ${expected} cents, ` +
+        `webhook reported ${reported} cents. Refusing to mark PAID — manual review required.`,
+    );
+    return false;
   }
 
   private async sleep(ms: number): Promise<void> {
@@ -366,10 +429,30 @@ export class PaymentsService {
     }
 
     if (parsed.success) {
+      // Idempotency: WePay retries webhooks. Never reprocess an already-paid order.
+      if ((order as any).paymentStatus === 'success' || this.isPaidFlowOrderStatus(order.status as OrderStatus)) {
+        this.logger.log(`WePay payment already processed for order ${order.id}, skipping duplicate success event`);
+        return;
+      }
+
+      // Paid after the order was canceled: keep canceled, flag for refund.
+      if (order.status === OrderStatus.CANCELED) {
+        await this.ordersService.updatePaymentRef(order.id, parsed.paymentRef, 'success');
+        this.logger.warn(
+          `WePay success arrived after order ${order.id} was canceled - order kept canceled, manual refund required`,
+        );
+        return;
+      }
+
+      // Verify the paid amount matches the order before fulfilling.
+      if (!this.isWebhookAmountValid(order, parsed)) {
+        return;
+      }
+
       await this.ordersService.updatePaymentRef(order.id, parsed.paymentRef, 'success');
       await this.orderStatusService.updateStatus(order.id, OrderStatus.PAID);
-      
-      // 🚀 CREATE DELIVERY - Automatically dispatch courier
+
+      // 🚀 CREATE DELIVERY - Automatically dispatch courier (idempotent: no-op if one exists)
       try {
         await this.deliveryService.createDeliveryForOrder(order.id);
         console.log(`WePay payment successful for order ${order.id}, delivery created`);
@@ -378,6 +461,13 @@ export class PaymentsService {
         // Don't fail the payment, admin can manually dispatch
       }
     } else {
+      // Never flip an already-paid/dispatched order to CANCELED on a late/duplicate failure.
+      if (this.isPaidFlowOrderStatus(order.status as OrderStatus)) {
+        this.logger.warn(
+          `Ignoring WePay failure for already processed order ${order.id} (status=${order.status})`,
+        );
+        return;
+      }
       await this.ordersService.updatePaymentRef(order.id, parsed.paymentRef, 'failed');
       await this.orderStatusService.updateStatus(order.id, OrderStatus.CANCELED);
       console.log(`WePay payment failed for order ${order.id}`);
