@@ -1,5 +1,14 @@
 const { withSentryConfig } = require('@sentry/nextjs');
 
+// Fail-fast: a production build must have NEXT_PUBLIC_API_URL set. Otherwise the
+// app would silently fall back to http://localhost:3000 and break in production.
+// NEXT_PUBLIC_* is inlined at build time, so this guard belongs in the build step.
+if (process.env.NODE_ENV === 'production' && !process.env.NEXT_PUBLIC_API_URL) {
+  throw new Error(
+    'NEXT_PUBLIC_API_URL is required for production builds. Set it in the Vercel project environment variables.',
+  );
+}
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   images: {

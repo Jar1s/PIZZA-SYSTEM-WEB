@@ -1,5 +1,6 @@
 import { Injectable, Logger, BadRequestException } from '@nestjs/common';
 import { Address } from '@pizza-ecosystem/shared';
+import { fetchWithTimeout } from '../utils/http';
 
 interface WoltLocation {
   lat: number;
@@ -367,7 +368,7 @@ export class WoltDriveService {
     
     for (let attempt = 0; attempt < maxRetries; attempt++) {
       try {
-        const response = await fetch(shipmentPromisesUrl, {
+        const response = await fetchWithTimeout(shipmentPromisesUrl, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${apiKey}`,
@@ -465,7 +466,7 @@ export class WoltDriveService {
     for (let attempt = 0; attempt < maxRetries; attempt++) {
       try {
         // Use correct endpoint: /shipment-promises (not /deliveries/quote)
-        const response = await fetch(shipmentPromisesUrl, {
+        const response = await fetchWithTimeout(shipmentPromisesUrl, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${apiKey}`,
@@ -645,7 +646,7 @@ export class WoltDriveService {
     
     for (let attempt = 0; attempt < maxRetries; attempt++) {
       try {
-        const response = await fetch(deliveriesUrl, {
+        const response = await fetchWithTimeout(deliveriesUrl, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${apiKey}`,
@@ -751,7 +752,7 @@ export class WoltDriveService {
     
     for (let attempt = 0; attempt < maxRetries; attempt++) {
       try {
-        const response = await fetch(`${orderStatusUrl}/${encodeURIComponent(jobId)}/status/cancel`, {
+        const response = await fetchWithTimeout(`${orderStatusUrl}/${encodeURIComponent(jobId)}/status/cancel`, {
           method: 'PATCH',
           headers: {
             'Authorization': `Bearer ${apiKey}`,
@@ -907,7 +908,7 @@ export class WoltDriveService {
 
     for (let attempt = 0; attempt < maxRetries; attempt++) {
       try {
-        const response = await fetch(url, {
+        const response = await fetchWithTimeout(url, {
           ...init,
           headers: {
             Authorization: `Bearer ${apiKey}`,
@@ -974,7 +975,7 @@ export class WoltDriveService {
 
     for (let attempt = 0; attempt < maxRetries; attempt++) {
       try {
-        const response = await fetch(url, {
+        const response = await fetchWithTimeout(url, {
           method: 'GET',
           headers: {
             Authorization: `Bearer ${apiKey}`,
@@ -1037,7 +1038,7 @@ export class WoltDriveService {
 
     for (let attempt = 0; attempt < maxRetries; attempt++) {
       try {
-        const response = await fetch(url, {
+        const response = await fetchWithTimeout(url, {
           method: 'GET',
           headers: {
             Authorization: `Bearer ${apiKey}`,

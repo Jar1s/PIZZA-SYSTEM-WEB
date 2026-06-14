@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Order, Tenant } from '@pizza-ecosystem/shared';
+import { fetchWithTimeout } from '../utils/http';
 
 @Injectable()
 export class GopayService {
@@ -103,7 +104,7 @@ export class GopayService {
       // Create Basic Auth header (Base64 encoded ClientId:ClientSecret)
       const credentials = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
       
-      const tokenResponse = await fetch(`${apiUrl}/api/oauth2/token`, {
+      const tokenResponse = await fetchWithTimeout(`${apiUrl}/api/oauth2/token`, {
         method: 'POST',
         headers: {
           'Authorization': `Basic ${credentials}`,
@@ -170,7 +171,7 @@ export class GopayService {
         paymentBody.payer = payer;
       }
       
-      const paymentResponse = await fetch(`${apiUrl}/api/payments/payment`, {
+      const paymentResponse = await fetchWithTimeout(`${apiUrl}/api/payments/payment`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${accessToken}`,
@@ -275,7 +276,7 @@ export class GopayService {
     const credentials = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
 
     // GoPay docs: payment status should be queried with token scope payment-all.
-    const tokenResponse = await fetch(`${apiUrl}/api/oauth2/token`, {
+    const tokenResponse = await fetchWithTimeout(`${apiUrl}/api/oauth2/token`, {
       method: 'POST',
       headers: {
         'Authorization': `Basic ${credentials}`,
@@ -298,7 +299,7 @@ export class GopayService {
       throw new Error('GoPay status token response missing access_token');
     }
 
-    const statusResponse = await fetch(`${apiUrl}/api/payments/payment/${encodeURIComponent(paymentId)}`, {
+    const statusResponse = await fetchWithTimeout(`${apiUrl}/api/payments/payment/${encodeURIComponent(paymentId)}`, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${tokenData.access_token}`,
@@ -342,7 +343,7 @@ export class GopayService {
       // Create Basic Auth header
       const credentials = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
       
-      const tokenResponse = await fetch(`${apiUrl}/api/oauth2/token`, {
+      const tokenResponse = await fetchWithTimeout(`${apiUrl}/api/oauth2/token`, {
         method: 'POST',
         headers: {
           'Authorization': `Basic ${credentials}`,
@@ -371,7 +372,7 @@ export class GopayService {
       const accessToken = tokenData.access_token;
 
       // Step 2: Create refund
-      const refundResponse = await fetch(`${apiUrl}/api/payments/payment/${paymentId}/refund`, {
+      const refundResponse = await fetchWithTimeout(`${apiUrl}/api/payments/payment/${paymentId}/refund`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${accessToken}`,

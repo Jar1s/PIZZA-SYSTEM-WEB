@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Order, Tenant } from '@pizza-ecosystem/shared';
 import * as crypto from 'crypto';
+import { fetchWithTimeout } from '../utils/http';
 
 @Injectable()
 export class WepayService {
@@ -31,7 +32,7 @@ export class WepayService {
         : 'https://stage.wepay.com';
       
       // Step 1: Get access token (OAuth2)
-      const tokenResponse = await fetch(`${apiUrl}/oauth2/token`, {
+      const tokenResponse = await fetchWithTimeout(`${apiUrl}/oauth2/token`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -51,7 +52,7 @@ export class WepayService {
       const accessToken = tokenData.access_token;
 
       // Step 2: Create payment
-      const paymentResponse = await fetch(`${apiUrl}/payments`, {
+      const paymentResponse = await fetchWithTimeout(`${apiUrl}/payments`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${accessToken}`,
