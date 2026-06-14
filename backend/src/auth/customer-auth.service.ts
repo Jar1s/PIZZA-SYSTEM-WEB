@@ -9,16 +9,10 @@ import { SmsService } from './sms.service';
 import { EmailService } from '../email/email.service';
 import { TenantsService } from '../tenants/tenants.service';
 
-export interface RegisterDto {
-  email: string;
-  password: string;
-  name: string;
-}
-
-export interface LoginDto {
-  email: string;
-  password: string;
-}
+// Validated DTO classes live in ./dto/customer-auth.dto so the global
+// ValidationPipe enforces them on the public register/login endpoints.
+import { RegisterDto, LoginDto } from './dto/customer-auth.dto';
+export { RegisterDto, LoginDto };
 
 export interface CustomerAuthResult {
   access_token: string;

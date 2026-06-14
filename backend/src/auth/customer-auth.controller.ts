@@ -1,7 +1,8 @@
 import { Controller, Post, Get, Body, Query, Res, BadRequestException, UnauthorizedException, Req } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { Request, Response } from 'express';
-import { CustomerAuthService, RegisterDto, LoginDto } from './customer-auth.service';
+import { CustomerAuthService } from './customer-auth.service';
+import { RegisterDto, LoginDto } from './dto/customer-auth.dto';
 import { SmsService } from './sms.service';
 import { Public } from './decorators/public.decorator';
 import { TenantsService } from '../tenants/tenants.service';

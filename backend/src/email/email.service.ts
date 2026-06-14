@@ -5,6 +5,24 @@ import { OrderStatus, getCustomizationOptions } from '@pizza-ecosystem/shared';
 import { PrismaService } from '../prisma/prisma.service';
 import { getProductDisplayName } from '../utils/product-name-mapper';
 
+/**
+ * Escape user/tenant supplied values before interpolating them into email HTML.
+ * Customer name, address and phone come from the (public) order/registration
+ * payloads, so without escaping they are a stored-XSS / HTML-injection vector in
+ * the staff and customer inboxes.
+ */
+function escapeHtml(value: unknown): string {
+  if (value === null || value === undefined) {
+    return '';
+  }
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 @Injectable()
 export class EmailService {
   private readonly logger = new Logger(EmailService.name);
@@ -461,7 +479,8 @@ export class EmailService {
       ? `${frontendUrl}/auth/set-password?token=${passwordResetToken}&tenant=${tenantSlug}`
       : `${frontendUrl}/auth/set-password?token=${passwordResetToken}`;
     
-    this.logger.log(`📧 Generated password setup URL: ${resetUrl} (from FRONTEND_URL: ${process.env.FRONTEND_URL || 'not set'}, tenantDomain: ${tenantDomain})`);
+    // Do NOT log the full URL — it contains the password-setup token (account takeover risk).
+    this.logger.log(`📧 Generated password setup URL for tenantDomain: ${tenantDomain} (token redacted)`);
     
     const emailHtml = this.buildPasswordSetupEmail(
       user,
@@ -605,7 +624,7 @@ export class EmailService {
           <tr>
             <td class="email-content" style="padding: 40px 30px;">
               
-              <h2 class="greeting" style="color: #333; margin: 0 0 10px 0; font-size: 22px;">Ahoj ${user.name}!</h2>
+              <h2 class="greeting" style="color: #333; margin: 0 0 10px 0; font-size: 22px;">Ahoj ${escapeHtml(user.name)}!</h2>
               <p class="greeting-text" style="color: #666; font-size: 16px; line-height: 1.6; margin: 0 0 20px 0;">
                 Váš účet bol úspešne vytvorený. Teraz si prosím nastavte heslo, aby ste sa mohli prihlásiť a sledovať svoje objednávky.
               </p>
@@ -962,7 +981,7 @@ export class EmailService {
           <tr>
             <td class="email-content" style="padding: 40px 30px;">
               
-              <h2 class="greeting" style="color: #333; margin: 0 0 10px 0; font-size: 22px;">Ahoj ${customer.name}! 👋</h2>
+              <h2 class="greeting" style="color: #333; margin: 0 0 10px 0; font-size: 22px;">Ahoj ${escapeHtml(customer.name)}! 👋</h2>
               <p class="greeting-text" style="color: #666; font-size: 16px; line-height: 1.6; margin: 0 0 20px 0;">
                 Ďakujeme za vašu objednávku! Prijali sme ju a už začali pripravovať vašu lahodnú pizzu.
               </p>
@@ -1048,16 +1067,16 @@ export class EmailService {
               <!-- Delivery Address -->
               <h3 class="section-title" style="color: #333; margin: 30px 0 15px 0; font-size: 18px; border-bottom: 2px solid #f0f0f0; padding-bottom: 10px;">Doručovacia adresa</h3>
               <p class="address-section" style="color: #666; font-size: 16px; line-height: 1.6; margin: 0;">
-                ${address.street}<br>
-                ${address.city}, ${address.postalCode}<br>
+                ${escapeHtml(address.street)}<br>
+                ${escapeHtml(address.city)}, ${escapeHtml(address.postalCode)}<br>
                 ${address.country || 'Slovensko'}
               </p>
-              ${address.instructions ? `<p style="color: #999; font-size: 14px; margin: 10px 0 0 0;"><em>Poznámka: ${address.instructions}</em></p>` : ''}
+              ${address.instructions ? `<p style="color: #999; font-size: 14px; margin: 10px 0 0 0;"><em>Poznámka: ${escapeHtml(address.instructions)}</em></p>` : ''}
 
               <!-- Contact -->
               <div style="margin-top: 40px; padding-top: 20px; border-top: 2px solid #f0f0f0;">
                 <p style="color: #666; font-size: 14px; line-height: 1.6; margin: 0;">
-                  Otázky k objednávke? Odpovedzte na tento e-mail alebo nás kontaktujte na ${customer.phone}
+                  Otázky k objednávke? Odpovedzte na tento e-mail alebo nás kontaktujte na ${escapeHtml(customer.phone)}
                 </p>
               </div>
 
@@ -1377,7 +1396,7 @@ export class EmailService {
           <tr>
             <td class="email-content" style="padding: 40px 30px;">
               
-              <h2 class="greeting" style="color: #333; margin: 0 0 10px 0; font-size: 22px;">Ahoj ${customer.name}!</h2>
+              <h2 class="greeting" style="color: #333; margin: 0 0 10px 0; font-size: 22px;">Ahoj ${escapeHtml(customer.name)}!</h2>
               <p class="greeting-text" style="color: #666; font-size: 16px; line-height: 1.6; margin: 0 0 20px 0;">
                 ${message}
               </p>
@@ -1558,7 +1577,7 @@ export class EmailService {
           <tr>
             <td class="email-content" style="padding: 40px 30px;">
               
-              <h2 class="greeting" style="color: #333; margin: 0 0 10px 0; font-size: 22px;">Ahoj ${user.name}! 👋</h2>
+              <h2 class="greeting" style="color: #333; margin: 0 0 10px 0; font-size: 22px;">Ahoj ${escapeHtml(user.name)}! 👋</h2>
               <p class="greeting-text" style="color: #666; font-size: 16px; line-height: 1.6; margin: 0 0 20px 0;">
                 Ďakujeme, že ste sa prihlásili! Váš účet bol úspešne vytvorený a teraz môžete objednávať naše lahodné pizze.
               </p>
