@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { getTenantSlug } from '@/lib/tenant-utils';
+import { getAllTenants } from '@/lib/api';
 
 interface KPIs {
   totalRevenue: number;
@@ -33,11 +34,17 @@ export function KPICards({ selectedTenant }: KPICardsProps = {}) {
         headers['Authorization'] = `Bearer ${token}`;
       }
 
-      // Determine which tenant(s) to fetch
+      // Determine which tenant(s) to fetch. For "all", derive the full brand list
+      // from the API (same source as the brand selector) so a newly added brand is
+      // included automatically instead of being silently dropped from the totals.
       const currentTenant = selectedTenant || getTenantSlug();
-      const tenants = currentTenant === 'all' 
-        ? ['pornopizza', 'pizzavnudzi']
-        : [currentTenant];
+      let tenants: string[];
+      if (currentTenant === 'all') {
+        const allTenants = await getAllTenants();
+        tenants = allTenants.map((t) => t.slug).filter(Boolean);
+      } else {
+        tenants = [currentTenant];
+      }
       
       let totalRevenue = 0;
       let totalOrders = 0;
