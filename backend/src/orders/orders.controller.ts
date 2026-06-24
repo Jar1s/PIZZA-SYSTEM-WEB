@@ -176,6 +176,41 @@ export class TrackingController {
 
   constructor(private ordersService: OrdersService) {}
 
+  /**
+   * Public tracking is reachable by anyone holding the order id, so it must not
+   * expose contact PII (email/phone) or internal references (paymentRef, userId,
+   * Storyous ids). Return only the fields the tracking page renders.
+   */
+  private toPublicTrackingOrder(order: any) {
+    if (!order || typeof order !== 'object') {
+      return order;
+    }
+
+    const customer =
+      order.customer && typeof order.customer === 'object' ? order.customer : null;
+
+    return {
+      id: order.id,
+      tenantId: order.tenantId,
+      orderNumber: order.orderNumber,
+      status: order.status,
+      paymentStatus: order.paymentStatus,
+      createdAt: order.createdAt,
+      updatedAt: order.updatedAt,
+      // Name only — email and phone are not shown on the tracking page.
+      customer: customer ? { name: customer.name } : customer,
+      address: order.address,
+      items: order.items,
+      subtotalCents: order.subtotalCents,
+      taxCents: order.taxCents,
+      deliveryFeeCents: order.deliveryFeeCents,
+      totalCents: order.totalCents,
+      deliveryId: order.deliveryId,
+      delivery: order.delivery,
+      statusHistory: order.statusHistory,
+    };
+  }
+
   @Public()
   @Throttle({ default: { limit: 100, ttl: 60000 } }) // 100 requests per minute
   @Header('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate')
@@ -188,7 +223,7 @@ export class TrackingController {
     try {
       const order = await this.ordersService.getOrderById(orderId);
       this.logger.log(`Order found: ${orderId}, status: ${order.status}`);
-      return order;
+      return this.toPublicTrackingOrder(order);
     } catch (error) {
       this.logger.error(`Error tracking order ${orderId}:`, error);
       throw error;
@@ -207,7 +242,7 @@ export class TrackingController {
     try {
       const order = await this.ordersService.getOrderById(orderId);
       this.logger.log(`Order found via API: ${orderId}, status: ${order.status}`);
-      return order;
+      return this.toPublicTrackingOrder(order);
     } catch (error) {
       this.logger.error(`Error tracking order via API ${orderId}:`, error);
       throw error;

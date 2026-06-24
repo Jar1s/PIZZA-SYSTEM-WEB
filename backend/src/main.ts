@@ -131,11 +131,21 @@ async function bootstrap() {
   
   logger.log(`📡 Starting server on port ${port} (from PORT env: ${portEnv || 'not set'})`);
   
+  // Graceful shutdown: on SIGTERM/SIGINT (Render redeploys, scaling) Nest will run
+  // lifecycle hooks — PrismaService.onModuleDestroy disconnects the DB cleanly and
+  // in-flight requests are allowed to drain instead of being killed mid-flight.
+  app.enableShutdownHooks();
+
   // Ensure we listen on 0.0.0.0 for Render.com (not just localhost)
   await app.listen(port, '0.0.0.0');
-  
+
   logger.log(`🚀 Backend server running on http://0.0.0.0:${port}`);
   logger.log(`🚀 Server is ready to accept connections on port ${port}`);
 }
 
-bootstrap();
+bootstrap().catch((err) => {
+  // Surface a clean fatal error instead of an unhandled promise rejection.
+  // eslint-disable-next-line no-console
+  console.error('❌ Fatal error during bootstrap:', err);
+  process.exit(1);
+});

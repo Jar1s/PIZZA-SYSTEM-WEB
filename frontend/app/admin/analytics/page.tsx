@@ -23,7 +23,7 @@ const KPICards = dynamic(() => import('@/components/admin/KPICards').then(mod =>
   ssr: false,
 });
 
-// import { ProtectedRoute } from '@/components/admin/ProtectedRoute'; // Disabled for development
+import { ProtectedRoute } from '@/components/admin/ProtectedRoute';
 
 interface AnalyticsData {
   totalRevenue: number;
@@ -228,7 +228,7 @@ export default function AnalyticsPage() {
   };
 
   return (
-    // <ProtectedRoute requiredRole="ADMIN"> // Disabled for development
+    <ProtectedRoute requiredRole="ADMIN">
     <div>
       <div className="flex justify-between items-center mb-6 flex-wrap gap-4">
         <h1 className="text-3xl font-bold">Analytics Dashboard</h1>
@@ -538,6 +538,6 @@ export default function AnalyticsPage() {
         )}
       </div>
     </div>
-    // </ProtectedRoute> // Disabled for development
+    </ProtectedRoute>
   );
 }

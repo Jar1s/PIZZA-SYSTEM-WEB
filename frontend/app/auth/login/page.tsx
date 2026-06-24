@@ -138,7 +138,15 @@ export default function CustomerLoginPage() {
     e.preventDefault();
     setLoading(true);
     setError(null);
-    
+
+    // Match the backend RegisterDto rule (min 8 chars) so the user gets a clear
+    // message instead of a generic server validation error.
+    if (password.length < 8) {
+      setError('Heslo musí mať aspoň 8 znakov');
+      setLoading(false);
+      return;
+    }
+
     try {
       const result = await register(email, password, name);
       
@@ -393,6 +401,7 @@ export default function CustomerLoginPage() {
                 <input
                   type="password"
                   required
+                  minLength={8}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className={inputClasses}

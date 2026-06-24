@@ -69,6 +69,18 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
         if (databaseUrl.includes(':5432/') && databaseUrl.includes('pooler.supabase.com')) {
           this.logger.log('ℹ️ Using port 5432. If connection fails, try port 6543 (Session Pooler standard port)');
         }
+
+        // Connection-pool safety: Supabase caps connections. Without a bounded pool
+        // Prisma opens num_cpus*2+1 per instance and can exhaust Supabase (P1001).
+        // Use the pooler with `?pgbouncer=true&connection_limit=N` in production.
+        const hasConnectionLimit = /[?&]connection_limit=/.test(databaseUrl);
+        const usesPgBouncer = /[?&]pgbouncer=true/.test(databaseUrl);
+        if (process.env.NODE_ENV === 'production' && !hasConnectionLimit && !usesPgBouncer) {
+          this.logger.warn(
+            '⚠️ DATABASE_URL has no connection_limit/pgbouncer. Under load this can exhaust ' +
+              'Supabase connections (P1001). Use the pooler URL with ?pgbouncer=true&connection_limit=N.',
+          );
+        }
       }
 
       // Try to connect with retry logic

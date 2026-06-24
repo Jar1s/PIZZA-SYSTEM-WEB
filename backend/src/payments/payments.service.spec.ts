@@ -312,6 +312,89 @@ describe('PaymentsService', () => {
       expect(mockDeliveryService.createDeliveryForOrder).toHaveBeenCalledWith('order-123');
     });
 
+    it('is idempotent: skips a duplicate AUTHORISATION for an already-paid order', async () => {
+      mockAdyenService.parseWebhook.mockReturnValue({
+        merchantReference: 'order-123',
+        success: true,
+        eventType: 'AUTHORISATION',
+        paymentRef: 'adyen-ref-123',
+      });
+      mockOrdersService.getOrderById.mockResolvedValue({
+        ...mockOrder,
+        status: OrderStatus.PAID,
+        paymentStatus: 'success',
+      });
+
+      await service.handleAdyenWebhook({});
+
+      expect(mockOrdersService.updatePaymentRef).not.toHaveBeenCalled();
+      expect(mockOrderStatusService.updateStatus).not.toHaveBeenCalled();
+      expect(mockDeliveryService.createDeliveryForOrder).not.toHaveBeenCalled();
+    });
+
+    it('does not flip an already-paid order to CANCELED on a late failure event', async () => {
+      mockAdyenService.parseWebhook.mockReturnValue({
+        merchantReference: 'order-123',
+        success: false,
+        eventType: 'AUTHORISATION',
+        paymentRef: 'adyen-ref-123',
+      });
+      mockOrdersService.getOrderById.mockResolvedValue({
+        ...mockOrder,
+        status: OrderStatus.PREPARING,
+      });
+
+      await service.handleAdyenWebhook({});
+
+      expect(mockOrderStatusService.updateStatus).not.toHaveBeenCalledWith(
+        'order-123',
+        OrderStatus.CANCELED,
+      );
+    });
+
+    it('refuses to mark PAID when the webhook amount does not match the order total', async () => {
+      mockAdyenService.parseWebhook.mockReturnValue({
+        merchantReference: 'order-123',
+        success: true,
+        eventType: 'AUTHORISATION',
+        paymentRef: 'adyen-ref-123',
+        amount: 50, // order total is 1200
+      });
+      mockOrdersService.getOrderById.mockResolvedValue({
+        ...mockOrder,
+        status: OrderStatus.PENDING,
+        totalCents: 1200,
+      });
+
+      await service.handleAdyenWebhook({});
+
+      expect(mockOrderStatusService.updateStatus).not.toHaveBeenCalled();
+      expect(mockDeliveryService.createDeliveryForOrder).not.toHaveBeenCalled();
+    });
+
+    it('marks PAID when the webhook amount matches the order total', async () => {
+      mockAdyenService.parseWebhook.mockReturnValue({
+        merchantReference: 'order-123',
+        success: true,
+        eventType: 'AUTHORISATION',
+        paymentRef: 'adyen-ref-123',
+        amount: 1200,
+      });
+      mockOrdersService.getOrderById.mockResolvedValue({
+        ...mockOrder,
+        status: OrderStatus.PENDING,
+        totalCents: 1200,
+      });
+      mockDeliveryService.createDeliveryForOrder.mockResolvedValue(undefined);
+
+      await service.handleAdyenWebhook({});
+
+      expect(mockOrderStatusService.updateStatus).toHaveBeenCalledWith(
+        'order-123',
+        OrderStatus.PAID,
+      );
+    });
+
     it('should handle failed payment', async () => {
       const notification = {
         merchantReference: 'order-123',
@@ -506,6 +589,44 @@ describe('PaymentsService', () => {
         OrderStatus.PAID,
       );
       expect(mockDeliveryService.createDeliveryForOrder).toHaveBeenCalledWith('order-123');
+    });
+
+    it('is idempotent: skips a duplicate success for an already-paid order', async () => {
+      mockWepayService.parseWebhook.mockReturnValue({
+        merchantReference: 'order-123',
+        success: true,
+        paymentRef: 'wepay-123',
+      });
+      mockOrdersService.getOrderById.mockResolvedValue({
+        ...mockOrder,
+        status: OrderStatus.PAID,
+        paymentStatus: 'success',
+      });
+
+      await service.handleWepayWebhook({}, 'sig');
+
+      expect(mockOrdersService.updatePaymentRef).not.toHaveBeenCalled();
+      expect(mockOrderStatusService.updateStatus).not.toHaveBeenCalled();
+      expect(mockDeliveryService.createDeliveryForOrder).not.toHaveBeenCalled();
+    });
+
+    it('does not flip an already-paid order to CANCELED on a late failure event', async () => {
+      mockWepayService.parseWebhook.mockReturnValue({
+        merchantReference: 'order-123',
+        success: false,
+        paymentRef: 'wepay-123',
+      });
+      mockOrdersService.getOrderById.mockResolvedValue({
+        ...mockOrder,
+        status: OrderStatus.OUT_FOR_DELIVERY,
+      });
+
+      await service.handleWepayWebhook({}, 'sig');
+
+      expect(mockOrderStatusService.updateStatus).not.toHaveBeenCalledWith(
+        'order-123',
+        OrderStatus.CANCELED,
+      );
     });
 
     it('should handle failed WePay payment', async () => {

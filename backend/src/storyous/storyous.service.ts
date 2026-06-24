@@ -3,6 +3,7 @@ import { Order, OrderStatus } from '@pizza-ecosystem/shared';
 import { PrismaService } from '../prisma/prisma.service';
 import { SettingsService } from '../settings/settings.service';
 import { buildStoryousModifierSelections, StoryousModifierSelection } from './storyous-modifier.util';
+import { fetchWithTimeout } from '../utils/http';
 
 export interface StoryousReceiptPreviewItem {
   quantity: number;
@@ -85,7 +86,7 @@ export class StoryousService {
       depth: '-1',
     });
 
-    const response = await fetch(
+    const response = await fetchWithTimeout(
       `${this.apiBaseUrl}/menu/${encodeURIComponent(String(merchantId || '').trim())}?${query.toString()}`,
       {
         method: 'GET',
@@ -156,7 +157,7 @@ export class StoryousService {
       }
     }
 
-    const response = await fetch('https://login.storyous.com/api/auth/authorize', {
+    const response = await fetchWithTimeout('https://login.storyous.com/api/auth/authorize', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
@@ -239,7 +240,7 @@ export class StoryousService {
     merchantPlaceId: string,
     orderId: string,
   ): Promise<{ orderId?: string; state: StoryousDeliveryOrderState | null; raw: Record<string, any> }> {
-    const response = await fetch(
+    const response = await fetchWithTimeout(
       `${this.apiBaseUrl}/delivery/orders/${encodeURIComponent(merchantPlaceId)}/${encodeURIComponent(orderId)}`,
       {
         method: 'GET',
@@ -736,7 +737,7 @@ export class StoryousService {
     const merchantPlaceId = this.buildMerchantPlaceId(merchantId, placeId);
     const requestUrl = `${this.apiBaseUrl}/delivery/orders/${encodeURIComponent(merchantPlaceId)}`;
 
-    const response = await fetch(requestUrl, {
+    const response = await fetchWithTimeout(requestUrl, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${token}`,
@@ -818,7 +819,7 @@ export class StoryousService {
     const token = await this.getAccessToken();
     const mappedStatus = this.mapOrderStatus(status);
 
-    const response = await fetch(`${this.apiBaseUrl}/delivery/orders/${storyousOrderId}/status`, {
+    const response = await fetchWithTimeout(`${this.apiBaseUrl}/delivery/orders/${storyousOrderId}/status`, {
       method: 'PATCH',
       headers: {
         Authorization: `Bearer ${token}`,

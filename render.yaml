@@ -1,4 +1,30 @@
 services:
+  # Production API. Migrations run as part of the build (`prisma migrate deploy`)
+  # so a deploy never lands code against an un-migrated schema. Render runs the
+  # build once per deploy, so this is safe even with the starter plan.
+  # Secrets below use `sync: false` (set them in the Render dashboard). Additional
+  # integration secrets (SMTP, Adyen/GoPay/WePay, Wolt, Twilio, Sentry, OAuth) are
+  # also managed in the dashboard.
+  - type: web
+    name: pizza-ecosystem-api
+    runtime: node
+    region: frankfurt
+    plan: starter
+    buildCommand: cd backend && npm ci && npm run build && npm run prisma:deploy
+    startCommand: cd backend && npm run start:prod
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: JWT_REFRESH_SECRET
+        sync: false
+
   - type: cron
     name: pizza-db-backup
     runtime: docker

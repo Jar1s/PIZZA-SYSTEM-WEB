@@ -225,7 +225,7 @@ describe('WoltDriveService contract', () => {
 
     expect(fetchMock).toHaveBeenCalledWith(
       'https://custom.wolt.example/order/job%2F123/status/cancel',
-      {
+      expect.objectContaining({
         method: 'PATCH',
         headers: {
           Authorization: 'Bearer api-key',
@@ -234,7 +234,7 @@ describe('WoltDriveService contract', () => {
         body: JSON.stringify({
           reason: 'Cancelled by merchant',
         }),
-      },
+      }),
     );
     expect(result).toEqual({
       id: 'job-1',
@@ -317,13 +317,13 @@ describe('WoltDriveService contract', () => {
 
     expect(fetchMock).toHaveBeenCalledWith(
       'https://custom.wolt.example/merchants/merchant-1/delivery-areas',
-      {
+      expect.objectContaining({
         method: 'GET',
         headers: {
           Authorization: 'Bearer api-key',
           'Content-Type': 'application/json',
         },
-      },
+      }),
     );
     expect(result).toEqual(responseBody);
   });
