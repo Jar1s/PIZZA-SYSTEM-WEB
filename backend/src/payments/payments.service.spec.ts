@@ -118,6 +118,7 @@ describe('PaymentsService', () => {
     jest.clearAllMocks();
     mockOrdersService.tryStartPaymentSession.mockResolvedValue(true);
     mockOrdersService.clearPaymentSessionLock.mockResolvedValue(undefined);
+    mockTelegramNotifications.notifyError.mockResolvedValue(undefined);
   });
 
   describe('createPaymentSession', () => {
@@ -467,6 +468,21 @@ describe('PaymentsService', () => {
         'order-123',
         OrderStatus.PAID,
       );
+      expect(mockTelegramNotifications.notifyError).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: 'Wolt dispatch failed after payment',
+          message: expect.stringContaining('Delivery service error'),
+          tenantId: 'tenant-123',
+          orderId: 'order-123',
+          details: expect.objectContaining({
+            paymentProvider: 'adyen',
+            paymentRef: 'adyen-ref-123',
+            orderStatus: OrderStatus.PAID,
+            paymentStatus: 'success',
+          }),
+          stack: expect.any(String),
+        }),
+      );
     });
 
     it('should return early if order not found', async () => {
@@ -529,6 +545,39 @@ describe('PaymentsService', () => {
         OrderStatus.PAID,
       );
       expect(mockDeliveryService.createDeliveryForOrder).toHaveBeenCalledWith('order-123');
+    });
+
+    it('alerts operator when GoPay payment succeeds but Wolt delivery creation fails', async () => {
+      mockGopayService.parseWebhook.mockReturnValue({
+        merchantReference: 'order-123',
+        success: true,
+        paymentRef: 'gopay-123',
+        eventType: 'PAID',
+      });
+      mockOrdersService.getOrderById.mockResolvedValue(mockOrder);
+      mockOrdersService.updatePaymentRef.mockResolvedValue(undefined);
+      mockOrderStatusService.updateStatus.mockResolvedValue(undefined);
+      mockDeliveryService.createDeliveryForOrder.mockRejectedValue(new Error('Wolt unavailable'));
+
+      await service.handleGopayWebhook({ state: 'PAID' });
+
+      expect(mockOrdersService.updatePaymentRef).toHaveBeenCalledWith('order-123', 'gopay-123', 'success');
+      expect(mockOrderStatusService.updateStatus).toHaveBeenCalledWith('order-123', OrderStatus.PAID);
+      expect(mockTelegramNotifications.notifyError).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: 'Wolt dispatch failed after payment',
+          message: expect.stringContaining('Wolt unavailable'),
+          tenantId: 'tenant-123',
+          orderId: 'order-123',
+          details: expect.objectContaining({
+            paymentProvider: 'gopay',
+            paymentRef: 'gopay-123',
+            orderStatus: OrderStatus.PAID,
+            paymentStatus: 'success',
+          }),
+          stack: expect.any(String),
+        }),
+      );
     });
 
     it('should handle failed GoPay payment', async () => {
@@ -863,6 +912,38 @@ describe('PaymentsService', () => {
         OrderStatus.PAID,
       );
       expect(mockDeliveryService.createDeliveryForOrder).toHaveBeenCalledWith('order-123');
+    });
+
+    it('alerts operator when WePay payment succeeds but Wolt delivery creation fails', async () => {
+      mockWepayService.parseWebhook.mockReturnValue({
+        merchantReference: 'order-123',
+        success: true,
+        paymentRef: 'wepay-123',
+      });
+      mockOrdersService.getOrderById.mockResolvedValue(mockOrder);
+      mockOrdersService.updatePaymentRef.mockResolvedValue(undefined);
+      mockOrderStatusService.updateStatus.mockResolvedValue(undefined);
+      mockDeliveryService.createDeliveryForOrder.mockRejectedValue(new Error('Wolt create failed'));
+
+      await service.handleWepayWebhook({ state: 'captured' }, 'signature-123');
+
+      expect(mockOrdersService.updatePaymentRef).toHaveBeenCalledWith('order-123', 'wepay-123', 'success');
+      expect(mockOrderStatusService.updateStatus).toHaveBeenCalledWith('order-123', OrderStatus.PAID);
+      expect(mockTelegramNotifications.notifyError).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: 'Wolt dispatch failed after payment',
+          message: expect.stringContaining('Wolt create failed'),
+          tenantId: 'tenant-123',
+          orderId: 'order-123',
+          details: expect.objectContaining({
+            paymentProvider: 'wepay',
+            paymentRef: 'wepay-123',
+            orderStatus: OrderStatus.PAID,
+            paymentStatus: 'success',
+          }),
+          stack: expect.any(String),
+        }),
+      );
     });
 
     it('is idempotent: skips a duplicate success for an already-paid order', async () => {

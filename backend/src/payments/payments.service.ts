@@ -28,6 +28,47 @@ export class PaymentsService {
     private telegramNotifications: TelegramNotificationsService,
   ) {}
 
+  private async notifyDeliveryCreationFailure(
+    order: any,
+    provider: 'adyen' | 'gopay' | 'wepay',
+    paymentRef: string | null | undefined,
+    error: unknown,
+  ): Promise<void> {
+    const message = error instanceof Error ? error.message : String(error);
+    const stack = error instanceof Error ? error.stack : undefined;
+
+    this.logger.error(`Delivery creation failed after ${provider} payment for order ${order.id}`, {
+      orderId: order.id,
+      tenantId: order.tenantId,
+      provider,
+      paymentRef,
+      error: message,
+      stack,
+    });
+
+    try {
+      await this.telegramNotifications.notifyError({
+        title: 'Wolt dispatch failed after payment',
+        message: `Objednávka ${order.orderNumber ? `#${order.orderNumber}` : order.id} je zaplatená, ale Wolt doručenie sa nevytvorilo: ${message}`,
+        tenantId: order.tenantId,
+        orderId: order.id,
+        details: {
+          paymentProvider: provider,
+          paymentRef: paymentRef || null,
+          orderStatus: OrderStatus.PAID,
+          paymentStatus: 'success',
+          totalCents: order.totalCents || null,
+        },
+        stack,
+      });
+    } catch (notifyError) {
+      this.logger.warn('Failed to send delivery-creation failure Telegram notification', {
+        orderId: order.id,
+        error: notifyError instanceof Error ? notifyError.message : String(notifyError),
+      });
+    }
+  }
+
   async createPaymentSession(orderId: string) {
     let tenantSlug = 'unknown';
     try {
@@ -176,9 +217,9 @@ export class PaymentsService {
       // 🚀 CREATE DELIVERY - Automatically dispatch courier (idempotent: no-op if one exists)
       try {
         await this.deliveryService.createDeliveryForOrder(order.id);
-        console.log(`Payment successful for order ${order.id}, delivery created`);
+        this.logger.log(`Adyen payment successful for order ${order.id}, delivery created`);
       } catch (error) {
-        console.error('Failed to create delivery:', error);
+        await this.notifyDeliveryCreationFailure(order, 'adyen', parsed.paymentRef, error);
         // Don't fail the payment, admin can manually dispatch
       }
     } else {
@@ -255,9 +296,9 @@ export class PaymentsService {
       // 🚀 CREATE DELIVERY - Automatically dispatch courier
       try {
         await this.deliveryService.createDeliveryForOrder(order.id);
-        console.log(`GoPay payment successful for order ${order.id}, delivery created`);
+        this.logger.log(`GoPay payment successful for order ${order.id}, delivery created`);
       } catch (error) {
-        console.error('Failed to create delivery:', error);
+        await this.notifyDeliveryCreationFailure(order, 'gopay', parsed.paymentRef, error);
         // Don't fail the payment, admin can manually dispatch
       }
     } else if (parsed.eventType === 'CANCELED' || parsed.eventType === 'TIMEOUTED') {
@@ -473,9 +514,9 @@ export class PaymentsService {
       // 🚀 CREATE DELIVERY - Automatically dispatch courier (idempotent: no-op if one exists)
       try {
         await this.deliveryService.createDeliveryForOrder(order.id);
-        console.log(`WePay payment successful for order ${order.id}, delivery created`);
+        this.logger.log(`WePay payment successful for order ${order.id}, delivery created`);
       } catch (error) {
-        console.error('Failed to create delivery:', error);
+        await this.notifyDeliveryCreationFailure(order, 'wepay', parsed.paymentRef, error);
         // Don't fail the payment, admin can manually dispatch
       }
     } else {
