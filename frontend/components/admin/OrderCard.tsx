@@ -204,7 +204,9 @@ export function OrderCard({
   const refundStatus = refundOverride ? refundOverride.status : (order.refundStatus ?? null);
   const refundError = refundOverride ? refundOverride.error : (order.refundError ?? null);
   const showRefundInfo = order.status === OrderStatus.CANCELED && (!!refundStatus || isPaidOnlinePayment);
-  const canRetryRefund = showRefundInfo && (refundStatus === 'refund_failed' || !refundStatus);
+  const canRetryRefund =
+    showRefundInfo &&
+    (refundStatus === 'refund_failed' || refundStatus === 'partially_refunded' || !refundStatus);
 
   const handleRetryRefund = async () => {
     setRetryingRefund(true);
@@ -229,9 +231,9 @@ export function OrderCard({
   const refundInfo = !showRefundInfo ? null : (
     <div
       className={`mt-2 rounded-lg border px-3 py-2 text-xs ${
-        refundStatus === 'refunded' || refundStatus === 'partially_refunded'
+        refundStatus === 'refunded'
           ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
-          : refundStatus === 'refund_pending'
+          : refundStatus === 'refund_pending' || refundStatus === 'partially_refunded'
             ? 'border-amber-200 bg-amber-50 text-amber-700'
             : 'border-red-300 bg-red-100 text-red-800'
       }`}
@@ -240,7 +242,9 @@ export function OrderCard({
         {refundStatus === 'refunded'
           ? (language === 'sk' ? '✓ Peniaze vrátené zákazníkovi' : '✓ Payment refunded')
           : refundStatus === 'partially_refunded'
-            ? (language === 'sk' ? 'Platba čiastočne vrátená' : 'Payment partially refunded')
+            ? (language === 'sk'
+                ? '⚠ Platba vrátená len čiastočne — skontrolujte v GoPay administrácii'
+                : '⚠ Payment only partially refunded — check GoPay admin')
             : refundStatus === 'refund_pending'
               ? (language === 'sk' ? 'Refund odoslaný do GoPay — čaká na potvrdenie' : 'Refund sent to GoPay — awaiting confirmation')
               : refundStatus === 'refund_failed'

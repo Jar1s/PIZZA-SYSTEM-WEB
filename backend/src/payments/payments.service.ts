@@ -213,6 +213,11 @@ export class PaymentsService {
       // Admin might have canceled/rejected the order before the PAID webhook arrived.
       // In that case, keep order canceled and immediately issue refund.
       if (order.status === OrderStatus.CANCELED) {
+        // Same amount guard as the normal PAID flow — a mismatched webhook must
+        // neither mark the payment successful nor trigger a refund of totalCents.
+        if (!this.isWebhookAmountValid(order, parsed)) {
+          return;
+        }
         await this.ordersService.updatePaymentRef(order.id, parsed.paymentRef, 'success');
         if ((order as any).refundStatus) {
           this.logger.log(
@@ -500,9 +505,17 @@ export class PaymentsService {
     }
 
     const refundStatus = (order as any).refundStatus;
-    if (refundStatus === 'refunded' || refundStatus === 'partially_refunded') {
-      this.logger.log(`Order ${orderId} is already refunded (${refundStatus}), skipping GoPay refund`);
+    if (refundStatus === 'refunded') {
+      this.logger.log(`Order ${orderId} is already refunded, skipping GoPay refund`);
       return;
+    }
+    if (refundStatus === 'partially_refunded') {
+      // Not a terminal success: part of the money is still with us. A retry is
+      // allowed (GoPay validates the amount against the remaining balance), but
+      // flag it loudly because it usually needs a manual look in GoPay admin.
+      this.logger.warn(
+        `Order ${orderId} is only partially refunded - retrying full-amount refund, GoPay will validate the remainder`,
+      );
     }
 
     try {
@@ -549,13 +562,27 @@ export class PaymentsService {
       throw new NotFoundException(`Order ${orderId} not found`);
     }
 
+    // The admin UI only offers the button on canceled orders, but the endpoint
+    // must enforce the same rules: never refund a live order or an unpaid one.
+    if (order.status !== OrderStatus.CANCELED) {
+      throw new BadRequestException('Refund is only available for canceled orders');
+    }
+
     const refundStatus = (order as any).refundStatus;
-    if (refundStatus === 'refunded' || refundStatus === 'partially_refunded') {
+    if (refundStatus === 'refunded') {
       throw new BadRequestException('Order payment is already refunded');
+    }
+    if (refundStatus === 'refund_pending') {
+      throw new BadRequestException('Refund is already in progress, waiting for GoPay confirmation');
     }
 
     if (!order.paymentRef || String(order.paymentRef).startsWith('cod:')) {
       throw new BadRequestException('Order has no online payment to refund');
+    }
+
+    const paymentStatus = String((order as any).paymentStatus || '').toLowerCase();
+    if (paymentStatus !== 'success') {
+      throw new BadRequestException('Order payment was not completed, there is nothing to refund');
     }
 
     try {

@@ -611,6 +611,29 @@ describe('PaymentsService', () => {
       expect(mockOrderStatusService.updateStatus).not.toHaveBeenCalled();
     });
 
+    it('should not mark success nor refund when PAID for canceled order reports a mismatched amount', async () => {
+      mockGopayService.parseWebhook.mockReturnValue({
+        merchantReference: 'order-123',
+        success: true,
+        paymentRef: 'gopay-123',
+        eventType: 'PAID',
+        amount: 999, // order total is 2500
+      });
+      mockOrdersService.getOrderById.mockResolvedValue({
+        ...mockOrder,
+        status: OrderStatus.CANCELED,
+        paymentRef: 'gopay-123',
+        totalCents: 2500,
+        refundStatus: null,
+      });
+
+      await service.handleGopayWebhook({ state: 'PAID' });
+
+      expect(mockOrdersService.updatePaymentRef).not.toHaveBeenCalled();
+      expect(mockGopayService.refundPayment).not.toHaveBeenCalled();
+      expect(mockOrdersService.updateRefundStatus).not.toHaveBeenCalled();
+    });
+
     it('should not refund again when PAID retries for canceled order with refund already recorded', async () => {
       mockGopayService.parseWebhook.mockReturnValue({
         merchantReference: 'order-123',
@@ -693,6 +716,7 @@ describe('PaymentsService', () => {
         tenantId: 'tenant-123',
         status: OrderStatus.CANCELED,
         paymentRef: 'gopay-123',
+        paymentStatus: 'success',
         totalCents: 2500,
         refundStatus: 'refund_failed',
         refundError: 'previous failure',
@@ -731,6 +755,74 @@ describe('PaymentsService', () => {
       });
 
       await expect(service.retryGopayRefund('order-123')).rejects.toThrow(BadRequestException);
+    });
+
+    it('should reject retry for orders that are not canceled', async () => {
+      mockOrdersService.getOrderById.mockResolvedValue({
+        id: 'order-123',
+        tenantId: 'tenant-123',
+        status: OrderStatus.PAID,
+        paymentRef: 'gopay-123',
+        paymentStatus: 'success',
+        refundStatus: null,
+      });
+
+      await expect(service.retryGopayRefund('order-123')).rejects.toThrow(
+        'Refund is only available for canceled orders',
+      );
+      expect(mockGopayService.refundPayment).not.toHaveBeenCalled();
+    });
+
+    it('should reject retry while a refund is pending confirmation', async () => {
+      mockOrdersService.getOrderById.mockResolvedValue({
+        id: 'order-123',
+        tenantId: 'tenant-123',
+        status: OrderStatus.CANCELED,
+        paymentRef: 'gopay-123',
+        paymentStatus: 'success',
+        refundStatus: 'refund_pending',
+      });
+
+      await expect(service.retryGopayRefund('order-123')).rejects.toThrow(BadRequestException);
+      expect(mockGopayService.refundPayment).not.toHaveBeenCalled();
+    });
+
+    it('should reject retry when the payment never succeeded', async () => {
+      mockOrdersService.getOrderById.mockResolvedValue({
+        id: 'order-123',
+        tenantId: 'tenant-123',
+        status: OrderStatus.CANCELED,
+        paymentRef: 'gopay-123',
+        paymentStatus: 'pending',
+        refundStatus: null,
+      });
+
+      await expect(service.retryGopayRefund('order-123')).rejects.toThrow(
+        'Order payment was not completed, there is nothing to refund',
+      );
+      expect(mockGopayService.refundPayment).not.toHaveBeenCalled();
+    });
+
+    it('should allow retry for partially refunded orders and attempt the refund', async () => {
+      const partialOrder = {
+        id: 'order-123',
+        tenantId: 'tenant-123',
+        status: OrderStatus.CANCELED,
+        paymentRef: 'gopay-123',
+        paymentStatus: 'success',
+        totalCents: 2500,
+        refundStatus: 'partially_refunded',
+        refundError: null,
+        refundedAt: null,
+      };
+      mockOrdersService.getOrderById.mockResolvedValue(partialOrder);
+      mockTenantsService.getTenantById.mockResolvedValue({ id: 'tenant-123', paymentProvider: 'gopay' });
+      mockOrdersService.updateRefundStatus.mockResolvedValue(undefined);
+      mockGopayService.refundPayment.mockResolvedValue(undefined);
+
+      await service.retryGopayRefund('order-123');
+
+      expect(mockGopayService.refundPayment).toHaveBeenCalledWith('gopay-123', 2500, expect.anything());
     });
   });
 
