@@ -112,6 +112,7 @@ describe('OrdersService', () => {
   const mockTelegramNotificationsService = {
     notifyOrderCreated: jest.fn(),
     notifyOrderStatusChange: jest.fn(),
+    notifyError: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -167,6 +168,7 @@ describe('OrdersService', () => {
     // Reset all mocks
     jest.clearAllMocks();
     mockPrismaService.tenant.findMany.mockResolvedValue([]);
+    mockTelegramNotificationsService.notifyError.mockResolvedValue(undefined);
     mockPrismaService.user.update.mockImplementation(({ data }) => ({
       id: 'updated-user',
       tenantId: 'tenant-123',
@@ -1134,6 +1136,56 @@ describe('OrdersService', () => {
           storyousOrderState: 'NEW',
         },
       });
+    });
+
+    it('alerts admin when manual Storyous sync fails before reaching kitchen', async () => {
+      mockPrismaService.order.findUnique.mockResolvedValue(syncedOrderBase);
+      mockStoryousService.createOrder.mockRejectedValue(new Error('Storyous API down'));
+
+      const result = await service.syncOrderToStoryous('order-storyous-1');
+
+      expect(result).toEqual({
+        success: false,
+        message: 'Storyous API down',
+      });
+      expect(mockTelegramNotificationsService.notifyError).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: 'Storyous sync failed',
+          message: 'Storyous API down',
+          tenantId: 'tenant-123',
+          orderId: 'order-storyous-1',
+          details: {
+            source: 'manual-sync',
+          },
+          stack: expect.any(String),
+        }),
+      );
+    });
+
+    it('alerts admin when Storyous API returns no order id', async () => {
+      mockPrismaService.order.findUnique.mockResolvedValue(syncedOrderBase);
+      mockStoryousService.createOrder.mockResolvedValue({
+        storyousState: 'UNKNOWN',
+        warnings: ['missing id'],
+      });
+
+      const result = await service.syncOrderToStoryous('order-storyous-1');
+
+      expect(result.success).toBe(false);
+      expect(result.message).toBe('Storyous API did not return order ID');
+      expect(mockTelegramNotificationsService.notifyError).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: 'Storyous sync returned no order ID',
+          message: 'Storyous API did not return order ID',
+          tenantId: 'tenant-123',
+          orderId: 'order-storyous-1',
+          details: {
+            storyousState: 'UNKNOWN',
+            warnings: ['missing id'],
+            source: 'manual-sync',
+          },
+        }),
+      );
     });
   });
 });

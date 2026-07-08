@@ -106,8 +106,25 @@ const normalizeStoryousState = (state: string | null | undefined): string | null
 const isAcceptedStoryousState = (state: string | null | undefined): boolean =>
   state === 'CONFIRMED' || state === 'SCHEDULING_DELIVERY' || state === 'DISPATCHED';
 
+const KITCHEN_SYNC_REQUIRED_STATUSES = new Set<OrderStatus>([
+  OrderStatus.PAID,
+  OrderStatus.PREPARING,
+  OrderStatus.READY,
+  OrderStatus.OUT_FOR_DELIVERY,
+]);
+
 const getStoryousStatusMeta = (order: Order): StoryousStatusMeta | null => {
   if (!order.storyousOrderId) {
+    if (KITCHEN_SYNC_REQUIRED_STATUSES.has(order.status)) {
+      return {
+        badgeClassName: 'border border-red-200 bg-red-100 text-red-800',
+        badgeLabel: '⚠ NIE JE V KUCHYNI',
+        detailClassName: 'border border-red-200 bg-red-50 text-red-800',
+        detailText:
+          '❌ Storyous sync chýba. Kuchyňa túto objednávku pravdepodobne nevidí. Klikni Storyous sync alebo rieš objednávku ručne.',
+      };
+    }
+
     return null;
   }
 

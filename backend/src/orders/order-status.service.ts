@@ -97,6 +97,24 @@ export class OrderStatusService implements OnModuleInit, OnModuleDestroy {
       );
 
       if (!storyousResult?.id) {
+        this.logger.error(`⚠️ Storyous auto-sync for order ${order.id} returned no order ID`, {
+          orderId: order.id,
+          statusSyncSource,
+          storyousState: storyousResult?.storyousState || null,
+          warnings: storyousResult?.warnings || [],
+        });
+        await this.telegramNotifications.notifyError({
+          title: 'Storyous auto-sync returned no order ID',
+          message: 'Storyous API did not return order ID; kitchen may not know about this order.',
+          tenantId: order.tenantId,
+          orderId: order.id,
+          details: {
+            statusSyncSource,
+            targetStatus: newStatus,
+            storyousState: storyousResult?.storyousState || null,
+            warnings: storyousResult?.warnings || [],
+          },
+        });
         return;
       }
 
@@ -570,6 +588,5 @@ export class OrderStatusService implements OnModuleInit, OnModuleDestroy {
     }
   }
 }
-
 
 

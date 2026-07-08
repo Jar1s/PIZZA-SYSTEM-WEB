@@ -18,6 +18,7 @@ import { TenantTheme } from '../types/tenant.types';
 import { appConfig } from '../config/app.config';
 import { OrderResponseSchema } from '../common/schemas/order.schema';
 import { getProductDisplayName } from '../utils/product-name-mapper';
+import { TelegramNotificationsService } from '../notifications/telegram-notifications.service';
 import * as crypto from 'crypto';
 
 // Type definitions for Prisma JSON fields
@@ -436,7 +437,33 @@ export class OrdersService {
     private deliveryFeeTierService: DeliveryFeeTierService,
     private orderNumberService: OrderNumberService,
     private jwtService: JwtService,
+    private telegramNotifications: TelegramNotificationsService,
   ) {}
+
+  private async notifyStoryousSyncFailure(params: {
+    title?: string;
+    orderId: string;
+    tenantId?: string | null;
+    message: string;
+    details?: Record<string, unknown>;
+    stack?: string;
+  }): Promise<void> {
+    try {
+      await this.telegramNotifications.notifyError({
+        title: params.title || 'Storyous sync failed',
+        message: params.message,
+        tenantId: params.tenantId || undefined,
+        orderId: params.orderId,
+        details: params.details,
+        stack: params.stack,
+      });
+    } catch (notifyError) {
+      this.logger.warn('Failed to send Storyous sync failure Telegram notification', {
+        orderId: params.orderId,
+        error: notifyError instanceof Error ? notifyError.message : String(notifyError),
+      });
+    }
+  }
 
   private isStatusHistoryUnavailable(error: unknown): boolean {
     const message = error instanceof Error ? error.message : String(error);
@@ -1580,15 +1607,36 @@ export class OrdersService {
         };
       }
 
+      const message = 'Storyous API did not return order ID';
       this.logger.error('[Storyous sync] Missing Storyous order ID', { orderId, tenantId: orderWithStoryous.tenantId });
+      await this.notifyStoryousSyncFailure({
+        title: 'Storyous sync returned no order ID',
+        orderId,
+        tenantId: orderWithStoryous.tenantId,
+        message,
+        details: {
+          storyousState: storyousResult?.storyousState || null,
+          warnings: storyousResult?.warnings || [],
+          source: 'manual-sync',
+        },
+      });
       return {
         success: false,
         storyousState: storyousResult?.storyousState || null,
-        message: 'Storyous API did not return order ID',
+        message,
         warnings: storyousResult?.warnings,
       };
     } catch (error: any) {
       this.logger.error(`❌ Failed to sync order ${orderId} to Storyous:`, { orderId, error: error.message, stack: error.stack });
+      await this.notifyStoryousSyncFailure({
+        orderId,
+        tenantId: orderWithStoryous.tenantId,
+        message: error.message || 'Failed to sync order to Storyous',
+        details: {
+          source: 'manual-sync',
+        },
+        stack: error.stack,
+      });
       return {
         success: false,
         message: error.message || 'Failed to sync order to Storyous',
@@ -1789,11 +1837,16 @@ export class OrdersService {
             tenantId: tenantId,
           });
           
-          // Mark order as needing manual sync (could store sync failure info if needed)
-          // For now, just log the error - admin can use manual sync endpoint
-          
-          // TODO: Send alert to admin (email, Slack, etc.) - kitchen won't know about order!
-          // For now, the error is logged and can be monitored
+          await this.notifyStoryousSyncFailure({
+            orderId: order.id,
+            tenantId,
+            message: lastError.message || 'Failed to sync order to Storyous after retries',
+            details: {
+              source: 'retry-sync',
+              attempts: maxRetries,
+            },
+            stack: lastError.stack,
+          });
         } else {
           // Retry with exponential backoff
           const delayMs = Math.pow(2, attempt - 1) * 1000; // 1s, 2s, 4s
