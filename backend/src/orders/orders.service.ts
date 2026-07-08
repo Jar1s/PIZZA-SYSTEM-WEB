@@ -219,6 +219,138 @@ export class OrdersService {
     return normalized || null;
   }
 
+  private getThemeObject(theme: Prisma.JsonValue | null | undefined): Prisma.JsonObject {
+    if (theme && typeof theme === 'object' && !Array.isArray(theme)) {
+      return theme as Prisma.JsonObject;
+    }
+    return {};
+  }
+
+  private getOperationalOpeningHours(theme: Prisma.JsonObject): Record<string, any> | null {
+    const openingHours = theme.openingHours;
+    if (!openingHours || typeof openingHours !== 'object' || Array.isArray(openingHours)) {
+      return null;
+    }
+
+    const openingHoursRecord = openingHours as Record<string, any>;
+    return openingHoursRecord.enabled === true ? openingHoursRecord : null;
+  }
+
+  private parseTimeToMinutes(value: unknown): number | null {
+    if (typeof value !== 'string') {
+      return null;
+    }
+
+    const match = value.trim().match(/^(\d{1,2}):(\d{2})$/);
+    if (!match) {
+      return null;
+    }
+
+    const hours = Number(match[1]);
+    const minutes = Number(match[2]);
+    if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) {
+      return null;
+    }
+
+    return hours * 60 + minutes;
+  }
+
+  private getZonedDateParts(date: Date, timezone: string): { dayName: string; minutes: number } {
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone: timezone,
+      weekday: 'long',
+      hour: '2-digit',
+      minute: '2-digit',
+      hourCycle: 'h23',
+    }).formatToParts(date);
+    const weekday = parts.find((part) => part.type === 'weekday')?.value || 'Sunday';
+    const hour = Number(parts.find((part) => part.type === 'hour')?.value || 0);
+    const minute = Number(parts.find((part) => part.type === 'minute')?.value || 0);
+
+    return {
+      dayName: weekday.toLowerCase(),
+      minutes: hour * 60 + minute,
+    };
+  }
+
+  private isWithinOpeningHours(openingHours: Record<string, any>, at = new Date()): boolean {
+    const timezone =
+      typeof openingHours.timezone === 'string' && openingHours.timezone.trim()
+        ? openingHours.timezone.trim()
+        : 'Europe/Bratislava';
+    const days = openingHours.days && typeof openingHours.days === 'object' ? openingHours.days : {};
+    const current = this.getZonedDateParts(at, timezone);
+    const schedule = days[current.dayName];
+
+    if (!schedule || schedule.closed === true) {
+      return false;
+    }
+
+    const openMinutes = this.parseTimeToMinutes(schedule.open);
+    const closeMinutes = this.parseTimeToMinutes(schedule.close);
+    if (openMinutes == null || closeMinutes == null) {
+      return false;
+    }
+
+    if (closeMinutes < openMinutes) {
+      return current.minutes >= openMinutes || current.minutes < closeMinutes;
+    }
+
+    return current.minutes >= openMinutes && current.minutes < closeMinutes;
+  }
+
+  private async assertTenantCanAcceptOrders(tenantId: string): Promise<void> {
+    const tenants = await this.prisma.tenant.findMany({
+      where: { isActive: true },
+      select: {
+        id: true,
+        slug: true,
+        theme: true,
+      },
+    });
+
+    const tenantThemes = tenants.map((tenant) => ({
+      tenant,
+      theme: this.getThemeObject(tenant.theme),
+    }));
+
+    const maintenanceTenant = tenantThemes.find(({ theme }) => theme.maintenanceMode === true);
+    if (maintenanceTenant) {
+      this.logger.warn('Blocked order creation during maintenance mode', {
+        tenantId,
+        sourceTenantId: maintenanceTenant.tenant.id,
+        sourceTenantSlug: maintenanceTenant.tenant.slug,
+      });
+      throw new BadRequestException('Prevádzka je v maintenance móde. Momentálne neprijímame nové objednávky.');
+    }
+
+    const enabledOpeningHours = tenantThemes
+      .map(({ tenant, theme }) => ({
+        tenant,
+        openingHours: this.getOperationalOpeningHours(theme),
+      }))
+      .filter((entry): entry is {
+        tenant: { id: string; slug: string; theme: Prisma.JsonValue | null };
+        openingHours: Record<string, any>;
+      } =>
+        !!entry.openingHours,
+      );
+
+    if (enabledOpeningHours.length === 0) {
+      return;
+    }
+
+    const closedConfig = enabledOpeningHours.find(({ openingHours }) => !this.isWithinOpeningHours(openingHours));
+    if (closedConfig) {
+      this.logger.warn('Blocked order creation outside shared opening hours', {
+        tenantId,
+        sourceTenantId: closedConfig.tenant.id,
+        sourceTenantSlug: closedConfig.tenant.slug,
+      });
+      throw new BadRequestException('Prevádzka je aktuálne zatvorená. Objednávku je možné vytvoriť počas otváracích hodín.');
+    }
+  }
+
   private async findExistingCheckoutCustomer(
     tenantId: string,
     email: string,
@@ -484,6 +616,21 @@ export class OrdersService {
     let userId = data.userId;
     let shouldReturnAuthToken = false;
     let createdUser: UserWithPasswordReset | null = null;
+
+    const earlyExistingOrder = await this.getExistingOrderByClientRequestId(
+      tenantId,
+      data.clientRequestId,
+    );
+    if (earlyExistingOrder) {
+      this.logger.warn('Duplicate checkout request returned existing order before operational guard', {
+        tenantId,
+        clientRequestId: data.clientRequestId,
+        orderId: earlyExistingOrder.id,
+      });
+      return this.buildCreateOrderResponse(earlyExistingOrder, tenantId, false, null);
+    }
+
+    await this.assertTenantCanAcceptOrders(tenantId);
 
     // Guest checkout logic: Handle user creation/authentication
     // If paymentMethod exists (cash on delivery) → mandatory registration

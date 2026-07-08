@@ -16,6 +16,7 @@ const mockPrisma = {
   },
   tenant: {
     findUnique: jest.fn(),
+    findMany: jest.fn(),
   },
   orderStatusHistory: {
     create: jest.fn(),
@@ -49,6 +50,10 @@ const buildService = () =>
     {} as any,
   );
 
+beforeEach(() => {
+  mockPrisma.tenant.findMany.mockResolvedValue([]);
+});
+
 describe('DeliveryService cancelDeliveryForOrder', () => {
   let service: DeliveryService;
 
@@ -71,6 +76,7 @@ describe('DeliveryService cancelDeliveryForOrder', () => {
         },
       },
     });
+    mockPrisma.tenant.findMany.mockResolvedValue([]);
     mockWoltDrive.cancelDelivery.mockResolvedValue({ status: 'CANCELLED' });
   });
 
@@ -182,19 +188,32 @@ describe('DeliveryService Wolt opening-hours guard', () => {
     service.onModuleDestroy();
   });
 
-  it('blocks Wolt dispatch when tenant opening hours are enabled and currently closed', () => {
-    const closedTenant = {
-      id: 'tenant-1',
-      slug: 'pornopizza',
-      theme: {
-        openingHours: {
-          enabled: true,
-          timezone: 'UTC',
-          days: {
-            thursday: { open: '10:00', close: '12:00', closed: false },
+  it('blocks Wolt dispatch when shared opening hours from another tenant are closed', async () => {
+    mockPrisma.tenant.findMany.mockResolvedValue([
+      {
+        id: 'tenant-1',
+        slug: 'pornopizza',
+        theme: {},
+      },
+      {
+        id: 'tenant-party',
+        slug: 'pizzaparty',
+        theme: {
+          openingHours: {
+            enabled: true,
+            timezone: 'UTC',
+            days: {
+              thursday: { open: '10:00', close: '12:00', closed: false },
+            },
           },
         },
       },
+    ]);
+
+    const currentTenant = {
+      id: 'tenant-1',
+      slug: 'pornopizza',
+      theme: {},
     };
 
     jest.spyOn(service as any, 'getZonedDateParts').mockReturnValue({
@@ -202,14 +221,14 @@ describe('DeliveryService Wolt opening-hours guard', () => {
       minutes: 13 * 60,
     });
 
-    expect(() => (service as any).assertTenantCanDispatchWolt(closedTenant)).toThrow(
+    await expect((service as any).assertTenantCanDispatchWolt(currentTenant)).rejects.toThrow(
       'Prevádzka je aktuálne zatvorená',
     );
   });
 
-  it('allows Wolt dispatch when opening-hours automation is disabled', () => {
-    expect(() =>
-      (service as any).assertTenantCanDispatchWolt({
+  it('allows Wolt dispatch when opening-hours automation is disabled', async () => {
+    mockPrisma.tenant.findMany.mockResolvedValue([
+      {
         id: 'tenant-1',
         slug: 'pornopizza',
         theme: {
@@ -217,8 +236,16 @@ describe('DeliveryService Wolt opening-hours guard', () => {
             enabled: false,
           },
         },
+      },
+    ]);
+
+    await expect(
+      (service as any).assertTenantCanDispatchWolt({
+        id: 'tenant-1',
+        slug: 'pornopizza',
+        theme: {},
       }),
-    ).not.toThrow();
+    ).resolves.toBeUndefined();
   });
 });
 

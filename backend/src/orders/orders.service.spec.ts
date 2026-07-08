@@ -43,6 +43,7 @@ describe('OrdersService', () => {
     },
     tenant: {
       findUnique: jest.fn(),
+      findMany: jest.fn(),
     },
     order: {
       create: jest.fn(),
@@ -165,6 +166,7 @@ describe('OrdersService', () => {
 
     // Reset all mocks
     jest.clearAllMocks();
+    mockPrismaService.tenant.findMany.mockResolvedValue([]);
     mockPrismaService.user.update.mockImplementation(({ data }) => ({
       id: 'updated-user',
       tenantId: 'tenant-123',
@@ -272,6 +274,58 @@ describe('OrdersService', () => {
       });
     });
 
+    it('should block order creation when any active tenant has maintenance mode enabled', async () => {
+      mockPrismaService.tenant.findMany.mockResolvedValue([
+        {
+          id: tenantId,
+          slug: 'pornopizza',
+          theme: { maintenanceMode: false },
+        },
+        {
+          id: 'tenant-party',
+          slug: 'pizzaparty',
+          theme: { maintenanceMode: true },
+        },
+      ]);
+
+      await expect(service.createOrder(tenantId, baseOrderDto)).rejects.toThrow(
+        'Prevádzka je v maintenance móde',
+      );
+
+      expect(mockPrismaService.product.findFirst).not.toHaveBeenCalled();
+      expect(mockOrderNumberService.generateOrderNumber).not.toHaveBeenCalled();
+      expect(mockPrismaService.order.create).not.toHaveBeenCalled();
+    });
+
+    it('should block order creation when shared opening hours from another tenant are closed', async () => {
+      mockPrismaService.tenant.findMany.mockResolvedValue([
+        {
+          id: tenantId,
+          slug: 'pornopizza',
+          theme: {},
+        },
+        {
+          id: 'tenant-party',
+          slug: 'pizzaparty',
+          theme: {
+            openingHours: {
+              enabled: true,
+              timezone: 'UTC',
+              days: {},
+            },
+          },
+        },
+      ]);
+
+      await expect(service.createOrder(tenantId, baseOrderDto)).rejects.toThrow(
+        'Prevádzka je aktuálne zatvorená',
+      );
+
+      expect(mockPrismaService.product.findFirst).not.toHaveBeenCalled();
+      expect(mockOrderNumberService.generateOrderNumber).not.toHaveBeenCalled();
+      expect(mockPrismaService.order.create).not.toHaveBeenCalled();
+    });
+
     it('should deduplicate repeated clientRequestId and return existing order', async () => {
       const duplicateDto: CreateOrderDto = {
         ...baseOrderDto,
@@ -300,13 +354,7 @@ describe('OrdersService', () => {
 
       const result = await service.createOrder(tenantId, duplicateDto);
 
-      expect(mockPrismaService.order.create).toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: expect.objectContaining({
-            clientRequestId: 'checkout-request-1',
-          }),
-        }),
-      );
+      expect(mockPrismaService.order.create).not.toHaveBeenCalled();
       expect(mockPrismaService.order.findFirst).toHaveBeenCalledTimes(2);
       expect((result as any).id).toBe('order-1');
     });
