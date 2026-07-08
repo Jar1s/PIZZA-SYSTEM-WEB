@@ -254,13 +254,17 @@ export class OrderStatusService implements OnModuleInit, OnModuleDestroy {
       const paymentProvider = tenant.paymentProvider;
       const paymentRef = (order as any).paymentRef;
       const paymentStatus = String((order as any).paymentStatus || '').toLowerCase();
-      
+      const refundStatus = (order as any).refundStatus;
+
       // Auto-refund for paid GoPay orders on admin cancellation/rejection.
       // We intentionally do not gate by order.status here, because payment webhooks can arrive
       // slightly before/after manual status actions.
-      if (paymentProvider === 'gopay' && 
-          paymentRef && 
-          paymentStatus === 'success') {
+      // Skip when a refund was already initiated/confirmed (idempotence); a failed
+      // refund is retried manually via POST /orders/:id/refund.
+      if (paymentProvider === 'gopay' &&
+          paymentRef &&
+          paymentStatus === 'success' &&
+          !refundStatus) {
         try {
           await this.paymentsService.refundGopayPayment(orderId);
           this.logger.log(`✅ GoPay refund initiated for order ${orderId}`);

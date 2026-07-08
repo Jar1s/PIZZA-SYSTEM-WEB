@@ -1105,6 +1105,12 @@ export class EmailService {
     `;
   }
 
+  private isPaidOnline(order: Order): boolean {
+    const paymentRef = String((order as any).paymentRef || '');
+    const paymentStatus = String((order as any).paymentStatus || '').toLowerCase();
+    return paymentStatus === 'success' && !!paymentRef && !paymentRef.startsWith('cod:');
+  }
+
   async sendOrderStatusUpdate(
     order: Order & { customer?: any; tenant?: any },
     newStatus: OrderStatus,
@@ -1161,7 +1167,9 @@ export class EmailService {
       },
       [OrderStatus.CANCELED]: {
         subject: `Objednávka #${orderNumber} zrušená`,
-        message: `Vaša objednávka bola zrušená. Ak máte otázky, kontaktujte nás prosím.`,
+        message: this.isPaidOnline(order)
+          ? `Vaša objednávka bola zrušená. Platbu ${(order.totalCents / 100).toFixed(2)} € vám vrátime späť na účet — zvyčajne do 3–5 pracovných dní. Ak máte otázky, kontaktujte nás prosím.`
+          : `Vaša objednávka bola zrušená. Ak máte otázky, kontaktujte nás prosím.`,
       },
       // PAID a PENDING sa neposielajú
     };

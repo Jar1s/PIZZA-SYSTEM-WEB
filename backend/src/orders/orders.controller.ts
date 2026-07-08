@@ -11,9 +11,12 @@ import {
   UseGuards,
   Logger,
   Header,
+  Inject,
+  forwardRef,
 } from '@nestjs/common';
 import { OrdersService } from './orders.service';
 import { OrderStatusService } from './order-status.service';
+import { PaymentsService } from '../payments/payments.service';
 import { TenantsService } from '../tenants/tenants.service';
 import { CreateOrderDto, UpdateOrderStatusDto } from './dto';
 import { OrderStatus } from '@pizza-ecosystem/shared';
@@ -95,6 +98,8 @@ export class AdminOrdersController {
     private ordersService: OrdersService,
     private orderStatusService: OrderStatusService,
     private tenantsService: TenantsService,
+    @Inject(forwardRef(() => PaymentsService))
+    private paymentsService: PaymentsService,
   ) {}
 
   @Get()
@@ -166,6 +171,13 @@ export class AdminOrdersController {
     @Param('id') id: string,
   ) {
     return this.ordersService.syncOrderToStoryous(id);
+  }
+
+  @Post(':id/refund')
+  @UseGuards(RolesGuard)
+  @Roles('ADMIN', 'OPERATOR')
+  async refundOrder(@Param('id') id: string) {
+    return this.paymentsService.retryGopayRefund(id);
   }
 }
 

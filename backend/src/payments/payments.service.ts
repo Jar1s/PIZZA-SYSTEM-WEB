@@ -7,6 +7,7 @@ import { OrderStatusService } from '../orders/order-status.service';
 import { TenantsService } from '../tenants/tenants.service';
 import { DeliveryService } from '../delivery/delivery.service';
 import { OrderStatus } from '@pizza-ecosystem/shared';
+import { TelegramNotificationsService } from '../notifications/telegram-notifications.service';
 import * as crypto from 'crypto';
 
 @Injectable()
@@ -24,6 +25,7 @@ export class PaymentsService {
     private tenantsService: TenantsService,
     @Inject(forwardRef(() => DeliveryService))
     private deliveryService: DeliveryService,
+    private telegramNotifications: TelegramNotificationsService,
   ) {}
 
   async createPaymentSession(orderId: string) {
@@ -212,6 +214,12 @@ export class PaymentsService {
       // In that case, keep order canceled and immediately issue refund.
       if (order.status === OrderStatus.CANCELED) {
         await this.ordersService.updatePaymentRef(order.id, parsed.paymentRef, 'success');
+        if ((order as any).refundStatus) {
+          this.logger.log(
+            `GoPay PAID webhook for canceled order ${order.id} - refund already ${(order as any).refundStatus}, skipping`,
+          );
+          return;
+        }
         try {
           await this.refundGopayPayment(order.id);
           this.logger.warn(
@@ -259,6 +267,11 @@ export class PaymentsService {
       await this.ordersService.updatePaymentRef(order.id, parsed.paymentRef, 'failed');
       await this.orderStatusService.updateStatus(order.id, OrderStatus.CANCELED);
       console.log(`GoPay payment ${parsed.eventType.toLowerCase()} for order ${order.id}`);
+    } else if (parsed.eventType === 'REFUNDED' || parsed.eventType === 'PARTIALLY_REFUNDED') {
+      // GoPay confirmed the money went back to the customer.
+      const confirmedStatus = parsed.eventType === 'REFUNDED' ? 'refunded' : 'partially_refunded';
+      await this.ordersService.updateRefundStatus(order.id, confirmedStatus);
+      this.logger.log(`GoPay refund confirmed for order ${order.id} (${parsed.eventType})`);
     } else {
       // Other states (CREATED, PAYMENT_METHOD_CHOSEN) - just log, don't change status
       console.log(`GoPay webhook received state ${parsed.eventType} for order ${order.id}, no action taken`);
@@ -477,19 +490,87 @@ export class PaymentsService {
   async refundGopayPayment(orderId: string): Promise<void> {
     const order = await this.ordersService.getOrderById(orderId);
     const tenant = await this.tenantsService.getTenantById(order.tenantId);
-    
+
     if (!order.paymentRef) {
       throw new Error('Order has no payment reference');
     }
-    
+
     if (tenant.paymentProvider !== 'gopay') {
       throw new Error(`Order payment provider is ${tenant.paymentProvider}, not gopay`);
     }
-    
-    await this.gopayService.refundPayment(
-      order.paymentRef,
-      order.totalCents,
-      tenant
-    );
+
+    const refundStatus = (order as any).refundStatus;
+    if (refundStatus === 'refunded' || refundStatus === 'partially_refunded') {
+      this.logger.log(`Order ${orderId} is already refunded (${refundStatus}), skipping GoPay refund`);
+      return;
+    }
+
+    try {
+      await this.gopayService.refundPayment(
+        order.paymentRef,
+        order.totalCents,
+        tenant
+      );
+      // GoPay accepted the refund request; final confirmation arrives via the
+      // REFUNDED payment notification handled in handleGopayWebhook.
+      await this.ordersService.updateRefundStatus(orderId, 'refund_pending');
+    } catch (error: any) {
+      const message = String(error?.message || error);
+      await this.ordersService
+        .updateRefundStatus(orderId, 'refund_failed', message)
+        .catch((dbError) =>
+          this.logger.error(`Failed to persist refund_failed for order ${orderId}:`, dbError),
+        );
+      try {
+        await this.telegramNotifications.notifyError({
+          title: '💸 GoPay refund zlyhal',
+          message: `Objednávka #${order.orderNumber ?? order.id} (${(order.totalCents / 100).toFixed(2)} €): ${message}`,
+          orderId: order.id,
+          tenantId: order.tenantId,
+        });
+      } catch (notifyError) {
+        this.logger.error('Failed to send refund-failure Telegram notification:', notifyError);
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Manual refund retry for admins. Unlike the automatic paths this also
+   * re-attempts after a previous refund_failed / stuck refund_pending state.
+   */
+  async retryGopayRefund(orderId: string): Promise<{
+    refundStatus: string | null;
+    refundError: string | null;
+    refundedAt: Date | null;
+  }> {
+    const order = await this.ordersService.getOrderById(orderId);
+    if (!order) {
+      throw new NotFoundException(`Order ${orderId} not found`);
+    }
+
+    const refundStatus = (order as any).refundStatus;
+    if (refundStatus === 'refunded' || refundStatus === 'partially_refunded') {
+      throw new BadRequestException('Order payment is already refunded');
+    }
+
+    if (!order.paymentRef || String(order.paymentRef).startsWith('cod:')) {
+      throw new BadRequestException('Order has no online payment to refund');
+    }
+
+    try {
+      await this.refundGopayPayment(orderId);
+    } catch (error: any) {
+      // refundGopayPayment already recorded refund_failed + notified;
+      // return the state so the admin UI can show the error inline.
+      this.logger.error(`Manual GoPay refund retry failed for order ${orderId}:`, error?.message || error);
+    }
+
+    const updated = await this.ordersService.getOrderById(orderId);
+    return {
+      refundStatus: (updated as any).refundStatus ?? null,
+      refundError: (updated as any).refundError ?? null,
+      refundedAt: (updated as any).refundedAt ?? null,
+    };
   }
 }

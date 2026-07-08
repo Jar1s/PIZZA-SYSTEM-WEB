@@ -8,12 +8,14 @@ import { PaymentsController } from './payments.controller';
 import { OrdersModule } from '../orders/orders.module';
 import { TenantsModule } from '../tenants/tenants.module';
 import { DeliveryModule } from '../delivery/delivery.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
   imports: [
     forwardRef(() => OrdersModule),
     TenantsModule,
     forwardRef(() => DeliveryModule),
+    NotificationsModule,
   ],
   controllers: [PaymentsController, WebhooksController],
   providers: [PaymentsService, AdyenService, GopayService, WepayService],

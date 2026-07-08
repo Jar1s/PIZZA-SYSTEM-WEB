@@ -9,6 +9,7 @@ import {
   cancelWoltDelivery,
   rebookWoltDelivery,
   checkWoltDeliveryArea,
+  refundOrder,
   WoltAreaCheckResult,
 } from '@/lib/api';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -181,6 +182,8 @@ export function OrderCard({
   const [checkingWoltArea, setCheckingWoltArea] = useState(false);
   const [nowMs, setNowMs] = useState(Date.now());
   const [clientPanelOpen, setClientPanelOpen] = useState(false);
+  const [retryingRefund, setRetryingRefund] = useState(false);
+  const [refundOverride, setRefundOverride] = useState<{ status: string | null; error: string | null } | null>(null);
   const { success: toastSuccess, error: toastError, warning: toastWarning } = useToastContext();
   
   const customer = order.customer;
@@ -192,6 +195,74 @@ export function OrderCard({
   const isWoltDelivery = order.delivery?.provider === 'wolt';
   const woltDelivery = isWoltDelivery ? order.delivery : null;
   const customizationLabels = (order as any)?.tenant?.theme?.customizationLabels;
+
+  // Refund tracking for canceled online-paid orders (GoPay auto-refund)
+  const isPaidOnlinePayment =
+    order.paymentStatus?.toLowerCase() === 'success' &&
+    !!order.paymentRef &&
+    !order.paymentRef.startsWith('cod:');
+  const refundStatus = refundOverride ? refundOverride.status : (order.refundStatus ?? null);
+  const refundError = refundOverride ? refundOverride.error : (order.refundError ?? null);
+  const showRefundInfo = order.status === OrderStatus.CANCELED && (!!refundStatus || isPaidOnlinePayment);
+  const canRetryRefund = showRefundInfo && (refundStatus === 'refund_failed' || !refundStatus);
+
+  const handleRetryRefund = async () => {
+    setRetryingRefund(true);
+    try {
+      const result = await refundOrder(order.id);
+      setRefundOverride({ status: result.refundStatus, error: result.refundError });
+      if (result.refundStatus === 'refund_pending' || result.refundStatus === 'refunded') {
+        toastSuccess(language === 'sk' ? 'Refund odoslaný do GoPay' : 'Refund submitted to GoPay');
+      } else {
+        toastError(result.refundError || (language === 'sk' ? 'Refund zlyhal' : 'Refund failed'));
+      }
+      onOrderRefresh?.();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      setRefundOverride({ status: 'refund_failed', error: message });
+      toastError(message);
+    } finally {
+      setRetryingRefund(false);
+    }
+  };
+
+  const refundInfo = !showRefundInfo ? null : (
+    <div
+      className={`mt-2 rounded-lg border px-3 py-2 text-xs ${
+        refundStatus === 'refunded' || refundStatus === 'partially_refunded'
+          ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+          : refundStatus === 'refund_pending'
+            ? 'border-amber-200 bg-amber-50 text-amber-700'
+            : 'border-red-300 bg-red-100 text-red-800'
+      }`}
+    >
+      <div className="font-semibold">
+        {refundStatus === 'refunded'
+          ? (language === 'sk' ? '✓ Peniaze vrátené zákazníkovi' : '✓ Payment refunded')
+          : refundStatus === 'partially_refunded'
+            ? (language === 'sk' ? 'Platba čiastočne vrátená' : 'Payment partially refunded')
+            : refundStatus === 'refund_pending'
+              ? (language === 'sk' ? 'Refund odoslaný do GoPay — čaká na potvrdenie' : 'Refund sent to GoPay — awaiting confirmation')
+              : refundStatus === 'refund_failed'
+                ? (language === 'sk' ? '⚠ Refund ZLYHAL — peniaze neboli vrátené' : '⚠ Refund FAILED — payment not returned')
+                : (language === 'sk' ? 'Refund nebol iniciovaný' : 'Refund not initiated')}
+      </div>
+      {refundStatus === 'refund_failed' && refundError && (
+        <div className="mt-1 break-words">{refundError}</div>
+      )}
+      {canRetryRefund && (
+        <button
+          onClick={handleRetryRefund}
+          disabled={retryingRefund}
+          className="mt-2 rounded-md bg-red-600 px-3 py-1.5 font-semibold text-white hover:bg-red-700 disabled:opacity-50"
+        >
+          {retryingRefund
+            ? (language === 'sk' ? 'Odosielam…' : 'Submitting…')
+            : (language === 'sk' ? 'Vrátiť peniaze (GoPay)' : 'Refund payment (GoPay)')}
+        </button>
+      )}
+    </div>
+  );
 
   useEffect(() => {
     if (!isWoltDelivery) return;
@@ -205,6 +276,7 @@ export function OrderCard({
 
   useEffect(() => {
     setClientPanelOpen(false);
+    setRefundOverride(null);
   }, [order.id]);
 
   const tenantSlugForAreaCheck =
@@ -773,7 +845,7 @@ export function OrderCard({
         ? {
             label: language === 'sk' ? 'Odmietnuť' : 'Reject',
             onClick: () => onStatusUpdate(order.id, OrderStatus.CANCELED),
-            title: 'Odmietnuť objednávku (refund bude spracovaný neskôr)',
+            title: 'Odmietnuť objednávku (platba sa automaticky vráti cez GoPay)',
           }
         : showDesktopBackdoorCancel
           ? {
@@ -860,7 +932,7 @@ export function OrderCard({
           <button
             onClick={() => onStatusUpdate(order.id, OrderStatus.CANCELED)}
             className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 text-sm font-semibold"
-            title="Odmietnuť objednávku (refund bude spracovaný neskôr)"
+            title="Odmietnuť objednávku (platba sa automaticky vráti cez GoPay)"
           >
             ❌ Odmietnuť
           </button>
@@ -1012,7 +1084,7 @@ export function OrderCard({
                 <button
                   onClick={() => onStatusUpdate(order.id, OrderStatus.CANCELED)}
                   className="flex-1 min-w-[120px] px-3 py-2 bg-red-600 text-white rounded hover:bg-red-700 text-sm font-semibold"
-                  title="Odmietnuť objednávku (refund bude spracovaný neskôr)"
+                  title="Odmietnuť objednávku (platba sa automaticky vráti cez GoPay)"
                 >
                   ❌ Odmietnuť
                 </button>
@@ -1444,6 +1516,7 @@ export function OrderCard({
                     {language === 'sk'
                       ? 'Objednávka bola zrušená.'
                       : 'This order has been canceled.'}
+                    {refundInfo}
                   </div>
                 ) : (
                   <div
@@ -1549,6 +1622,7 @@ export function OrderCard({
                   {language === 'sk'
                     ? 'Objednávka bola zrušená.'
                     : 'This order has been canceled.'}
+                  {refundInfo}
                 </div>
               ) : (
                 <>

@@ -258,6 +258,21 @@ describe('OrderStatusService', () => {
     expect(mockPaymentsService.refundGopayPayment).toHaveBeenCalledWith('order-1');
   });
 
+  it('does not start another GoPay refund on cancel when refund was already initiated', async () => {
+    mockPrisma.order.findUnique.mockResolvedValue({
+      ...baseOrder,
+      status: OrderStatus.PAID,
+      paymentStatus: 'success',
+      paymentRef: 'gopay-payment-1',
+      refundStatus: 'refund_pending',
+      storyousOrderId: null,
+    });
+
+    await service.updateStatus('order-1', OrderStatus.CANCELED);
+
+    expect(mockPaymentsService.refundGopayPayment).not.toHaveBeenCalled();
+  });
+
   it('does not call Storyous status update on cancel when storyousOrderId is missing', async () => {
     mockPrisma.order.findUnique.mockResolvedValue({
       ...baseOrder,

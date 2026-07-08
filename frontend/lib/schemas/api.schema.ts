@@ -43,6 +43,9 @@ export const OrderSchema = z.object({
   address: z.record(z.string(), z.unknown()),
   storyousOrderId: z.string().nullable().optional(),
   storyousOrderState: z.string().nullable().optional(),
+  refundStatus: z.string().nullable().optional(),
+  refundedAt: z.union([z.string(), z.date()]).nullable().optional(),
+  refundError: z.string().nullable().optional(),
   items: z.array(z.unknown()).optional(),
 }).passthrough();
 

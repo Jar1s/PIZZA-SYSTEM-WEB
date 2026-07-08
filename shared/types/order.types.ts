@@ -27,7 +27,12 @@ export interface Order {
   // Payment
   paymentRef: string | null;
   paymentStatus: string | null;
-  
+
+  // Refund tracking (GoPay): refund_pending -> refunded | refund_failed
+  refundStatus?: string | null;
+  refundedAt?: Date | string | null;
+  refundError?: string | null;
+
   // Delivery
   deliveryId: string | null;
   delivery?: {

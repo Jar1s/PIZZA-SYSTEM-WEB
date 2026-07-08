@@ -1487,6 +1487,22 @@ export class OrdersService {
     }
   }
 
+  async updateRefundStatus(
+    orderId: string,
+    refundStatus: 'refund_pending' | 'refunded' | 'partially_refunded' | 'refund_failed',
+    refundError?: string | null,
+  ): Promise<void> {
+    await this.prisma.order.update({
+      where: { id: orderId },
+      data: {
+        refundStatus,
+        refundError: refundError ?? null,
+        refundedAt:
+          refundStatus === 'refunded' || refundStatus === 'partially_refunded' ? new Date() : null,
+      },
+    });
+  }
+
   async tryStartPaymentSession(orderId: string, lockRef: string): Promise<boolean> {
     const staleInitializingBefore = new Date(Date.now() - 10 * 60 * 1000);
     const result = await this.prisma.order.updateMany({
