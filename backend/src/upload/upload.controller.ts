@@ -27,6 +27,12 @@ const ALLOWED_IMAGE_TYPES = new Map([
   ['image/webp', '.webp'],
 ]);
 
+// UPLOADS_DIR must point at a persistent volume in production (see render.yaml
+// disk mount) — the default cwd/uploads is wiped on every deploy.
+function getUploadDir(): string {
+  return process.env.UPLOADS_DIR || join(process.cwd(), 'uploads');
+}
+
 function getSafeFilename(file: { originalname?: string; mimetype?: string }) {
   const mimetype = (file.mimetype || '').toLowerCase();
   const expectedExtension = ALLOWED_IMAGE_TYPES.get(mimetype);
@@ -53,8 +59,7 @@ export class UploadController {
   private readonly uploadDir: string;
 
   constructor() {
-    // Store uploads in backend/uploads directory (persistent on Render)
-    this.uploadDir = join(process.cwd(), 'uploads');
+    this.uploadDir = getUploadDir();
     if (!existsSync(this.uploadDir)) {
       mkdirSync(this.uploadDir, { recursive: true });
     }
@@ -81,7 +86,7 @@ export class UploadController {
     FileInterceptor('image', {
       storage: diskStorage({
         destination: (req, file, cb) => {
-          const uploadDir = join(process.cwd(), 'uploads');
+          const uploadDir = getUploadDir();
           if (!existsSync(uploadDir)) {
             mkdirSync(uploadDir, { recursive: true });
           }

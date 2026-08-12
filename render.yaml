@@ -13,11 +13,19 @@ services:
     buildCommand: cd backend && npm ci && npm run build && npm run prisma:deploy
     startCommand: cd backend && npm run start:prod
     healthCheckPath: /api/health
+    # Persistent volume for product-image uploads. Without it the filesystem is
+    # ephemeral and every deploy wipes backend/uploads.
+    disk:
+      name: uploads
+      mountPath: /var/data/uploads
+      sizeGB: 5
     envVars:
       - key: NODE_ENV
         value: production
       - key: PORT
         value: 10000
+      - key: UPLOADS_DIR
+        value: /var/data/uploads
       - key: DATABASE_URL
         sync: false
       - key: JWT_SECRET
