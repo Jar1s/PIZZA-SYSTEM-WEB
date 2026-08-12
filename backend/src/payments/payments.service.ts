@@ -1,4 +1,14 @@
-import { Injectable, BadRequestException, InternalServerErrorException, NotFoundException, Inject, forwardRef, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  InternalServerErrorException,
+  NotFoundException,
+  Inject,
+  forwardRef,
+  Logger,
+  OnModuleDestroy,
+  OnModuleInit,
+} from '@nestjs/common';
 import { AdyenService } from './adyen.service';
 import { GopayService } from './gopay.service';
 import { WepayService } from './wepay.service';
@@ -11,8 +21,23 @@ import { TelegramNotificationsService } from '../notifications/telegram-notifica
 import * as crypto from 'crypto';
 
 @Injectable()
-export class PaymentsService {
+export class PaymentsService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(PaymentsService.name);
+  private pendingGopayReconcileTimer: NodeJS.Timeout | null = null;
+  private pendingGopayReconcileRunning = false;
+
+  private readonly pendingGopayReconcileIntervalMs = this.getPositiveIntegerEnv(
+    'GOPAY_RECONCILE_INTERVAL_MS',
+    2 * 60 * 1000,
+  );
+  private readonly pendingGopayReconcileMinAgeMs = this.getPositiveIntegerEnv(
+    'GOPAY_RECONCILE_MIN_AGE_MS',
+    2 * 60 * 1000,
+  );
+  private readonly pendingGopayReconcileLimit = this.getPositiveIntegerEnv(
+    'GOPAY_RECONCILE_LIMIT',
+    25,
+  );
 
   constructor(
     private adyenService: AdyenService,
@@ -27,6 +52,81 @@ export class PaymentsService {
     private deliveryService: DeliveryService,
     private telegramNotifications: TelegramNotificationsService,
   ) {}
+
+  onModuleInit(): void {
+    if (process.env.NODE_ENV === 'test' || process.env.GOPAY_RECONCILE_DISABLED === 'true') {
+      return;
+    }
+
+    this.pendingGopayReconcileTimer = setInterval(() => {
+      this.reconcilePendingGopayPayments().catch((error: any) => {
+        this.logger.warn('GoPay pending payment reconcile worker failed', {
+          error: error?.message || String(error),
+        });
+      });
+    }, this.pendingGopayReconcileIntervalMs);
+
+    this.logger.log('GoPay pending payment reconcile worker started', {
+      intervalMs: this.pendingGopayReconcileIntervalMs,
+      minAgeMs: this.pendingGopayReconcileMinAgeMs,
+      limit: this.pendingGopayReconcileLimit,
+    });
+  }
+
+  onModuleDestroy(): void {
+    if (this.pendingGopayReconcileTimer) {
+      clearInterval(this.pendingGopayReconcileTimer);
+      this.pendingGopayReconcileTimer = null;
+    }
+  }
+
+  private getPositiveIntegerEnv(name: string, fallback: number): number {
+    const parsed = Number.parseInt(process.env[name] || '', 10);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+  }
+
+  private async reconcilePendingGopayPayments(): Promise<void> {
+    if (this.pendingGopayReconcileRunning) {
+      this.logger.debug('Skipping GoPay pending payment reconcile because previous run is still active');
+      return;
+    }
+
+    this.pendingGopayReconcileRunning = true;
+
+    try {
+      const olderThan = new Date(Date.now() - this.pendingGopayReconcileMinAgeMs);
+      const orders = await this.ordersService.findStalePendingGopayPaymentOrders({
+        olderThan,
+        limit: this.pendingGopayReconcileLimit,
+      });
+
+      for (const order of orders) {
+        const paymentRef = String(order.paymentRef || '').trim();
+        if (!paymentRef) {
+          continue;
+        }
+
+        try {
+          const result = await this.syncGopayPaymentById(paymentRef);
+          if (result.state === 'PAID') {
+            this.logger.warn('Recovered paid GoPay order from pending-payment reconcile', {
+              orderId: result.orderId,
+              tenantSlug: result.tenantSlug,
+              paymentRef,
+            });
+          }
+        } catch (error: any) {
+          this.logger.warn('Failed to reconcile pending GoPay payment', {
+            orderId: order.id,
+            paymentRef,
+            error: error?.message || String(error),
+          });
+        }
+      }
+    } finally {
+      this.pendingGopayReconcileRunning = false;
+    }
+  }
 
   private async notifyDeliveryCreationFailure(
     order: any,

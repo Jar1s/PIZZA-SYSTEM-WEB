@@ -99,6 +99,8 @@ type StoryousSyncOrder = Prisma.OrderGetPayload<{
   };
 }>;
 
+type PendingGopayPaymentOrder = Pick<PrismaOrder, 'id' | 'tenantId' | 'paymentRef'>;
+
 @Injectable()
 export class OrdersService {
   private readonly logger = new Logger(OrdersService.name);
@@ -1762,6 +1764,38 @@ export class OrdersService {
     });
 
     return order ? (order as unknown as Order) : null;
+  }
+
+  async findStalePendingGopayPaymentOrders(options: {
+    olderThan: Date;
+    limit: number;
+  }): Promise<PendingGopayPaymentOrder[]> {
+    const limit = Math.min(Math.max(Math.floor(options.limit || 25), 1), 100);
+
+    return this.prisma.order.findMany({
+      where: {
+        status: OrderStatus.PENDING,
+        paymentStatus: 'pending',
+        updatedAt: { lt: options.olderThan },
+        paymentRef: { not: null },
+        tenant: {
+          paymentProvider: 'gopay',
+        },
+        NOT: [
+          { paymentRef: { startsWith: 'cod:' } },
+          { paymentRef: { startsWith: 'initializing:' } },
+        ],
+      },
+      select: {
+        id: true,
+        tenantId: true,
+        paymentRef: true,
+      },
+      orderBy: {
+        updatedAt: 'asc',
+      },
+      take: limit,
+    });
   }
 
   /**

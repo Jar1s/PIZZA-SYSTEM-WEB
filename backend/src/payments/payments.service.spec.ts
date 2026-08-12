@@ -44,6 +44,7 @@ describe('PaymentsService', () => {
   const mockOrdersService = {
     getOrderById: jest.fn(),
     getOrderByPaymentRef: jest.fn(),
+    findStalePendingGopayPaymentOrders: jest.fn(),
     updatePaymentRef: jest.fn(),
     updateRefundStatus: jest.fn(),
     tryStartPaymentSession: jest.fn(),
@@ -119,6 +120,7 @@ describe('PaymentsService', () => {
     mockOrdersService.tryStartPaymentSession.mockResolvedValue(true);
     mockOrdersService.clearPaymentSessionLock.mockResolvedValue(undefined);
     mockTelegramNotifications.notifyError.mockResolvedValue(undefined);
+    mockOrdersService.findStalePendingGopayPaymentOrders.mockResolvedValue([]);
   });
 
   describe('createPaymentSession', () => {
@@ -1109,6 +1111,51 @@ describe('PaymentsService', () => {
       await expect(service.syncGopayPaymentById('missing-payment')).rejects.toThrow(
         'Order for GoPay payment missing-payment not found',
       );
+    });
+
+    it('reconciles stale pending GoPay payments in the background worker', async () => {
+      const order = {
+        id: 'order-123',
+        tenantId: 'tenant-123',
+        status: OrderStatus.PENDING,
+        paymentRef: 'gopay-123',
+        paymentStatus: 'pending',
+      };
+      const paymentData = {
+        id: 'gopay-123',
+        order_number: 'order-123',
+        state: 'PAID',
+      };
+
+      mockOrdersService.findStalePendingGopayPaymentOrders.mockResolvedValue([
+        { id: 'order-123', tenantId: 'tenant-123', paymentRef: 'gopay-123' },
+      ]);
+      mockOrdersService.getOrderByPaymentRef.mockResolvedValue(order);
+      mockTenantsService.getTenantById.mockResolvedValue(gopayTenant);
+      mockGopayService.getPaymentStatus.mockResolvedValue(paymentData);
+      mockGopayService.parseWebhook.mockReturnValue({
+        eventType: 'PAID',
+        success: true,
+        paymentRef: 'gopay-123',
+        merchantReference: 'order-123',
+      });
+      mockOrdersService.getOrderById.mockResolvedValue(order);
+      mockOrdersService.updatePaymentRef.mockResolvedValue(undefined);
+      mockOrderStatusService.updateStatus.mockResolvedValue(undefined);
+      mockDeliveryService.createDeliveryForOrder.mockResolvedValue(undefined);
+
+      await (service as any).reconcilePendingGopayPayments();
+
+      expect(mockOrdersService.findStalePendingGopayPaymentOrders).toHaveBeenCalledWith(
+        expect.objectContaining({
+          olderThan: expect.any(Date),
+          limit: expect.any(Number),
+        }),
+      );
+      expect(mockGopayService.getPaymentStatus).toHaveBeenCalledWith('gopay-123', gopayTenant);
+      expect(mockOrdersService.updatePaymentRef).toHaveBeenCalledWith('order-123', 'gopay-123', 'success');
+      expect(mockOrderStatusService.updateStatus).toHaveBeenCalledWith('order-123', OrderStatus.PAID);
+      expect(mockDeliveryService.createDeliveryForOrder).toHaveBeenCalledWith('order-123');
     });
   });
 });

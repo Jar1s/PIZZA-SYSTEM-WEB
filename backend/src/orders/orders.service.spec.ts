@@ -1188,4 +1188,46 @@ describe('OrdersService', () => {
       );
     });
   });
+
+  describe('findStalePendingGopayPaymentOrders', () => {
+    it('finds stale pending GoPay card payments only', async () => {
+      const olderThan = new Date('2026-01-01T10:00:00.000Z');
+      const pendingOrders = [
+        { id: 'order-1', tenantId: 'tenant-1', paymentRef: 'gopay-1' },
+      ];
+
+      mockPrismaService.order.findMany.mockResolvedValue(pendingOrders);
+
+      const result = await service.findStalePendingGopayPaymentOrders({
+        olderThan,
+        limit: 250,
+      });
+
+      expect(result).toBe(pendingOrders);
+      expect(mockPrismaService.order.findMany).toHaveBeenCalledWith({
+        where: {
+          status: OrderStatus.PENDING,
+          paymentStatus: 'pending',
+          updatedAt: { lt: olderThan },
+          paymentRef: { not: null },
+          tenant: {
+            paymentProvider: 'gopay',
+          },
+          NOT: [
+            { paymentRef: { startsWith: 'cod:' } },
+            { paymentRef: { startsWith: 'initializing:' } },
+          ],
+        },
+        select: {
+          id: true,
+          tenantId: true,
+          paymentRef: true,
+        },
+        orderBy: {
+          updatedAt: 'asc',
+        },
+        take: 100,
+      });
+    });
+  });
 });
