@@ -7,7 +7,7 @@
   },
   "scripts": {
     "build": "npm --prefix frontend run build",
-    "vercel-build": "npm --prefix frontend install && npm --prefix frontend run build && rm -rf .next public && cp -R frontend/.next .next && cp -R frontend/public public"
+    "vercel-build": "rm -rf frontend/shared && cp -R shared frontend/shared && npm --prefix frontend install && npm --prefix frontend run build && rm -rf .next public && cp -R frontend/.next .next && cp -R frontend/public public"
   },
   "dependencies": {
     "next": "14.2.15",
