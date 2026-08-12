@@ -28,15 +28,20 @@ export default function OAuthCallbackPage() {
     return null;
   };
 
-  // Helper function to delete cookie
+  // Helper function to delete cookie. The OAuth handoff cookies are set with a
+  // dot-prefixed apex domain, so expire both the host-only and domain variants —
+  // deleting without the domain attribute would leave the domain cookie alive.
   const deleteCookie = (name: string) => {
-    if (typeof document !== 'undefined') {
-      document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
-    }
+    if (typeof document === 'undefined') return;
+    document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
+    const apex = window.location.hostname.replace(/^www\./, '');
+    document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=.${apex};`;
   };
 
-  // Extract token processing to separate function
-  const processOAuthTokens = useCallback((accessToken: string, userDataStr: string, refreshToken: string | null, redirect: string) => {
+  // Extract token processing to separate function.
+  // Note: the refresh token is delivered as an HttpOnly `refresh_token` cookie
+  // (unreadable from JS by design) and consumed directly by POST /refresh.
+  const processOAuthTokens = useCallback((accessToken: string, userDataStr: string, redirect: string) => {
     if (accessToken && userDataStr) {
       try {
         // Parse user data from cookie
@@ -46,16 +51,12 @@ export default function OAuthCallbackPage() {
 
         // Store tokens in localStorage
         localStorage.setItem('customer_auth_token', accessToken);
-        if (refreshToken) {
-          localStorage.setItem('customer_auth_refresh_token', refreshToken);
-        }
         if (userData) {
           localStorage.setItem('customer_auth_user', JSON.stringify(userData));
         }
 
         // Clear temporary cookies
         deleteCookie('oauth_access_token');
-        deleteCookie('oauth_refresh_token');
         deleteCookie('oauth_user_data');
 
         console.log('OAuth callback - tokens stored, redirecting to:', redirect);
@@ -125,7 +126,6 @@ export default function OAuthCallbackPage() {
         console.error('Error processing OAuth callback:', error);
         // Clear cookies on error
         deleteCookie('oauth_access_token');
-        deleteCookie('oauth_refresh_token');
         deleteCookie('oauth_user_data');
         // Redirect to login on error
         window.location.href = '/auth/login?error=oauth_callback_failed&tenant=pornopizza';
@@ -253,20 +253,18 @@ export default function OAuthCallbackPage() {
       console.log('OAuth callback - all cookies:', document.cookie);
       
       const accessToken = getCookie('oauth_access_token');
-      const refreshToken = getCookie('oauth_refresh_token');
       const userDataStr = getCookie('oauth_user_data');
-      
+
       console.log('OAuth callback - cookie check results:', {
         accessToken: !!accessToken,
-        refreshToken: !!refreshToken,
         userDataStr: !!userDataStr,
         accessTokenLength: accessToken?.length,
         userDataStrLength: userDataStr?.length,
       });
-      
+
       if (accessToken && userDataStr) {
         console.log('OAuth callback - found tokens in cookies, processing...');
-        processOAuthTokens(accessToken, userDataStr, refreshToken, redirect);
+        processOAuthTokens(accessToken, userDataStr, redirect);
       } else {
         console.error('OAuth callback - no tokens found in URL or cookies', {
           hasAccessToken: !!accessToken,
@@ -281,7 +279,7 @@ export default function OAuthCallbackPage() {
           const retryUserDataStr = getCookie('oauth_user_data');
           if (retryAccessToken && retryUserDataStr) {
             console.log('OAuth callback - found tokens on retry, processing...');
-            processOAuthTokens(retryAccessToken, retryUserDataStr, refreshToken, redirect);
+            processOAuthTokens(retryAccessToken, retryUserDataStr, redirect);
           } else {
             console.error('OAuth callback - still no tokens after retry, redirecting to login');
             window.location.href = '/auth/login?error=no_tokens&tenant=pornopizza';
