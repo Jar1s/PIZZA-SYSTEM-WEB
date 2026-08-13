@@ -57,17 +57,6 @@ export function HomePageClient({ products, tenant }: HomePageClientProps) {
     };
   }, []);
 
-  // Debug: Log prices for specific products when component mounts
-  useEffect(() => {
-    const productsToDebug = ['Basil Pesto Premium', 'Honey Chilli', 'Pollo Crema', 'Prosciutto Crudo Premium', 'Quattro Formaggi', 'Quattro Formaggi Bianco', 'Tonno', 'Vegetariana Premium', 'Hot Missionary'];
-    productsToDebug.forEach(name => {
-      const p = products.find(pr => pr.name === name);
-      if (p) {
-        console.log(`[HomePageClient] ${p.name}: ${p.priceCents} cents = €${(p.priceCents / 100).toFixed(2)}`);
-      }
-    });
-  }, [products]);
-
   // Group products by category (memoized)
   const productsByCategory = useMemo(() => {
     const grouped = products.reduce((acc, product) => {
@@ -134,15 +123,6 @@ export function HomePageClient({ products, tenant }: HomePageClientProps) {
   const orderedCategories = useMemo(() => {
     return categoryOrder.filter(cat => productsByCategory[cat]?.length > 0);
   }, [productsByCategory, categoryOrder]);
-
-  // Debug: Log category counts and SOUPS products
-  useEffect(() => {
-    console.log('[HomePageClient] Category counts:', categoryCounts);
-    console.log('[HomePageClient] Products by category:', Object.keys(productsByCategory).map(cat => `${cat}: ${productsByCategory[cat]?.length || 0}`));
-    const soups = products.filter(p => p.category === 'SOUPS');
-    console.log('[HomePageClient] SOUPS products:', soups.map(p => `${p.name} (active: ${p.isActive})`));
-    console.log('[HomePageClient] Will show SOUPS category?', categoryCounts.SOUPS > 0);
-  }, [products, categoryCounts, productsByCategory]);
 
   // Per-tenant subcategory labels (editable in admin)
   const subCategoryLabels = useMemo(() => {

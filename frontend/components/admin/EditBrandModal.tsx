@@ -352,19 +352,9 @@ export function EditBrandModal({
       }
       
       updateData.theme = updatedTheme;
-      
-      console.log('[EditBrandModal] Saving tenant data:', {
-        slug: tenant.subdomain || tenant.slug,
-        deliveryConfig: updateData.deliveryConfig,
-        analyticsConfig: updatedTheme.analyticsConfig,
-      });
-      
-      const updatedTenant = await updateTenant(tenant.subdomain || tenant.slug, updateData);
-      
-      console.log('[EditBrandModal] Tenant updated successfully:', {
-        deliveryConfig: updatedTenant.deliveryConfig,
-      });
-      
+
+      await updateTenant(tenant.subdomain || tenant.slug, updateData);
+
       alert('Nastavenia boli úspešne uložené!');
       onUpdate();
       onClose();

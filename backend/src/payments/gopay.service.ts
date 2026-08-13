@@ -126,7 +126,7 @@ export class GopayService {
       const tokenData = await tokenResponse.json();
       
       if (!tokenData.access_token) {
-        this.logger.error('GoPay OAuth2 response missing access_token', tokenData);
+        this.logger.error(`GoPay OAuth2 response missing access_token (status ${tokenResponse.status})${tokenData?.error ? `: ${tokenData.error}` : ''}`);
         throw new Error('GoPay OAuth2 response missing access token');
       }
       
@@ -365,7 +365,7 @@ export class GopayService {
       const tokenData = await tokenResponse.json();
       
       if (!tokenData.access_token) {
-        this.logger.error('GoPay OAuth2 response missing access_token for refund', tokenData);
+        this.logger.error(`GoPay OAuth2 response missing access_token for refund (status ${tokenResponse.status})${tokenData?.error ? `: ${tokenData.error}` : ''}`);
         throw new Error('GoPay OAuth2 response missing access token for refund');
       }
       

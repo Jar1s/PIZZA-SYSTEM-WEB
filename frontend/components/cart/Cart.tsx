@@ -58,11 +58,6 @@ export function Cart({ tenant = null, isDark: isDarkOverride }: CartProps) {
     return manualMaintenanceMode || autoMaintenanceMode;
   }, [effectiveTenant]);
 
-  // Debug logging
-  useEffect(() => {
-    console.log('Cart component rendered', { isOpen, itemsCount: items.length });
-  }, [isOpen, items.length]);
-
   // Handle ESC key to close cart
   useEffect(() => {
     if (!isOpen) return;
@@ -113,17 +108,13 @@ export function Cart({ tenant = null, isDark: isDarkOverride }: CartProps) {
       return;
     }
     
-    console.log('🛒 Checkout button clicked', { itemsCount: items.length, tenantSlug: getTenantSlug() });
-    
     if (items.length === 0) {
-      console.warn('🛒 Cannot checkout: cart is empty');
       return;
     }
-    
+
     const tenantSlug = getTenantSlug();
     const checkoutUrl = `/checkout?tenant=${tenantSlug}`;
-    console.log('🛒 Navigating to checkout:', checkoutUrl);
-    
+
     // Close cart first
     closeCart();
     
@@ -153,14 +144,10 @@ export function Cart({ tenant = null, isDark: isDarkOverride }: CartProps) {
     window.scrollTo({ top: offsetPosition, behavior: 'smooth' });
   };
   
-  console.log('🛒 Cart render check', { isOpen, itemsCount: items.length });
-  
   if (!isOpen) {
     return null;
   }
-  
-  console.log('🛒 Rendering cart UI (isOpen=true)');
-  
+
   return (
     <div
         style={{
@@ -178,7 +165,6 @@ export function Cart({ tenant = null, isDark: isDarkOverride }: CartProps) {
         onClick={(e) => {
           e.preventDefault();
           e.stopPropagation();
-          console.log('🛒 Backdrop clicked, closing cart');
           closeCart();
         }}
         style={{
@@ -211,8 +197,6 @@ export function Cart({ tenant = null, isDark: isDarkOverride }: CartProps) {
           pointerEvents: 'auto',
           overflow: 'hidden',
         }}
-        onAnimationStart={() => console.log('🛒 Cart animation started')}
-        onAnimationComplete={() => console.log('🛒 Cart animation completed')}
       >
         <div className="flex items-start justify-between gap-4 mb-6">
           <div>

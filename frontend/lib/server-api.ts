@@ -36,7 +36,6 @@ function shouldSkipApiFetch(): boolean {
   // During build/export with localhost API, skip fetch to avoid 404 errors
   // But in production runtime, we always try to fetch (even from localhost)
   if (isLocalhost && isBuildPhase) {
-    console.log('[server-api] Skipping API fetch during build/export phase (localhost API)');
     return true;
   }
   
@@ -62,7 +61,6 @@ function getFallbackTenant(slug: string): Tenant {
 export async function getTenantServer(slug: string): Promise<Tenant | null> {
   // Skip API fetch during build/export if backend is not available
   if (shouldSkipApiFetch()) {
-    console.log(`[getTenantServer] Using fallback tenant for: ${slug}`);
     return withTenantThemeDefaults(getFallbackTenant(slug));
   }
   
@@ -75,13 +73,7 @@ export async function getTenantServer(slug: string): Promise<Tenant | null> {
       const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s timeout
       
       const url = `${API_URL}/api/tenants/${slug}`;
-      if (attempt === 1) {
-        console.log(`[getTenantServer] Fetching from: ${url}`);
-        console.log(`[getTenantServer] API_URL: ${API_URL}`);
-      } else {
-        console.log(`[getTenantServer] Retry attempt ${attempt}/${maxRetries} - Fetching from: ${url}`);
-      }
-      
+
       const res = await fetch(url, {
         cache: 'no-store',
         signal: controller.signal,
@@ -100,14 +92,10 @@ export async function getTenantServer(slug: string): Promise<Tenant | null> {
         if (errorText.includes('FUNCTION_INVOCATION_FAILED')) {
           console.error('[getTenantServer] Backend function failed - check backend logs on Render.com');
         }
-        
-        // Log the full error for debugging
-        console.error(`[getTenantServer] Full error response:`, errorText);
-        
+
         // Retry on server errors (5xx) or 500 specifically
         if (res.status >= 500 && attempt < maxRetries) {
           const delay = retryDelay * attempt; // Exponential backoff: 1s, 2s, 3s
-          console.log(`[getTenantServer] Server error (${res.status}), retrying in ${delay}ms...`);
           await new Promise(resolve => setTimeout(resolve, delay));
           continue;
         }
@@ -118,18 +106,14 @@ export async function getTenantServer(slug: string): Promise<Tenant | null> {
       }
       
       const data = await res.json();
-      console.log(`[getTenantServer] Received tenant data:`, { name: data.name, slug: data.slug, hasTheme: !!data.theme });
-      
       const validated = safeParse(TenantSchema, data, data as any);
       const result = withTenantThemeDefaults(validated);
-      
+
       if (!result) {
         console.error('[getTenantServer] Failed to normalize tenant data');
         return null;
       }
-      
-      console.log(`[getTenantServer] Validated tenant:`, { name: result.name, slug: result.slug });
-      
+
       return result;
     } catch (error: any) {
       console.error(`[getTenantServer] Attempt ${attempt} failed:`, error.message || error);
@@ -137,7 +121,6 @@ export async function getTenantServer(slug: string): Promise<Tenant | null> {
       // Retry on timeout or network errors
       if ((error.name === 'AbortError' || error.message?.includes('fetch failed')) && attempt < maxRetries) {
         const delay = retryDelay * attempt; // Exponential backoff: 1s, 2s, 3s
-        console.log(`[getTenantServer] Network/timeout error, retrying in ${delay}ms...`);
         await new Promise(resolve => setTimeout(resolve, delay));
         continue;
       }
@@ -173,7 +156,6 @@ export async function getTenantServer(slug: string): Promise<Tenant | null> {
 export async function getProductsServer(tenantSlug: string): Promise<Product[]> {
   // Skip API fetch during build/export if backend is not available
   if (shouldSkipApiFetch()) {
-    console.log(`[getProductsServer] Skipping API fetch during build/export - returning empty array`);
     return [];
   }
   
@@ -188,13 +170,7 @@ export async function getProductsServer(tenantSlug: string): Promise<Product[]> 
       // Use no-store and add timestamp to prevent caching
       const timestamp = Date.now();
       const url = `${API_URL}/api/${tenantSlug}/products?t=${timestamp}`;
-      
-      if (attempt === 1) {
-        console.log(`[getProductsServer] Fetching from: ${url}`);
-      } else {
-        console.log(`[getProductsServer] Retry attempt ${attempt}/${maxRetries} - Fetching from: ${url}`);
-      }
-      
+
       const res = await fetch(url, {
         cache: 'no-store',
         signal: controller.signal,
@@ -215,7 +191,6 @@ export async function getProductsServer(tenantSlug: string): Promise<Product[]> 
         // Retry on server errors (5xx)
         if (res.status >= 500 && attempt < maxRetries) {
           const delay = retryDelay * attempt; // Exponential backoff: 1s, 2s, 3s
-          console.log(`[getProductsServer] Server error (${res.status}), retrying in ${delay}ms...`);
           await new Promise(resolve => setTimeout(resolve, delay));
           continue;
         }
@@ -230,7 +205,6 @@ export async function getProductsServer(tenantSlug: string): Promise<Product[]> 
       // Validate products array
       if (Array.isArray(data)) {
         const validated = data.map(product => safeParse(ProductSchema, product, product as any)) as Product[];
-        console.log(`[getProductsServer] Loaded ${validated.length} products`);
         return validated;
       }
       
@@ -242,7 +216,6 @@ export async function getProductsServer(tenantSlug: string): Promise<Product[]> 
       // Retry on timeout or network errors
       if ((error.name === 'AbortError' || error.message?.includes('fetch failed')) && attempt < maxRetries) {
         const delay = retryDelay * attempt; // Exponential backoff: 1s, 2s, 3s
-        console.log(`[getProductsServer] Network/timeout error, retrying in ${delay}ms...`);
         await new Promise(resolve => setTimeout(resolve, delay));
         continue;
       }

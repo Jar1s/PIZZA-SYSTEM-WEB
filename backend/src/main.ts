@@ -60,18 +60,6 @@ async function bootstrap() {
         message: 'Backend API is running',
         version: '1.0.0',
         timestamp: new Date().toISOString(),
-        endpoints: {
-          health: '/api/health',
-          routes: '/api/routes',
-          tenants: '/api/tenants',
-          products: '/api/:tenantSlug/products',
-          orders: '/api/:tenantSlug/orders',
-          auth: '/api/auth',
-          customer: '/api/customer',
-          deliveryZones: '/api/delivery-zones/:tenantSlug',
-        },
-        note: 'All endpoints are prefixed with /api',
-        documentation: 'See /api/routes for complete list of all routes',
       });
     }
     next();

@@ -43,12 +43,9 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
         const token = localStorage.getItem('customer_auth_token');
         const storedUser = localStorage.getItem('customer_auth_user');
 
-        console.log('CustomerAuthContext - loadUser called, token:', !!token, 'storedUser:', !!storedUser);
-
         if (token && storedUser) {
           try {
             const newUser = JSON.parse(storedUser);
-            console.log('CustomerAuthContext - loaded user from localStorage:', newUser.email);
             // Check if user changed (for cart clearing) - compare with current state
             setUser((prevUser) => {
               if (prevUser && prevUser.id !== newUser.id) {
@@ -69,7 +66,6 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
             });
           }
         } else {
-          console.log('CustomerAuthContext - no token or user in localStorage');
           // User logged out - clear cart
           setUser((prevUser) => {
             if (prevUser) {
@@ -95,7 +91,6 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
       const token = localStorage.getItem('customer_auth_token');
       const storedUser = localStorage.getItem('customer_auth_user');
       if (token && storedUser && !user) {
-        console.log('CustomerAuthContext - delayed load: user found but not loaded, reloading...');
         loadUser();
       }
     }, 200);
@@ -103,14 +98,12 @@ export function CustomerAuthProvider({ children }: { children: ReactNode }) {
     // Listen for storage changes (when OAuth callback updates localStorage)
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === 'customer_auth_user' || e.key === 'customer_auth_token') {
-        console.log('CustomerAuthContext - storage changed, reloading user');
         loadUser();
       }
     };
 
     // Listen for custom event (dispatched by OAuth callback in same window)
     const handleCustomStorage = () => {
-      console.log('CustomerAuthContext - custom storage event, reloading user');
       // Small delay to ensure localStorage is written
       setTimeout(() => {
         loadUser();

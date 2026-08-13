@@ -61,8 +61,6 @@ export default function CustomersPage() {
       const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
       const token = localStorage.getItem('auth_token');
 
-      console.log('Fetching customers - API_URL:', API_URL, 'Has token:', !!token, 'User role:', user?.role);
-
       if (!token) {
         throw new Error('Not authenticated - Please log in again');
       }

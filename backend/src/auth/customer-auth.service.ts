@@ -243,7 +243,7 @@ export class CustomerAuthService {
       });
       return !!user;
     } catch (error: unknown) {
-      console.error('[CustomerAuthService] Error checking email existence:', error);
+      this.logger.error('Error checking email existence', error instanceof Error ? error.stack : String(error));
       // Return false on error to allow registration flow to continue
       // This prevents blocking users if there's a database issue
       return false;

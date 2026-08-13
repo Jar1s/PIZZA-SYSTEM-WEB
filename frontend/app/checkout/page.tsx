@@ -271,14 +271,6 @@ export default function CheckoutPage() {
         const selectedAddress = addresses.find(addr => addr.id === selectedAddressId);
         if (selectedAddress) {
           const resolvedAddress = await ensureSavedAddressCoordinates(selectedAddress);
-          console.log('[Checkout] Recalculating delivery fee for selected address:', {
-            addressId: selectedAddressId,
-            street: resolvedAddress.street,
-            city: resolvedAddress.city,
-            postalCode: resolvedAddress.postalCode,
-            userId: user?.id,
-            userEmail: user?.email,
-          });
           address = {
             street: resolvedAddress.street,
             postalCode: resolvedAddress.postalCode,
@@ -392,7 +384,6 @@ export default function CheckoutPage() {
       
       if (validatedReturnUrl && !validatedReturnUrl.includes('/checkout')) {
         // User should be redirected to account or other page (not checkout)
-        console.log('[Checkout] Redirecting from OAuth to:', validatedReturnUrl);
         window.location.replace(validatedReturnUrl);
         return;
       }
@@ -400,7 +391,6 @@ export default function CheckoutPage() {
     } else if (oauthReturnUrl && !fromOAuth) {
       // User has oauth_returnUrl but didn't come from OAuth redirect
       // This is likely a stale value from previous session - clear it
-      console.log('[Checkout] Clearing stale oauth_returnUrl (user not from OAuth redirect)');
       sessionStorage.removeItem('oauth_returnUrl');
       sessionStorage.removeItem('oauth_redirect');
     }
@@ -643,7 +633,6 @@ export default function CheckoutPage() {
 
       if (res.status === 401) {
         // Token expired - try to refresh
-        console.log('[Checkout] 401 Unauthorized when fetching profile - attempting token refresh');
         const refreshed = await tryRefreshToken();
         
         if (refreshed) {
@@ -675,9 +664,8 @@ export default function CheckoutPage() {
             }
           }
         }
-        
+
         // Refresh failed - clear auth
-        console.log('[Checkout] Token refresh failed, clearing auth');
         localStorage.removeItem('customer_auth_token');
         localStorage.removeItem('customer_auth_refresh_token');
         localStorage.removeItem('customer_auth_user');
@@ -710,12 +698,10 @@ export default function CheckoutPage() {
 
   const fetchAddresses = useCallback(async () => {
     try {
-      console.log('[Checkout] fetchAddresses called');
       const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
       const token = localStorage.getItem('customer_auth_token');
-      
+
       if (!token) {
-        console.log('[Checkout] No token, skipping address fetch');
         setLoadingAddresses(false);
         return;
       }
@@ -730,7 +716,6 @@ export default function CheckoutPage() {
 
       if (res.status === 401) {
         // Token expired - try to refresh
-        console.log('[Checkout] 401 Unauthorized - attempting token refresh');
         const refreshed = await tryRefreshToken();
         
         if (refreshed) {
@@ -748,10 +733,6 @@ export default function CheckoutPage() {
             if (retryRes.ok) {
               const data = await retryRes.json();
               const fetchedAddresses = data.addresses || [];
-              console.log('[Checkout] Addresses fetched after refresh:', {
-                count: fetchedAddresses.length,
-                addresses: fetchedAddresses.map((a: Address) => ({ id: a.id, street: a.street, isPrimary: a.isPrimary })),
-              });
               setAddresses(fetchedAddresses);
               
               setSelectedAddressId((currentId) => {
@@ -771,9 +752,8 @@ export default function CheckoutPage() {
             }
           }
         }
-        
+
         // Refresh failed - clear auth and allow guest checkout
-        console.log('[Checkout] Token refresh failed, clearing auth');
         localStorage.removeItem('customer_auth_token');
         localStorage.removeItem('customer_auth_refresh_token');
         localStorage.removeItem('customer_auth_user');
@@ -789,10 +769,6 @@ export default function CheckoutPage() {
       if (res.ok) {
         const data = await res.json();
         const fetchedAddresses = data.addresses || [];
-        console.log('[Checkout] Addresses fetched:', {
-          count: fetchedAddresses.length,
-          addresses: fetchedAddresses.map((a: Address) => ({ id: a.id, street: a.street, isPrimary: a.isPrimary })),
-        });
         setAddresses(fetchedAddresses);
         
         // Only set default address if no address is currently selected
@@ -800,17 +776,14 @@ export default function CheckoutPage() {
         setSelectedAddressId((currentId) => {
           // If an address is already selected and it still exists, keep it
           if (currentId && fetchedAddresses.find((addr: Address) => addr.id === currentId)) {
-            console.log('[Checkout] Keeping selected address:', currentId);
             return currentId;
           }
-          
+
           // Otherwise, select primary address or first address
           const primaryAddress = fetchedAddresses.find((addr: Address) => addr.isPrimary);
           if (primaryAddress) {
-            console.log('[Checkout] Selecting primary address:', primaryAddress.id);
             return primaryAddress.id;
           } else if (fetchedAddresses.length > 0) {
-            console.log('[Checkout] Selecting first address:', fetchedAddresses[0].id);
             return fetchedAddresses[0].id;
           }
           return null;
@@ -948,8 +921,6 @@ export default function CheckoutPage() {
           // If geocoding says it's not in Bratislava, but simple validation passed,
           // it might be a geocoding API issue - log warning but allow to continue
           console.warn('Geocoding validation mismatch:', {
-            city,
-            postalCode,
             geocodingMessage: geocodingResult.message,
             simpleValidationPassed: simpleValidation.isValid,
           });
@@ -1399,7 +1370,6 @@ export default function CheckoutPage() {
       }
       
       // If no redirect URL, go to success page
-      console.log('[Checkout] Order created successfully, redirecting to success page:', { orderId: order.id });
       clearCart();
       redirected = true;
       router.push(`/order/success?orderId=${order.id}&tenant=${tenantSlug}`);
@@ -1427,7 +1397,6 @@ export default function CheckoutPage() {
   // Check maintenance mode - redirect to home if maintenance is active
   useEffect(() => {
     if (maintenanceMode) {
-      console.log('Checkout: Maintenance mode active, redirecting to home');
       router.push(`/?tenant=${tenantSlug}`);
     }
   }, [maintenanceMode, router, tenantSlug]);
@@ -1931,15 +1900,6 @@ export default function CheckoutPage() {
                       <label
                         key={address.id}
                         onClick={() => {
-                          console.log('[Checkout] Address clicked:', {
-                            addressId: address.id,
-                            street: address.street,
-                            city: address.city,
-                            postalCode: address.postalCode,
-                            previousAddressId: selectedAddressId,
-                            userId: user?.id,
-                            userEmail: user?.email,
-                          });
                           setSelectedAddressId(address.id);
                         }}
                         className={`flex items-start rounded-2xl p-4 cursor-pointer transition-all border ${
@@ -1962,15 +1922,6 @@ export default function CheckoutPage() {
                           value={address.id}
                           checked={selectedAddressId === address.id}
                           onChange={() => {
-                            console.log('[Checkout] Address changed via radio:', {
-                              addressId: address.id,
-                              street: address.street,
-                              city: address.city,
-                              postalCode: address.postalCode,
-                              previousAddressId: selectedAddressId,
-                              userId: user?.id,
-                              userEmail: user?.email,
-                            });
                             setSelectedAddressId(address.id);
                           }}
                           onClick={(e) => {

@@ -233,7 +233,6 @@ export function Header({ tenant }: HeaderProps) {
             onClick={(event) => {
               event.preventDefault();
               event.stopPropagation();
-              console.log('🛒 Cart button clicked, calling openCart()');
               openCart();
             }}
             onMouseDown={(e) => {

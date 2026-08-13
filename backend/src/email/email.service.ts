@@ -434,10 +434,6 @@ export class EmailService {
         // Dev mode: Just log the email content
         this.logger.log(`📧 [DEV MODE] Email would be sent to: ${customer.email}`);
         this.logger.log(`📧 Tracking URL: ${trackingUrl}`);
-        console.log('\n📧 EMAIL PREVIEW:\n');
-        console.log(`To: ${customer.email}`);
-        console.log(`Subject: Objednávka prijatá #${orderNumber}`);
-        console.log(`Tracking: ${trackingUrl}\n`);
       }
     } catch (error) {
       const errorMessage = this.formatSMTPError(error);
@@ -507,10 +503,6 @@ export class EmailService {
         const maskedUrl = resetUrl.replace(/token=([^&]+)/, 'token=***MASKED***');
         this.logger.log(`📧 [DEV MODE] Password setup email would be sent to: ${user.email}`);
         this.logger.log(`📧 Reset URL: ${maskedUrl}`);
-        console.log('\n📧 PASSWORD SETUP EMAIL PREVIEW:\n');
-        console.log(`To: ${user.email}`);
-        console.log(`Subject: Nastavte si heslo pre váš účet`);
-        console.log(`Reset URL: ${maskedUrl}\n`);
       }
     } catch (error) {
       const errorMessage = this.formatSMTPError(error);
@@ -1209,10 +1201,6 @@ export class EmailService {
         this.logger.log(`📧 [DEV MODE] Status update email would be sent to: ${customer.email}`);
         this.logger.log(`📧 Subject: ${notification.subject}`);
         this.logger.log(`📧 Tracking URL: ${trackingUrl}`);
-        console.log('\n📧 STATUS UPDATE EMAIL PREVIEW:\n');
-        console.log(`To: ${customer.email}`);
-        console.log(`Subject: ${notification.subject}`);
-        console.log(`Tracking: ${trackingUrl}\n`);
       }
     } catch (error) {
       const errorMessage = this.formatSMTPError(error);
@@ -1277,10 +1265,6 @@ export class EmailService {
       } else {
         // Dev mode: Just log the email content
         this.logger.log(`📧 [DEV MODE] Welcome email would be sent to: ${user.email}`);
-        console.log('\n📧 WELCOME EMAIL PREVIEW:\n');
-        console.log(`From: ${emailFrom}`);
-        console.log(`To: ${user.email}`);
-        console.log(`Subject: ${emailSubject}\n`);
       }
     } catch (error) {
       const errorMessage = this.formatSMTPError(error);

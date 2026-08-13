@@ -25,9 +25,7 @@ export default function BrandsPage() {
     try {
       setLoading(true);
       // ALWAYS include inactive tenants so admin can see and reactivate them
-      console.log('Fetching tenants with includeInactive=true...');
       const tenantsData = await getAllTenants(true);
-      console.log(`Fetched ${tenantsData.length} tenants:`, tenantsData.map(t => ({ slug: t.slug, name: t.name, isActive: t.isActive })));
       setTenants(tenantsData);
     } catch (error) {
       console.error('Failed to fetch tenants:', error);
@@ -73,8 +71,7 @@ export default function BrandsPage() {
   const handleToggleActive = async (tenant: Tenant) => {
     try {
       const newStatus = !tenant.isActive;
-      console.log(`Toggling tenant ${tenant.slug} to ${newStatus ? 'active' : 'inactive'}`);
-      
+
       // IMPORTANT: This only toggles isActive status, it does NOT delete the tenant
       // The tenant will remain in the database, just with isActive = false
       // This makes the website inaccessible but keeps all data intact
@@ -82,11 +79,9 @@ export default function BrandsPage() {
         isActive: newStatus,
       });
       
-      console.log('Tenant updated, refreshing list...');
       // Refresh list to show updated status - always include inactive tenants
       // Inactive tenants are still visible in admin panel, just marked as inactive
       await fetchTenants();
-      console.log('List refreshed');
     } catch (error) {
       console.error('Failed to update tenant status:', error);
       alert('Nepodarilo sa aktualizovať status brandu: ' + (error instanceof Error ? error.message : 'Unknown error'));

@@ -422,7 +422,6 @@ export function OrderList({
             if (isSoundNotificationEnabled()) {
               playNewOrderSound();
             }
-            console.log(`Nova objednavka! (${newPendingOrders.length} novych)`);
           }
         }
       }

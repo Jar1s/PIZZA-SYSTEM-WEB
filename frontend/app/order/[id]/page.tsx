@@ -167,7 +167,6 @@ export default function OrderTrackingPage() {
   const fetchOrder = useCallback(async (retryCount = 0, isBackgroundRefresh = false) => {
     // Prevent concurrent requests
     if (isFetchingRef.current && retryCount === 0) {
-      console.log('[Order Tracking] Fetch already in progress, skipping...');
       return;
     }
     
@@ -175,7 +174,6 @@ export default function OrderTrackingPage() {
     const now = Date.now();
     const timeSinceLastFetch = now - lastFetchTimeRef.current;
     if (timeSinceLastFetch < 2000 && retryCount === 0) {
-      console.log(`[Order Tracking] Throttling: last fetch was ${timeSinceLastFetch}ms ago`);
       return;
     }
     
@@ -189,13 +187,10 @@ export default function OrderTrackingPage() {
       
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
       const url = `${apiUrl}/api/track/${orderId}`;
-      console.log(`[Order Tracking] Fetching order: ${url} (retry ${retryCount}, background: ${isBackgroundRefresh})`);
-      
+
       // Use public tracking endpoint
       const response = await fetch(url);
-      
-      console.log(`[Order Tracking] Response status: ${response.status}`, { orderId, retryCount });
-      
+
       if (!response.ok) {
         if (response.status === 429) {
           // Rate limit exceeded - wait longer before retry
@@ -216,7 +211,6 @@ export default function OrderTrackingPage() {
           // If order not found and we haven't retried yet, wait a bit and retry
           // (order might still be saving to database)
           if (retryCount < 3) {
-            console.log(`[Order Tracking] Order not found, retrying in ${retryCount + 1}s... (${retryCount + 1}/3)`);
             setTimeout(() => {
               isFetchingRef.current = false; // Allow retry
               fetchOrder(retryCount + 1, isBackgroundRefresh);
@@ -509,12 +503,6 @@ export default function OrderTrackingPage() {
               // Use centralized function: for orders (string), uses static mapping
               // Use displayName from DB if available, otherwise use centralized function
               const itemDisplayName = (item as any).displayName as string | undefined;
-              console.log('[Order Detail] Item displayName check:', {
-                itemId: item.id,
-                productName: item.productName,
-                displayName: itemDisplayName,
-                hasDisplayName: !!itemDisplayName,
-              });
               const displayName = itemDisplayName || getProductDisplayName(item.productName, language);
               
               const modifiers = formatModifiers(item.modifiers, false, language, customizationLabels);
