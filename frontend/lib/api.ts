@@ -324,19 +324,34 @@ export async function createPaymentSession(orderId: string): Promise<{ redirectU
     headers['Authorization'] = `Bearer ${customerToken}`;
   }
 
-  const res = await fetch(`${API_URL}/api/payments/session`, {
-    method: 'POST',
-    headers,
-    credentials: 'include',
-    body: JSON.stringify({ orderId }),
-  });
+  // A cold-starting or hung backend must not leave the customer on an endless
+  // spinner — abort after 30s and surface a retryable error.
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 30000);
 
-  if (!res.ok) {
-    const errorText = await res.text().catch(() => '');
-    throw new Error(errorText || 'Failed to create payment session');
+  try {
+    const res = await fetch(`${API_URL}/api/payments/session`, {
+      method: 'POST',
+      headers,
+      credentials: 'include',
+      body: JSON.stringify({ orderId }),
+      signal: controller.signal,
+    });
+
+    if (!res.ok) {
+      const errorText = await res.text().catch(() => '');
+      throw new Error(errorText || 'Failed to create payment session');
+    }
+
+    return res.json();
+  } catch (error) {
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw new Error('PAYMENT_SESSION_TIMEOUT');
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeoutId);
   }
-
-  return res.json();
 }
 
 export type DeliveryFeeRequest = {

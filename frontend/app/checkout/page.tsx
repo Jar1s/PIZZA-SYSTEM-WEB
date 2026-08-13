@@ -93,6 +93,7 @@ export default function CheckoutPage() {
   const [nameError, setNameError] = useState<string | null>(null);
   const [emailError, setEmailError] = useState<string | null>(null);
   const [phoneError, setPhoneError] = useState<string | null>(null);
+  const [checkoutError, setCheckoutError] = useState<string | null>(null);
   const [deliveryFeeCents, setDeliveryFeeCents] = useState<number>(0);
   const [minOrderCents, setMinOrderCents] = useState<number | null>(null);
   const [zoneName, setZoneName] = useState<string | null>(null);
@@ -1141,6 +1142,7 @@ export default function CheckoutPage() {
     }
 
     submitLockRef.current = true;
+    setCheckoutError(null);
     let redirected = false;
 
     try {
@@ -1360,11 +1362,19 @@ export default function CheckoutPage() {
           throw new Error('Payment gateway did not return redirect URL');
         } catch (paymentError) {
           console.error('Payment session creation failed:', paymentError);
-          const paymentMessage = paymentError instanceof Error ? paymentError.message : 'Unknown payment error';
-          alert(`Platobnú bránu sa nepodarilo inicializovať: ${paymentMessage}`);
-          clearCart();
-          redirected = true;
-          router.push(`/order/${order.id}?tenant=${tenantSlug}&paymentInitFailed=1`);
+          // Keep the cart and stay on checkout: createOrder is idempotent via
+          // clientRequestId, so a retry re-uses the same order and just
+          // re-attempts the payment session.
+          const isTimeout = paymentError instanceof Error && paymentError.message === 'PAYMENT_SESSION_TIMEOUT';
+          setCheckoutError(
+            language === 'sk'
+              ? isTimeout
+                ? 'Platobná brána neodpovedá. Váš košík ostal zachovaný — skúste to o chvíľu znova.'
+                : 'Platobnú bránu sa nepodarilo spustiť. Váš košík ostal zachovaný — skúste to znova.'
+              : isTimeout
+                ? 'The payment gateway is not responding. Your cart is preserved — please try again in a moment.'
+                : 'Could not start the payment gateway. Your cart is preserved — please try again.'
+          );
           return;
         }
       }
@@ -1379,12 +1389,17 @@ export default function CheckoutPage() {
       
       // Check if it's a product validation error
       if (errorMessage.includes('not found') || errorMessage.includes('inactive')) {
-        alert('Some items in your cart are no longer available. Please refresh the page and add items again.');
-        // Clear cart and redirect
-        clearCart();
-        router.push('/');
+        setCheckoutError(
+          language === 'sk'
+            ? 'Niektoré položky v košíku už nie sú dostupné. Obnovte stránku a pridajte ich znova.'
+            : 'Some items in your cart are no longer available. Please refresh the page and add them again.'
+        );
       } else {
-        alert(`Failed to process order: ${errorMessage}. Please try again.`);
+        setCheckoutError(
+          language === 'sk'
+            ? `Objednávku sa nepodarilo spracovať: ${errorMessage}. Skúste to znova.`
+            : `Failed to process order: ${errorMessage}. Please try again.`
+        );
       }
     } finally {
       setLoading(false);
@@ -2491,12 +2506,24 @@ export default function CheckoutPage() {
           )}
           
           {/* Payment Button */}
+          {checkoutError && (
+            <div
+              role="alert"
+              className={`mb-4 rounded-2xl border px-4 py-3 text-sm font-medium ${
+                isDark
+                  ? 'border-red-400/40 bg-red-500/15 text-red-200'
+                  : 'border-red-300 bg-red-50 text-red-800'
+              }`}
+            >
+              {checkoutError}
+            </div>
+          )}
           <motion.button
             whileTap={{ scale: 0.98 }}
             onClick={handlePay}
             disabled={
-              loading || 
-              (user && loadingAddresses) || 
+              loading ||
+              (user && loadingAddresses) ||
               (user && addresses.length === 0) ||
               (!user && (!guestData.name || !guestData.email || !guestData.phone || !guestData.street || !guestData.city || !guestData.postalCode)) ||
               (paymentType === 'cash_on_delivery' && !cashOnDeliveryMethod)
