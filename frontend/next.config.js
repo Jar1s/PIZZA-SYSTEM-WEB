@@ -4,7 +4,6 @@ const { PHASE_PRODUCTION_BUILD } = require('next/constants');
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   images: {
-    unoptimized: true,
     remotePatterns: [
       {
         protocol: 'https',
