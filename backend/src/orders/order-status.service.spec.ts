@@ -41,6 +41,7 @@ describe('OrderStatusService', () => {
 
   const mockTelegramNotifications = {
     notifyOrderStatusChanged: jest.fn(),
+    notifyError: jest.fn(),
   };
 
   const baseOrder = {
@@ -84,6 +85,7 @@ describe('OrderStatusService', () => {
     mockPrisma.orderStatusHistory.create.mockResolvedValue({});
     mockEmailService.sendOrderStatusUpdate.mockResolvedValue(undefined);
     mockTelegramNotifications.notifyOrderStatusChanged.mockResolvedValue(undefined);
+    mockTelegramNotifications.notifyError.mockResolvedValue(undefined);
     loggerLogSpy = jest.spyOn(Logger.prototype, 'log').mockImplementation(() => undefined);
     loggerWarnSpy = jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
     mockSettingsService.getStoryousSettings.mockResolvedValue({
@@ -165,6 +167,35 @@ describe('OrderStatusService', () => {
         orderId: 'order-1',
         storyousOrderId: 'storyous-new-1',
         storyousState: 'NEW',
+      }),
+    );
+  });
+
+  it('alerts admin when auto-sync reaches Storyous but returns no order id', async () => {
+    mockPrisma.order.findUnique.mockResolvedValue({
+      ...baseOrder,
+      status: OrderStatus.PENDING,
+      storyousOrderId: null,
+    });
+    mockStoryousService.createOrder.mockResolvedValue({
+      storyousState: 'UNKNOWN',
+      warnings: ['missing id'],
+    });
+
+    await service.updateStatus('order-1', OrderStatus.PAID);
+
+    expect(mockTelegramNotifications.notifyError).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: 'Storyous auto-sync returned no order ID',
+        message: 'Storyous API did not return order ID; kitchen may not know about this order.',
+        tenantId: 'tenant-1',
+        orderId: 'order-1',
+        details: {
+          statusSyncSource: 'dashboard',
+          targetStatus: OrderStatus.PAID,
+          storyousState: 'UNKNOWN',
+          warnings: ['missing id'],
+        },
       }),
     );
   });
@@ -256,6 +287,21 @@ describe('OrderStatusService', () => {
       }),
     );
     expect(mockPaymentsService.refundGopayPayment).toHaveBeenCalledWith('order-1');
+  });
+
+  it('does not start another GoPay refund on cancel when refund was already initiated', async () => {
+    mockPrisma.order.findUnique.mockResolvedValue({
+      ...baseOrder,
+      status: OrderStatus.PAID,
+      paymentStatus: 'success',
+      paymentRef: 'gopay-payment-1',
+      refundStatus: 'refund_pending',
+      storyousOrderId: null,
+    });
+
+    await service.updateStatus('order-1', OrderStatus.CANCELED);
+
+    expect(mockPaymentsService.refundGopayPayment).not.toHaveBeenCalled();
   });
 
   it('does not call Storyous status update on cancel when storyousOrderId is missing', async () => {

@@ -81,6 +81,9 @@ model Order {
   totalCents       Int
   paymentRef       String?
   paymentStatus    String?
+  refundStatus     String?
+  refundedAt       DateTime?
+  refundError      String?
   deliveryId       String?
   createdAt        DateTime    @default(now())
   updatedAt        DateTime    @updatedAt

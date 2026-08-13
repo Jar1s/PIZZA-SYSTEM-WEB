@@ -129,22 +129,57 @@ export class DeliveryService implements OnModuleInit, OnModuleDestroy {
     return String(process.env.WOLT_WEBHOOK_SECRET || woltConfig?.webhookSecret || '').trim();
   }
 
-  private assertTenantCanDispatchWolt(tenant: TenantWithOperationalTheme): void {
-    const theme = this.getQuoteObject(tenant.theme);
-    if (theme.maintenanceMode === true) {
-      throw new BadRequestException('Prevádzka je v maintenance móde. Wolt doručenie nie je možné vytvoriť.');
-    }
-
+  private getOperationalOpeningHours(theme: Prisma.JsonObject): Record<string, any> | null {
     const openingHours =
       theme.openingHours && typeof theme.openingHours === 'object' && !Array.isArray(theme.openingHours)
         ? (theme.openingHours as Record<string, any>)
         : null;
 
-    if (!openingHours || openingHours.enabled !== true) {
-      return;
+    return openingHours?.enabled === true ? openingHours : null;
+  }
+
+  private async assertTenantCanDispatchWolt(tenant: TenantWithOperationalTheme): Promise<void> {
+    const activeTenants = await this.prisma.tenant.findMany({
+      where: { isActive: true },
+      select: {
+        id: true,
+        slug: true,
+        theme: true,
+      },
+    });
+
+    const operationalTenants = Array.isArray(activeTenants) && activeTenants.length > 0
+      ? activeTenants
+      : [tenant];
+
+    const tenantThemes = operationalTenants.map((operationalTenant) => ({
+      tenant: operationalTenant,
+      theme: this.getQuoteObject(operationalTenant.theme),
+    }));
+
+    const maintenanceTenant = tenantThemes.find(({ theme }) => theme.maintenanceMode === true);
+    if (maintenanceTenant) {
+      this.logger.warn('Blocked Wolt dispatch during shared maintenance mode', {
+        tenantId: tenant.id,
+        sourceTenantId: maintenanceTenant.tenant.id,
+        sourceTenantSlug: maintenanceTenant.tenant.slug,
+      });
+      throw new BadRequestException('Prevádzka je v maintenance móde. Wolt doručenie nie je možné vytvoriť.');
     }
 
-    if (!this.isWithinOpeningHours(openingHours)) {
+    const closedConfig = tenantThemes
+      .map(({ tenant: operationalTenant, theme }) => ({
+        tenant: operationalTenant,
+        openingHours: this.getOperationalOpeningHours(theme),
+      }))
+      .find(({ openingHours }) => openingHours && !this.isWithinOpeningHours(openingHours));
+
+    if (closedConfig) {
+      this.logger.warn('Blocked Wolt dispatch outside shared opening hours', {
+        tenantId: tenant.id,
+        sourceTenantId: closedConfig.tenant.id,
+        sourceTenantSlug: closedConfig.tenant.slug,
+      });
       throw new BadRequestException('Prevádzka je aktuálne zatvorená. Wolt doručenie vytvorte počas otváracích hodín.');
     }
   }
@@ -181,7 +216,7 @@ export class DeliveryService implements OnModuleInit, OnModuleDestroy {
       weekday: 'long',
       hour: '2-digit',
       minute: '2-digit',
-      hour12: false,
+      hourCycle: 'h23',
     }).formatToParts(date);
     const weekday = parts.find((part) => part.type === 'weekday')?.value || 'Sunday';
     const hour = Number(parts.find((part) => part.type === 'hour')?.value || 0);
@@ -839,7 +874,7 @@ export class DeliveryService implements OnModuleInit, OnModuleDestroy {
     const deliveryConfig = tenant.deliveryConfig as DeliveryConfig;
     const woltConfig = deliveryConfig.woltConfig;
     this.assertWoltConfig(tenant, woltConfig);
-    this.assertTenantCanDispatchWolt(tenant);
+    await this.assertTenantCanDispatchWolt(tenant);
 
     // Get tenant-specific pickup address
     const pickupAddress = this.getPickupAddress(tenantId, deliveryConfig);
@@ -882,7 +917,7 @@ export class DeliveryService implements OnModuleInit, OnModuleDestroy {
     const deliveryConfig = tenant.deliveryConfig as DeliveryConfig;
     const woltConfig = deliveryConfig.woltConfig;
     this.assertWoltConfig(tenant, woltConfig);
-    this.assertTenantCanDispatchWolt(tenant);
+    await this.assertTenantCanDispatchWolt(tenant);
 
     // Get tenant-specific pickup address
     const pickupAddress = this.getPickupAddress(order.tenantId, deliveryConfig);
@@ -956,7 +991,7 @@ export class DeliveryService implements OnModuleInit, OnModuleDestroy {
     const deliveryConfig = tenant.deliveryConfig as DeliveryConfig;
     const woltConfig = deliveryConfig.woltConfig;
     this.assertWoltConfig(tenant, woltConfig);
-    this.assertTenantCanDispatchWolt(tenant);
+    await this.assertTenantCanDispatchWolt(tenant);
 
     // Get tenant-specific pickup address
     const pickupAddress = this.getPickupAddress(order.tenantId, deliveryConfig);

@@ -18,6 +18,7 @@ import { TenantTheme } from '../types/tenant.types';
 import { appConfig } from '../config/app.config';
 import { OrderResponseSchema } from '../common/schemas/order.schema';
 import { getProductDisplayName } from '../utils/product-name-mapper';
+import { TelegramNotificationsService } from '../notifications/telegram-notifications.service';
 import * as crypto from 'crypto';
 
 // Type definitions for Prisma JSON fields
@@ -97,6 +98,8 @@ type StoryousSyncOrder = Prisma.OrderGetPayload<{
     delivery: true;
   };
 }>;
+
+type PendingGopayPaymentOrder = Pick<PrismaOrder, 'id' | 'tenantId' | 'paymentRef'>;
 
 @Injectable()
 export class OrdersService {
@@ -219,6 +222,138 @@ export class OrdersService {
     return normalized || null;
   }
 
+  private getThemeObject(theme: Prisma.JsonValue | null | undefined): Prisma.JsonObject {
+    if (theme && typeof theme === 'object' && !Array.isArray(theme)) {
+      return theme as Prisma.JsonObject;
+    }
+    return {};
+  }
+
+  private getOperationalOpeningHours(theme: Prisma.JsonObject): Record<string, any> | null {
+    const openingHours = theme.openingHours;
+    if (!openingHours || typeof openingHours !== 'object' || Array.isArray(openingHours)) {
+      return null;
+    }
+
+    const openingHoursRecord = openingHours as Record<string, any>;
+    return openingHoursRecord.enabled === true ? openingHoursRecord : null;
+  }
+
+  private parseTimeToMinutes(value: unknown): number | null {
+    if (typeof value !== 'string') {
+      return null;
+    }
+
+    const match = value.trim().match(/^(\d{1,2}):(\d{2})$/);
+    if (!match) {
+      return null;
+    }
+
+    const hours = Number(match[1]);
+    const minutes = Number(match[2]);
+    if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) {
+      return null;
+    }
+
+    return hours * 60 + minutes;
+  }
+
+  private getZonedDateParts(date: Date, timezone: string): { dayName: string; minutes: number } {
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone: timezone,
+      weekday: 'long',
+      hour: '2-digit',
+      minute: '2-digit',
+      hourCycle: 'h23',
+    }).formatToParts(date);
+    const weekday = parts.find((part) => part.type === 'weekday')?.value || 'Sunday';
+    const hour = Number(parts.find((part) => part.type === 'hour')?.value || 0);
+    const minute = Number(parts.find((part) => part.type === 'minute')?.value || 0);
+
+    return {
+      dayName: weekday.toLowerCase(),
+      minutes: hour * 60 + minute,
+    };
+  }
+
+  private isWithinOpeningHours(openingHours: Record<string, any>, at = new Date()): boolean {
+    const timezone =
+      typeof openingHours.timezone === 'string' && openingHours.timezone.trim()
+        ? openingHours.timezone.trim()
+        : 'Europe/Bratislava';
+    const days = openingHours.days && typeof openingHours.days === 'object' ? openingHours.days : {};
+    const current = this.getZonedDateParts(at, timezone);
+    const schedule = days[current.dayName];
+
+    if (!schedule || schedule.closed === true) {
+      return false;
+    }
+
+    const openMinutes = this.parseTimeToMinutes(schedule.open);
+    const closeMinutes = this.parseTimeToMinutes(schedule.close);
+    if (openMinutes == null || closeMinutes == null) {
+      return false;
+    }
+
+    if (closeMinutes < openMinutes) {
+      return current.minutes >= openMinutes || current.minutes < closeMinutes;
+    }
+
+    return current.minutes >= openMinutes && current.minutes < closeMinutes;
+  }
+
+  private async assertTenantCanAcceptOrders(tenantId: string): Promise<void> {
+    const tenants = await this.prisma.tenant.findMany({
+      where: { isActive: true },
+      select: {
+        id: true,
+        slug: true,
+        theme: true,
+      },
+    });
+
+    const tenantThemes = tenants.map((tenant) => ({
+      tenant,
+      theme: this.getThemeObject(tenant.theme),
+    }));
+
+    const maintenanceTenant = tenantThemes.find(({ theme }) => theme.maintenanceMode === true);
+    if (maintenanceTenant) {
+      this.logger.warn('Blocked order creation during maintenance mode', {
+        tenantId,
+        sourceTenantId: maintenanceTenant.tenant.id,
+        sourceTenantSlug: maintenanceTenant.tenant.slug,
+      });
+      throw new BadRequestException('Prevádzka je v maintenance móde. Momentálne neprijímame nové objednávky.');
+    }
+
+    const enabledOpeningHours = tenantThemes
+      .map(({ tenant, theme }) => ({
+        tenant,
+        openingHours: this.getOperationalOpeningHours(theme),
+      }))
+      .filter((entry): entry is {
+        tenant: { id: string; slug: string; theme: Prisma.JsonValue | null };
+        openingHours: Record<string, any>;
+      } =>
+        !!entry.openingHours,
+      );
+
+    if (enabledOpeningHours.length === 0) {
+      return;
+    }
+
+    const closedConfig = enabledOpeningHours.find(({ openingHours }) => !this.isWithinOpeningHours(openingHours));
+    if (closedConfig) {
+      this.logger.warn('Blocked order creation outside shared opening hours', {
+        tenantId,
+        sourceTenantId: closedConfig.tenant.id,
+        sourceTenantSlug: closedConfig.tenant.slug,
+      });
+      throw new BadRequestException('Prevádzka je aktuálne zatvorená. Objednávku je možné vytvoriť počas otváracích hodín.');
+    }
+  }
+
   private async findExistingCheckoutCustomer(
     tenantId: string,
     email: string,
@@ -304,7 +439,33 @@ export class OrdersService {
     private deliveryFeeTierService: DeliveryFeeTierService,
     private orderNumberService: OrderNumberService,
     private jwtService: JwtService,
+    private telegramNotifications: TelegramNotificationsService,
   ) {}
+
+  private async notifyStoryousSyncFailure(params: {
+    title?: string;
+    orderId: string;
+    tenantId?: string | null;
+    message: string;
+    details?: Record<string, unknown>;
+    stack?: string;
+  }): Promise<void> {
+    try {
+      await this.telegramNotifications.notifyError({
+        title: params.title || 'Storyous sync failed',
+        message: params.message,
+        tenantId: params.tenantId || undefined,
+        orderId: params.orderId,
+        details: params.details,
+        stack: params.stack,
+      });
+    } catch (notifyError) {
+      this.logger.warn('Failed to send Storyous sync failure Telegram notification', {
+        orderId: params.orderId,
+        error: notifyError instanceof Error ? notifyError.message : String(notifyError),
+      });
+    }
+  }
 
   private isStatusHistoryUnavailable(error: unknown): boolean {
     const message = error instanceof Error ? error.message : String(error);
@@ -484,6 +645,21 @@ export class OrdersService {
     let userId = data.userId;
     let shouldReturnAuthToken = false;
     let createdUser: UserWithPasswordReset | null = null;
+
+    const earlyExistingOrder = await this.getExistingOrderByClientRequestId(
+      tenantId,
+      data.clientRequestId,
+    );
+    if (earlyExistingOrder) {
+      this.logger.warn('Duplicate checkout request returned existing order before operational guard', {
+        tenantId,
+        clientRequestId: data.clientRequestId,
+        orderId: earlyExistingOrder.id,
+      });
+      return this.buildCreateOrderResponse(earlyExistingOrder, tenantId, false, null);
+    }
+
+    await this.assertTenantCanAcceptOrders(tenantId);
 
     // Guest checkout logic: Handle user creation/authentication
     // If paymentMethod exists (cash on delivery) → mandatory registration
@@ -1433,15 +1609,36 @@ export class OrdersService {
         };
       }
 
+      const message = 'Storyous API did not return order ID';
       this.logger.error('[Storyous sync] Missing Storyous order ID', { orderId, tenantId: orderWithStoryous.tenantId });
+      await this.notifyStoryousSyncFailure({
+        title: 'Storyous sync returned no order ID',
+        orderId,
+        tenantId: orderWithStoryous.tenantId,
+        message,
+        details: {
+          storyousState: storyousResult?.storyousState || null,
+          warnings: storyousResult?.warnings || [],
+          source: 'manual-sync',
+        },
+      });
       return {
         success: false,
         storyousState: storyousResult?.storyousState || null,
-        message: 'Storyous API did not return order ID',
+        message,
         warnings: storyousResult?.warnings,
       };
     } catch (error: any) {
       this.logger.error(`❌ Failed to sync order ${orderId} to Storyous:`, { orderId, error: error.message, stack: error.stack });
+      await this.notifyStoryousSyncFailure({
+        orderId,
+        tenantId: orderWithStoryous.tenantId,
+        message: error.message || 'Failed to sync order to Storyous',
+        details: {
+          source: 'manual-sync',
+        },
+        stack: error.stack,
+      });
       return {
         success: false,
         message: error.message || 'Failed to sync order to Storyous',
@@ -1485,6 +1682,22 @@ export class OrdersService {
       this.logger.error(`Order response validation failed`, { error, orderId: order.id });
       return order as unknown as Order; // Fallback
     }
+  }
+
+  async updateRefundStatus(
+    orderId: string,
+    refundStatus: 'refund_pending' | 'refunded' | 'partially_refunded' | 'refund_failed',
+    refundError?: string | null,
+  ): Promise<void> {
+    await this.prisma.order.update({
+      where: { id: orderId },
+      data: {
+        refundStatus,
+        refundError: refundError ?? null,
+        refundedAt:
+          refundStatus === 'refunded' || refundStatus === 'partially_refunded' ? new Date() : null,
+      },
+    });
   }
 
   async tryStartPaymentSession(orderId: string, lockRef: string): Promise<boolean> {
@@ -1551,6 +1764,38 @@ export class OrdersService {
     });
 
     return order ? (order as unknown as Order) : null;
+  }
+
+  async findStalePendingGopayPaymentOrders(options: {
+    olderThan: Date;
+    limit: number;
+  }): Promise<PendingGopayPaymentOrder[]> {
+    const limit = Math.min(Math.max(Math.floor(options.limit || 25), 1), 100);
+
+    return this.prisma.order.findMany({
+      where: {
+        status: OrderStatus.PENDING,
+        paymentStatus: 'pending',
+        updatedAt: { lt: options.olderThan },
+        paymentRef: { not: null },
+        tenant: {
+          paymentProvider: 'gopay',
+        },
+        NOT: [
+          { paymentRef: { startsWith: 'cod:' } },
+          { paymentRef: { startsWith: 'initializing:' } },
+        ],
+      },
+      select: {
+        id: true,
+        tenantId: true,
+        paymentRef: true,
+      },
+      orderBy: {
+        updatedAt: 'asc',
+      },
+      take: limit,
+    });
   }
 
   /**
@@ -1626,11 +1871,16 @@ export class OrdersService {
             tenantId: tenantId,
           });
           
-          // Mark order as needing manual sync (could store sync failure info if needed)
-          // For now, just log the error - admin can use manual sync endpoint
-          
-          // TODO: Send alert to admin (email, Slack, etc.) - kitchen won't know about order!
-          // For now, the error is logged and can be monitored
+          await this.notifyStoryousSyncFailure({
+            orderId: order.id,
+            tenantId,
+            message: lastError.message || 'Failed to sync order to Storyous after retries',
+            details: {
+              source: 'retry-sync',
+              attempts: maxRetries,
+            },
+            stack: lastError.stack,
+          });
         } else {
           // Retry with exponential backoff
           const delayMs = Math.pow(2, attempt - 1) * 1000; // 1s, 2s, 4s

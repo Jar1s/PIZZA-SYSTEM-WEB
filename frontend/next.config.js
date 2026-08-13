@@ -1,17 +1,5 @@
 const { withSentryConfig } = require('@sentry/nextjs');
-
-// Fail-fast: a production build must have NEXT_PUBLIC_API_URL set. Otherwise the
-// app would silently fall back to http://localhost:3000 and break in production.
-// Gate on NEXT_PHASE (set only during `next build`) so this does NOT also fire
-// during `next lint`/`next dev`, which load the config with NODE_ENV=production.
-if (
-  process.env.NEXT_PHASE === 'phase-production-build' &&
-  !process.env.NEXT_PUBLIC_API_URL
-) {
-  throw new Error(
-    'NEXT_PUBLIC_API_URL is required for production builds. Set it in the Vercel project environment variables.',
-  );
-}
+const { PHASE_PRODUCTION_BUILD } = require('next/constants');
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
@@ -57,12 +45,6 @@ const nextConfig = {
   },
   // Optimize production builds
   productionBrowserSourceMaps: false,
-  webpack: (config, { dev }) => {
-    if (!dev && config.optimization) {
-      config.optimization.minimize = false;
-    }
-    return config;
-  },
   // Disable standalone output for development
   // output: 'standalone',
 }
@@ -84,4 +66,17 @@ const config = process.env.NEXT_PUBLIC_SENTRY_DSN && process.env.SENTRY_ORG && p
     )
   : nextConfig;
 
-module.exports = config;
+// Fail-fast: a production build must have NEXT_PUBLIC_API_URL set. Otherwise the
+// app would silently fall back to http://localhost:3000 and break in production.
+// Function-form config: Next passes the phase as an argument when the config is
+// loaded, so the guard fires during `next build` but not `next dev`/`next lint`.
+// (Reading process.env.NEXT_PHASE here does NOT work — Next sets it only after
+// the config has already been loaded.)
+module.exports = (phase) => {
+  if (phase === PHASE_PRODUCTION_BUILD && !process.env.NEXT_PUBLIC_API_URL) {
+    throw new Error(
+      'NEXT_PUBLIC_API_URL is required for production builds. Set it in the Vercel project environment variables.',
+    );
+  }
+  return config;
+};

@@ -43,6 +43,7 @@ describe('OrdersService', () => {
     },
     tenant: {
       findUnique: jest.fn(),
+      findMany: jest.fn(),
     },
     order: {
       create: jest.fn(),
@@ -111,6 +112,7 @@ describe('OrdersService', () => {
   const mockTelegramNotificationsService = {
     notifyOrderCreated: jest.fn(),
     notifyOrderStatusChange: jest.fn(),
+    notifyError: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -165,6 +167,8 @@ describe('OrdersService', () => {
 
     // Reset all mocks
     jest.clearAllMocks();
+    mockPrismaService.tenant.findMany.mockResolvedValue([]);
+    mockTelegramNotificationsService.notifyError.mockResolvedValue(undefined);
     mockPrismaService.user.update.mockImplementation(({ data }) => ({
       id: 'updated-user',
       tenantId: 'tenant-123',
@@ -272,6 +276,58 @@ describe('OrdersService', () => {
       });
     });
 
+    it('should block order creation when any active tenant has maintenance mode enabled', async () => {
+      mockPrismaService.tenant.findMany.mockResolvedValue([
+        {
+          id: tenantId,
+          slug: 'pornopizza',
+          theme: { maintenanceMode: false },
+        },
+        {
+          id: 'tenant-party',
+          slug: 'pizzaparty',
+          theme: { maintenanceMode: true },
+        },
+      ]);
+
+      await expect(service.createOrder(tenantId, baseOrderDto)).rejects.toThrow(
+        'Prevádzka je v maintenance móde',
+      );
+
+      expect(mockPrismaService.product.findFirst).not.toHaveBeenCalled();
+      expect(mockOrderNumberService.generateOrderNumber).not.toHaveBeenCalled();
+      expect(mockPrismaService.order.create).not.toHaveBeenCalled();
+    });
+
+    it('should block order creation when shared opening hours from another tenant are closed', async () => {
+      mockPrismaService.tenant.findMany.mockResolvedValue([
+        {
+          id: tenantId,
+          slug: 'pornopizza',
+          theme: {},
+        },
+        {
+          id: 'tenant-party',
+          slug: 'pizzaparty',
+          theme: {
+            openingHours: {
+              enabled: true,
+              timezone: 'UTC',
+              days: {},
+            },
+          },
+        },
+      ]);
+
+      await expect(service.createOrder(tenantId, baseOrderDto)).rejects.toThrow(
+        'Prevádzka je aktuálne zatvorená',
+      );
+
+      expect(mockPrismaService.product.findFirst).not.toHaveBeenCalled();
+      expect(mockOrderNumberService.generateOrderNumber).not.toHaveBeenCalled();
+      expect(mockPrismaService.order.create).not.toHaveBeenCalled();
+    });
+
     it('should deduplicate repeated clientRequestId and return existing order', async () => {
       const duplicateDto: CreateOrderDto = {
         ...baseOrderDto,
@@ -300,13 +356,7 @@ describe('OrdersService', () => {
 
       const result = await service.createOrder(tenantId, duplicateDto);
 
-      expect(mockPrismaService.order.create).toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: expect.objectContaining({
-            clientRequestId: 'checkout-request-1',
-          }),
-        }),
-      );
+      expect(mockPrismaService.order.create).not.toHaveBeenCalled();
       expect(mockPrismaService.order.findFirst).toHaveBeenCalledTimes(2);
       expect((result as any).id).toBe('order-1');
     });
@@ -1085,6 +1135,98 @@ describe('OrdersService', () => {
           storyousOrderId: 'storyous-2',
           storyousOrderState: 'NEW',
         },
+      });
+    });
+
+    it('alerts admin when manual Storyous sync fails before reaching kitchen', async () => {
+      mockPrismaService.order.findUnique.mockResolvedValue(syncedOrderBase);
+      mockStoryousService.createOrder.mockRejectedValue(new Error('Storyous API down'));
+
+      const result = await service.syncOrderToStoryous('order-storyous-1');
+
+      expect(result).toEqual({
+        success: false,
+        message: 'Storyous API down',
+      });
+      expect(mockTelegramNotificationsService.notifyError).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: 'Storyous sync failed',
+          message: 'Storyous API down',
+          tenantId: 'tenant-123',
+          orderId: 'order-storyous-1',
+          details: {
+            source: 'manual-sync',
+          },
+          stack: expect.any(String),
+        }),
+      );
+    });
+
+    it('alerts admin when Storyous API returns no order id', async () => {
+      mockPrismaService.order.findUnique.mockResolvedValue(syncedOrderBase);
+      mockStoryousService.createOrder.mockResolvedValue({
+        storyousState: 'UNKNOWN',
+        warnings: ['missing id'],
+      });
+
+      const result = await service.syncOrderToStoryous('order-storyous-1');
+
+      expect(result.success).toBe(false);
+      expect(result.message).toBe('Storyous API did not return order ID');
+      expect(mockTelegramNotificationsService.notifyError).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: 'Storyous sync returned no order ID',
+          message: 'Storyous API did not return order ID',
+          tenantId: 'tenant-123',
+          orderId: 'order-storyous-1',
+          details: {
+            storyousState: 'UNKNOWN',
+            warnings: ['missing id'],
+            source: 'manual-sync',
+          },
+        }),
+      );
+    });
+  });
+
+  describe('findStalePendingGopayPaymentOrders', () => {
+    it('finds stale pending GoPay card payments only', async () => {
+      const olderThan = new Date('2026-01-01T10:00:00.000Z');
+      const pendingOrders = [
+        { id: 'order-1', tenantId: 'tenant-1', paymentRef: 'gopay-1' },
+      ];
+
+      mockPrismaService.order.findMany.mockResolvedValue(pendingOrders);
+
+      const result = await service.findStalePendingGopayPaymentOrders({
+        olderThan,
+        limit: 250,
+      });
+
+      expect(result).toBe(pendingOrders);
+      expect(mockPrismaService.order.findMany).toHaveBeenCalledWith({
+        where: {
+          status: OrderStatus.PENDING,
+          paymentStatus: 'pending',
+          updatedAt: { lt: olderThan },
+          paymentRef: { not: null },
+          tenant: {
+            paymentProvider: 'gopay',
+          },
+          NOT: [
+            { paymentRef: { startsWith: 'cod:' } },
+            { paymentRef: { startsWith: 'initializing:' } },
+          ],
+        },
+        select: {
+          id: true,
+          tenantId: true,
+          paymentRef: true,
+        },
+        orderBy: {
+          updatedAt: 'asc',
+        },
+        take: 100,
       });
     });
   });

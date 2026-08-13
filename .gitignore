@@ -54,3 +54,7 @@ public 2/
 
 # Backups and scratch space
 backups/
+
+# Playwright artifacts
+frontend/test-results/
+frontend/playwright-report/

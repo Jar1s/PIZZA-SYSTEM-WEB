@@ -558,15 +558,19 @@ export class CustomerAuthController {
 
           console.log('Setting OAuth cookies with options:', oauthCookieOptions);
 
+          // Short-lived handoff cookie: the frontend moves it to localStorage
+          // immediately on /auth/oauth-callback.
           res.cookie('oauth_access_token', result.access_token, {
             ...oauthCookieOptions,
             httpOnly: false, // Frontend needs to read this
-            maxAge: 60 * 60 * 1000, // 1 hour
+            maxAge: 5 * 60 * 1000, // 5 minutes - handoff only
           });
 
-          res.cookie('oauth_refresh_token', result.refresh_token, {
+          // Refresh token must never be readable from JS: HttpOnly cookie
+          // consumed by POST /refresh (same pattern as the email login flow).
+          res.cookie('refresh_token', result.refresh_token, {
             ...oauthCookieOptions,
-            httpOnly: false, // Frontend needs to read this
+            httpOnly: true,
             maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
           });
 
@@ -845,16 +849,19 @@ export class CustomerAuthController {
 
         console.log('Setting OAuth cookies with options:', oauthCookieOptions);
         
-        // Store tokens in cookies the frontend can read (short-lived, re-stored in localStorage)
+        // Short-lived handoff cookie: the frontend moves it to localStorage
+        // immediately on /auth/oauth-callback.
         res.cookie('oauth_access_token', result.access_token, {
           ...oauthCookieOptions,
           httpOnly: false, // Frontend needs to read this
-          maxAge: 60 * 60 * 1000, // 1 hour
+          maxAge: 5 * 60 * 1000, // 5 minutes - handoff only
         });
 
-        res.cookie('oauth_refresh_token', result.refresh_token, {
+        // Refresh token must never be readable from JS: HttpOnly cookie
+        // consumed by POST /refresh (same pattern as the email login flow).
+        res.cookie('refresh_token', result.refresh_token, {
           ...oauthCookieOptions,
-          httpOnly: false, // Frontend needs to read this
+          httpOnly: true,
           maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
         });
 

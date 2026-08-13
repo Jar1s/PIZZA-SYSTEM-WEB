@@ -34,7 +34,7 @@ export const OrderSchema = z.object({
   id: z.string(),
   tenantId: z.string(),
   userId: z.string().nullable(),
-  status: z.enum(['PENDING', 'PAID', 'PREPARING', 'READY', 'DELIVERING', 'DELIVERED', 'CANCELLED']),
+  status: z.enum(['PENDING', 'PAID', 'PREPARING', 'READY', 'OUT_FOR_DELIVERY', 'DELIVERED', 'CANCELED']),
   subtotalCents: z.number().int().nonnegative(),
   taxCents: z.number().int().nonnegative(),
   deliveryFeeCents: z.number().int().nonnegative(),
@@ -43,6 +43,9 @@ export const OrderSchema = z.object({
   address: z.record(z.string(), z.unknown()),
   storyousOrderId: z.string().nullable().optional(),
   storyousOrderState: z.string().nullable().optional(),
+  refundStatus: z.string().nullable().optional(),
+  refundedAt: z.union([z.string(), z.date()]).nullable().optional(),
+  refundError: z.string().nullable().optional(),
   items: z.array(z.unknown()).optional(),
 }).passthrough();
 

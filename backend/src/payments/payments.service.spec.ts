@@ -8,6 +8,7 @@ import { OrdersService } from '../orders/orders.service';
 import { OrderStatusService } from '../orders/order-status.service';
 import { TenantsService } from '../tenants/tenants.service';
 import { DeliveryService } from '../delivery/delivery.service';
+import { TelegramNotificationsService } from '../notifications/telegram-notifications.service';
 import { OrderStatus } from '@pizza-ecosystem/shared';
 
 describe('PaymentsService', () => {
@@ -31,6 +32,7 @@ describe('PaymentsService', () => {
     getPaymentStatus: jest.fn(),
     parseWebhook: jest.fn(),
     verifyWebhook: jest.fn(),
+    refundPayment: jest.fn(),
   };
 
   const mockWepayService = {
@@ -42,7 +44,9 @@ describe('PaymentsService', () => {
   const mockOrdersService = {
     getOrderById: jest.fn(),
     getOrderByPaymentRef: jest.fn(),
+    findStalePendingGopayPaymentOrders: jest.fn(),
     updatePaymentRef: jest.fn(),
+    updateRefundStatus: jest.fn(),
     tryStartPaymentSession: jest.fn(),
     clearPaymentSessionLock: jest.fn(),
   };
@@ -58,6 +62,10 @@ describe('PaymentsService', () => {
 
   const mockDeliveryService = {
     createDeliveryForOrder: jest.fn(),
+  };
+
+  const mockTelegramNotifications = {
+    notifyError: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -92,6 +100,10 @@ describe('PaymentsService', () => {
           provide: DeliveryService,
           useValue: mockDeliveryService,
         },
+        {
+          provide: TelegramNotificationsService,
+          useValue: mockTelegramNotifications,
+        },
       ],
     }).compile();
 
@@ -107,6 +119,8 @@ describe('PaymentsService', () => {
     jest.clearAllMocks();
     mockOrdersService.tryStartPaymentSession.mockResolvedValue(true);
     mockOrdersService.clearPaymentSessionLock.mockResolvedValue(undefined);
+    mockTelegramNotifications.notifyError.mockResolvedValue(undefined);
+    mockOrdersService.findStalePendingGopayPaymentOrders.mockResolvedValue([]);
   });
 
   describe('createPaymentSession', () => {
@@ -456,6 +470,21 @@ describe('PaymentsService', () => {
         'order-123',
         OrderStatus.PAID,
       );
+      expect(mockTelegramNotifications.notifyError).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: 'Wolt dispatch failed after payment',
+          message: expect.stringContaining('Delivery service error'),
+          tenantId: 'tenant-123',
+          orderId: 'order-123',
+          details: expect.objectContaining({
+            paymentProvider: 'adyen',
+            paymentRef: 'adyen-ref-123',
+            orderStatus: OrderStatus.PAID,
+            paymentStatus: 'success',
+          }),
+          stack: expect.any(String),
+        }),
+      );
     });
 
     it('should return early if order not found', async () => {
@@ -520,6 +549,39 @@ describe('PaymentsService', () => {
       expect(mockDeliveryService.createDeliveryForOrder).toHaveBeenCalledWith('order-123');
     });
 
+    it('alerts operator when GoPay payment succeeds but Wolt delivery creation fails', async () => {
+      mockGopayService.parseWebhook.mockReturnValue({
+        merchantReference: 'order-123',
+        success: true,
+        paymentRef: 'gopay-123',
+        eventType: 'PAID',
+      });
+      mockOrdersService.getOrderById.mockResolvedValue(mockOrder);
+      mockOrdersService.updatePaymentRef.mockResolvedValue(undefined);
+      mockOrderStatusService.updateStatus.mockResolvedValue(undefined);
+      mockDeliveryService.createDeliveryForOrder.mockRejectedValue(new Error('Wolt unavailable'));
+
+      await service.handleGopayWebhook({ state: 'PAID' });
+
+      expect(mockOrdersService.updatePaymentRef).toHaveBeenCalledWith('order-123', 'gopay-123', 'success');
+      expect(mockOrderStatusService.updateStatus).toHaveBeenCalledWith('order-123', OrderStatus.PAID);
+      expect(mockTelegramNotifications.notifyError).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: 'Wolt dispatch failed after payment',
+          message: expect.stringContaining('Wolt unavailable'),
+          tenantId: 'tenant-123',
+          orderId: 'order-123',
+          details: expect.objectContaining({
+            paymentProvider: 'gopay',
+            paymentRef: 'gopay-123',
+            orderStatus: OrderStatus.PAID,
+            paymentStatus: 'success',
+          }),
+          stack: expect.any(String),
+        }),
+      );
+    });
+
     it('should handle failed GoPay payment', async () => {
       const webhookData = {
         id: 'gopay-123',
@@ -549,6 +611,269 @@ describe('PaymentsService', () => {
         OrderStatus.CANCELED,
       );
       expect(mockDeliveryService.createDeliveryForOrder).not.toHaveBeenCalled();
+    });
+
+    it('should record refund confirmation on REFUNDED webhook', async () => {
+      mockGopayService.parseWebhook.mockReturnValue({
+        merchantReference: 'order-123',
+        success: false,
+        paymentRef: 'gopay-123',
+        eventType: 'REFUNDED',
+      });
+      mockOrdersService.getOrderById.mockResolvedValue({
+        ...mockOrder,
+        status: OrderStatus.CANCELED,
+      });
+      mockOrdersService.updateRefundStatus.mockResolvedValue(undefined);
+
+      await service.handleGopayWebhook({ state: 'REFUNDED' });
+
+      expect(mockOrdersService.updateRefundStatus).toHaveBeenCalledWith('order-123', 'refunded');
+      expect(mockOrderStatusService.updateStatus).not.toHaveBeenCalled();
+    });
+
+    it('should auto-refund when PAID arrives for canceled order without prior refund', async () => {
+      const canceledOrder = {
+        ...mockOrder,
+        status: OrderStatus.CANCELED,
+        paymentRef: 'gopay-123',
+        totalCents: 2500,
+        refundStatus: null,
+      };
+      mockGopayService.parseWebhook.mockReturnValue({
+        merchantReference: 'order-123',
+        success: true,
+        paymentRef: 'gopay-123',
+        eventType: 'PAID',
+      });
+      mockOrdersService.getOrderById.mockResolvedValue(canceledOrder);
+      mockOrdersService.updatePaymentRef.mockResolvedValue(undefined);
+      mockOrdersService.updateRefundStatus.mockResolvedValue(undefined);
+      mockTenantsService.getTenantById.mockResolvedValue({
+        id: 'tenant-123',
+        paymentProvider: 'gopay',
+      });
+      mockGopayService.refundPayment.mockResolvedValue(undefined);
+
+      await service.handleGopayWebhook({ state: 'PAID' });
+
+      expect(mockGopayService.refundPayment).toHaveBeenCalled();
+      expect(mockOrdersService.updateRefundStatus).toHaveBeenCalledWith('order-123', 'refund_pending');
+      expect(mockOrderStatusService.updateStatus).not.toHaveBeenCalled();
+    });
+
+    it('should not mark success nor refund when PAID for canceled order reports a mismatched amount', async () => {
+      mockGopayService.parseWebhook.mockReturnValue({
+        merchantReference: 'order-123',
+        success: true,
+        paymentRef: 'gopay-123',
+        eventType: 'PAID',
+        amount: 999, // order total is 2500
+      });
+      mockOrdersService.getOrderById.mockResolvedValue({
+        ...mockOrder,
+        status: OrderStatus.CANCELED,
+        paymentRef: 'gopay-123',
+        totalCents: 2500,
+        refundStatus: null,
+      });
+
+      await service.handleGopayWebhook({ state: 'PAID' });
+
+      expect(mockOrdersService.updatePaymentRef).not.toHaveBeenCalled();
+      expect(mockGopayService.refundPayment).not.toHaveBeenCalled();
+      expect(mockOrdersService.updateRefundStatus).not.toHaveBeenCalled();
+    });
+
+    it('should not refund again when PAID retries for canceled order with refund already recorded', async () => {
+      mockGopayService.parseWebhook.mockReturnValue({
+        merchantReference: 'order-123',
+        success: true,
+        paymentRef: 'gopay-123',
+        eventType: 'PAID',
+      });
+      mockOrdersService.getOrderById.mockResolvedValue({
+        ...mockOrder,
+        status: OrderStatus.CANCELED,
+        paymentRef: 'gopay-123',
+        refundStatus: 'refund_pending',
+      });
+      mockOrdersService.updatePaymentRef.mockResolvedValue(undefined);
+
+      await service.handleGopayWebhook({ state: 'PAID' });
+
+      expect(mockGopayService.refundPayment).not.toHaveBeenCalled();
+      expect(mockOrdersService.updateRefundStatus).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('refundGopayPayment', () => {
+    const paidOrder = {
+      id: 'order-123',
+      tenantId: 'tenant-123',
+      orderNumber: 42,
+      status: OrderStatus.CANCELED,
+      paymentRef: 'gopay-123',
+      totalCents: 2500,
+      refundStatus: null,
+    };
+    const gopayTenant = { id: 'tenant-123', paymentProvider: 'gopay' };
+
+    it('should mark refund_pending after GoPay accepts the refund', async () => {
+      mockOrdersService.getOrderById.mockResolvedValue(paidOrder);
+      mockTenantsService.getTenantById.mockResolvedValue(gopayTenant);
+      mockGopayService.refundPayment.mockResolvedValue(undefined);
+
+      await service.refundGopayPayment('order-123');
+
+      expect(mockGopayService.refundPayment).toHaveBeenCalledWith('gopay-123', 2500, gopayTenant);
+      expect(mockOrdersService.updateRefundStatus).toHaveBeenCalledWith('order-123', 'refund_pending');
+      expect(mockTelegramNotifications.notifyError).not.toHaveBeenCalled();
+    });
+
+    it('should mark refund_failed, notify Telegram and rethrow when GoPay refund fails', async () => {
+      mockOrdersService.getOrderById.mockResolvedValue(paidOrder);
+      mockTenantsService.getTenantById.mockResolvedValue(gopayTenant);
+      mockOrdersService.updateRefundStatus.mockResolvedValue(undefined);
+      mockGopayService.refundPayment.mockRejectedValue(new Error('GoPay is down'));
+
+      await expect(service.refundGopayPayment('order-123')).rejects.toThrow('GoPay is down');
+
+      expect(mockOrdersService.updateRefundStatus).toHaveBeenCalledWith(
+        'order-123',
+        'refund_failed',
+        'GoPay is down',
+      );
+      expect(mockTelegramNotifications.notifyError).toHaveBeenCalledWith(
+        expect.objectContaining({ orderId: 'order-123' }),
+      );
+    });
+
+    it('should skip when order is already refunded', async () => {
+      mockOrdersService.getOrderById.mockResolvedValue({ ...paidOrder, refundStatus: 'refunded' });
+      mockTenantsService.getTenantById.mockResolvedValue(gopayTenant);
+
+      await service.refundGopayPayment('order-123');
+
+      expect(mockGopayService.refundPayment).not.toHaveBeenCalled();
+      expect(mockOrdersService.updateRefundStatus).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('retryGopayRefund', () => {
+    it('should return refreshed refund state and not throw when the retry fails', async () => {
+      const failingOrder = {
+        id: 'order-123',
+        tenantId: 'tenant-123',
+        status: OrderStatus.CANCELED,
+        paymentRef: 'gopay-123',
+        paymentStatus: 'success',
+        totalCents: 2500,
+        refundStatus: 'refund_failed',
+        refundError: 'previous failure',
+        refundedAt: null,
+      };
+      mockOrdersService.getOrderById.mockResolvedValue(failingOrder);
+      mockTenantsService.getTenantById.mockResolvedValue({ id: 'tenant-123', paymentProvider: 'gopay' });
+      mockOrdersService.updateRefundStatus.mockResolvedValue(undefined);
+      mockGopayService.refundPayment.mockRejectedValue(new Error('still down'));
+
+      const result = await service.retryGopayRefund('order-123');
+
+      expect(result.refundStatus).toBe('refund_failed');
+      expect(mockGopayService.refundPayment).toHaveBeenCalled();
+    });
+
+    it('should reject retry for cash-on-delivery orders', async () => {
+      mockOrdersService.getOrderById.mockResolvedValue({
+        id: 'order-123',
+        tenantId: 'tenant-123',
+        status: OrderStatus.CANCELED,
+        paymentRef: 'cod:cash',
+        refundStatus: null,
+      });
+
+      await expect(service.retryGopayRefund('order-123')).rejects.toThrow(BadRequestException);
+    });
+
+    it('should reject retry when already refunded', async () => {
+      mockOrdersService.getOrderById.mockResolvedValue({
+        id: 'order-123',
+        tenantId: 'tenant-123',
+        status: OrderStatus.CANCELED,
+        paymentRef: 'gopay-123',
+        refundStatus: 'refunded',
+      });
+
+      await expect(service.retryGopayRefund('order-123')).rejects.toThrow(BadRequestException);
+    });
+
+    it('should reject retry for orders that are not canceled', async () => {
+      mockOrdersService.getOrderById.mockResolvedValue({
+        id: 'order-123',
+        tenantId: 'tenant-123',
+        status: OrderStatus.PAID,
+        paymentRef: 'gopay-123',
+        paymentStatus: 'success',
+        refundStatus: null,
+      });
+
+      await expect(service.retryGopayRefund('order-123')).rejects.toThrow(
+        'Refund is only available for canceled orders',
+      );
+      expect(mockGopayService.refundPayment).not.toHaveBeenCalled();
+    });
+
+    it('should reject retry while a refund is pending confirmation', async () => {
+      mockOrdersService.getOrderById.mockResolvedValue({
+        id: 'order-123',
+        tenantId: 'tenant-123',
+        status: OrderStatus.CANCELED,
+        paymentRef: 'gopay-123',
+        paymentStatus: 'success',
+        refundStatus: 'refund_pending',
+      });
+
+      await expect(service.retryGopayRefund('order-123')).rejects.toThrow(BadRequestException);
+      expect(mockGopayService.refundPayment).not.toHaveBeenCalled();
+    });
+
+    it('should reject retry when the payment never succeeded', async () => {
+      mockOrdersService.getOrderById.mockResolvedValue({
+        id: 'order-123',
+        tenantId: 'tenant-123',
+        status: OrderStatus.CANCELED,
+        paymentRef: 'gopay-123',
+        paymentStatus: 'pending',
+        refundStatus: null,
+      });
+
+      await expect(service.retryGopayRefund('order-123')).rejects.toThrow(
+        'Order payment was not completed, there is nothing to refund',
+      );
+      expect(mockGopayService.refundPayment).not.toHaveBeenCalled();
+    });
+
+    it('should allow retry for partially refunded orders and attempt the refund', async () => {
+      const partialOrder = {
+        id: 'order-123',
+        tenantId: 'tenant-123',
+        status: OrderStatus.CANCELED,
+        paymentRef: 'gopay-123',
+        paymentStatus: 'success',
+        totalCents: 2500,
+        refundStatus: 'partially_refunded',
+        refundError: null,
+        refundedAt: null,
+      };
+      mockOrdersService.getOrderById.mockResolvedValue(partialOrder);
+      mockTenantsService.getTenantById.mockResolvedValue({ id: 'tenant-123', paymentProvider: 'gopay' });
+      mockOrdersService.updateRefundStatus.mockResolvedValue(undefined);
+      mockGopayService.refundPayment.mockResolvedValue(undefined);
+
+      await service.retryGopayRefund('order-123');
+
+      expect(mockGopayService.refundPayment).toHaveBeenCalledWith('gopay-123', 2500, expect.anything());
     });
   });
 
@@ -589,6 +914,38 @@ describe('PaymentsService', () => {
         OrderStatus.PAID,
       );
       expect(mockDeliveryService.createDeliveryForOrder).toHaveBeenCalledWith('order-123');
+    });
+
+    it('alerts operator when WePay payment succeeds but Wolt delivery creation fails', async () => {
+      mockWepayService.parseWebhook.mockReturnValue({
+        merchantReference: 'order-123',
+        success: true,
+        paymentRef: 'wepay-123',
+      });
+      mockOrdersService.getOrderById.mockResolvedValue(mockOrder);
+      mockOrdersService.updatePaymentRef.mockResolvedValue(undefined);
+      mockOrderStatusService.updateStatus.mockResolvedValue(undefined);
+      mockDeliveryService.createDeliveryForOrder.mockRejectedValue(new Error('Wolt create failed'));
+
+      await service.handleWepayWebhook({ state: 'captured' }, 'signature-123');
+
+      expect(mockOrdersService.updatePaymentRef).toHaveBeenCalledWith('order-123', 'wepay-123', 'success');
+      expect(mockOrderStatusService.updateStatus).toHaveBeenCalledWith('order-123', OrderStatus.PAID);
+      expect(mockTelegramNotifications.notifyError).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: 'Wolt dispatch failed after payment',
+          message: expect.stringContaining('Wolt create failed'),
+          tenantId: 'tenant-123',
+          orderId: 'order-123',
+          details: expect.objectContaining({
+            paymentProvider: 'wepay',
+            paymentRef: 'wepay-123',
+            orderStatus: OrderStatus.PAID,
+            paymentStatus: 'success',
+          }),
+          stack: expect.any(String),
+        }),
+      );
     });
 
     it('is idempotent: skips a duplicate success for an already-paid order', async () => {
@@ -754,6 +1111,51 @@ describe('PaymentsService', () => {
       await expect(service.syncGopayPaymentById('missing-payment')).rejects.toThrow(
         'Order for GoPay payment missing-payment not found',
       );
+    });
+
+    it('reconciles stale pending GoPay payments in the background worker', async () => {
+      const order = {
+        id: 'order-123',
+        tenantId: 'tenant-123',
+        status: OrderStatus.PENDING,
+        paymentRef: 'gopay-123',
+        paymentStatus: 'pending',
+      };
+      const paymentData = {
+        id: 'gopay-123',
+        order_number: 'order-123',
+        state: 'PAID',
+      };
+
+      mockOrdersService.findStalePendingGopayPaymentOrders.mockResolvedValue([
+        { id: 'order-123', tenantId: 'tenant-123', paymentRef: 'gopay-123' },
+      ]);
+      mockOrdersService.getOrderByPaymentRef.mockResolvedValue(order);
+      mockTenantsService.getTenantById.mockResolvedValue(gopayTenant);
+      mockGopayService.getPaymentStatus.mockResolvedValue(paymentData);
+      mockGopayService.parseWebhook.mockReturnValue({
+        eventType: 'PAID',
+        success: true,
+        paymentRef: 'gopay-123',
+        merchantReference: 'order-123',
+      });
+      mockOrdersService.getOrderById.mockResolvedValue(order);
+      mockOrdersService.updatePaymentRef.mockResolvedValue(undefined);
+      mockOrderStatusService.updateStatus.mockResolvedValue(undefined);
+      mockDeliveryService.createDeliveryForOrder.mockResolvedValue(undefined);
+
+      await (service as any).reconcilePendingGopayPayments();
+
+      expect(mockOrdersService.findStalePendingGopayPaymentOrders).toHaveBeenCalledWith(
+        expect.objectContaining({
+          olderThan: expect.any(Date),
+          limit: expect.any(Number),
+        }),
+      );
+      expect(mockGopayService.getPaymentStatus).toHaveBeenCalledWith('gopay-123', gopayTenant);
+      expect(mockOrdersService.updatePaymentRef).toHaveBeenCalledWith('order-123', 'gopay-123', 'success');
+      expect(mockOrderStatusService.updateStatus).toHaveBeenCalledWith('order-123', OrderStatus.PAID);
+      expect(mockDeliveryService.createDeliveryForOrder).toHaveBeenCalledWith('order-123');
     });
   });
 });

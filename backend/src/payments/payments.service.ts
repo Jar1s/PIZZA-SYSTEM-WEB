@@ -1,4 +1,14 @@
-import { Injectable, BadRequestException, InternalServerErrorException, NotFoundException, Inject, forwardRef, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  InternalServerErrorException,
+  NotFoundException,
+  Inject,
+  forwardRef,
+  Logger,
+  OnModuleDestroy,
+  OnModuleInit,
+} from '@nestjs/common';
 import { AdyenService } from './adyen.service';
 import { GopayService } from './gopay.service';
 import { WepayService } from './wepay.service';
@@ -7,11 +17,27 @@ import { OrderStatusService } from '../orders/order-status.service';
 import { TenantsService } from '../tenants/tenants.service';
 import { DeliveryService } from '../delivery/delivery.service';
 import { OrderStatus } from '@pizza-ecosystem/shared';
+import { TelegramNotificationsService } from '../notifications/telegram-notifications.service';
 import * as crypto from 'crypto';
 
 @Injectable()
-export class PaymentsService {
+export class PaymentsService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(PaymentsService.name);
+  private pendingGopayReconcileTimer: NodeJS.Timeout | null = null;
+  private pendingGopayReconcileRunning = false;
+
+  private readonly pendingGopayReconcileIntervalMs = this.getPositiveIntegerEnv(
+    'GOPAY_RECONCILE_INTERVAL_MS',
+    2 * 60 * 1000,
+  );
+  private readonly pendingGopayReconcileMinAgeMs = this.getPositiveIntegerEnv(
+    'GOPAY_RECONCILE_MIN_AGE_MS',
+    2 * 60 * 1000,
+  );
+  private readonly pendingGopayReconcileLimit = this.getPositiveIntegerEnv(
+    'GOPAY_RECONCILE_LIMIT',
+    25,
+  );
 
   constructor(
     private adyenService: AdyenService,
@@ -24,7 +50,124 @@ export class PaymentsService {
     private tenantsService: TenantsService,
     @Inject(forwardRef(() => DeliveryService))
     private deliveryService: DeliveryService,
+    private telegramNotifications: TelegramNotificationsService,
   ) {}
+
+  onModuleInit(): void {
+    if (process.env.NODE_ENV === 'test' || process.env.GOPAY_RECONCILE_DISABLED === 'true') {
+      return;
+    }
+
+    this.pendingGopayReconcileTimer = setInterval(() => {
+      this.reconcilePendingGopayPayments().catch((error: any) => {
+        this.logger.warn('GoPay pending payment reconcile worker failed', {
+          error: error?.message || String(error),
+        });
+      });
+    }, this.pendingGopayReconcileIntervalMs);
+
+    this.logger.log('GoPay pending payment reconcile worker started', {
+      intervalMs: this.pendingGopayReconcileIntervalMs,
+      minAgeMs: this.pendingGopayReconcileMinAgeMs,
+      limit: this.pendingGopayReconcileLimit,
+    });
+  }
+
+  onModuleDestroy(): void {
+    if (this.pendingGopayReconcileTimer) {
+      clearInterval(this.pendingGopayReconcileTimer);
+      this.pendingGopayReconcileTimer = null;
+    }
+  }
+
+  private getPositiveIntegerEnv(name: string, fallback: number): number {
+    const parsed = Number.parseInt(process.env[name] || '', 10);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+  }
+
+  private async reconcilePendingGopayPayments(): Promise<void> {
+    if (this.pendingGopayReconcileRunning) {
+      this.logger.debug('Skipping GoPay pending payment reconcile because previous run is still active');
+      return;
+    }
+
+    this.pendingGopayReconcileRunning = true;
+
+    try {
+      const olderThan = new Date(Date.now() - this.pendingGopayReconcileMinAgeMs);
+      const orders = await this.ordersService.findStalePendingGopayPaymentOrders({
+        olderThan,
+        limit: this.pendingGopayReconcileLimit,
+      });
+
+      for (const order of orders) {
+        const paymentRef = String(order.paymentRef || '').trim();
+        if (!paymentRef) {
+          continue;
+        }
+
+        try {
+          const result = await this.syncGopayPaymentById(paymentRef);
+          if (result.state === 'PAID') {
+            this.logger.warn('Recovered paid GoPay order from pending-payment reconcile', {
+              orderId: result.orderId,
+              tenantSlug: result.tenantSlug,
+              paymentRef,
+            });
+          }
+        } catch (error: any) {
+          this.logger.warn('Failed to reconcile pending GoPay payment', {
+            orderId: order.id,
+            paymentRef,
+            error: error?.message || String(error),
+          });
+        }
+      }
+    } finally {
+      this.pendingGopayReconcileRunning = false;
+    }
+  }
+
+  private async notifyDeliveryCreationFailure(
+    order: any,
+    provider: 'adyen' | 'gopay' | 'wepay',
+    paymentRef: string | null | undefined,
+    error: unknown,
+  ): Promise<void> {
+    const message = error instanceof Error ? error.message : String(error);
+    const stack = error instanceof Error ? error.stack : undefined;
+
+    this.logger.error(`Delivery creation failed after ${provider} payment for order ${order.id}`, {
+      orderId: order.id,
+      tenantId: order.tenantId,
+      provider,
+      paymentRef,
+      error: message,
+      stack,
+    });
+
+    try {
+      await this.telegramNotifications.notifyError({
+        title: 'Wolt dispatch failed after payment',
+        message: `Objednávka ${order.orderNumber ? `#${order.orderNumber}` : order.id} je zaplatená, ale Wolt doručenie sa nevytvorilo: ${message}`,
+        tenantId: order.tenantId,
+        orderId: order.id,
+        details: {
+          paymentProvider: provider,
+          paymentRef: paymentRef || null,
+          orderStatus: OrderStatus.PAID,
+          paymentStatus: 'success',
+          totalCents: order.totalCents || null,
+        },
+        stack,
+      });
+    } catch (notifyError) {
+      this.logger.warn('Failed to send delivery-creation failure Telegram notification', {
+        orderId: order.id,
+        error: notifyError instanceof Error ? notifyError.message : String(notifyError),
+      });
+    }
+  }
 
   async createPaymentSession(orderId: string) {
     let tenantSlug = 'unknown';
@@ -174,9 +317,9 @@ export class PaymentsService {
       // 🚀 CREATE DELIVERY - Automatically dispatch courier (idempotent: no-op if one exists)
       try {
         await this.deliveryService.createDeliveryForOrder(order.id);
-        console.log(`Payment successful for order ${order.id}, delivery created`);
+        this.logger.log(`Adyen payment successful for order ${order.id}, delivery created`);
       } catch (error) {
-        console.error('Failed to create delivery:', error);
+        await this.notifyDeliveryCreationFailure(order, 'adyen', parsed.paymentRef, error);
         // Don't fail the payment, admin can manually dispatch
       }
     } else {
@@ -211,7 +354,18 @@ export class PaymentsService {
       // Admin might have canceled/rejected the order before the PAID webhook arrived.
       // In that case, keep order canceled and immediately issue refund.
       if (order.status === OrderStatus.CANCELED) {
+        // Same amount guard as the normal PAID flow — a mismatched webhook must
+        // neither mark the payment successful nor trigger a refund of totalCents.
+        if (!this.isWebhookAmountValid(order, parsed)) {
+          return;
+        }
         await this.ordersService.updatePaymentRef(order.id, parsed.paymentRef, 'success');
+        if ((order as any).refundStatus) {
+          this.logger.log(
+            `GoPay PAID webhook for canceled order ${order.id} - refund already ${(order as any).refundStatus}, skipping`,
+          );
+          return;
+        }
         try {
           await this.refundGopayPayment(order.id);
           this.logger.warn(
@@ -242,9 +396,9 @@ export class PaymentsService {
       // 🚀 CREATE DELIVERY - Automatically dispatch courier
       try {
         await this.deliveryService.createDeliveryForOrder(order.id);
-        console.log(`GoPay payment successful for order ${order.id}, delivery created`);
+        this.logger.log(`GoPay payment successful for order ${order.id}, delivery created`);
       } catch (error) {
-        console.error('Failed to create delivery:', error);
+        await this.notifyDeliveryCreationFailure(order, 'gopay', parsed.paymentRef, error);
         // Don't fail the payment, admin can manually dispatch
       }
     } else if (parsed.eventType === 'CANCELED' || parsed.eventType === 'TIMEOUTED') {
@@ -259,6 +413,11 @@ export class PaymentsService {
       await this.ordersService.updatePaymentRef(order.id, parsed.paymentRef, 'failed');
       await this.orderStatusService.updateStatus(order.id, OrderStatus.CANCELED);
       console.log(`GoPay payment ${parsed.eventType.toLowerCase()} for order ${order.id}`);
+    } else if (parsed.eventType === 'REFUNDED' || parsed.eventType === 'PARTIALLY_REFUNDED') {
+      // GoPay confirmed the money went back to the customer.
+      const confirmedStatus = parsed.eventType === 'REFUNDED' ? 'refunded' : 'partially_refunded';
+      await this.ordersService.updateRefundStatus(order.id, confirmedStatus);
+      this.logger.log(`GoPay refund confirmed for order ${order.id} (${parsed.eventType})`);
     } else {
       // Other states (CREATED, PAYMENT_METHOD_CHOSEN) - just log, don't change status
       console.log(`GoPay webhook received state ${parsed.eventType} for order ${order.id}, no action taken`);
@@ -455,9 +614,9 @@ export class PaymentsService {
       // 🚀 CREATE DELIVERY - Automatically dispatch courier (idempotent: no-op if one exists)
       try {
         await this.deliveryService.createDeliveryForOrder(order.id);
-        console.log(`WePay payment successful for order ${order.id}, delivery created`);
+        this.logger.log(`WePay payment successful for order ${order.id}, delivery created`);
       } catch (error) {
-        console.error('Failed to create delivery:', error);
+        await this.notifyDeliveryCreationFailure(order, 'wepay', parsed.paymentRef, error);
         // Don't fail the payment, admin can manually dispatch
       }
     } else {
@@ -477,19 +636,109 @@ export class PaymentsService {
   async refundGopayPayment(orderId: string): Promise<void> {
     const order = await this.ordersService.getOrderById(orderId);
     const tenant = await this.tenantsService.getTenantById(order.tenantId);
-    
+
     if (!order.paymentRef) {
       throw new Error('Order has no payment reference');
     }
-    
+
     if (tenant.paymentProvider !== 'gopay') {
       throw new Error(`Order payment provider is ${tenant.paymentProvider}, not gopay`);
     }
-    
-    await this.gopayService.refundPayment(
-      order.paymentRef,
-      order.totalCents,
-      tenant
-    );
+
+    const refundStatus = (order as any).refundStatus;
+    if (refundStatus === 'refunded') {
+      this.logger.log(`Order ${orderId} is already refunded, skipping GoPay refund`);
+      return;
+    }
+    if (refundStatus === 'partially_refunded') {
+      // Not a terminal success: part of the money is still with us. A retry is
+      // allowed (GoPay validates the amount against the remaining balance), but
+      // flag it loudly because it usually needs a manual look in GoPay admin.
+      this.logger.warn(
+        `Order ${orderId} is only partially refunded - retrying full-amount refund, GoPay will validate the remainder`,
+      );
+    }
+
+    try {
+      await this.gopayService.refundPayment(
+        order.paymentRef,
+        order.totalCents,
+        tenant
+      );
+      // GoPay accepted the refund request; final confirmation arrives via the
+      // REFUNDED payment notification handled in handleGopayWebhook.
+      await this.ordersService.updateRefundStatus(orderId, 'refund_pending');
+    } catch (error: any) {
+      const message = String(error?.message || error);
+      await this.ordersService
+        .updateRefundStatus(orderId, 'refund_failed', message)
+        .catch((dbError) =>
+          this.logger.error(`Failed to persist refund_failed for order ${orderId}:`, dbError),
+        );
+      try {
+        await this.telegramNotifications.notifyError({
+          title: '💸 GoPay refund zlyhal',
+          message: `Objednávka #${order.orderNumber ?? order.id} (${(order.totalCents / 100).toFixed(2)} €): ${message}`,
+          orderId: order.id,
+          tenantId: order.tenantId,
+        });
+      } catch (notifyError) {
+        this.logger.error('Failed to send refund-failure Telegram notification:', notifyError);
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Manual refund retry for admins. Unlike the automatic paths this also
+   * re-attempts after a previous refund_failed / stuck refund_pending state.
+   */
+  async retryGopayRefund(orderId: string): Promise<{
+    refundStatus: string | null;
+    refundError: string | null;
+    refundedAt: Date | null;
+  }> {
+    const order = await this.ordersService.getOrderById(orderId);
+    if (!order) {
+      throw new NotFoundException(`Order ${orderId} not found`);
+    }
+
+    // The admin UI only offers the button on canceled orders, but the endpoint
+    // must enforce the same rules: never refund a live order or an unpaid one.
+    if (order.status !== OrderStatus.CANCELED) {
+      throw new BadRequestException('Refund is only available for canceled orders');
+    }
+
+    const refundStatus = (order as any).refundStatus;
+    if (refundStatus === 'refunded') {
+      throw new BadRequestException('Order payment is already refunded');
+    }
+    if (refundStatus === 'refund_pending') {
+      throw new BadRequestException('Refund is already in progress, waiting for GoPay confirmation');
+    }
+
+    if (!order.paymentRef || String(order.paymentRef).startsWith('cod:')) {
+      throw new BadRequestException('Order has no online payment to refund');
+    }
+
+    const paymentStatus = String((order as any).paymentStatus || '').toLowerCase();
+    if (paymentStatus !== 'success') {
+      throw new BadRequestException('Order payment was not completed, there is nothing to refund');
+    }
+
+    try {
+      await this.refundGopayPayment(orderId);
+    } catch (error: any) {
+      // refundGopayPayment already recorded refund_failed + notified;
+      // return the state so the admin UI can show the error inline.
+      this.logger.error(`Manual GoPay refund retry failed for order ${orderId}:`, error?.message || error);
+    }
+
+    const updated = await this.ordersService.getOrderById(orderId);
+    return {
+      refundStatus: (updated as any).refundStatus ?? null,
+      refundError: (updated as any).refundError ?? null,
+      refundedAt: (updated as any).refundedAt ?? null,
+    };
   }
 }

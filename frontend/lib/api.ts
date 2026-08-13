@@ -1047,6 +1047,33 @@ export async function syncOrderToStoryous(orderId: string, tenantSlug?: string):
   throw new Error(lastErrorText || 'Failed to sync order to Storyous');
 }
 
+export type OrderRefundResult = {
+  refundStatus: string | null;
+  refundError: string | null;
+  refundedAt: string | null;
+};
+
+export async function refundOrder(orderId: string): Promise<OrderRefundResult> {
+  const res = await fetch(`${API_URL}/api/orders/${orderId}/refund`, {
+    method: 'POST',
+    headers: buildAuthHeaders(true),
+    credentials: 'include',
+  });
+
+  if (!res.ok) {
+    const errorText = await res.text().catch(() => '');
+    let message = errorText || `HTTP ${res.status}`;
+    try {
+      message = JSON.parse(errorText)?.message || message;
+    } catch {
+      // keep raw text
+    }
+    throw new Error(message);
+  }
+
+  return res.json();
+}
+
 export type StoryousReceiptPreviewItem = {
   quantity: number;
   name: string;

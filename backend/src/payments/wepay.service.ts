@@ -12,19 +12,23 @@ export class WepayService {
     // https://developer.wepay.com/
     
     const wepayConfig = tenant.paymentConfig as any;
-    
-    if (process.env.NODE_ENV === 'development' || !wepayConfig?.clientId) {
+
+    if (process.env.NODE_ENV === 'development' && !wepayConfig?.clientId) {
       // Development/Mock mode
       this.logger.warn('⚠️  WePay in DEV mode - using mock redirect URL');
-      
+
       const tenantDomain = tenant.domain || `${tenant.subdomain}.localhost:3001`;
-      
+
       return {
         paymentId: 'wepay_' + order.id,
         redirectUrl: `http://${tenantDomain}/checkout/mock-payment?orderId=${order.id}&provider=wepay`,
       };
     }
-    
+
+    if (!wepayConfig?.clientId || !wepayConfig?.clientSecret) {
+      throw new Error('WePay configuration is incomplete: required clientId and clientSecret');
+    }
+
     // Production: Real WePay API call
     try {
       const apiUrl = wepayConfig.environment === 'production' 

@@ -97,6 +97,24 @@ export class OrderStatusService implements OnModuleInit, OnModuleDestroy {
       );
 
       if (!storyousResult?.id) {
+        this.logger.error(`⚠️ Storyous auto-sync for order ${order.id} returned no order ID`, {
+          orderId: order.id,
+          statusSyncSource,
+          storyousState: storyousResult?.storyousState || null,
+          warnings: storyousResult?.warnings || [],
+        });
+        await this.telegramNotifications.notifyError({
+          title: 'Storyous auto-sync returned no order ID',
+          message: 'Storyous API did not return order ID; kitchen may not know about this order.',
+          tenantId: order.tenantId,
+          orderId: order.id,
+          details: {
+            statusSyncSource,
+            targetStatus: newStatus,
+            storyousState: storyousResult?.storyousState || null,
+            warnings: storyousResult?.warnings || [],
+          },
+        });
         return;
       }
 
@@ -254,13 +272,17 @@ export class OrderStatusService implements OnModuleInit, OnModuleDestroy {
       const paymentProvider = tenant.paymentProvider;
       const paymentRef = (order as any).paymentRef;
       const paymentStatus = String((order as any).paymentStatus || '').toLowerCase();
-      
+      const refundStatus = (order as any).refundStatus;
+
       // Auto-refund for paid GoPay orders on admin cancellation/rejection.
       // We intentionally do not gate by order.status here, because payment webhooks can arrive
       // slightly before/after manual status actions.
-      if (paymentProvider === 'gopay' && 
-          paymentRef && 
-          paymentStatus === 'success') {
+      // Skip when a refund was already initiated/confirmed (idempotence); a failed
+      // refund is retried manually via POST /orders/:id/refund.
+      if (paymentProvider === 'gopay' &&
+          paymentRef &&
+          paymentStatus === 'success' &&
+          !refundStatus) {
         try {
           await this.paymentsService.refundGopayPayment(orderId);
           this.logger.log(`✅ GoPay refund initiated for order ${orderId}`);
@@ -566,6 +588,5 @@ export class OrderStatusService implements OnModuleInit, OnModuleDestroy {
     }
   }
 }
-
 
 
