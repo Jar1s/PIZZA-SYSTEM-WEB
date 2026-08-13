@@ -158,10 +158,6 @@ export function CookieConsent() {
 
     const gaId = process.env.NEXT_PUBLIC_GA_ID;
     if (!gaId) {
-      // Only log in development mode to reduce console noise
-      if (process.env.NODE_ENV === 'development') {
-        console.debug('Google Analytics ID not configured. Set NEXT_PUBLIC_GA_ID in .env.local (optional)');
-      }
       return;
     }
 

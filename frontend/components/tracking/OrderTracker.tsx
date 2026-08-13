@@ -28,15 +28,13 @@ export function OrderTracker({ order: initialOrder }: OrderTrackerProps) {
     const interval = setInterval(async () => {
       // Prevent concurrent requests
       if (isFetchingRef.current) {
-        console.log('[OrderTracker] Fetch already in progress, skipping...');
         return;
       }
-      
+
       // Throttle: don't fetch if last fetch was less than 2 seconds ago
       const now = Date.now();
       const timeSinceLastFetch = now - lastFetchTimeRef.current;
       if (timeSinceLastFetch < MIN_FETCH_GAP_MS) {
-        console.log(`[OrderTracker] Throttling: last fetch was ${timeSinceLastFetch}ms ago`);
         return;
       }
       

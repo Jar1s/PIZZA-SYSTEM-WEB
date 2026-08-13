@@ -26,12 +26,6 @@ export function OrderDetails({ order }: OrderDetailsProps) {
         <div className="space-y-3">
           {order.items.map((item: any, i: number) => {
             // Use displayName from DB if available, otherwise use centralized function
-            console.log('[OrderDetails] Item displayName check:', {
-              itemId: item.id,
-              productName: item.productName,
-              displayName: item.displayName,
-              hasDisplayName: !!item.displayName,
-            });
             const displayName = item.displayName || getProductDisplayName(item.productName, language);
             
             const modifiers = formatModifiers(item.modifiers, false, language, customizationLabels);

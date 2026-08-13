@@ -18,9 +18,7 @@ export async function getTenant(slug: string): Promise<Tenant> {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
     const normalizedSlug = normalizeTenantSlug(slug);
-    
-    console.log(`[getTenant] Fetching tenant: ${API_URL}/api/tenants/${normalizedSlug}`);
-    
+
     let res = await fetch(`${API_URL}/api/tenants/${normalizedSlug}`, {
       signal: controller.signal,
       headers: {
@@ -53,23 +51,8 @@ export async function getTenant(slug: string): Promise<Tenant> {
     }
     
     const data = await res.json();
-    console.log('[getTenant] Received data:', { name: data.name, slug: data.slug, hasTheme: !!data.theme });
-    
-    // ALWAYS log full theme structure for debugging
-    console.log('[getTenant] DEBUG: Full theme from API:', JSON.stringify(data.theme, null, 2));
-    console.log('[getTenant] DEBUG: openingHours from API:', data.theme?.openingHours ? JSON.stringify(data.theme.openingHours, null, 2) : 'NOT PRESENT');
-    console.log('[getTenant] DEBUG: maintenanceMode from API:', data.theme?.maintenanceMode !== undefined ? data.theme.maintenanceMode : 'NOT PRESENT');
-    
     const validated = safeParse(TenantSchema, data, data as any);
     const result = withTenantThemeDefaults(validated) as Tenant;
-    console.log('[getTenant] Validated tenant:', { name: result.name, slug: result.slug });
-    
-    // ALWAYS log theme after validation
-    const resultTheme = result.theme as any;
-    console.log('[getTenant] DEBUG: Full theme after validation:', JSON.stringify(resultTheme, null, 2));
-    console.log('[getTenant] DEBUG: openingHours after validation:', resultTheme?.openingHours ? JSON.stringify(resultTheme.openingHours, null, 2) : 'NOT PRESENT');
-    console.log('[getTenant] DEBUG: maintenanceMode after validation:', resultTheme?.maintenanceMode !== undefined ? resultTheme.maintenanceMode : 'NOT PRESENT');
-    
     return result;
   } catch (error: any) {
     console.error('[getTenant] Error:', error);
@@ -98,17 +81,7 @@ export async function updateTenant(slug: string, data: any): Promise<Tenant> {
     if (token) {
       headers['Authorization'] = `Bearer ${token}`;
     }
-    
-    console.log(`[updateTenant] Updating tenant: ${API_URL}/api/tenants/${normalizedSlug}`, data);
-    
-    // Debug: Log openingHours if present
-    if (data.theme?.openingHours) {
-      console.log('[updateTenant] DEBUG: openingHours being sent:', JSON.stringify(data.theme.openingHours, null, 2));
-    }
-    if (data.theme?.maintenanceMode !== undefined) {
-      console.log('[updateTenant] DEBUG: maintenanceMode being sent:', data.theme.maintenanceMode);
-    }
-    
+
     const res = await fetch(`${API_URL}/api/tenants/${normalizedSlug}`, {
       method: 'PATCH',
       headers,
@@ -126,16 +99,6 @@ export async function updateTenant(slug: string, data: any): Promise<Tenant> {
     }
     
     const responseData = await res.json();
-    console.log('[updateTenant] Tenant updated:', { name: responseData.name, slug: responseData.slug, hasTheme: !!responseData.theme });
-    
-    // Debug: Log openingHours from response
-    if (responseData.theme?.openingHours) {
-      console.log('[updateTenant] DEBUG: openingHours received from API:', JSON.stringify(responseData.theme.openingHours, null, 2));
-    }
-    if (responseData.theme?.maintenanceMode !== undefined) {
-      console.log('[updateTenant] DEBUG: maintenanceMode received from API:', responseData.theme.maintenanceMode);
-    }
-    
     const validated = safeParse(TenantSchema, responseData, responseData as any);
     const result = withTenantThemeDefaults(validated) as Tenant;
     return result;
@@ -158,9 +121,7 @@ export async function getAllTenants(includeInactive: boolean = false): Promise<T
     if (token) {
       headers.Authorization = `Bearer ${token}`;
     }
-    
-    console.log(`[getAllTenants] Fetching: ${url}`);
-    
+
     const res = await fetch(url, {
       headers,
     });
@@ -487,17 +448,12 @@ export async function getOrders(
       params.append('endDate', endDate);
     }
 
-    console.log('[getOrders] Fetching orders:', { url: `${API_URL}/api/orders?${params.toString()}`, hasToken: !!token, tokenLength: token?.length, headers: ['Authorization'] });
-
     const res = await fetch(`${API_URL}/api/orders?${params.toString()}`, {
       headers: {
         Authorization: `Bearer ${token}`,
       },
       cache: 'no-store', // Ensure fresh data on each request
     });
-
-    const statusText = res.statusText || '';
-    console.log('[OrderList] Response:', { status: res.status, statusText, ok: res.ok });
 
     if (!res.ok) {
       const errorText = await res.text();

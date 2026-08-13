@@ -82,34 +82,18 @@ export const ProductCard = memo(function ProductCard({ product, index = 0, isBes
   useEffect(() => {
     setCurrentImageSrc(displayImage || fallbackImage || placeholderImage);
   }, [displayImage, fallbackImage]);
-  
-  // Debug logging
-  useEffect(() => {
-    if (product.category === 'DRINKS') {
-      console.log(`[ProductCard] Drink product:`, {
-        name: product.name,
-        category: product.category,
-        image: product.image,
-        fallbackImage,
-        displayImage,
-      });
-    }
-  }, [product.name, product.category, product.image, fallbackImage, displayImage]);
-  
+
   // Check if product needs customization (PIZZA or STANGLE)
   const needsCustomization = useMemo(() => {
     return product.category === 'PIZZA' || product.category === 'STANGLE';
   }, [product.category]);
   
   const handleAddToCart = useCallback(() => {
-    console.log('handleAddToCart called', { needsCustomization, product: product.name, category: product.category });
     if (needsCustomization) {
       // Open customization modal for pizzas and stangle products
-      console.log('Opening customization modal');
       setShowCustomization(true);
     } else {
       // Direct add for items that don't need customization
-      console.log('Adding product directly to cart', product);
       setIsAdding(true);
       addItem(product);
       toast.success(`${displayName} pridané do košíka!`);
@@ -321,7 +305,6 @@ export const ProductCard = memo(function ProductCard({ product, index = 0, isBes
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
-              console.log('🔵 Button clicked, calling handleAddToCart', { product: product.name, needsCustomization });
               handleAddToCart();
             }}
             disabled={isAdding}

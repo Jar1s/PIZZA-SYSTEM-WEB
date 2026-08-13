@@ -183,12 +183,7 @@ export default async function RootLayout({
   const primaryColor = isPornopizza ? '#E91E63' : (theme.primaryColor || '#E91E63');
   const secondaryColor = isPornopizza ? '#0F141A' : (theme.secondaryColor || '#0F141A');
   const fontFamily = theme.fontFamily || 'Inter, sans-serif';
-  
-  // Debug logging in development
-  if (process.env.NODE_ENV === 'development') {
-    console.log('[Layout] Tenant:', normalizedTenant?.slug, 'PrimaryColor:', primaryColor, 'Original:', theme.primaryColor);
-  }
-  
+
   // Structured Data (JSON-LD)
   const organizationSchema = {
     '@context': 'https://schema.org',

@@ -84,7 +84,6 @@ export default function VerifyPhonePage() {
       // Redirect to returnUrl if exists and valid, otherwise to account page (not checkout)
       const tenant = getTenantFromUrl();
       const redirectUrl = validatedReturnUrl || `/account?tenant=${tenant}`;
-      console.log('SMS verification successful - redirecting to:', redirectUrl);
       // Clear any OAuth redirect flags that might interfere
       if (typeof window !== 'undefined') {
         sessionStorage.removeItem('oauth_redirect');
