@@ -231,10 +231,8 @@ export class TrackingController {
   @Header('Surrogate-Control', 'no-store')
   @Get(':orderId')
   async trackOrder(@Param('orderId') orderId: string) {
-    this.logger.log(`Tracking order: ${orderId}`);
     try {
       const order = await this.ordersService.getOrderById(orderId);
-      this.logger.log(`Order found: ${orderId}, status: ${order.status}`);
       return this.toPublicTrackingOrder(order);
     } catch (error) {
       this.logger.error(`Error tracking order ${orderId}:`, error);
@@ -250,10 +248,8 @@ export class TrackingController {
   @Header('Surrogate-Control', 'no-store')
   @Get('api/track/:orderId')
   async trackOrderApi(@Param('orderId') orderId: string) {
-    this.logger.log(`API tracking order: ${orderId}`);
     try {
       const order = await this.ordersService.getOrderById(orderId);
-      this.logger.log(`Order found via API: ${orderId}, status: ${order.status}`);
       return this.toPublicTrackingOrder(order);
     } catch (error) {
       this.logger.error(`Error tracking order via API ${orderId}:`, error);

@@ -11,6 +11,7 @@ import {
   UnauthorizedException,
   BadRequestException,
   NotFoundException,
+  Logger,
 } from '@nestjs/common';
 import { CustomerService } from './customer.service';
 import { TenantsService } from '../tenants/tenants.service';
@@ -19,6 +20,8 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 @Controller('customer/account')
 @UseGuards(JwtAuthGuard)
 export class CustomerController {
+  private readonly logger = new Logger(CustomerController.name);
+
   constructor(
     private customerService: CustomerService,
     private tenantsService: TenantsService,
@@ -56,10 +59,9 @@ export class CustomerController {
    */
   @Get('orders')
   async getOrders(@Request() req: any) {
-    console.log('[CustomerController] getOrders - user from request:', req.user ? { id: req.user.id, email: req.user.email, role: req.user.role } : 'null');
     const user = req.user;
     if (!user || user.role !== 'CUSTOMER') {
-      console.error('[CustomerController] getOrders - Unauthorized:', { user: !!user, role: user?.role });
+      this.logger.warn(`getOrders unauthorized: hasUser=${!!user} role=${user?.role}`);
       throw new UnauthorizedException('Unauthorized');
     }
 
@@ -72,9 +74,7 @@ export class CustomerController {
 
     // Normalize email for consistent matching (lowercase, trim)
     const normalizedEmail = user.email.toLowerCase().trim();
-    console.log('[CustomerController] Fetching orders for email:', normalizedEmail);
     const orders = await this.customerService.getCustomerOrders(user.id, tenant.id, normalizedEmail);
-    console.log('[CustomerController] Found orders:', orders.length);
     return { orders };
   }
 
@@ -110,7 +110,7 @@ export class CustomerController {
 
       return await this.customerService.updateCustomerProfile(user.id, tenant.id, data);
     } catch (error: any) {
-      console.error('[CustomerController] updateProfile error:', error);
+      this.logger.error(`updateProfile failed: ${error?.message}`, error?.stack);
       // Re-throw known exceptions
       if (error instanceof UnauthorizedException || error instanceof BadRequestException || error instanceof NotFoundException) {
         throw error;
@@ -126,10 +126,9 @@ export class CustomerController {
   @Get('addresses')
   async getAddresses(@Request() req: any) {
     try {
-    console.log('[CustomerController] getAddresses - user from request:', req.user ? { id: req.user.id, email: req.user.email, role: req.user.role } : 'null');
     const user = req.user;
     if (!user || user.role !== 'CUSTOMER') {
-      console.error('[CustomerController] getAddresses - Unauthorized:', { user: !!user, role: user?.role });
+      this.logger.warn(`getAddresses unauthorized: hasUser=${!!user} role=${user?.role}`);
       throw new UnauthorizedException('Unauthorized');
     }
 
@@ -139,7 +138,7 @@ export class CustomerController {
       const result = await this.customerService.getCustomerAddresses(user.id);
       return result;
     } catch (error) {
-      console.error('[CustomerController] getAddresses - Error:', error);
+      this.logger.error(`getAddresses failed: ${(error as any)?.message}`, (error as any)?.stack);
       // If it's an UnauthorizedException, re-throw it
       if (error instanceof UnauthorizedException) {
         throw error;
@@ -171,11 +170,9 @@ export class CustomerController {
     },
   ) {
     try {
-      console.log('[CustomerController] createAddress - user from request:', req.user ? { id: req.user.id, email: req.user.email, role: req.user.role } : 'null');
-      console.log('[CustomerController] createAddress - data:', data);
       const user = req.user;
       if (!user || user.role !== 'CUSTOMER') {
-        console.error('[CustomerController] createAddress - Unauthorized:', { user: !!user, role: user?.role });
+        this.logger.warn(`createAddress unauthorized: hasUser=${!!user} role=${user?.role}`);
         throw new UnauthorizedException('Unauthorized');
       }
 
@@ -195,13 +192,7 @@ export class CustomerController {
 
       return await this.customerService.createCustomerAddress(user.id, data);
     } catch (error: any) {
-      console.error('[CustomerController] createAddress - Error:', error);
-      console.error('[CustomerController] createAddress - Error details:', {
-        message: error?.message,
-        stack: error?.stack,
-        name: error?.name,
-        code: error?.code,
-      });
+      this.logger.error(`createAddress failed: ${error?.message}`, error?.stack);
       // Re-throw known exceptions
       if (error instanceof UnauthorizedException || error instanceof BadRequestException || error instanceof NotFoundException) {
         throw error;

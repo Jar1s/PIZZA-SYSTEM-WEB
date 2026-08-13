@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Body, Query, Res, BadRequestException, UnauthorizedException, Req } from '@nestjs/common';
+import { Controller, Post, Get, Body, Query, Res, BadRequestException, UnauthorizedException, Req, Logger } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { Request, Response } from 'express';
 import { CustomerAuthService } from './customer-auth.service';
@@ -24,7 +24,7 @@ function getOAuthCookieOptions(frontendUrl: string) {
         domain = hostname.startsWith('.') ? hostname : `.${hostname}`;
       }
     } catch (error) {
-      console.error('Error parsing frontend URL for cookie domain:', error);
+      new Logger('CustomerAuthController').warn(`Failed to parse frontend URL for cookie domain: ${error instanceof Error ? error.message : error}`);
       domain = undefined;
     }
   } else {
@@ -44,15 +44,6 @@ function getOAuthCookieOptions(frontendUrl: string) {
     path: '/',
     ...(domain ? { domain } : {}),
   };
-
-  console.log('OAuth cookie options:', {
-    domain,
-    secure: options.secure,
-    sameSite: options.sameSite,
-    path: options.path,
-    frontendUrl,
-    isProduction,
-  });
 
   return options;
 }
@@ -88,6 +79,8 @@ function extractCookieValue(req: Request, cookieName: string): string | undefine
 
 @Controller('auth/customer')
 export class CustomerAuthController {
+  private readonly logger = new Logger(CustomerAuthController.name);
+
   constructor(
     private customerAuthService: CustomerAuthService,
     private smsService: SmsService,
@@ -133,7 +126,7 @@ export class CustomerAuthController {
       const exists = await this.customerAuthService.checkEmailExists(body.email, tenantData.id);
       return { exists };
     } catch (error: unknown) {
-      console.error('[CustomerAuthController] Error checking email:', error);
+      this.logger.error('Error checking email existence', error instanceof Error ? error.stack : String(error));
       // Return false on error to allow registration flow to continue
       // This prevents blocking users if there's a database issue
       return { exists: false };
@@ -264,7 +257,7 @@ export class CustomerAuthController {
     const redirectUri = googleCfg.redirectUri || `${tenantFrontend}/auth/google/callback`;
 
     if (!redirectUri) {
-      console.error('Google OAuth redirect URI not configured. BACKEND_URL or GOOGLE_REDIRECT_URI must be set.');
+      this.logger.error('Google OAuth redirect URI not configured. BACKEND_URL or GOOGLE_REDIRECT_URI must be set.');
       return res.status(500).json({
         message: 'Google OAuth redirect URI is not configured. Please set BACKEND_URL or GOOGLE_REDIRECT_URI in environment variables.',
         error: 'Configuration Error',
@@ -273,22 +266,11 @@ export class CustomerAuthController {
     }
 
     // Log redirect URI for debugging (important for fixing redirect_uri_mismatch errors)
-    console.log('🔐 Google OAuth redirect URI:', redirectUri);
-    console.log('🔐 Google OAuth config:', {
-      redirectUri,
-      frontendUrl,
-      GOOGLE_REDIRECT_URI: process.env.GOOGLE_REDIRECT_URI,
-      FRONTEND_URL: process.env.FRONTEND_URL,
-      NODE_ENV: process.env.NODE_ENV,
-    });
+    this.logger.debug(`Google OAuth redirect URI: ${redirectUri}`);
 
     // Warn if using localhost in production
     if (process.env.NODE_ENV === 'production' && redirectUri.includes('localhost')) {
-      console.error('⚠️ WARNING: Google OAuth redirect URI contains localhost in production!', {
-        redirectUri,
-        GOOGLE_REDIRECT_URI: process.env.GOOGLE_REDIRECT_URI,
-        FRONTEND_URL: process.env.FRONTEND_URL,
-      });
+      this.logger.warn(`Google OAuth redirect URI contains localhost in production: ${redirectUri}`);
     }
 
     // Use state from query if provided, otherwise generate from returnUrl
@@ -310,7 +292,6 @@ export class CustomerAuthController {
       `access_type=offline&` +
       `prompt=consent`;
 
-    console.log('🔐 Redirecting to Google OAuth with redirect_uri:', redirectUri);
     res.redirect(googleAuthUrl);
   }
 
@@ -356,7 +337,7 @@ export class CustomerAuthController {
       // This must match exactly what was sent to Google in the initial redirect
       const redirectUri = googleCfg.redirectUri || `${tenantFrontend}/auth/google/callback`;
 
-      console.log('🔐 Google OAuth exchange - using redirect URI:', redirectUri);
+      this.logger.debug(`Google OAuth exchange - using redirect URI: ${redirectUri}`);
 
       if (!googleCfg.clientId || !googleCfg.clientSecret) {
         return res.status(500).json({
@@ -391,7 +372,7 @@ export class CustomerAuthController {
         needsSmsVerification: result.needsSmsVerification,
       });
     } catch (error: any) {
-      console.error('Google OAuth exchange error:', error);
+      this.logger.error(`Google OAuth exchange error: ${error?.message}`, error?.stack);
       return res.status(500).json({
         message: error.message || 'Failed to exchange code for tokens',
         error: 'Internal Server Error',
@@ -434,20 +415,14 @@ export class CustomerAuthController {
         (backendUrl ? `${backendUrl}/api/auth/customer/google/callback` : undefined);
 
       if (!redirectUri) {
-        console.error('Google OAuth callback: redirect URI not configured. BACKEND_URL or GOOGLE_REDIRECT_URI must be set.');
+        this.logger.error('Google OAuth callback: redirect URI not configured. BACKEND_URL or GOOGLE_REDIRECT_URI must be set.');
         const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3001';
         return res.redirect(`${frontendUrl}/auth/login?error=redirect_uri_not_configured`);
       }
 
       // Warn if using localhost in production
       if (process.env.NODE_ENV === 'production' && redirectUri.includes('localhost')) {
-        console.error('⚠️ WARNING: Google OAuth callback redirect URI contains localhost in production!', {
-          redirectUri,
-          backendUrl,
-          GOOGLE_REDIRECT_URI: process.env.GOOGLE_REDIRECT_URI,
-          BACKEND_URL: process.env.BACKEND_URL,
-          API_URL: process.env.API_URL,
-        });
+        this.logger.warn(`Google OAuth callback redirect URI contains localhost in production: ${redirectUri}`);
       }
 
       const client = new OAuth2Client(googleCfg.clientId, googleCfg.clientSecret, redirectUri);
@@ -506,14 +481,7 @@ export class CustomerAuthController {
         // Cookies don't work well when backend and frontend are on different domains
         // (e.g., pizza-system-web.onrender.com -> p0rnopizza.sk)
         const useUrlParams = true;
-        
-        console.log('OAuth callback mode:', {
-          frontendUrl,
-          useUrlParams: true,
-          NODE_ENV: process.env.NODE_ENV,
-          reason: 'Using URL params for cross-domain compatibility'
-        });
-        
+
         if (useUrlParams) {
           // Development: Store tokens in localStorage via JavaScript redirect
           // Use the same format as the working commit (587f43e)
@@ -548,15 +516,11 @@ export class CustomerAuthController {
             }
           }
           
-          console.log('Google OAuth callback (dev) - redirecting to oauth-callback with redirect:', redirectUrl, 'needsSmsVerification:', result.needsSmsVerification);
-          
           // Redirect to a page that will store tokens in localStorage and then redirect
           res.redirect(`${frontendUrl}/auth/oauth-callback?tokens=${encodeURIComponent(tokensParam)}&redirect=${encodeURIComponent(redirectUrl)}`);
         } else {
           // Production: Use cookies with proper domain settings
           const oauthCookieOptions = getOAuthCookieOptions(frontendUrl);
-
-          console.log('Setting OAuth cookies with options:', oauthCookieOptions);
 
           // Short-lived handoff cookie: the frontend moves it to localStorage
           // immediately on /auth/oauth-callback.
@@ -587,8 +551,6 @@ export class CustomerAuthController {
             maxAge: 5 * 60 * 1000, // 5 minutes - short lived
           });
 
-          console.log('OAuth cookies set successfully');
-          
           let redirectUrl: string;
           if (result.needsSmsVerification) {
             // If SMS verification needed, redirect to verify-phone page
@@ -611,20 +573,10 @@ export class CustomerAuthController {
           }
           
           const oauthCallbackUrl = `${frontendUrl}/auth/oauth-callback?redirect=${encodeURIComponent(redirectUrl)}`;
-          console.log('Google OAuth callback (prod) - redirecting to oauth-callback:', {
-            oauthCallbackUrl,
-            redirectUrl,
-            frontendUrl,
-            cookieDomain: oauthCookieOptions.domain,
-            cookieSecure: oauthCookieOptions.secure,
-            cookieSameSite: oauthCookieOptions.sameSite,
-            userEmail: result.user.email,
-            needsSmsVerification: result.needsSmsVerification,
-          });
           res.redirect(oauthCallbackUrl);
         }
     } catch (error: any) {
-      console.error('Google OAuth callback error:', error);
+      this.logger.error(`Google OAuth callback error: ${error?.message}`, error?.stack);
       const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3001';
       res.redirect(`${frontendUrl}/auth/login?error=${encodeURIComponent(error.message || 'oauth_failed')}`);
     }
@@ -746,7 +698,7 @@ export class CustomerAuthController {
 
         if (!tokenResponse.ok) {
           const error = await tokenResponse.text();
-          console.error('Apple token exchange error:', error);
+          this.logger.error(`Apple token exchange failed: ${tokenResponse.status} ${error}`);
           return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3001'}/auth/login?error=token_exchange_failed`);
         }
 
@@ -764,7 +716,7 @@ export class CustomerAuthController {
         try {
           userInfo = JSON.parse(userParam);
         } catch (e) {
-          console.warn('Failed to parse Apple user parameter:', e);
+          this.logger.warn(`Failed to parse Apple user parameter: ${e instanceof Error ? e.message : e}`);
         }
       }
 
@@ -798,14 +750,7 @@ export class CustomerAuthController {
       // Cookies don't work well when backend and frontend are on different domains
       // (e.g., pizza-system-web.onrender.com -> p0rnopizza.sk)
       const useUrlParams = true;
-      
-      console.log('Apple OAuth callback mode:', {
-        frontendUrl,
-        useUrlParams: true,
-        NODE_ENV: process.env.NODE_ENV,
-        reason: 'Using URL params for cross-domain compatibility'
-      });
-      
+
       if (useUrlParams) {
         // Use the same format as Google OAuth for consistency
         const tokens = {
@@ -839,16 +784,12 @@ export class CustomerAuthController {
           }
         }
         
-        console.log('Apple OAuth callback - redirecting to oauth-callback with redirect:', redirectUrl, 'needsSmsVerification:', result.needsSmsVerification);
-        
         // Redirect to a page that will store tokens in localStorage and then redirect
         res.redirect(`${frontendUrl}/auth/oauth-callback?tokens=${encodeURIComponent(tokensParam)}&redirect=${encodeURIComponent(redirectUrl)}`);
       } else {
         // Production: Use cookies with proper domain settings
         const oauthCookieOptions = getOAuthCookieOptions(frontendUrl);
 
-        console.log('Setting OAuth cookies with options:', oauthCookieOptions);
-        
         // Short-lived handoff cookie: the frontend moves it to localStorage
         // immediately on /auth/oauth-callback.
         res.cookie('oauth_access_token', result.access_token, {
@@ -878,8 +819,6 @@ export class CustomerAuthController {
           maxAge: 5 * 60 * 1000, // 5 minutes - short lived
         });
 
-        console.log('OAuth cookies set successfully');
-      
       let redirectUrl: string;
       if (result.needsSmsVerification) {
         // If SMS verification needed, redirect to verify-phone page
@@ -901,13 +840,11 @@ export class CustomerAuthController {
         }
       }
       
-      console.log('Apple OAuth callback - redirecting to oauth-callback with redirect:', redirectUrl, 'needsSmsVerification:', result.needsSmsVerification);
-      
       // Redirect to oauth-callback which will read cookies and store in localStorage
       res.redirect(`${frontendUrl}/auth/oauth-callback?redirect=${encodeURIComponent(redirectUrl)}`);
       }
     } catch (error: any) {
-      console.error('Apple OAuth callback error:', error);
+      this.logger.error(`Apple OAuth callback error: ${error?.message}`, error?.stack);
       const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3001';
       res.redirect(`${frontendUrl}/auth/login?error=${encodeURIComponent(error.message || 'oauth_failed')}`);
     }

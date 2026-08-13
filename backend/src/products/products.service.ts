@@ -73,19 +73,7 @@ export class ProductsService {
       ...product,
       displayName: product.displayName ?? getProductDisplayName(product.name, 'sk') ?? product.name,
     }));
-    
-    // Log prices for debugging (always log for these specific products to track price issues)
-    const premiumSins = ['Basil Pesto Premium', 'Honey Chilli', 'Pollo Crema', 'Prosciutto Crudo Premium'];
-    const deluxeFetish = ['Quattro Formaggi', 'Quattro Formaggi Bianco', 'Tonno', 'Vegetariana Premium', 'Hot Missionary'];
-    const productsToLog = [...premiumSins, ...deluxeFetish];
-    
-    productsToLog.forEach(name => {
-      const p = productsWithFallback.find(pr => pr.name === name);
-      if (p) {
-        this.logger.log(`[getProducts] ${p.name}: ${p.priceCents} cents = €${(p.priceCents / 100).toFixed(2)}`);
-      }
-    });
-    
+
     return productsWithFallback as any as Product[];
   }
 

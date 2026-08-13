@@ -694,7 +694,7 @@ export class OrdersService {
               passwordResetExpires: passwordResetExpires,
             },
           });
-          this.logger.log(`Created new user for guest checkout: ${user.id}`, { userId: user.id, email: data.customer.email, tenantId });
+          this.logger.log(`Created new user for guest checkout: ${user.id}`, { userId: user.id, tenantId });
 
           // Store password reset token for email sending later
           createdUser = { ...user, passwordResetToken } as UserWithPasswordReset;
@@ -1293,9 +1293,9 @@ export class OrdersService {
           tenantTheme, // Pass tenant theme for colors and logo
           emailConfig, // Pass tenant-specific email config
         );
-        this.logger.log(`✅ Password setup email sent to ${createdUser.email}`, { userId: createdUser.id, email: createdUser.email, tenantId });
+        this.logger.log(`✅ Password setup email sent`, { userId: createdUser.id, tenantId });
       } catch (error: any) {
-        this.logger.error(`⚠️ Failed to send password setup email:`, { userId: createdUser.id, email: createdUser.email, tenantId, error: error.message, stack: error.stack });
+        this.logger.error(`⚠️ Failed to send password setup email:`, { userId: createdUser.id, tenantId, error: error.message, stack: error.stack });
         // Don't throw - email failure shouldn't break order creation
       }
     }

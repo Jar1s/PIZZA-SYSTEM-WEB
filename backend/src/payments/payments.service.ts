@@ -277,13 +277,13 @@ export class PaymentsService implements OnModuleInit, OnModuleDestroy {
     const order = await this.ordersService.getOrderById(parsed.merchantReference);
 
     if (!order) {
-      console.error('Order not found for reference:', parsed.merchantReference);
+      this.logger.error(`Order not found for Adyen reference: ${parsed.merchantReference}`);
       return;
     }
 
     if (parsed.eventType !== 'AUTHORISATION') {
       // Other Adyen events (CAPTURE, REFUND, ...) are not handled here.
-      console.log(`Adyen webhook ${parsed.eventType} for order ${order.id}, no action taken`);
+      this.logger.log(`Adyen webhook ${parsed.eventType} for order ${order.id}, no action taken`);
       return;
     }
 
@@ -334,7 +334,7 @@ export class PaymentsService implements OnModuleInit, OnModuleDestroy {
       await this.ordersService.updatePaymentRef(order.id, parsed.paymentRef, 'failed');
       await this.orderStatusService.updateStatus(order.id, OrderStatus.CANCELED);
 
-      console.log(`Payment failed for order ${order.id}`);
+      this.logger.log(`Adyen payment failed for order ${order.id}`);
     }
   }
 
@@ -345,7 +345,7 @@ export class PaymentsService implements OnModuleInit, OnModuleDestroy {
     const order = await this.ordersService.getOrderById(parsed.merchantReference);
 
     if (!order) {
-      console.error('Order not found for GoPay reference:', parsed.merchantReference);
+      this.logger.error(`Order not found for GoPay reference: ${parsed.merchantReference}`);
       return;
     }
 
@@ -412,7 +412,7 @@ export class PaymentsService implements OnModuleInit, OnModuleDestroy {
       // Payment failed or canceled
       await this.ordersService.updatePaymentRef(order.id, parsed.paymentRef, 'failed');
       await this.orderStatusService.updateStatus(order.id, OrderStatus.CANCELED);
-      console.log(`GoPay payment ${parsed.eventType.toLowerCase()} for order ${order.id}`);
+      this.logger.log(`GoPay payment ${parsed.eventType.toLowerCase()} for order ${order.id}`);
     } else if (parsed.eventType === 'REFUNDED' || parsed.eventType === 'PARTIALLY_REFUNDED') {
       // GoPay confirmed the money went back to the customer.
       const confirmedStatus = parsed.eventType === 'REFUNDED' ? 'refunded' : 'partially_refunded';
@@ -420,7 +420,7 @@ export class PaymentsService implements OnModuleInit, OnModuleDestroy {
       this.logger.log(`GoPay refund confirmed for order ${order.id} (${parsed.eventType})`);
     } else {
       // Other states (CREATED, PAYMENT_METHOD_CHOSEN) - just log, don't change status
-      console.log(`GoPay webhook received state ${parsed.eventType} for order ${order.id}, no action taken`);
+      this.logger.log(`GoPay webhook received state ${parsed.eventType} for order ${order.id}, no action taken`);
     }
   }
 
@@ -583,7 +583,7 @@ export class PaymentsService implements OnModuleInit, OnModuleDestroy {
     const order = await this.ordersService.getOrderById(parsed.merchantReference);
 
     if (!order) {
-      console.error('Order not found for WePay reference:', parsed.merchantReference);
+      this.logger.error(`Order not found for WePay reference: ${parsed.merchantReference}`);
       return;
     }
 
@@ -629,7 +629,7 @@ export class PaymentsService implements OnModuleInit, OnModuleDestroy {
       }
       await this.ordersService.updatePaymentRef(order.id, parsed.paymentRef, 'failed');
       await this.orderStatusService.updateStatus(order.id, OrderStatus.CANCELED);
-      console.log(`WePay payment failed for order ${order.id}`);
+      this.logger.log(`WePay payment failed for order ${order.id}`);
     }
   }
 

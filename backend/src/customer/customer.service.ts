@@ -1,9 +1,11 @@
-import { Injectable, NotFoundException, UnauthorizedException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, UnauthorizedException, BadRequestException, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { Order } from '@pizza-ecosystem/shared';
 
 @Injectable()
 export class CustomerService {
+  private readonly logger = new Logger(CustomerService.name);
+
   constructor(private prisma: PrismaService) {}
 
   private normalizeCoordinates(
@@ -243,7 +245,7 @@ export class CustomerService {
         }
       } catch (error: any) {
         // If findUnique fails (e.g., phone is null or invalid), log and continue
-        console.error('[CustomerService] Error checking phone uniqueness:', error.message);
+        this.logger.error(`Error checking phone uniqueness: ${error.message}`);
         // If it's a unique constraint violation, re-throw as BadRequestException
         if (error.code === 'P2002' || error.message?.includes('Unique constraint')) {
           throw new BadRequestException('Phone number is already taken');
@@ -286,14 +288,12 @@ export class CustomerService {
   async getCustomerAddresses(userId: string) {
     try {
       if (!userId) {
-        console.error('[CustomerService] getCustomerAddresses - userId is missing');
+        this.logger.warn('getCustomerAddresses called without userId');
         return {
           addresses: [],
         };
       }
 
-      console.log('[CustomerService] getCustomerAddresses - Fetching addresses for userId:', userId);
-      
       const addresses = await this.prisma.address.findMany({
         where: { userId },
         orderBy: [
@@ -302,18 +302,11 @@ export class CustomerService {
         ],
       });
 
-      console.log('[CustomerService] getCustomerAddresses - Found addresses:', addresses.length);
-
       return {
         addresses: addresses.map((addr) => this.mapAddressResponse(addr)),
       };
     } catch (error) {
-      console.error('[CustomerService] getCustomerAddresses - Error:', error);
-      console.error('[CustomerService] getCustomerAddresses - Error details:', {
-        message: error?.message,
-        stack: error?.stack,
-        name: error?.name,
-      });
+      this.logger.error(`getCustomerAddresses failed: ${error?.message}`, error?.stack);
       // Return empty array instead of throwing to prevent 500 error
       return {
         addresses: [],
@@ -339,7 +332,7 @@ export class CustomerService {
     try {
       // Validate userId
       if (!userId || !userId.trim()) {
-        console.error('[CustomerService] createCustomerAddress - userId is missing');
+        this.logger.warn('createCustomerAddress called without userId');
         throw new BadRequestException('User ID is required');
       }
 
@@ -350,7 +343,7 @@ export class CustomerService {
       });
 
       if (!user) {
-        console.error('[CustomerService] createCustomerAddress - User not found:', userId);
+        this.logger.warn(`createCustomerAddress - user not found: ${userId}`);
         throw new NotFoundException('User not found');
       }
 
@@ -391,15 +384,7 @@ export class CustomerService {
 
       return this.mapAddressResponse(address);
     } catch (error: any) {
-      console.error('[CustomerService] createCustomerAddress - Error:', error);
-      console.error('[CustomerService] createCustomerAddress - Error details:', {
-        message: error?.message,
-        stack: error?.stack,
-        name: error?.name,
-        code: error?.code,
-        userId,
-        data,
-      });
+      this.logger.error(`createCustomerAddress failed for user ${userId}: ${error?.message}`, error?.stack);
       // Re-throw known exceptions
       if (error instanceof BadRequestException || error instanceof NotFoundException || error instanceof UnauthorizedException) {
         throw error;
