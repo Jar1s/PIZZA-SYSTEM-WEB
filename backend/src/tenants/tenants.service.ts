@@ -55,7 +55,8 @@ export class TenantsService {
     const raw = (slug || '').toLowerCase();
     if (raw === 'pizzaparty' || raw === 'partypizza') return 'partypizza';
     if (raw === 'p0rnopizza' || raw === 'pornopizza') return 'pornopizza';
-    if (raw === 'pizzavnudzi') return 'pizzavnudzi';
+    // The DB slug is 'pizzavnudzi-sk'; the frontend and domain mapping say 'pizzavnudzi'.
+    if (raw === 'pizzavnudzi' || raw === 'pizzavnudzi-sk') return 'pizzavnudzi-sk';
     return raw;
   }
 
