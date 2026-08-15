@@ -185,6 +185,34 @@ export default async function RootLayout({
   const fontFamily = theme.fontFamily || 'Inter, sans-serif';
 
   // Structured Data (JSON-LD)
+  // Opening hours come from the tenant theme (admin-managed); the schema uses
+  // them even when in-app hours enforcement is disabled.
+  const schemaDayNames: Record<string, string> = {
+    monday: 'Monday',
+    tuesday: 'Tuesday',
+    wednesday: 'Wednesday',
+    thursday: 'Thursday',
+    friday: 'Friday',
+    saturday: 'Saturday',
+    sunday: 'Sunday',
+  };
+  const openingDays = (theme.openingHours as any)?.days as
+    | Record<string, { open?: string; close?: string; closed?: boolean }>
+    | undefined;
+  const openingHoursSpecification = openingDays
+    ? Object.entries(schemaDayNames)
+        .filter(([key]) => {
+          const day = openingDays[key];
+          return day && !day.closed && day.open && day.close;
+        })
+        .map(([key, dayOfWeek]) => ({
+          '@type': 'OpeningHoursSpecification',
+          dayOfWeek,
+          opens: openingDays[key].open,
+          closes: openingDays[key].close,
+        }))
+    : [];
+
   const organizationSchema = {
     '@context': 'https://schema.org',
     '@type': 'Restaurant',
@@ -199,9 +227,21 @@ export default async function RootLayout({
     address: {
       '@type': 'PostalAddress',
       addressCountry: 'SK',
+      ...(typeof theme.city === 'string' && theme.city ? { addressLocality: theme.city } : {}),
+      ...(typeof theme.streetAddress === 'string' && theme.streetAddress
+        ? { streetAddress: theme.streetAddress }
+        : {}),
     },
-    servesCuisine: 'Italian',
+    servesCuisine: ['Pizza', 'Italian'],
     priceRange: '$$',
+    hasMenu: baseUrl,
+    acceptsReservations: false,
+    ...(openingHoursSpecification.length > 0 && { openingHoursSpecification }),
+    potentialAction: {
+      '@type': 'OrderAction',
+      target: baseUrl,
+      deliveryMethod: ['http://purl.org/goodrelations/v1#DeliveryModeOwnFleet'],
+    },
     ...(tenantData.phone && {
       telephone: tenantData.phone,
     }),
