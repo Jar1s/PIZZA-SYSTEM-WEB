@@ -3,6 +3,7 @@ import { Throttle } from '@nestjs/throttler';
 import { Public } from '../auth/decorators/public.decorator';
 import { DeliveryZoneService, AddressForZone } from './delivery-zone.service';
 import { DeliveryFeeTierService, AddressForGeocoding } from './delivery-fee-tier.service';
+import { DeliveryService } from './delivery.service';
 import { TenantsService } from '../tenants/tenants.service';
 
 @Controller('delivery-zones')
@@ -12,6 +13,7 @@ export class DeliveryZoneController {
   constructor(
     private deliveryZoneService: DeliveryZoneService,
     private deliveryFeeTierService: DeliveryFeeTierService,
+    private deliveryService: DeliveryService,
     private tenantsService: TenantsService,
   ) {}
 
@@ -69,6 +71,34 @@ export class DeliveryZoneController {
           available: false,
           message: 'Adresa je mimo dosahu doručovania',
         };
+      }
+
+      // Distance tiers alone let far-away addresses through (e.g. Senec, 23 km
+      // out) and the customer would pay before Wolt refuses the dispatch. Ask
+      // the courier-side boundary too: a definite "outside" blocks the address
+      // BEFORE payment. Unknown (no Wolt config, missing coordinates, API
+      // trouble) fails open — the post-payment dispatch alert still covers it.
+      try {
+        const areaCheck = await this.deliveryService.checkAreaByTenantSlug(
+          tenantSlug,
+          body.address,
+        );
+        if (areaCheck.insideArea === false) {
+          this.logger.warn('Address is outside the Wolt delivery area', {
+            tenantSlug,
+            distanceMeters: distanceResult.distanceMeters,
+            source: areaCheck.source,
+          });
+          return {
+            available: false,
+            message: 'Na túto adresu momentálne nedoručujeme — je mimo našej rozvozovej zóny.',
+          };
+        }
+      } catch (error: any) {
+        this.logger.warn('Wolt area check failed during fee calculation, allowing order', {
+          tenantSlug,
+          error: error?.message,
+        });
       }
 
       this.logger.log('Delivery fee calculated by distance', {
