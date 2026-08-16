@@ -435,7 +435,7 @@ export default function OrderTrackingPage() {
           <h3 className={`text-xl font-bold mb-6 ${isDark ? 'text-white' : 'text-gray-800'}`}>
             {t.orderProgress}
           </h3>
-          <StatusTimeline status={orderStatus} paymentStatus={order.paymentStatus} />
+          <StatusTimeline status={orderStatus} paymentStatus={order.paymentStatus} primaryColor={primaryColor} isDark={isDark} />
         </motion.div>
 
         {hasWoltDelivery && !isOrderCanceled && (
@@ -443,43 +443,51 @@ export default function OrderTrackingPage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.15 }}
-            className={`${sectionShellClass} mb-8 border border-orange-400/40 bg-orange-500/5`}
+            className={`${sectionShellClass} mb-8`}
+            style={{ borderColor: `${primaryColor}55` }}
           >
             <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
-              <div>
-                <h3 className="text-xl font-bold text-orange-300">
-                  🚚 {language === 'sk' ? 'Wolt doručenie' : 'Wolt delivery'}
+              <div className="min-w-0">
+                <p className="text-[11px] font-bold uppercase tracking-[0.18em] mb-1" style={{ color: primaryColor }}>
+                  {language === 'sk' ? 'Doručenie kuriérom' : 'Courier delivery'}
+                </p>
+                <h3 className={`text-xl font-bold ${isDark ? 'text-white' : 'text-zinc-900'}`}>
+                  {woltStatusLabel}
                 </h3>
-                <p className={`mt-1 text-sm ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
-                  {language === 'sk' ? 'Stav:' : 'Status:'}{' '}
-                  <span className="font-semibold text-white">{woltStatusLabel}</span>
+                <p className={`mt-1 text-sm ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>
+                  {language === 'sk' ? 'Doručuje Wolt Drive' : 'Delivered by Wolt Drive'}
                 </p>
                 {order.delivery?.trackingUrl && (
                   <a
                     href={order.delivery.trackingUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="mt-3 inline-flex items-center gap-2 text-orange-300 underline underline-offset-2 hover:text-orange-200"
+                    className="mt-3 inline-flex items-center gap-1.5 text-sm font-semibold underline underline-offset-4 hover:opacity-80"
+                    style={{ color: primaryColor }}
                   >
-                    {language === 'sk' ? 'Otvoriť tracking' : 'Open tracking'}
+                    {language === 'sk' ? 'Sledovať kuriéra na mape' : 'Track the courier on the map'}
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M7 17L17 7" /><path d="M8 7h9v9" /></svg>
                   </a>
                 )}
               </div>
 
-              <div className="rounded-2xl border border-orange-400/50 bg-black/20 px-6 py-4 text-center min-w-[190px]">
-                <p className="text-xs font-bold uppercase tracking-wide text-orange-200">
+              <div
+                className="rounded-2xl px-6 py-4 text-center min-w-[190px]"
+                style={{ backgroundColor: `${primaryColor}14`, border: `1px solid ${primaryColor}44` }}
+              >
+                <p className={`text-[11px] font-bold uppercase tracking-[0.18em] ${isDark ? 'text-zinc-300' : 'text-zinc-600'}`}>
                   {language === 'sk' ? 'Odhad doručenia' : 'Estimated delivery'}
                 </p>
-                <p className="mt-1 text-4xl font-extrabold leading-none text-orange-300">
+                <p className={`mt-1 text-4xl font-extrabold leading-none tabular-nums ${isDark ? 'text-white' : 'text-zinc-900'}`}>
                   {isWoltFinalState
                     ? (language === 'sk' ? 'Hotovo' : 'Done')
                     : (liveDropoffEtaMinutes !== null ? liveDropoffEtaMinutes : '—')}
                 </p>
                 {!isWoltFinalState && (
-                  <p className="text-sm font-semibold text-orange-200">min</p>
+                  <p className="text-sm font-semibold" style={{ color: primaryColor }}>min</p>
                 )}
-                <p className={`mt-1 text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-                  {language === 'sk' ? 'Automaticky sa aktualizuje' : 'Updates automatically'}
+                <p className={`mt-1 text-xs ${isDark ? 'text-zinc-500' : 'text-zinc-400'}`}>
+                  {language === 'sk' ? 'Aktualizuje sa automaticky' : 'Updates automatically'}
                 </p>
               </div>
             </div>
