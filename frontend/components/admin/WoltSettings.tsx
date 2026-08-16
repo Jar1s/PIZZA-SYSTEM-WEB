@@ -6,11 +6,21 @@ import { getTenantSlug } from '@/lib/tenant-utils';
 import {
   getTenantDeliverySettings,
   listWoltWebhooks,
+  refreshWoltDeliveryAreas,
   registerWoltWebhook,
   updateTenantDeliverySettings,
   TenantDeliverySettings,
   WoltWebhookRegistrationResult,
 } from '@/lib/api';
+
+const WOLT_PROD_URL = 'https://daas-public-api.wolt.com';
+const WOLT_DEV_URL = 'https://daas-public-api.development.dev.woltapi.com';
+
+// Empty URL falls back to the production host on the backend, so only an
+// explicit development host counts as the test environment.
+function isTestEnvironment(apiUrl: string): boolean {
+  return apiUrl.includes('development.dev.woltapi');
+}
 import { SettingsBadge, SettingsCard, SettingsCardHeader, SettingsIconButton } from '@/components/admin/SettingsCard';
 
 function normalizeSlug(slug: string | null): string {
@@ -38,6 +48,8 @@ export function WoltSettings() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [webhookSyncing, setWebhookSyncing] = useState(false);
+  const [areasTesting, setAreasTesting] = useState(false);
+  const [areasResult, setAreasResult] = useState<string | null>(null);
   const [webhookStatus, setWebhookStatus] = useState<WoltWebhookRegistrationResult | null>(null);
   const [isExpanded, setIsExpanded] = useState(false);
 
@@ -171,6 +183,26 @@ export function WoltSettings() {
     }
   };
 
+  // Proves the SAVED credentials against the Wolt API by fetching the live
+  // delivery-area polygons — the definitive "keys work" check after an
+  // environment switch.
+  const handleTestAreas = async () => {
+    setAreasTesting(true);
+    setAreasResult(null);
+    try {
+      const result = await refreshWoltDeliveryAreas(tenantSlug);
+      if (result.polygons === 0) {
+        setAreasResult('⚠️ Pripojenie funguje, ale Wolt nevrátil žiadne zóny — over Merchant ID pre toto prostredie.');
+      } else {
+        setAreasResult(`✅ Pripojenie OK — Wolt vrátil ${result.polygons} ${result.polygons === 1 ? 'zónu' : result.polygons < 5 ? 'zóny' : 'zón'}.`);
+      }
+    } catch (error: any) {
+      setAreasResult(`❌ Test zlyhal: ${error?.message || 'neznáma chyba'}. Skontroluj API key/URL a či sú zmeny uložené.`);
+    } finally {
+      setAreasTesting(false);
+    }
+  };
+
   if (loading) {
     return <div className="animate-pulse rounded-[28px] bg-gray-200 h-24" />;
   }
@@ -187,6 +219,9 @@ export function WoltSettings() {
       {!isExpanded ? (
         <div className="mt-6 space-y-4">
           <div className="flex flex-wrap gap-2">
+            <SettingsBadge tone={isTestEnvironment(apiUrl) ? 'warning' : 'success'}>
+              {isTestEnvironment(apiUrl) ? '🧪 TESTOVACIE prostredie' : '🟢 OSTRÉ prostredie'}
+            </SettingsBadge>
             <SettingsBadge tone={isPresent(apiKey) ? 'success' : 'warning'}>API key {isPresent(apiKey) ? 'OK' : 'chýba'}</SettingsBadge>
             <SettingsBadge tone={isPresent(apiUrl) ? 'success' : 'warning'}>API URL {isPresent(apiUrl) ? 'OK' : 'chýba'}</SettingsBadge>
             <SettingsBadge tone={isPresent(venueId) ? 'success' : 'warning'}>Venue {isPresent(venueId) ? 'OK' : 'chýba'}</SettingsBadge>
@@ -224,7 +259,29 @@ export function WoltSettings() {
             </div>
             <div>
               <label className="mb-1 block text-xs font-semibold text-gray-700">Wolt API URL</label>
-              <input value={apiUrl} onChange={(e) => setApiUrl(e.target.value)} className="w-full rounded-2xl border border-zinc-200 px-3 py-2.5 text-sm" placeholder="https://restaurant-api.wolt.com/v1" />
+              <input value={apiUrl} onChange={(e) => setApiUrl(e.target.value)} className="w-full rounded-2xl border border-zinc-200 px-3 py-2.5 text-sm" placeholder={WOLT_PROD_URL} />
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <span className={`rounded-full px-3 py-1 text-xs font-bold ${isTestEnvironment(apiUrl) ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'}`}>
+                  {isTestEnvironment(apiUrl) ? '🧪 TESTOVACIE prostredie — kuriéri sú len simulovaní' : '🟢 OSTRÉ prostredie — objednáva skutočných kuriérov'}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setApiUrl(WOLT_PROD_URL)}
+                  className="rounded-full border border-zinc-200 px-3 py-1 text-xs font-semibold text-zinc-700 hover:bg-zinc-50"
+                >
+                  Použiť ostré URL
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setApiUrl(WOLT_DEV_URL)}
+                  className="rounded-full border border-zinc-200 px-3 py-1 text-xs font-semibold text-zinc-700 hover:bg-zinc-50"
+                >
+                  Použiť testovacie URL
+                </button>
+              </div>
+              <p className="mt-1 text-xs text-gray-500">
+                Pri prepnutí prostredia treba vymeniť aj API key, Merchant ID a Venue ID za hodnoty z daného prostredia — potom ulož a spusti „Otestovať zóny".
+              </p>
             </div>
             <div>
               <label className="mb-1 block text-xs font-semibold text-gray-700">Merchant ID</label>
@@ -272,8 +329,21 @@ export function WoltSettings() {
                 >
                   {webhookSyncing ? 'Pracujem...' : 'Registrovať webhook'}
                 </button>
+                <button
+                  type="button"
+                  onClick={handleTestAreas}
+                  disabled={areasTesting}
+                  className="rounded-2xl border border-emerald-300 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-800 transition hover:bg-emerald-100 disabled:opacity-50"
+                >
+                  {areasTesting ? 'Testujem...' : 'Otestovať zóny'}
+                </button>
               </div>
             </div>
+            {areasResult && (
+              <div className="mt-3 rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm text-zinc-800" role="status">
+                {areasResult}
+              </div>
+            )}
             {webhookStatus && (
               <div className="mt-4 rounded-2xl bg-zinc-50 p-3 text-xs text-zinc-700">
                 <div><strong>Callback:</strong> {webhookStatus.callbackUrl}</div>
