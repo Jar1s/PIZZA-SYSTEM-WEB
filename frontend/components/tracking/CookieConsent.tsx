@@ -99,8 +99,9 @@ export function CookieConsent() {
       }
 
       // Check if this user has made a choice
-      const analyticsKey = userId ? `cookie_analytics_${userId}` : 'cookie_analytics';
-      const marketingKey = userId ? `cookie_marketing_${userId}` : 'cookie_marketing';
+      // Consent is per browser (see useCookieSettings) — never per account.
+      const analyticsKey = 'cookie_analytics';
+      const marketingKey = 'cookie_marketing';
       
       const analyticsValue = localStorage.getItem(analyticsKey);
       const marketingValue = localStorage.getItem(marketingKey);

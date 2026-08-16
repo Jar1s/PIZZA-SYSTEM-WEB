@@ -110,23 +110,10 @@ type FunnelItem = { id: string; name: string; price: number; quantity: number };
 function currentConsent(): { marketing: boolean; analytics: boolean } {
   if (typeof window === 'undefined') return { marketing: false, analytics: false };
   try {
-    // Mirrors useCookieSettings' per-user key scheme.
-    let userId: string | null = null;
-    for (const key of ['customer_auth_user', 'auth_user']) {
-      const raw = window.localStorage.getItem(key);
-      if (raw) {
-        try {
-          userId = JSON.parse(raw)?.id || null;
-        } catch {
-          /* ignore */
-        }
-        if (userId) break;
-      }
-    }
-    const suffix = userId ? `_${userId}` : '';
+    // Same per-browser keys the cookie banner writes (see useCookieSettings).
     return {
-      marketing: window.localStorage.getItem(`cookie_marketing${suffix}`) === 'true',
-      analytics: window.localStorage.getItem(`cookie_analytics${suffix}`) === 'true',
+      marketing: window.localStorage.getItem('cookie_marketing') === 'true',
+      analytics: window.localStorage.getItem('cookie_analytics') === 'true',
     };
   } catch {
     return { marketing: false, analytics: false };
