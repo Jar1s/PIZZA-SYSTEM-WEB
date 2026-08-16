@@ -1,3 +1,4 @@
+import { isPlausibleCoordinatePair } from '../utils/coordinates';
 import { Injectable, BadRequestException, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { calculateHaversineDistance } from './utils/distance.util';
@@ -36,7 +37,11 @@ export class DeliveryFeeTierService {
   constructor(private prisma: PrismaService) {}
 
   async geocodeAddress(address: AddressForGeocoding): Promise<GeocodeResult> {
-    if (address.coordinates?.lat != null && address.coordinates?.lng != null) {
+    if (
+      address.coordinates?.lat != null &&
+      address.coordinates?.lng != null &&
+      isPlausibleCoordinatePair(Number(address.coordinates.lat), Number(address.coordinates.lng))
+    ) {
       return {
         lat: address.coordinates.lat,
         lng: address.coordinates.lng,

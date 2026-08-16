@@ -26,6 +26,14 @@ interface GeocodingResponse {
   fullAddress?: string;
 }
 
+export function isPlausibleCoordinatePair(lat: unknown, lng: unknown): boolean {
+  if (typeof lat !== 'number' || typeof lng !== 'number') return false;
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return false;
+  if (lat < -90 || lat > 90 || lng < -180 || lng > 180) return false;
+  if (Math.abs(lat) < 1e-6 && Math.abs(lng) < 1e-6) return false;
+  return true;
+}
+
 export interface AddressCoordinates {
   lat: number;
   lng: number;
@@ -86,7 +94,9 @@ export async function resolveAddressCoordinates(
     const lat = Number(result.lat);
     const lng = Number(result.lon);
 
-    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+    // Null Island (0,0) is what a failed lookup can degrade into; never treat
+    // it as a real position — the caller must fall back to "no coordinates".
+    if (!isPlausibleCoordinatePair(lat, lng)) {
       return null;
     }
 
