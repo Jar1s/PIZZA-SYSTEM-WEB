@@ -2,10 +2,14 @@
 
 import { useEffect, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { motion } from 'framer-motion';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 export default function PaymentReturnPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { language } = useLanguage();
+  const sk = language === 'sk';
   const provider = searchParams.get('provider');
 
   const orderIdParam = searchParams.get('orderId');
@@ -118,24 +122,77 @@ export default function PaymentReturnPage() {
     }
   }, [gopayPaymentId, resolvedOrderId, resolvedStatus, router]);
 
+  const stage: 'verifying' | 'success' | 'pending' | 'failed' =
+    resolvedStatus === 'success'
+      ? 'success'
+      : resolvedStatus === 'pending'
+        ? 'pending'
+        : resolvedStatus === 'canceled' || resolvedStatus === 'failed'
+          ? 'failed'
+          : 'verifying';
+
+  const copy = {
+    verifying: {
+      title: sk ? 'Overujeme vašu platbu' : 'Verifying your payment',
+      body: sk
+        ? 'Chvíľku strpenia — potvrdzujeme platbu s bankou. Nezatvárajte prosím toto okno.'
+        : 'One moment — we are confirming the payment with your bank. Please keep this window open.',
+    },
+    success: {
+      title: sk ? 'Platba prijatá' : 'Payment received',
+      body: sk ? 'Objednávka je zaplatená. Presmerujeme vás na potvrdenie…' : 'Your order is paid. Taking you to the confirmation…',
+    },
+    pending: {
+      title: sk ? 'Platba sa spracováva' : 'Payment in progress',
+      body: sk
+        ? 'Banka platbu ešte potvrdzuje. Stav objednávky uvidíte na stránke sledovania.'
+        : 'Your bank is still confirming the payment. You can follow the status on the tracking page.',
+    },
+    failed: {
+      title: sk ? 'Platba neprebehla' : 'Payment did not go through',
+      body: sk
+        ? 'Nič sme vám nestrhli. Vraciame vás do pokladne, kde to môžete skúsiť znova.'
+        : 'You have not been charged. Taking you back to checkout to try again.',
+    },
+  }[stage];
+
+  const accent = stage === 'failed' ? '#DC2626' : stage === 'pending' ? '#D97706' : '#16A34A';
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="text-center">
-        <div className="animate-spin text-4xl mb-4">⏳</div>
-        <p className="text-lg font-semibold text-gray-700">Processing payment...</p>
+    <div className="min-h-screen bg-black flex items-center justify-center px-4">
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4 }}
+        className="w-full max-w-md rounded-3xl border border-white/10 bg-zinc-900/80 backdrop-blur px-8 py-10 text-center shadow-2xl"
+        role="status"
+        aria-live="polite"
+      >
+        <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full" style={{ backgroundColor: `${accent}22` }}>
+          {stage === 'verifying' || stage === 'pending' ? (
+            <span
+              className="h-8 w-8 rounded-full border-[3px] border-white/20 animate-spin"
+              style={{ borderTopColor: accent }}
+              aria-hidden="true"
+            />
+          ) : stage === 'success' ? (
+            <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke={accent} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <polyline points="20 6 9 17 4 12" />
+            </svg>
+          ) : (
+            <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke={accent} strokeWidth="3" strokeLinecap="round" aria-hidden="true">
+              <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          )}
+        </div>
+        <h1 className="text-2xl font-bold text-white mb-3" style={{ textWrap: 'balance' } as any}>{copy.title}</h1>
+        <p className="text-zinc-400 leading-relaxed">{copy.body}</p>
         {(provider || gopayPaymentId) && (
-          <p className="text-sm text-gray-500 mt-2">Provider: {(provider || 'gopay').toUpperCase()}</p>
+          <p className="mt-6 text-[11px] uppercase tracking-[0.18em] text-zinc-600">
+            {sk ? 'Platobná brána' : 'Payment gateway'}: {(provider || 'gopay').toUpperCase()}
+          </p>
         )}
-        {resolvedStatus === 'success' && (
-          <p className="text-sm text-green-600 mt-2">Payment successful! Redirecting...</p>
-        )}
-        {resolvedStatus === 'pending' && (
-          <p className="text-sm text-amber-600 mt-2">Payment pending. Redirecting...</p>
-        )}
-        {(resolvedStatus === 'canceled' || resolvedStatus === 'failed') && (
-          <p className="text-sm text-red-600 mt-2">Payment {resolvedStatus}. Redirecting...</p>
-        )}
-      </div>
+      </motion.div>
     </div>
   );
 }
