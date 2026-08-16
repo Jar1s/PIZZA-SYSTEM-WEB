@@ -212,6 +212,16 @@ export class DeliveryAreaCacheService {
       if (Array.isArray(collection)) {
         return collection;
       }
+      // Wolt Drive returns delivery_areas as a NAME-KEYED MAP, not an array:
+      // { delivery_areas: { "Drive Bratislava": { coordinates: [...], type: "Polygon" } } }
+      if (collection && typeof collection === 'object') {
+        const entries = Object.entries(collection).filter(
+          ([, value]) => value && typeof value === 'object',
+        );
+        if (entries.length > 0) {
+          return entries.map(([name, value]) => ({ id: name, ...(value as object) }));
+        }
+      }
     }
 
     return raw ? [raw] : [];
@@ -343,7 +353,16 @@ export class DeliveryAreaCacheService {
     return this.toNumber(value) !== null;
   }
 
-  private isPointInsideAnyPolygon(point: WoltPoint, polygons: WoltDeliveryAreaPolygon[]): boolean {
+  // Empty polygon list means "we could not parse any boundary", not
+  // "everywhere is outside" — returning null keeps callers fail-open instead
+  // of rejecting every address (which would silently break checkout).
+  private isPointInsideAnyPolygon(
+    point: WoltPoint,
+    polygons: WoltDeliveryAreaPolygon[],
+  ): boolean | null {
+    if (polygons.length === 0) {
+      return null;
+    }
     return polygons.some((polygon) => this.isPointInsidePolygon(point, polygon));
   }
 
