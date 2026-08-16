@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { trackViewContent } from '@/lib/conversion-tracking';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Product } from '@pizza-ecosystem/shared';
@@ -65,6 +66,14 @@ export default function CustomizationModal({
   }, []);
   
   // Get translated product name and description
+  // Funnel: the customer opened this product's detail.
+  useEffect(() => {
+    if (isOpen && product) {
+      trackViewContent({ id: product.id, name: product.name, priceCents: product.priceCents, category: product.category || undefined });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, product?.id]);
+
   const translation = getProductTranslation(product.name, language);
   // Use centralized function: DB displayName → translation mapping → original name
   const displayName = getProductDisplayName(product, language);

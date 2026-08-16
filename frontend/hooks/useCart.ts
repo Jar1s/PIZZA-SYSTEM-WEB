@@ -4,6 +4,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { Product } from '@pizza-ecosystem/shared';
 import { calculateModifierPrice } from '@/lib/calculate-modifier-price';
+import { trackAddToCart } from '@/lib/conversion-tracking';
 
 interface CartItem {
   id: string;
@@ -30,8 +31,12 @@ export const useCart = create<CartStore>()(
       isOpen: false,
       
       addItem: (product, modifiers) => {
-        console.log('addItem called', { product: product.name, modifiers });
         const items = get().items;
+        trackAddToCart({
+          id: product.id,
+          name: product.name,
+          priceCents: product.priceCents + calculateModifierPrice(modifiers, product.category),
+        });
         
         // Create unique ID based on product ID and modifiers
         // This ensures items with different customizations are treated as separate items
