@@ -105,6 +105,26 @@ async function handleRequest(req, res) {
     return;
   }
 
+  // Public tracking endpoint used by /order/success and /order/[id]. Serves a
+  // fixed paid order so specs can exercise the confirmation page directly.
+  const trackMatch = url.pathname.match(/^\/api\/track\/([^/]+)$/);
+  if (req.method === 'GET' && trackMatch) {
+    const id = decodeURIComponent(trackMatch[1]);
+    return sendJson(res, 200, {
+      id,
+      orderNumber: 4242,
+      status: 'PAID',
+      paymentStatus: 'success',
+      createdAt: new Date().toISOString(),
+      items: [{ productId: 'e2e-drink-1', productName: 'Testovacia Limonada', quantity: 2, priceCents: 250, totalCents: 500 }],
+      subtotalCents: 500,
+      deliveryFeeCents: 0,
+      totalCents: 500,
+      address: { street: 'Testovacia', houseNumber: '1', city: 'Bratislava', postalCode: '81101' },
+      statusHistory: [],
+    });
+  }
+
   if (req.method === 'POST' && url.pathname === '/api/pornopizza/orders') {
     const body = (await readJsonBody(req)) || {};
     const requestId = body.clientRequestId;
