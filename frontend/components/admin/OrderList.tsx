@@ -622,7 +622,7 @@ export function OrderList({
                   </div>
                 </div>
 
-                <div className="mt-2.5 flex items-center gap-2 overflow-x-auto pb-1">
+                <div className="-mx-1.5 mt-1 flex items-center gap-2 overflow-x-auto px-1.5 pb-1 pt-1.5">
                   {BRAND_FILTER_SLUGS.map((slug) => {
                     const isActive = filters.tenantSlug === slug;
                     const brand = BRAND_META[slug];
