@@ -62,6 +62,9 @@ describe('PaymentsService', () => {
 
   const mockDeliveryService = {
     createDeliveryForOrder: jest.fn(),
+    // Existing webhook tests exercise the auto-dispatch path; manual-mode
+    // behavior is covered by the dedicated describe block below.
+    isAutoDispatchEnabled: jest.fn().mockResolvedValue(true),
   };
 
   const mockTelegramNotifications = {
@@ -1156,6 +1159,34 @@ describe('PaymentsService', () => {
       expect(mockOrdersService.updatePaymentRef).toHaveBeenCalledWith('order-123', 'gopay-123', 'success');
       expect(mockOrderStatusService.updateStatus).toHaveBeenCalledWith('order-123', OrderStatus.PAID);
       expect(mockDeliveryService.createDeliveryForOrder).toHaveBeenCalledWith('order-123');
+    });
+  });
+
+  describe('courier dispatch mode', () => {
+    it('does NOT book a Wolt courier on payment in the default manual mode', async () => {
+      mockDeliveryService.isAutoDispatchEnabled.mockResolvedValueOnce(false);
+      mockOrdersService.getOrderByPaymentRef.mockResolvedValue({
+        id: 'order-123',
+        tenantId: 'tenant-1',
+        status: OrderStatus.PENDING,
+        paymentRef: 'gopay_123',
+        totalCents: 2000,
+      });
+      mockOrdersService.updatePaymentRef.mockResolvedValue(undefined);
+      mockOrderStatusService.updateStatus.mockResolvedValue({ id: 'order-123', status: OrderStatus.PAID });
+      mockDeliveryService.createDeliveryForOrder.mockResolvedValue(undefined);
+
+      await service.handleGopayWebhook({
+        id: 123,
+        order_number: 'order-123',
+        state: 'PAID',
+        amount: 2000,
+        currency: 'EUR',
+        payment_instrument: 'PAYMENT_CARD',
+      } as any);
+
+      expect(mockOrderStatusService.updateStatus).toHaveBeenCalledWith('order-123', OrderStatus.PAID);
+      expect(mockDeliveryService.createDeliveryForOrder).not.toHaveBeenCalled();
     });
   });
 });

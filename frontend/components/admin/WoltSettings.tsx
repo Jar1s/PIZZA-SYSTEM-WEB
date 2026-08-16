@@ -59,6 +59,7 @@ export function WoltSettings() {
   const [venueId, setVenueId] = useState('');
   const [webhookSecret, setWebhookSecret] = useState('');
   const [defaultFeeCents, setDefaultFeeCents] = useState('0');
+  const [dispatchMode, setDispatchMode] = useState<'manual' | 'auto'>('manual');
   const [pickupStreet, setPickupStreet] = useState('');
   const [pickupCity, setPickupCity] = useState('');
   const [pickupPostalCode, setPickupPostalCode] = useState('');
@@ -89,6 +90,7 @@ export function WoltSettings() {
         setVenueId(woltConfig.venueId || '');
         setWebhookSecret(woltConfig.webhookSecret || '');
         setDefaultFeeCents(String(deliveryConfig.defaultFeeCents ?? 0));
+        setDispatchMode(deliveryConfig.dispatchMode === 'auto' ? 'auto' : 'manual');
         setPickupStreet(pickupAddress.street || '');
         setPickupCity(pickupAddress.city || '');
         setPickupPostalCode(pickupAddress.postalCode || '');
@@ -127,6 +129,7 @@ export function WoltSettings() {
       const nextDeliveryConfig: Record<string, any> = {
         ...existing,
         defaultFeeCents: Number(defaultFeeCents) || 0,
+        dispatchMode,
         woltConfig: nextWoltConfig,
         pickupAddress: hasPickupAddress
           ? {
@@ -222,6 +225,9 @@ export function WoltSettings() {
             <SettingsBadge tone={isTestEnvironment(apiUrl) ? 'warning' : 'success'}>
               {isTestEnvironment(apiUrl) ? '🧪 TESTOVACIE prostredie' : '🟢 OSTRÉ prostredie'}
             </SettingsBadge>
+            <SettingsBadge tone={dispatchMode === 'auto' ? 'warning' : 'success'}>
+              {dispatchMode === 'auto' ? 'Wolt automaticky po platbe' : 'Vlastný kuriér · Wolt ručne'}
+            </SettingsBadge>
             <SettingsBadge tone={isPresent(apiKey) ? 'success' : 'warning'}>API key {isPresent(apiKey) ? 'OK' : 'chýba'}</SettingsBadge>
             <SettingsBadge tone={isPresent(apiUrl) ? 'success' : 'warning'}>API URL {isPresent(apiUrl) ? 'OK' : 'chýba'}</SettingsBadge>
             <SettingsBadge tone={isPresent(venueId) ? 'success' : 'warning'}>Venue {isPresent(venueId) ? 'OK' : 'chýba'}</SettingsBadge>
@@ -301,6 +307,29 @@ export function WoltSettings() {
             <div>
               <label className="mb-1 block text-xs font-semibold text-gray-700">Default fee (cents)</label>
               <input value={defaultFeeCents} onChange={(e) => setDefaultFeeCents(e.target.value)} className="w-full rounded-2xl border border-zinc-200 px-3 py-2.5 text-sm" type="number" min="0" />
+            </div>
+          </div>
+
+          <div className="rounded-[24px] border border-zinc-200 bg-white p-4">
+            <div className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">Kto rozváža</div>
+            <div className="mt-1 text-sm text-zinc-600">
+              Rozhoduje, či sa po zaplatení objednávky automaticky objedná Wolt kuriér.
+            </div>
+            <div className="mt-3 grid gap-2 sm:grid-cols-2">
+              <label className={`flex cursor-pointer items-start gap-3 rounded-2xl border p-3 transition ${dispatchMode === 'manual' ? 'border-zinc-900 bg-zinc-50' : 'border-zinc-200 hover:bg-zinc-50'}`}>
+                <input type="radio" name="dispatchMode" className="mt-1" checked={dispatchMode === 'manual'} onChange={() => setDispatchMode('manual')} />
+                <span>
+                  <span className="block text-sm font-semibold text-zinc-900">Vlastný kuriér (Wolt len ručne)</span>
+                  <span className="block text-xs text-zinc-600">Po zaplatení sa nič neobjednáva. Wolt privoláš pri konkrétnej objednávke tlačidlom „Vytvoriť Wolt" v admine.</span>
+                </span>
+              </label>
+              <label className={`flex cursor-pointer items-start gap-3 rounded-2xl border p-3 transition ${dispatchMode === 'auto' ? 'border-zinc-900 bg-zinc-50' : 'border-zinc-200 hover:bg-zinc-50'}`}>
+                <input type="radio" name="dispatchMode" className="mt-1" checked={dispatchMode === 'auto'} onChange={() => setDispatchMode('auto')} />
+                <span>
+                  <span className="block text-sm font-semibold text-zinc-900">Wolt automaticky</span>
+                  <span className="block text-xs text-zinc-600">Každá zaplatená objednávka hneď objedná Wolt kuriéra (a účtuje ho). Vhodné, keď nemáš vlastný rozvoz.</span>
+                </span>
+              </label>
             </div>
           </div>
 

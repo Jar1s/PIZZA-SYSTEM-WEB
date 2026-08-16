@@ -128,6 +128,20 @@ export class PaymentsService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
+  /**
+   * Books a Wolt courier only when the tenant opted into automatic dispatch.
+   * In the default manual mode the kitchen decides per order (own courier vs
+   * Wolt) from the admin, so nothing is booked here.
+   */
+  private async maybeAutoDispatchCourier(order: any): Promise<void> {
+    const autoDispatch = await this.deliveryService.isAutoDispatchEnabled(order.tenantId);
+    if (!autoDispatch) {
+      this.logger.log(`Order ${order.id} paid — courier dispatch left to the kitchen (manual mode)`);
+      return;
+    }
+    await this.deliveryService.createDeliveryForOrder(order.id);
+  }
+
   private async notifyDeliveryCreationFailure(
     order: any,
     provider: 'adyen' | 'gopay' | 'wepay',
@@ -316,8 +330,8 @@ export class PaymentsService implements OnModuleInit, OnModuleDestroy {
 
       // 🚀 CREATE DELIVERY - Automatically dispatch courier (idempotent: no-op if one exists)
       try {
-        await this.deliveryService.createDeliveryForOrder(order.id);
-        this.logger.log(`Adyen payment successful for order ${order.id}, delivery created`);
+        await this.maybeAutoDispatchCourier(order);
+        this.logger.log(`Adyen payment successful for order ${order.id}`);
       } catch (error) {
         await this.notifyDeliveryCreationFailure(order, 'adyen', parsed.paymentRef, error);
         // Don't fail the payment, admin can manually dispatch
@@ -395,8 +409,8 @@ export class PaymentsService implements OnModuleInit, OnModuleDestroy {
 
       // 🚀 CREATE DELIVERY - Automatically dispatch courier
       try {
-        await this.deliveryService.createDeliveryForOrder(order.id);
-        this.logger.log(`GoPay payment successful for order ${order.id}, delivery created`);
+        await this.maybeAutoDispatchCourier(order);
+        this.logger.log(`GoPay payment successful for order ${order.id}`);
       } catch (error) {
         await this.notifyDeliveryCreationFailure(order, 'gopay', parsed.paymentRef, error);
         // Don't fail the payment, admin can manually dispatch
@@ -613,8 +627,8 @@ export class PaymentsService implements OnModuleInit, OnModuleDestroy {
 
       // 🚀 CREATE DELIVERY - Automatically dispatch courier (idempotent: no-op if one exists)
       try {
-        await this.deliveryService.createDeliveryForOrder(order.id);
-        this.logger.log(`WePay payment successful for order ${order.id}, delivery created`);
+        await this.maybeAutoDispatchCourier(order);
+        this.logger.log(`WePay payment successful for order ${order.id}`);
       } catch (error) {
         await this.notifyDeliveryCreationFailure(order, 'wepay', parsed.paymentRef, error);
         // Don't fail the payment, admin can manually dispatch
