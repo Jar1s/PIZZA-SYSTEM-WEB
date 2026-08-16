@@ -50,7 +50,7 @@ async function setUpPage(page: Page): Promise<void> {
           return real;
         },
         set(fn: any) {
-          real = function (...args: any[]) {
+          real = function (this: unknown, ...args: any[]) {
             (window as any).__purchaseCalls[name].push(args);
             return typeof fn === 'function' ? fn.apply(this, args) : undefined;
           };
