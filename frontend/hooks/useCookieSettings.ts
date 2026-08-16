@@ -14,6 +14,10 @@ const DEFAULT_SETTINGS: CookieSettings = {
   marketing: false,
 };
 
+// Fired on window whenever consent is saved, so every component using this
+// hook (banner, analytics loader, ...) updates in the same tab immediately.
+export const COOKIE_SETTINGS_EVENT = 'cookie-settings-changed';
+
 /**
  * Get current user ID from localStorage (customer or admin)
  */
@@ -98,9 +102,23 @@ export function useCookieSettings() {
   useEffect(() => {
     if (typeof window === 'undefined' || !isLoaded) return;
 
+    const reloadFromStorage = () => {
+      const analyticsKey = getCookieStorageKey('cookie_analytics');
+      const marketingKey = getCookieStorageKey('cookie_marketing');
+      setSettings({
+        necessary: true,
+        analytics: localStorage.getItem(analyticsKey) === 'true',
+        marketing: localStorage.getItem(marketingKey) === 'true',
+      });
+    };
+
+    // Another hook instance saved consent in this tab — re-read immediately.
+    const handleSettingsEvent = () => reloadFromStorage();
+    window.addEventListener(COOKIE_SETTINGS_EVENT, handleSettingsEvent);
+
     const reloadSettings = () => {
       const currentUserId = getCurrentUserId();
-      
+
       // If user changed, reload settings
       if (currentUserId !== userId) {
         const analyticsKey = getCookieStorageKey('cookie_analytics');
@@ -137,6 +155,7 @@ export function useCookieSettings() {
     
     return () => {
       window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener(COOKIE_SETTINGS_EVENT, handleSettingsEvent);
       clearInterval(interval);
     };
   }, [isLoaded, userId]);
@@ -159,6 +178,7 @@ export function useCookieSettings() {
       localStorage.setItem(marketingKey, String(updated.marketing));
 
       setSettings(updated);
+      window.dispatchEvent(new CustomEvent(COOKIE_SETTINGS_EVENT));
     } catch (error) {
       console.error('Failed to update cookie settings:', error);
     }

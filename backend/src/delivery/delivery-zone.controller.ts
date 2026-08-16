@@ -30,9 +30,13 @@ export class DeliveryZoneController {
     @Body() body: { address: AddressForZone & { street?: string; coordinates?: { lat: number; lng: number } } },
   ) {
     try {
+      // Log only coarse location data — full street + coordinates are the
+      // customer's personal data and do not belong in logs.
       this.logger.log('calculateDeliveryFee called', {
         tenantSlug,
-        address: body.address,
+        city: body.address?.city,
+        postalCode: body.address?.postalCode,
+        hasCoordinates: Boolean(body.address?.coordinates),
       });
       
       const tenant = await this.tenantsService.getTenantBySlug(tenantSlug);
@@ -53,7 +57,8 @@ export class DeliveryZoneController {
       if (!distanceResult) {
         this.logger.warn('No delivery tier found for distance', {
           tenantSlug,
-          address: body.address,
+          city: body.address?.city,
+          postalCode: body.address?.postalCode,
         });
         return {
           available: false,
@@ -122,7 +127,8 @@ export class DeliveryZoneController {
         error: error.message,
         stack: error.stack,
         tenantSlug,
-        address: body.address,
+        city: body.address?.city,
+        postalCode: body.address?.postalCode,
       });
       throw error;
     }
