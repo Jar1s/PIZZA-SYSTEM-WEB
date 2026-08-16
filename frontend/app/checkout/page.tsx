@@ -9,6 +9,7 @@ import { formatModifiers } from '@/lib/format-modifiers';
 import { useCustomerAuth } from '@/contexts/CustomerAuthContext';
 import { useTenant } from '@/contexts/TenantContext';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { trackInitiateCheckout, trackAddPaymentInfo } from '@/lib/conversion-tracking';
 import { calculateModifierPrice } from '@/lib/calculate-modifier-price';
 import { validateReturnUrl } from '@/lib/validate-return-url';
 import { getTenant } from '@/lib/api';
@@ -122,6 +123,26 @@ export default function CheckoutPage() {
   const [phoneFormError, setPhoneFormError] = useState<string | null>(null);
   const addressCoordinateRequestsRef = useRef(new Map<string, Promise<Address>>());
   const submitLockRef = useRef(false);
+  const initiateCheckoutTrackedRef = useRef(false);
+
+  const funnelItems = useCallback(
+    () =>
+      items.map((item) => ({
+        id: item.product.id,
+        name: item.product.name,
+        price: (item.product.priceCents + calculateModifierPrice(item.modifiers, item.product.category)) / 100,
+        quantity: item.quantity,
+      })),
+    [items],
+  );
+
+  // Funnel: InitiateCheckout once per checkout visit, once the cart is hydrated.
+  useEffect(() => {
+    if (initiateCheckoutTrackedRef.current || items.length === 0) return;
+    initiateCheckoutTrackedRef.current = true;
+    trackInitiateCheckout(funnelItems());
+  }, [items, funnelItems]);
+
   const checkoutRequestIdRef = useRef<string | null>(null);
 
   // Validate phone number function (must be declared before useMemo hooks)
@@ -1144,6 +1165,8 @@ export default function CheckoutPage() {
     submitLockRef.current = true;
     setCheckoutError(null);
     let redirected = false;
+    // Funnel: the customer committed to paying.
+    trackAddPaymentInfo(funnelItems(), paymentType === 'cash_on_delivery' ? cashOnDeliveryMethod || 'cod' : 'online');
 
     try {
       if (!user) {
