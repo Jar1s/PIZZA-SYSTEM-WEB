@@ -954,6 +954,22 @@ export class DeliveryService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
+  /**
+   * Whether paid orders should call a Wolt courier automatically.
+   * Default is MANUAL: the kitchen usually delivers with its own courier and
+   * only books Wolt for specific orders via the admin "Vytvoriť Wolt" button.
+   * Set deliveryConfig.dispatchMode = 'auto' (admin -> Wolt settings) to
+   * restore automatic dispatch on payment.
+   */
+  async isAutoDispatchEnabled(tenantId: string): Promise<boolean> {
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { deliveryConfig: true },
+    });
+    const config = (tenant?.deliveryConfig as Record<string, any>) || {};
+    return config.dispatchMode === 'auto';
+  }
+
   async createDeliveryForOrder(
     orderId: string,
     shipmentPromiseId?: string,
