@@ -100,6 +100,11 @@ jobs:
 
       - name: Build frontend
         working-directory: frontend
+        # The production-build guard in next.config.js refuses to build without
+        # NEXT_PUBLIC_API_URL (so a misconfigured deploy can never bake in
+        # localhost). CI is not a deploy — give it a placeholder API URL.
+        env:
+          NEXT_PUBLIC_API_URL: https://api.p0rnopizza.sk
         run: npm run build
 
       - name: Type check frontend
