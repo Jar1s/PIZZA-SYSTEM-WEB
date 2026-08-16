@@ -187,6 +187,7 @@ export class OrderStatusService implements OnModuleInit, OnModuleDestroy {
             slug: true,
             paymentProvider: true,
             emailConfig: true,
+            theme: true, // needed for branded status update emails (colors + logo)
           },
         },
       },
