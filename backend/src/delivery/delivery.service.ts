@@ -1,3 +1,4 @@
+import { isPlausibleCoordinatePair } from '../utils/coordinates';
 import {
   Injectable,
   BadRequestException,
@@ -402,7 +403,7 @@ export class DeliveryService implements OnModuleInit, OnModuleDestroy {
       }
     }
 
-    if (lat === null || lng === null) {
+    if (lat === null || lng === null || !isPlausibleCoordinatePair(lat, lng)) {
       return null;
     }
 

@@ -1,3 +1,4 @@
+import { isPlausibleCoordinatePair } from '../utils/coordinates';
 import { Injectable, NotFoundException, BadRequestException, Logger, Inject, forwardRef } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../prisma/prisma.service';
@@ -486,7 +487,7 @@ export class OrdersService {
     const lat = Number(coordinates.lat);
     const lng = Number(coordinates.lng);
 
-    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+    if (!isPlausibleCoordinatePair(lat, lng)) {
       return undefined;
     }
 
