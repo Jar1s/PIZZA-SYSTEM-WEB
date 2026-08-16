@@ -33,6 +33,8 @@ export function EditBrandModal({
   const [error, setError] = useState<string | null>(null);
   
   const [faviconUrl, setFaviconUrl] = useState('');
+  const [seoCity, setSeoCity] = useState('');
+  const [seoDescription, setSeoDescription] = useState('');
   const [googleOAuthConfig, setGoogleOAuthConfig] = useState({
     clientId: '',
     clientSecret: '',
@@ -112,6 +114,8 @@ export function EditBrandModal({
         secondaryColor: theme.secondaryColor || '#0F141A',
       });
       setFaviconUrl(theme.favicon || '');
+      setSeoCity(theme.city || '');
+      setSeoDescription(theme.description || '');
       setCashEnabled(paymentConfig.cashOnDeliveryEnabled === true);
       setCardEnabled(paymentConfig.cardOnDeliveryEnabled === true);
       const oauthConfig = theme.googleOAuthConfig || {};
@@ -318,7 +322,9 @@ export function EditBrandModal({
         ...existingTheme,
         primaryColor: themeColors.primaryColor.trim() || existingTheme.primaryColor,
         secondaryColor: themeColors.secondaryColor.trim() || existingTheme.secondaryColor,
-        favicon: faviconUrl.trim() || existingTheme.favicon || '/favicon.ico',
+        favicon: faviconUrl.trim() || '/favicon.ico',
+        city: seoCity.trim() || undefined,
+        description: seoDescription.trim() || undefined,
         subCategoryLabels,
         analyticsConfig: {
           googleAnalytics: analyticsConfig.googleAnalytics.enabled && analyticsConfig.googleAnalytics.measurementId
@@ -469,6 +475,52 @@ export function EditBrandModal({
                       />
                     </div>
                   </div>
+                </div>
+
+                <div className="mt-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Favicon (ikonka v tabe prehliadača)
+                  </label>
+                  <input
+                    type="text"
+                    value={faviconUrl}
+                    onChange={(e) => setFaviconUrl(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="/favicon.ico"
+                  />
+                  <p className="mt-1 text-xs text-gray-500">
+                    Cesta k .ico súboru, napr. /favicon.ico alebo /favicons/pornopizza.ico
+                  </p>
+                </div>
+
+                <div className="mt-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Mesto (pre Google a lokálne vyhľadávanie)
+                  </label>
+                  <input
+                    type="text"
+                    value={seoCity}
+                    onChange={(e) => setSeoCity(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="Bratislava"
+                  />
+                </div>
+
+                <div className="mt-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Popis pre Google (meta description)
+                  </label>
+                  <textarea
+                    value={seoDescription}
+                    onChange={(e) => setSeoDescription(e.target.value)}
+                    rows={3}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="Rozvoz pravej talianskej pizze po Bratislave do 45 minút. Objednajte online..."
+                  />
+                  <p className="mt-1 text-xs text-gray-500">
+                    Zobrazuje sa vo výsledkoch vyhľadávania. Ideálne 120 – 160 znakov, uveď mesto a čas doručenia.
+                    Aktuálne: {seoDescription.trim().length} znakov
+                  </p>
                 </div>
 
                 {/* Pizza Sub-category Labels */}
