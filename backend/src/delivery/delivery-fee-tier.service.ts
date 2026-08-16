@@ -409,6 +409,25 @@ export class DeliveryFeeTierService {
       };
     }
 
+    // Never price an address that is far beyond every configured tier — the
+    // "closest tier" fallback exists for boundary rounding (a few hundred
+    // metres past the last tier), not for Košice at 300 km. Beyond the last
+    // tier + tolerance the address is simply out of range.
+    const farthestTierMax = Math.max(...tiers.map((t) => t.maxDistanceMeters));
+    const outOfRangeToleranceMeters = 2000;
+    if (Number.isFinite(farthestTierMax) && distanceMeters > farthestTierMax + outOfRangeToleranceMeters) {
+      this.logger.warn('Distance far beyond all delivery tiers, marking out of range', {
+        tenantId,
+        distanceMeters,
+        farthestTierMax,
+      });
+      return {
+        deliveryFeeCents: 0,
+        distanceMeters,
+        isOutOfRange: true,
+      };
+    }
+
     const closestTier = this.findClosestTier(distanceMeters, tiers);
     if (closestTier) {
       this.logger.warn('No exact delivery tier match, using closest tier fallback', {

@@ -160,9 +160,11 @@ describe('DeliveryFeeTierService contract', () => {
         priority: 1,
       },
     ]);
+    // ~3.1 km from pickup: just past the last tier (2500 m) but inside the
+    // boundary tolerance — the closest-tier fallback is meant for this.
     jest.spyOn(service, 'geocodeAddress').mockResolvedValue({
-      lat: 49,
-      lng: 18,
+      lat: 48.1766,
+      lng: 17.1077,
     });
 
     const result = await service.getDeliveryFeeByDistance('tenant-1', {
@@ -178,6 +180,44 @@ describe('DeliveryFeeTierService contract', () => {
       tierId: 'tier-2',
     });
     expect(result?.distanceMeters).toBeGreaterThan(2500);
+    expect(result?.distanceMeters).toBeLessThan(4500);
+  });
+
+  it('marks addresses far beyond every tier as out of range instead of pricing them', async () => {
+    mockPrisma.tenant.findUnique.mockResolvedValue(
+      buildTenant({
+        pickupAddress: {
+          street: 'Kitchen 1',
+          city: 'Bratislava',
+          postalCode: '81101',
+          country: 'SK',
+          coordinates: basePickupCoordinates,
+        },
+      }),
+    );
+    mockPrisma.deliveryFeeTier.findMany.mockResolvedValue([
+      {
+        id: 'tier-1',
+        tenantId: 'tenant-1',
+        minDistanceMeters: 0,
+        maxDistanceMeters: 2500,
+        deliveryFeeCents: 300,
+        isActive: true,
+        priority: 0,
+      },
+    ]);
+    // Košice-distance point (~115 km east)
+    jest.spyOn(service, 'geocodeAddress').mockResolvedValue({ lat: 49, lng: 18 });
+
+    const result = await service.getDeliveryFeeByDistance('tenant-1', {
+      street: 'Far Street 1',
+      city: 'Elsewhere',
+      postalCode: '00000',
+      country: 'SK',
+    });
+
+    expect(result?.isOutOfRange).toBe(true);
+    expect(result?.distanceMeters).toBeGreaterThan(50000);
   });
 
   it('uses the default fee when geocoding fails and the tenant has a fallback fee', async () => {
