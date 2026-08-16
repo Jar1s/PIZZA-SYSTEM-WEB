@@ -1,4 +1,4 @@
-import { IsString, IsEmail, IsNumber, IsArray, ValidateNested, IsOptional, IsObject, IsNotEmpty } from 'class-validator';
+import { IsString, IsEmail, IsNumber, IsArray, ValidateNested, IsOptional, IsObject, IsNotEmpty, IsInt, Min, Max, ArrayMinSize, ArrayMaxSize } from 'class-validator';
 import { Type, Transform } from 'class-transformer';
 
 class CustomerInfoDto {
@@ -71,7 +71,11 @@ class OrderItemDto {
   @IsString()
   source?: string; // Voliteľne: zdroj (napr. "website1", "website2")
   
-  @IsNumber()
+  // Whole, positive, sane: 0 / negative / fractional quantities are as
+  // "technically valid" as coordinates 0,0 were — and just as wrong.
+  @IsInt({ message: 'quantity must be a whole number' })
+  @Min(1, { message: 'quantity must be at least 1' })
+  @Max(50, { message: 'quantity must be at most 50 per item' })
   quantity: number;
 
   @IsOptional()
@@ -94,6 +98,8 @@ export class CreateOrderDto {
   address: AddressDto;
 
   @IsArray()
+  @ArrayMinSize(1, { message: 'order must contain at least one item' })
+  @ArrayMaxSize(100, { message: 'order contains too many items' })
   @ValidateNested({ each: true })
   @Type(() => OrderItemDto)
   items: OrderItemDto[];
