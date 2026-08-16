@@ -38,6 +38,10 @@ admin ich prepísaním stratí.
 
 ## Poznámky
 
+- **API key musí byť vytvorený po novembri 2025** — endpoint delivery-areas
+  (tlačidlo „Otestovať zóny") so starším tokenom nefunguje. Ak produkčný kľúč
+  existuje dlhšie, vypýtaj si od Woltu nový.
+
 - Zóny sa kešujú ~10 minút; po prepnutí ich „Otestovať zóny" obnoví okamžite.
 - Checkout blokuje adresy mimo zóny len keď Wolt vráti jasné „mimo";
   pri výpadku Wolt API prepúšťa (fail-open) a platí post-payment poistka
