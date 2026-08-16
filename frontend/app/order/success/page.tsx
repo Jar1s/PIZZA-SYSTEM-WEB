@@ -9,6 +9,8 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { useToastContext } from '@/contexts/ToastContext';
 import { Header } from '@/components/layout/Header';
 import { getBackgroundClass, isDarkTheme } from '@/lib/tenant-utils';
+import { useCookieSettings } from '@/hooks/useCookieSettings';
+import { trackPurchase } from '@/lib/conversion-tracking';
 
 type TrackedOrder = {
   id: string;
@@ -38,6 +40,24 @@ export default function OrderSuccessPage() {
   const { t, language } = useLanguage();
   const sk = language === 'sk';
   const toast = useToastContext();
+  const { settings: cookieSettings, isLoaded: consentLoaded } = useCookieSettings();
+
+  // Report the purchase to Meta Pixel / GA4 once the order is loaded and the
+  // visitor's consent is known. The pixel/gtag scripts are injected by
+  // AnalyticsScripts after consent, so poll briefly until they exist.
+  useEffect(() => {
+    if (!order || !consentLoaded) return;
+    if (order.paymentStatus && order.paymentStatus !== 'success' && order.paymentStatus !== 'pending') return;
+    let attempts = 0;
+    const timer = setInterval(() => {
+      attempts += 1;
+      const done = trackPurchase(order, { marketing: cookieSettings.marketing, analytics: cookieSettings.analytics });
+      if (done.pixel || done.ga || attempts >= 10) {
+        clearInterval(timer);
+      }
+    }, 500);
+    return () => clearInterval(timer);
+  }, [order, consentLoaded, cookieSettings.marketing, cookieSettings.analytics]);
 
   useEffect(() => {
     const loadData = async () => {
