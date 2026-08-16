@@ -50,15 +50,33 @@ function getCurrentUserId(): string | null {
 }
 
 /**
- * Get storage key for cookie settings (per user)
+ * Storage key for cookie settings.
+ *
+ * Consent belongs to the BROWSER, not to an account: the visitor decided what
+ * this device may load, and logging into the admin or a customer account must
+ * not silently reset that choice (it used to — per-user keys meant the pixel
+ * "disappeared" the moment an admin logged in, and Purchase tracking read a
+ * different key than the banner wrote). One global key; any legacy per-user
+ * value is migrated forward the first time it is read.
  */
 function getCookieStorageKey(key: string): string {
-  const userId = getCurrentUserId();
-  if (userId) {
-    return `${key}_${userId}`;
-  }
-  // Fallback to global if no user
   return key;
+}
+
+function migrateLegacyPerUserConsent(): void {
+  if (typeof window === 'undefined') return;
+  try {
+    for (const key of ['cookie_analytics', 'cookie_marketing']) {
+      if (localStorage.getItem(key) !== null) continue;
+      const userId = getCurrentUserId();
+      const legacy = userId ? localStorage.getItem(`${key}_${userId}`) : null;
+      if (legacy !== null) {
+        localStorage.setItem(key, legacy);
+      }
+    }
+  } catch {
+    // storage unavailable — nothing to migrate
+  }
 }
 
 /**
@@ -76,6 +94,7 @@ export function useCookieSettings() {
     if (typeof window === 'undefined') return;
 
     try {
+      migrateLegacyPerUserConsent();
       const currentUserId = getCurrentUserId();
       setUserId(currentUserId);
 

@@ -68,3 +68,62 @@ test.describe('analytics consent gating', () => {
     expect(await page.locator('script[src*="googletagmanager.com"]').count()).toBe(0);
   });
 });
+
+test.describe('consent survives account changes', () => {
+  test('logging in as admin after consenting keeps the pixel loaded', async ({ page }) => {
+    await page.route('**/api/tenants/**', async (route) => {
+      const response = await route.fetch();
+      const body = await response.json().catch(() => null);
+      if (body && typeof body === 'object' && body.theme) {
+        body.theme.analyticsConfig = { facebookPixel: { enabled: true, pixelId: '2179689519431618' } };
+        await route.fulfill({ response, json: body });
+        return;
+      }
+      await route.fulfill({ response });
+    });
+    await page.route('**://connect.facebook.net/**', (route) =>
+      route.fulfill({ status: 200, contentType: 'application/javascript', body: '/* stub */' }),
+    );
+
+    await page.goto('/?tenant=pornopizza');
+    await page.getByRole('button', { name: /Prijať všetko|Accept All/ }).click();
+    await expect(page.locator('script#facebook-pixel')).toHaveCount(1, { timeout: 10000 });
+
+    // Simulate an admin login in this browser (what broke consent before:
+    // per-user keys made the freshly logged-in admin a "new" visitor).
+    await page.evaluate(() => {
+      window.localStorage.setItem('auth_user', JSON.stringify({ id: 'admin-e2e', role: 'ADMIN' }));
+      window.localStorage.setItem('auth_token', 'e2e-token');
+    });
+    await page.reload();
+    await page.waitForLoadState('networkidle');
+
+    await expect(page.locator('script#facebook-pixel')).toHaveCount(1, { timeout: 10000 });
+    expect(await page.getByRole('button', { name: /Prijať všetko|Accept All/ }).count()).toBe(0);
+  });
+
+  test('migrates a legacy per-user consent forward', async ({ page }) => {
+    await page.route('**://connect.facebook.net/**', (route) =>
+      route.fulfill({ status: 200, contentType: 'application/javascript', body: '/* stub */' }),
+    );
+    await page.route('**/api/tenants/**', async (route) => {
+      const response = await route.fetch();
+      const body = await response.json().catch(() => null);
+      if (body && typeof body === 'object' && body.theme) {
+        body.theme.analyticsConfig = { facebookPixel: { enabled: true, pixelId: '2179689519431618' } };
+        await route.fulfill({ response, json: body });
+        return;
+      }
+      await route.fulfill({ response });
+    });
+    // Old scheme: consent stored only under the user-scoped key.
+    await page.addInitScript(() => {
+      window.localStorage.setItem('auth_user', JSON.stringify({ id: 'legacy-admin', role: 'ADMIN' }));
+      window.localStorage.setItem('cookie_marketing_legacy-admin', 'true');
+      window.localStorage.setItem('cookie_analytics_legacy-admin', 'true');
+    });
+    await page.goto('/?tenant=pornopizza');
+    await expect(page.locator('script#facebook-pixel')).toHaveCount(1, { timeout: 10000 });
+    expect(await page.evaluate(() => window.localStorage.getItem('cookie_marketing'))).toBe('true');
+  });
+});
