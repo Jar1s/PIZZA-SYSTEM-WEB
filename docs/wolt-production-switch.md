@@ -42,6 +42,13 @@ admin ich prepísaním stratí.
   (tlačidlo „Otestovať zóny") so starším tokenom nefunguje. Ak produkčný kľúč
   existuje dlhšie, vypýtaj si od Woltu nový.
 
+- **Oprávnenia kľúča over reálnou objednávkou:** testovací kľúč vedel zásielku
+  vytvoriť, ale čítanie jej stavu Wolt odmietol („odmietol požiadavku —
+  skontrolujte oprávnenia API kľúča"). Systém v takom prípade prestane pre danú
+  zásielku poslať dopyty (nezahltí log), ale tracking zákazníka sa neaktualizuje.
+  Po prepnutí na produkčný kľúč sprav jednu objednávku s Woltom a over v admine,
+  že sa stav kuriéra mení — ak nie, vypýtaj si od Woltu kľúč s právami na čítanie
+  stavu zásielok.
 - Zóny sa kešujú ~10 minút; po prepnutí ich „Otestovať zóny" obnoví okamžite.
 - Checkout blokuje adresy mimo zóny len keď Wolt vráti jasné „mimo";
   pri výpadku Wolt API prepúšťa (fail-open) a platí post-payment poistka

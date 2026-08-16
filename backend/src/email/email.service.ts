@@ -120,7 +120,7 @@ export class EmailService {
 
     if (hasTenantSmtp) {
       if (!tenantHost || !tenantUser || !tenantPassword) {
-        this.logger.warn('📧 Tenant SMTP config incomplete (host/user/password required). Falling back to default SMTP config.');
+        this.logger.debug('📧 Tenant SMTP config incomplete, using default SMTP config');
         return this.transporter || null;
       }
 
@@ -221,8 +221,6 @@ export class EmailService {
    */
   private getEmailFrom(tenantName: string, tenantDomain: string, emailConfig?: any): string {
     // Log raw inputs for debugging
-    this.logger.log(`📧 getEmailFrom called with tenantName: "${tenantName}" (length: ${tenantName.length}), tenantDomain: ${tenantDomain}`);
-    this.logger.log(`📧 tenantName char codes: ${Array.from(tenantName).map(c => c.charCodeAt(0)).join(',')}`);
     
     // Priority 1: Tenant-specific email config
     if (emailConfig?.fromEmail) {
@@ -259,9 +257,6 @@ export class EmailService {
     const cleanTenantName = this.cleanTenantName(tenantName);
     const formattedFrom = `"${cleanTenantName}" <${fromEmail}>`;
     
-    this.logger.log(`📧 Generated EMAIL_FROM: ${formattedFrom}`);
-    this.logger.log(`📧   - Cleaned tenantName: "${cleanTenantName}"`);
-    this.logger.log(`📧   - fromEmail: ${fromEmail}`);
     
     return formattedFrom;
   }
@@ -616,7 +611,7 @@ export class EmailService {
           <tr>
             <td class="email-content" style="padding: 40px 30px;">
               
-              <h2 class="greeting" style="color: #333; margin: 0 0 10px 0; font-size: 22px;">Ahoj ${escapeHtml(user.name)}!</h2>
+              <h2 class="greeting" style="color: #333; margin: 0 0 10px 0; font-size: 22px;">Ahoj ${escapeHtml(user.name)}! 👋</h2>
               <p class="greeting-text" style="color: #666; font-size: 16px; line-height: 1.6; margin: 0 0 20px 0;">
                 Váš účet bol úspešne vytvorený. Teraz si prosím nastavte heslo, aby ste sa mohli prihlásiť a sledovať svoje objednávky.
               </p>
@@ -638,13 +633,13 @@ export class EmailService {
               </p>
 
               <!-- Benefits -->
-              <h3 style="color: #333; margin: 30px 0 15px 0; font-size: 18px; border-bottom: 2px solid #f0f0f0; padding-bottom: 10px;">Čo získate s účtom</h3>
-              <ul style="color: #666; font-size: 16px; line-height: 1.8; margin: 0; padding-left: 20px;">
-                <li>Sledovanie stavu objednávok v reálnom čase</li>
-                <li>História všetkých objednávok</li>
-                <li>Rýchlejšie budúce objednávky</li>
-                <li>Uložené adresy pre doručenie</li>
-                <li>Exkluzívne ponuky a zľavy</li>
+              <h3 class="section-title" style="color: #333; margin: 30px 0 15px 0; font-size: 18px; border-bottom: 2px solid #f0f0f0; padding-bottom: 10px;">Čo získate s účtom</h3>
+              <ul class="benefits-list" style="color: #666; font-size: 16px; line-height: 1.8; margin: 0; padding-left: 20px;">
+                <li>📦 Sledovanie stavu objednávok v reálnom čase</li>
+                <li>📋 História všetkých objednávok</li>
+                <li>⚡ Rýchlejšie budúce objednávky</li>
+                <li>📍 Uložené adresy pre doručenie</li>
+                <li>🎁 Exkluzívne ponuky a zľavy</li>
               </ul>
 
             </td>
@@ -654,7 +649,7 @@ export class EmailService {
           <tr>
             <td style="background-color: #f8f9fa; padding: 20px 30px; text-align: center;">
               <p style="color: #999; font-size: 14px; margin: 0;">
-                © ${new Date().getFullYear()} ${tenantName}. All rights reserved.
+                © ${new Date().getFullYear()} ${tenantName}. Všetky práva vyhradené.
               </p>
             </td>
           </tr>
@@ -1142,23 +1137,23 @@ export class EmailService {
     // PAID a PENDING sa neposielajú (PENDING má confirmation email pri vytvorení objednávky)
     const statusMessages: Partial<Record<OrderStatus, { subject: string; message: string }>> = {
       [OrderStatus.PREPARING]: {
-        subject: `Objednávka #${orderNumber} je v príprave`,
+        subject: `Objednávka #${orderNumber} je v príprave - ${tenantName}`,
         message: `Skvelá správa! Vaša objednávka sa teraz pripravuje v našej kuchyni.`,
       },
       [OrderStatus.READY]: {
-        subject: `Objednávka #${orderNumber} je pripravená!`,
+        subject: `Objednávka #${orderNumber} je pripravená - ${tenantName}`,
         message: `Vaša objednávka je pripravená! Čoskoro bude doručená.`,
       },
       [OrderStatus.OUT_FOR_DELIVERY]: {
-        subject: `Objednávka #${orderNumber} odovzdaná kuriérovi`,
+        subject: `Objednávka #${orderNumber} odovzdaná kuriérovi - ${tenantName}`,
         message: `Vaša objednávka je na ceste! Sledujte doručenie.`,
       },
       [OrderStatus.DELIVERED]: {
-        subject: `Objednávka #${orderNumber} doručená`,
+        subject: `Objednávka #${orderNumber} doručená - ${tenantName}`,
         message: `Vaša objednávka bola doručená! Dobrú chuť!`,
       },
       [OrderStatus.CANCELED]: {
-        subject: `Objednávka #${orderNumber} zrušená`,
+        subject: `Objednávka #${orderNumber} zrušená - ${tenantName}`,
         message: this.isPaidOnline(order)
           ? `Vaša objednávka bola zrušená. Platbu ${(order.totalCents / 100).toFixed(2)} € vám vrátime späť na účet — zvyčajne do 3–5 pracovných dní. Ak máte otázky, kontaktujte nás prosím.`
           : `Vaša objednávka bola zrušená. Ak máte otázky, kontaktujte nás prosím.`,
@@ -1294,7 +1289,7 @@ export class EmailService {
       : order.id.slice(0, 8).toUpperCase(); // Fallback for old orders without orderNumber
 
     // Get theme colors - fallback to brand colors
-    const primaryColor = tenantTheme?.primaryColor || '#FF6B00';
+    const primaryColor = tenantTheme?.primaryColor || '#E91E63';
     
     // Build asset base URL for logo
     let rawAssetBase =
@@ -1388,22 +1383,22 @@ export class EmailService {
           <tr>
             <td class="email-content" style="padding: 40px 30px;">
               
-              <h2 class="greeting" style="color: #333; margin: 0 0 10px 0; font-size: 22px;">Ahoj ${escapeHtml(customer.name)}!</h2>
+              <h2 class="greeting" style="color: #333; margin: 0 0 10px 0; font-size: 22px;">Ahoj ${escapeHtml(customer.name)}! 👋</h2>
               <p class="greeting-text" style="color: #666; font-size: 16px; line-height: 1.6; margin: 0 0 20px 0;">
                 ${message}
               </p>
+
+              <!-- Order Number -->
+              <div class="order-number-box" style="background-color: #f8f9fa; border-left: 4px solid ${primaryColor}; padding: 15px; margin: 20px 0;">
+                <p class="order-number-label" style="margin: 0; color: #666; font-size: 14px;">Číslo objednávky</p>
+                <p class="order-number-value" style="margin: 5px 0 0 0; color: #333; font-size: 24px; font-weight: bold;">#${orderNumber}</p>
+              </div>
 
               <!-- Track Order Button -->
               <div style="text-align: center; margin: 30px 0;">
                 <a href="${trackingUrl}" class="track-button" style="display: inline-block; background-color: ${primaryColor}; color: #ffffff; padding: 15px 40px; text-decoration: none; border-radius: 5px; font-size: 16px; font-weight: bold;">
                   Sledovať objednávku
                 </a>
-              </div>
-
-              <!-- Order Number -->
-              <div class="order-number-box" style="background-color: #f8f9fa; border-left: 4px solid ${primaryColor}; padding: 15px; margin: 20px 0;">
-                <p class="order-number-label" style="margin: 0; color: #666; font-size: 14px;">Číslo objednávky</p>
-                <p class="order-number-value" style="margin: 5px 0 0 0; color: #333; font-size: 24px; font-weight: bold;">#${orderNumber}</p>
               </div>
 
             </td>
@@ -1459,7 +1454,7 @@ export class EmailService {
       : frontendUrl;
     
     // Get theme colors - fallback to brand colors
-    const primaryColor = tenantTheme?.primaryColor || '#FF6B00';
+    const primaryColor = tenantTheme?.primaryColor || '#E91E63';
     
     // Build asset base URL for logo
     let rawAssetBase =
@@ -1497,16 +1492,11 @@ export class EmailService {
       return `${assetBase}${cleanPath.startsWith('/') ? cleanPath : '/' + cleanPath}`;
     };
     
-    // Build logo URL - try multiple paths
+    // Build logo URL - same fallback as other emails (PNG, SVG is not rendered by Gmail/Outlook)
     const logoUrl =
       buildAssetUrl(tenantTheme?.logo) ||
-      buildAssetUrl('/logos/pornopizza.svg') ||
-      buildAssetUrl('/logo-pornopizza.svg') ||
       buildAssetUrl('/PORNO PIZZA PINK GRANDIENT.png') ||
       '';
-    
-    // Create gradient color (darker shade for gradient effect)
-    const gradientColor = primaryColor; // Can be enhanced later
     
     return `
 <!DOCTYPE html>
@@ -1556,11 +1546,7 @@ export class EmailService {
           <!-- Header -->
           <tr>
             <td class="email-header" style="background-color: ${primaryColor}; padding: 30px 20px; text-align: center;">
-              ${logoUrl ? `
-              <img src="${logoUrl}" alt="${tenantName}" class="logo-img" style="max-width: 200px; height: auto; margin-bottom: 10px;" />
-              ` : `
-              <h1 style="color: #ffffff; margin: 0 0 10px 0; font-size: 28px;">🍕 ${tenantName}</h1>
-              `}
+              ${logoUrl ? `<img src="${logoUrl}" alt="${tenantName}" class="logo-img" style="max-width: 200px; height: auto; margin: 0 0 10px 0;" />` : `<h1 style="color: #ffffff; margin: 0; font-size: 28px;">${tenantName}</h1>`}
               <p style="color: #ffffff; margin: 10px 0 0 0; font-size: 16px;">Vitajte v našej rodine!</p>
             </td>
           </tr>
@@ -1591,8 +1577,8 @@ export class EmailService {
                 <li>🎁 Exkluzívne ponuky a zľavy</li>
               </ul>
 
-              <div style="background-color: #e7f3ff; border-left: 4px solid ${primaryColor}; padding: 15px; margin: 30px 0;">
-                <p style="margin: 0; color: #0c5460; font-size: 14px; line-height: 1.6;">
+              <div style="background-color: #f8f9fa; border-left: 4px solid ${primaryColor}; padding: 15px; margin: 30px 0;">
+                <p style="margin: 0; color: #666; font-size: 14px; line-height: 1.6;">
                   <strong>💡 Tip:</strong> Uložte si svoje obľúbené adresy a budúce objednávky budú ešte rýchlejšie!
                 </p>
               </div>

@@ -1366,18 +1366,7 @@ export class OrdersService {
         const displayName = product?.displayName 
           || getProductDisplayName(productNameForMapping, 'sk')
           || item.productName;
-        
-        // Log modifiers when retrieving from database
-        this.logger.debug('Retrieving order item with modifiers', {
-          itemId: item.id,
-          productName: item.productName,
-          displayName,
-          modifiers: item.modifiers,
-          modifiersType: typeof item.modifiers,
-          modifiersStringified: JSON.stringify(item.modifiers),
-          modifiersKeys: item.modifiers ? Object.keys(item.modifiers) : [],
-        });
-        
+
         return {
           id: item.id,
           productId: item.productId,
