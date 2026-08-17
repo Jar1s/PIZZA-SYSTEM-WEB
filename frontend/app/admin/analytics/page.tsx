@@ -421,12 +421,21 @@ export default function AnalyticsPage() {
                   <EmptyNote height={100} />
                 ) : (
                   <RankList
-                    rows={analytics.topZips.map((z) => ({
-                      key: z.zip,
-                      label: `${z.zip}${z.city ? ` ${z.city}` : ''}`,
-                      value: `${num(z.orders)} obj.`,
-                      share: analytics.totalOrders > 0 ? z.orders / analytics.totalOrders : 0,
-                    }))}
+                    rows={[
+                      ...analytics.topZips.map((z) => ({
+                        key: z.zip,
+                        label: `${z.zip}${z.city ? ` ${z.city}` : ''}`,
+                        value: `${num(z.orders)} obj.`,
+                        share: analytics.totalOrders > 0 ? z.orders / analytics.totalOrders : 0,
+                      })),
+                      ...(() => {
+                        const listed = analytics.topZips.reduce((sum, z) => sum + z.orders, 0);
+                        const others = analytics.totalOrders - listed;
+                        return others > 0
+                          ? [{ key: '__others', label: 'ostatné', value: `${num(others)} obj.`, share: others / analytics.totalOrders, muted: true }]
+                          : [];
+                      })(),
+                    ]}
                   />
                 )}
               </Panel>
@@ -663,19 +672,19 @@ function TimingStat({
   );
 }
 
-function RankList({ rows }: { rows: Array<{ key: string; label: string; value: string; share: number }> }) {
+function RankList({ rows }: { rows: Array<{ key: string; label: string; value: string; share: number; muted?: boolean }> }) {
   return (
     <ul className="space-y-2">
       {rows.map((r) => (
         <li key={r.key}>
           <div className="flex items-baseline justify-between gap-3 text-[13px]">
-            <span className="min-w-0 truncate font-semibold text-zinc-800" title={r.label}>
+            <span className={`min-w-0 truncate ${r.muted ? 'font-medium text-zinc-500' : 'font-semibold text-zinc-800'}`} title={r.label}>
               {r.label}
             </span>
             <span className="shrink-0 tabular-nums text-zinc-600">{r.value}</span>
           </div>
           <div className="mt-1 h-1 overflow-hidden rounded-full bg-zinc-100">
-            <div className="h-full rounded-full bg-zinc-950" style={{ width: `${Math.max(2, Math.min(100, r.share * 100))}%` }} />
+            <div className={`h-full rounded-full ${r.muted ? 'bg-zinc-300' : 'bg-zinc-950'}`} style={{ width: `${Math.max(2, Math.min(100, r.share * 100))}%` }} />
           </div>
         </li>
       ))}
