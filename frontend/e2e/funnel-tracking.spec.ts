@@ -22,6 +22,9 @@ async function setUpPage(page: Page, consent: boolean): Promise<void> {
   await page.route('**://connect.facebook.net/**', (route) =>
     route.fulfill({ status: 200, contentType: 'application/javascript', body: '/* stub */' }),
   );
+  await page.route('**://photon.komoot.io/**', (route) =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ features: [] }) }),
+  );
   await page.route('**://nominatim.openstreetmap.org/**', async (route) => {
     const body = route.request().url().includes('limit=1')
       ? JSON.stringify([{ display_name: 'Testovacia 1, Bratislava', lat: '48.1486', lon: '17.1077', address: { road: 'Testovacia', house_number: '1', city: 'Bratislava', postcode: '81101', country_code: 'sk' } }])
