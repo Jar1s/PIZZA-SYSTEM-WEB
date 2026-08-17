@@ -16,6 +16,8 @@ type OrderOverrides = Partial<{
   updatedAt: Date;
   items: any[];
   statusHistory: any[];
+  delivery: any;
+  deliveryFeeCents: number;
 }>;
 
 function order(overrides: OrderOverrides = {}) {
@@ -27,7 +29,8 @@ function order(overrides: OrderOverrides = {}) {
     status: overrides.status ?? OrderStatus.PAID,
     totalCents: overrides.totalCents ?? 1000,
     subtotalCents: overrides.totalCents ?? 1000,
-    deliveryFeeCents: 0,
+    deliveryFeeCents: overrides.deliveryFeeCents ?? 0,
+    delivery: overrides.delivery === undefined ? null : overrides.delivery,
     paymentRef: overrides.paymentRef === undefined ? 'gopay-123' : overrides.paymentRef,
     paymentStatus: 'success',
     refundStatus: overrides.refundStatus ?? null,
@@ -107,6 +110,17 @@ describe('AnalyticsService', () => {
       const withoutPrev = await service.getAnalytics('tenant-1', start, end);
       expect(withoutPrev.revenueChange).toBeNull();
       expect(withoutPrev.ordersChange).toBeNull();
+    });
+
+    it('compares a running period with the same clock window shifted back by whole days', async () => {
+      mockOrders([order()]);
+      const runningStart = new Date('2026-08-17T00:00:00.000Z');
+      const runningEnd = new Date('2026-08-17T11:03:00.000Z'); // "today so far"
+      await service.getAnalytics('tenant-1', runningStart, runningEnd);
+      const prevCall = mockPrisma.order.findMany.mock.calls.find((c: any) => c[0]?.where?.createdAt?.lt && c[0]?.where?.createdAt?.gte);
+      // yesterday 00:00 → yesterday 11:03 (same clock window, one day earlier)
+      expect(prevCall[0].where.createdAt.gte.toISOString()).toBe('2026-08-16T00:00:00.000Z');
+      expect(prevCall[0].where.createdAt.lt.toISOString()).toBe('2026-08-16T11:03:00.000Z');
     });
 
     it('reports refunds separately', async () => {
@@ -211,6 +225,43 @@ describe('AnalyticsService', () => {
     });
   });
 
+  describe('delivery economics & hourly series', () => {
+    it('compares collected delivery fees with Wolt cost and splits Wolt vs. own courier', async () => {
+      mockOrders([
+        order({ deliveryFeeCents: 199, delivery: { provider: 'wolt', quote: { feeCents: 350, distance: 2400 } } }),
+        order({ deliveryFeeCents: 0, delivery: { provider: 'wolt', quote: { feeCents: 450, distance: 3600 } } }),
+        order({ deliveryFeeCents: 199, delivery: null }), // own courier
+        order({ deliveryFeeCents: 199, delivery: { provider: 'wolt', quote: { courierEta: null } } }), // no fee recorded
+        order({ deliveryFeeCents: 999, status: OrderStatus.CANCELED, delivery: { provider: 'wolt', quote: { feeCents: 9999 } } }), // ignored
+      ]);
+      const analytics = await service.getAnalytics('tenant-1', start, end);
+      expect(analytics.delivery).toEqual({
+        feesCollectedCents: 597,
+        woltCostCents: 800,
+        marginCents: -203,
+        woltOrders: 3,
+        ownOrders: 1,
+        freeDeliveryOrders: 1,
+        avgDistanceMeters: 3000,
+        distanceSamples: 2,
+        avgWoltCostCents: 400,
+      });
+    });
+
+    it('buckets revenue orders by local hour', async () => {
+      mockOrders([
+        order({ createdAt: new Date('2026-04-09T10:15:00.000Z'), totalCents: 1000 }), // 12:15 local
+        order({ createdAt: new Date('2026-04-09T10:45:00.000Z'), totalCents: 500 }), // 12:45 local
+        order({ createdAt: new Date('2026-04-09T17:05:00.000Z'), totalCents: 700 }), // 19:05 local
+      ]);
+      const analytics = await service.getAnalytics('tenant-1', start, end);
+      expect(analytics.ordersByHour).toHaveLength(24);
+      expect(analytics.ordersByHour[12]).toEqual({ hour: 12, orders: 2, revenue: 1500 });
+      expect(analytics.ordersByHour[19]).toEqual({ hour: 19, orders: 1, revenue: 700 });
+      expect(analytics.ordersByHour[0].orders).toBe(0);
+    });
+  });
+
   describe('all tenants', () => {
     it('combines brands and returns a per-brand breakdown', async () => {
       mockPrisma.tenant.findMany.mockResolvedValue([
@@ -244,7 +295,9 @@ describe('AnalyticsService', () => {
       const lines = csv.trim().split('\r\n');
       expect(lines[0]).toContain('Brand;Číslo objednávky;Vytvorená;Stav');
       expect(lines[1]).toContain('PornoPizza;0001;');
+      expect(lines[0]).toContain(';Rozvoz;Náklad Wolt (€);');
       expect(lines[1]).toContain(';DELIVERED;áno;hotovosť pri doručení;');
+      expect(lines[1]).toContain(';vlastný;;1;');
       expect(lines[1]).toContain('"1× Calimero ""Love"""');
       expect(csv).not.toContain('Jaro Secret');
       expect(csv).not.toContain('secret@example.sk');

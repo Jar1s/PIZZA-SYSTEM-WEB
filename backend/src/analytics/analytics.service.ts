@@ -33,6 +33,21 @@ export interface TimingMetrics {
   lastMileSamples: number;
 }
 
+export interface DeliveryEconomics {
+  /** delivery fees charged to customers (revenue orders) */
+  feesCollectedCents: number;
+  /** what Wolt charged us (sum of deliveries.quote.feeCents on revenue orders) */
+  woltCostCents: number;
+  /** feesCollected − woltCost (own-courier orders have no cost recorded) */
+  marginCents: number;
+  woltOrders: number;
+  ownOrders: number;
+  freeDeliveryOrders: number;
+  avgDistanceMeters: number;
+  distanceSamples: number;
+  avgWoltCostCents: number;
+}
+
 export interface TenantSummary {
   tenantId: string;
   slug: string;
@@ -58,8 +73,11 @@ export interface AnalyticsData {
   refunds: { count: number; amountCents: number; pendingCount: number; failedCount: number };
   unpaid: { count: number; amountCents: number };
   ordersByDay: Array<{ date: string; orders: number; revenue: number }>;
+  /** 24 buckets (local hour) – useful for one-day views */
+  ordersByHour: Array<{ hour: number; orders: number; revenue: number }>;
   /** [weekday 0=Mon..6=Sun][hour 0..23] → order count (local time) */
   heatmap: number[][];
+  delivery: DeliveryEconomics;
   payments: Record<PaymentMethod, { count: number; revenue: number }>;
   customers: { unique: number; newCount: number; returningCount: number; repeatRate: number };
   topZips: Array<{ zip: string; city: string; orders: number }>;
@@ -96,6 +114,7 @@ export interface AnalyticsOrder {
     product?: { category: string } | null;
   }>;
   statusHistory: Array<{ status: OrderStatus; createdAt: Date }>;
+  delivery?: { provider: string; quote: any } | null;
 }
 
 interface LocalParts {
@@ -215,12 +234,15 @@ export class AnalyticsService {
       include: { product: { select: { category: true } } },
     };
 
+    const deliveryInclude = { select: { provider: true, quote: true } };
+
     let rows: any[];
     try {
       rows = await this.prisma.order.findMany({
         where,
         include: {
           items: itemsInclude,
+          delivery: deliveryInclude,
           statusHistory: {
             select: { status: true, createdAt: true },
             orderBy: { createdAt: 'asc' },
@@ -229,7 +251,7 @@ export class AnalyticsService {
       });
     } catch (error) {
       if (!this.isStatusHistoryUnavailable(error)) throw error;
-      rows = await this.prisma.order.findMany({ where, include: { items: itemsInclude } });
+      rows = await this.prisma.order.findMany({ where, include: { items: itemsInclude, delivery: deliveryInclude } });
     }
 
     return (rows || []).map((order) => ({
@@ -247,12 +269,12 @@ export class AnalyticsService {
   private async fetchPreviousOrders(
     tenantIds: string[],
     prevStart: Date,
-    start: Date,
+    prevEnd: Date,
   ): Promise<Array<{ status: OrderStatus; totalCents: number; paymentRef: string | null }>> {
     const rows = await this.prisma.order.findMany({
       where: {
         tenantId: { in: tenantIds },
-        createdAt: { gte: prevStart, lt: start },
+        createdAt: { gte: prevStart, lt: prevEnd },
       },
       select: { status: true, totalCents: true, paymentRef: true },
     });
@@ -445,6 +467,65 @@ export class AnalyticsService {
   }
 
   // ---------------------------------------------------------------------------
+  // Delivery economics
+  // ---------------------------------------------------------------------------
+
+  static getWoltFeeCents(order: { delivery?: { provider: string; quote: any } | null }): number | null {
+    const d = order.delivery;
+    if (!d || d.provider !== 'wolt') return null;
+    const quote = d.quote && typeof d.quote === 'object' && !Array.isArray(d.quote) ? d.quote : null;
+    const fee = quote?.feeCents;
+    return typeof fee === 'number' && Number.isFinite(fee) && fee >= 0 ? Math.round(fee) : null;
+  }
+
+  private computeDeliveryEconomics(revenueOrders: AnalyticsOrder[]): DeliveryEconomics {
+    let feesCollectedCents = 0;
+    let woltCostCents = 0;
+    let woltOrders = 0;
+    let ownOrders = 0;
+    let freeDeliveryOrders = 0;
+    let distanceTotal = 0;
+    let distanceSamples = 0;
+    let woltCostSamples = 0;
+
+    for (const order of revenueOrders) {
+      const fee = order.deliveryFeeCents || 0;
+      feesCollectedCents += fee;
+      if (fee === 0) freeDeliveryOrders += 1;
+
+      const isWolt = order.delivery?.provider === 'wolt';
+      if (isWolt) {
+        woltOrders += 1;
+        const cost = AnalyticsService.getWoltFeeCents(order);
+        if (cost !== null) {
+          woltCostCents += cost;
+          woltCostSamples += 1;
+        }
+        const quote = order.delivery?.quote;
+        const distance = quote && typeof quote === 'object' ? (quote as any).distance : null;
+        if (typeof distance === 'number' && distance > 0) {
+          distanceTotal += distance;
+          distanceSamples += 1;
+        }
+      } else {
+        ownOrders += 1;
+      }
+    }
+
+    return {
+      feesCollectedCents,
+      woltCostCents,
+      marginCents: feesCollectedCents - woltCostCents,
+      woltOrders,
+      ownOrders,
+      freeDeliveryOrders,
+      avgDistanceMeters: distanceSamples > 0 ? Math.round(distanceTotal / distanceSamples) : 0,
+      distanceSamples,
+      avgWoltCostCents: woltCostSamples > 0 ? Math.round(woltCostCents / woltCostSamples) : 0,
+    };
+  }
+
+  // ---------------------------------------------------------------------------
   // Core computation (pure, works on already-fetched orders)
   // ---------------------------------------------------------------------------
 
@@ -495,9 +576,10 @@ export class AnalyticsService {
       amountCents: unpaidOrders.reduce((s, o) => s + (o.totalCents || 0), 0),
     };
 
-    // Per day + heatmap (local time)
+    // Per day, per hour + heatmap (local time)
     const byDay = new Map<string, { orders: number; revenue: number }>();
     const heatmap: number[][] = Array.from({ length: 7 }, () => Array(24).fill(0));
+    const ordersByHour = Array.from({ length: 24 }, (_, hour) => ({ hour, orders: 0, revenue: 0 }));
     for (const order of revenueOrders) {
       const parts = this.getLocalParts(new Date(order.createdAt));
       const day = byDay.get(parts.dateKey) || { orders: 0, revenue: 0 };
@@ -505,12 +587,17 @@ export class AnalyticsService {
       day.revenue += order.totalCents || 0;
       byDay.set(parts.dateKey, day);
       heatmap[parts.weekday][parts.hour] += 1;
+      ordersByHour[parts.hour].orders += 1;
+      ordersByHour[parts.hour].revenue += order.totalCents || 0;
     }
     const ordersByDay = this.enumerateLocalDays(startDate, endDate).map((date) => ({
       date,
       orders: byDay.get(date)?.orders || 0,
       revenue: byDay.get(date)?.revenue || 0,
     }));
+
+    // Delivery economics
+    const delivery = this.computeDeliveryEconomics(revenueOrders);
 
     // Payments
     const payments: Record<PaymentMethod, { count: number; revenue: number }> = {
@@ -614,7 +701,9 @@ export class AnalyticsService {
       refunds,
       unpaid,
       ordersByDay,
+      ordersByHour,
       heatmap,
+      delivery,
       payments,
       customers,
       topZips,
@@ -625,9 +714,16 @@ export class AnalyticsService {
     };
   }
 
-  private getPreviousPeriodStart(startDate: Date, endDate: Date): Date {
-    const lengthMs = Math.max(endDate.getTime() - startDate.getTime(), 24 * 60 * 60 * 1000);
-    return new Date(startDate.getTime() - lengthMs);
+  /**
+   * Previous period = the current window shifted back by its length in whole
+   * local days. For a running period ("today so far", "last 7 days up to now")
+   * this compares like-for-like: yesterday up to the same hour, the 7 days
+   * before up to the same hour – never a partial day against a full one.
+   */
+  private getPreviousPeriod(startDate: Date, endDate: Date): { start: Date; end: Date } {
+    const days = Math.max(this.enumerateLocalDays(startDate, endDate).length, 1);
+    const shiftMs = days * 24 * 60 * 60 * 1000;
+    return { start: new Date(startDate.getTime() - shiftMs), end: new Date(endDate.getTime() - shiftMs) };
   }
 
   // ---------------------------------------------------------------------------
@@ -635,10 +731,10 @@ export class AnalyticsService {
   // ---------------------------------------------------------------------------
 
   async getAnalytics(tenantId: string, startDate: Date, endDate: Date): Promise<AnalyticsData> {
-    const prevStart = this.getPreviousPeriodStart(startDate, endDate);
+    const prev = this.getPreviousPeriod(startDate, endDate);
     const [orders, prevOrders, priorKeys] = await Promise.all([
       this.fetchOrders([tenantId], startDate, endDate),
-      this.fetchPreviousOrders([tenantId], prevStart, startDate),
+      this.fetchPreviousOrders([tenantId], prev.start, prev.end),
       this.fetchPriorCustomerKeys([tenantId], startDate),
     ]);
     return this.computeAnalytics(orders, prevOrders, priorKeys, startDate, endDate);
@@ -654,10 +750,10 @@ export class AnalyticsService {
       return this.computeAnalytics([], [], new Set(), startDate, endDate);
     }
 
-    const prevStart = this.getPreviousPeriodStart(startDate, endDate);
+    const prev = this.getPreviousPeriod(startDate, endDate);
     const [orders, prevOrders, priorKeys] = await Promise.all([
       this.fetchOrders(tenantIds, startDate, endDate),
-      this.fetchPreviousOrders(tenantIds, prevStart, startDate),
+      this.fetchPreviousOrders(tenantIds, prev.start, prev.end),
       this.fetchPriorCustomerKeys(tenantIds, startDate),
     ]);
 
@@ -737,6 +833,8 @@ export class AnalyticsService {
       'Medzisúčet (€)',
       'Doprava (€)',
       'Celkom (€)',
+      'Rozvoz',
+      'Náklad Wolt (€)',
       'Položiek',
       'Produkty',
       'Mesto',
@@ -761,6 +859,11 @@ export class AnalyticsService {
           money(order.subtotalCents || 0),
           money(order.deliveryFeeCents || 0),
           money(order.totalCents || 0),
+          order.delivery?.provider === 'wolt' ? 'Wolt' : 'vlastný',
+          (() => {
+            const cost = AnalyticsService.getWoltFeeCents(order);
+            return cost === null ? '' : money(cost);
+          })(),
           order.items.reduce((s, i) => s + (i.quantity || 0), 0),
           itemsSummary,
           order.address?.city || '',

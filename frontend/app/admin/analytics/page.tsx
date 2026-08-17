@@ -8,10 +8,12 @@ import { Heatmap } from '@/components/admin/analytics/Heatmap';
 import { Sparkline } from '@/components/admin/analytics/Sparkline';
 import {
   duration,
+  km,
   longDate,
   money,
   num,
   pct,
+  presetRange,
   signedPct,
   time,
   toDateInputValue,
@@ -19,15 +21,21 @@ import {
 import {
   EMPTY_TIMING,
   PAYMENT_LABELS,
+  QUICK_PRESET_LABELS,
   STATUS_LABELS,
   STATUS_ORDER,
   type AnalyticsData,
   type PaymentMethod,
   type PeriodSelection,
+  type QuickPreset,
 } from '@/components/admin/analytics/types';
 import type { TrendMetric } from '@/components/admin/analytics/AnalyticsCharts';
 
 const TrendChart = dynamic(() => import('@/components/admin/analytics/AnalyticsCharts').then((m) => m.TrendChart), {
+  ssr: false,
+  loading: () => <div className="h-[240px] animate-pulse rounded-xl bg-zinc-100" />,
+});
+const HourlyChart = dynamic(() => import('@/components/admin/analytics/AnalyticsCharts').then((m) => m.HourlyChart), {
   ssr: false,
   loading: () => <div className="h-[240px] animate-pulse rounded-xl bg-zinc-100" />,
 });
@@ -39,7 +47,7 @@ const PaymentsDonut = dynamic(() => import('@/components/admin/analytics/Analyti
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
 
 function periodQuery(period: PeriodSelection): string {
-  if (period.mode === 'custom') {
+  if (period.mode === 'custom' || period.mode === 'preset') {
     return `from=${encodeURIComponent(period.from)}&to=${encodeURIComponent(period.to)}`;
   }
   return `days=${period.days}`;
@@ -81,7 +89,7 @@ export default function AnalyticsPage() {
         throw new Error(text || `HTTP ${res.status}`);
       }
       const data = (await res.json()) as AnalyticsData;
-      if (!data?.period || !data?.payments || !data?.heatmap) {
+      if (!data?.period || !data?.payments || !data?.heatmap || !data?.delivery || !data?.ordersByHour) {
         // Old backend still deployed – the new dashboard needs the extended payload.
         throw new Error('API vracia starý formát – nasaď najnovšiu verziu backendu.');
       }
@@ -149,6 +157,13 @@ export default function AnalyticsPage() {
   }, [analytics]);
 
   const isEmpty = !!analytics && analytics.totalOrders === 0 && analytics.canceled.count === 0 && analytics.unpaid.count === 0;
+  const isShortPeriod = !!analytics && analytics.period.days <= 2;
+
+  const selectPreset = (preset: QuickPreset) => {
+    const { from, to } = presetRange(preset);
+    setPeriod({ mode: 'preset', preset, from, to });
+    setCustomOpen(false);
+  };
 
   return (
     <ProtectedRoute requiredRole="ADMIN">
@@ -167,6 +182,22 @@ export default function AnalyticsPage() {
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
+            <div className="flex rounded-full border border-zinc-200 bg-white p-1">
+              {(Object.keys(QUICK_PRESET_LABELS) as QuickPreset[]).map((preset) => {
+                const active = period.mode === 'preset' && period.preset === preset;
+                return (
+                  <button
+                    key={preset}
+                    onClick={() => selectPreset(preset)}
+                    className={`rounded-full px-3 py-1.5 text-[13px] font-bold transition-colors ${
+                      active ? 'bg-zinc-950 text-white' : 'text-zinc-600 hover:bg-zinc-100'
+                    }`}
+                  >
+                    {QUICK_PRESET_LABELS[preset]}
+                  </button>
+                );
+              })}
+            </div>
             <div className="flex rounded-full border border-zinc-200 bg-white p-1">
               {([7, 30, 90] as const).map((d) => {
                 const active = period.mode === 'days' && period.days === d;
@@ -334,8 +365,8 @@ export default function AnalyticsPage() {
             <div className="grid grid-cols-1 gap-3 xl:grid-cols-5">
               <Panel className="xl:col-span-3">
                 <PanelHeader
-                  title="Vývoj po dňoch"
-                  hint="Tmavé stĺpce = piatok a sobota"
+                  title={isShortPeriod ? 'Vývoj po hodinách' : 'Vývoj po dňoch'}
+                  hint={isShortPeriod ? 'Objednávky podľa hodiny prijatia' : 'Tmavé stĺpce = piatok a sobota'}
                   right={
                     <div className="flex rounded-full border border-zinc-200 bg-zinc-50 p-0.5">
                       {(['revenue', 'orders'] as TrendMetric[]).map((m) => (
@@ -352,10 +383,12 @@ export default function AnalyticsPage() {
                     </div>
                   }
                 />
-                {analytics.totalOrders > 0 ? (
-                  <TrendChart data={analytics.ordersByDay} metric={trendMetric} />
-                ) : (
+                {analytics.totalOrders === 0 ? (
                   <EmptyNote height={240} />
+                ) : isShortPeriod ? (
+                  <HourlyChart data={analytics.ordersByHour} metric={trendMetric} />
+                ) : (
+                  <TrendChart data={analytics.ordersByDay} metric={trendMetric} />
                 )}
               </Panel>
               <Panel className="xl:col-span-2">
@@ -398,6 +431,34 @@ export default function AnalyticsPage() {
                 )}
               </Panel>
             </div>
+
+            {/* Delivery economics */}
+            <Panel>
+              <PanelHeader
+                title="Doprava"
+                hint="Čo zaplatili zákazníci za doručenie vs. čo stálo doručenie cez Wolt (len objednávky v tržbách)"
+              />
+              <div className="grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-6">
+                <Stat label="Vybrané poplatky" value={money(analytics.delivery.feesCollectedCents)} />
+                <Stat label="Náklad Wolt" value={analytics.delivery.woltOrders > 0 ? money(analytics.delivery.woltCostCents) : '–'} />
+                <Stat
+                  label="Rozdiel"
+                  value={analytics.delivery.woltOrders > 0 ? `${analytics.delivery.marginCents < 0 ? '−' : ''}${money(Math.abs(analytics.delivery.marginCents))}` : '–'}
+                  tone={analytics.delivery.woltOrders === 0 ? undefined : analytics.delivery.marginCents < 0 ? 'bad' : 'good'}
+                />
+                <Stat
+                  label="Wolt / vlastný rozvoz"
+                  value={`${num(analytics.delivery.woltOrders)} / ${num(analytics.delivery.ownOrders)}`}
+                />
+                <Stat label="Priem. cena Wolt" value={analytics.delivery.avgWoltCostCents > 0 ? money(analytics.delivery.avgWoltCostCents) : '–'} />
+                <Stat label="Priem. vzdialenosť" value={km(analytics.delivery.avgDistanceMeters)} />
+              </div>
+              <p className="mt-3 text-[12px] text-zinc-500">
+                Doprava zadarmo: {num(analytics.delivery.freeDeliveryOrders)} obj.
+                {analytics.delivery.woltOrders > 0 && analytics.delivery.distanceSamples > 0 && ` · vzdialenosť z ${num(analytics.delivery.distanceSamples)} Wolt doručení`}
+                {analytics.delivery.ownOrders > 0 && ' · vlastný rozvoz nemá evidovaný náklad, rozdiel je preto len orientačný'}
+              </p>
+            </Panel>
 
             {/* Products · extras · timing */}
             <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
@@ -512,7 +573,7 @@ export default function AnalyticsPage() {
 
             <p className="pt-2 text-[12px] text-zinc-500">
               Tržby = všetky objednávky okrem zrušených a nezaplatených online objednávok. Dobierky sa počítajú od prijatia.
-              Refundy sú zobrazené osobitne. Časy sú v pásme Europe/Bratislava.
+              Refundy sú zobrazené osobitne. Porovnanie je vždy s rovnako dlhým úsekom tesne pred začiatkom obdobia – pri „Dnes“ teda so včerajškom do rovnakej hodiny. Časy sú v pásme Europe/Bratislava.
             </p>
           </div>
         )}
@@ -568,10 +629,11 @@ function KpiCard({
   );
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
+function Stat({ label, value, tone }: { label: string; value: string; tone?: 'good' | 'bad' }) {
+  const color = tone === 'good' ? 'text-emerald-700' : tone === 'bad' ? 'text-red-700' : '';
   return (
     <div className="rounded-xl bg-zinc-50 px-2.5 py-2 text-center">
-      <p className="text-lg font-black tabular-nums tracking-tight">{value}</p>
+      <p className={`text-lg font-black tabular-nums tracking-tight ${color}`}>{value}</p>
       <p className="text-[10.5px] font-semibold uppercase tracking-[0.12em] text-zinc-500">{label}</p>
     </div>
   );
