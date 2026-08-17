@@ -15,6 +15,18 @@ export interface TimingMetrics {
   lastMileSamples: number;
 }
 
+export interface DeliveryEconomics {
+  feesCollectedCents: number;
+  woltCostCents: number;
+  marginCents: number;
+  woltOrders: number;
+  ownOrders: number;
+  freeDeliveryOrders: number;
+  avgDistanceMeters: number;
+  distanceSamples: number;
+  avgWoltCostCents: number;
+}
+
 export interface TenantSummary {
   tenantId: string;
   slug: string;
@@ -39,7 +51,9 @@ export interface AnalyticsData {
   refunds: { count: number; amountCents: number; pendingCount: number; failedCount: number };
   unpaid: { count: number; amountCents: number };
   ordersByDay: Array<{ date: string; orders: number; revenue: number }>;
+  ordersByHour: Array<{ hour: number; orders: number; revenue: number }>;
   heatmap: number[][];
+  delivery: DeliveryEconomics;
   payments: Record<PaymentMethod, { count: number; revenue: number }>;
   customers: { unique: number; newCount: number; returningCount: number; repeatRate: number };
   topZips: Array<{ zip: string; city: string; orders: number }>;
@@ -50,9 +64,19 @@ export interface AnalyticsData {
   tenants?: TenantSummary[];
 }
 
+export type QuickPreset = 'today' | 'yesterday' | 'thisWeek' | 'thisMonth';
+
 export type PeriodSelection =
   | { mode: 'days'; days: 7 | 30 | 90 }
+  | { mode: 'preset'; preset: QuickPreset; from: string; to: string }
   | { mode: 'custom'; from: string; to: string };
+
+export const QUICK_PRESET_LABELS: Record<QuickPreset, string> = {
+  today: 'Dnes',
+  yesterday: 'Včera',
+  thisWeek: 'Tento týždeň',
+  thisMonth: 'Tento mesiac',
+};
 
 export const EMPTY_TIMING: TimingMetrics = {
   avgConfirmSeconds: 0,

@@ -76,6 +76,56 @@ export function TrendChart({ data, metric }: TrendChartProps) {
   );
 }
 
+interface HourlyChartProps {
+  data: Array<{ hour: number; orders: number; revenue: number }>;
+  metric: TrendMetric;
+}
+
+/** One-day view: revenue/orders per local hour (10:00–23:00 always shown, wider if there is data). */
+export function HourlyChart({ data, metric }: HourlyChartProps) {
+  let first = 10;
+  let last = 22;
+  data.forEach((d) => {
+    if (d.orders > 0) {
+      first = Math.min(first, d.hour);
+      last = Math.max(last, d.hour);
+    }
+  });
+  const rows = data
+    .filter((d) => d.hour >= first && d.hour <= last)
+    .map((d) => ({ ...d, label: `${d.hour}:00`, value: metric === 'revenue' ? d.revenue / 100 : d.orders }));
+
+  return (
+    <ResponsiveContainer width="100%" height={240}>
+      <BarChart data={rows} margin={{ top: 8, right: 8, left: 0, bottom: 0 }} barCategoryGap="22%">
+        <CartesianGrid vertical={false} stroke="#E4E4E7" strokeDasharray="2 4" />
+        <XAxis dataKey="label" tick={{ fontSize: 11, fill: '#71717A' }} axisLine={{ stroke: '#E4E4E7' }} tickLine={false} interval={rows.length > 14 ? 1 : 0} />
+        <YAxis
+          width={metric === 'revenue' ? 56 : 32}
+          tick={{ fontSize: 11, fill: '#71717A' }}
+          axisLine={false}
+          tickLine={false}
+          allowDecimals={false}
+          tickFormatter={(v: number) => (metric === 'revenue' ? `${num(Math.round(v))} €` : num(v))}
+        />
+        <Tooltip
+          cursor={{ fill: 'rgba(24,24,27,0.05)' }}
+          contentStyle={{ borderRadius: 12, border: '1px solid #E4E4E7', boxShadow: '0 8px 24px -16px rgba(0,0,0,.3)', fontSize: 12 }}
+          labelFormatter={(label: string) => `${label}–${label.replace(':00', '')}:59`}
+          formatter={(value: number, _name: string, item: any) => {
+            const row = item?.payload;
+            if (!row) return [String(value), ''];
+            return metric === 'revenue'
+              ? [`${money(row.revenue)} · ${num(row.orders)} obj.`, 'Tržby']
+              : [`${num(row.orders)} obj. · ${money(row.revenue)}`, 'Objednávky'];
+          }}
+        />
+        <Bar dataKey="value" radius={[3, 3, 0, 0]} isAnimationActive={false} fill="#3B82F6" />
+      </BarChart>
+    </ResponsiveContainer>
+  );
+}
+
 interface PaymentsDonutProps {
   payments: Record<PaymentMethod, { count: number; revenue: number }>;
 }

@@ -73,3 +73,26 @@ export function toDateInputValue(date: Date): string {
 }
 
 export const WEEKDAYS_SHORT = ['Po', 'Ut', 'St', 'Št', 'Pi', 'So', 'Ne'];
+
+export function km(meters: number): string {
+  if (!meters || meters <= 0) return '–';
+  return `${(meters / 1000).toFixed(1).replace('.', ',')} km`;
+}
+
+/** Local date range for a quick preset (Mon-based weeks). */
+export function presetRange(preset: 'today' | 'yesterday' | 'thisWeek' | 'thisMonth', now = new Date()): { from: string; to: string } {
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  if (preset === 'today') return { from: toDateInputValue(today), to: toDateInputValue(today) };
+  if (preset === 'yesterday') {
+    const y = new Date(today);
+    y.setDate(y.getDate() - 1);
+    return { from: toDateInputValue(y), to: toDateInputValue(y) };
+  }
+  if (preset === 'thisWeek') {
+    const monday = new Date(today);
+    monday.setDate(today.getDate() - ((today.getDay() + 6) % 7));
+    return { from: toDateInputValue(monday), to: toDateInputValue(today) };
+  }
+  const first = new Date(today.getFullYear(), today.getMonth(), 1);
+  return { from: toDateInputValue(first), to: toDateInputValue(today) };
+}
