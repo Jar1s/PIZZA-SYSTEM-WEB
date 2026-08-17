@@ -79,6 +79,7 @@ async function bootstrap() {
     credentials: true,
     methods: appConfig.corsMethods,
     allowedHeaders: appConfig.corsAllowedHeaders,
+    exposedHeaders: appConfig.corsExposedHeaders,
     preflightContinue: false,
     optionsSuccessStatus: 200,
   });

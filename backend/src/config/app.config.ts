@@ -19,7 +19,7 @@ const STATIC_ALLOWED_ORIGINS = [
 
 const CORS_METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'] as const;
 const CORS_ALLOWED_HEADERS = ['Content-Type', 'Authorization', 'x-tenant', 'X-Requested-With'] as const;
-const CORS_EXPOSED_HEADERS = ['Content-Length', 'Content-Type'] as const;
+const CORS_EXPOSED_HEADERS = ['Content-Length', 'Content-Type', 'Content-Disposition'] as const;
 
 const normalizeOrigin = (origin: string) => origin.trim().replace(/\/+$/, '');
 
