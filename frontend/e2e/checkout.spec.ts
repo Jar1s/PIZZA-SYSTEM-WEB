@@ -51,6 +51,11 @@ async function setUpPage(page: Page): Promise<string[]> {
     }
   });
 
+  // Address autocomplete (Photon) – keep the spec offline-deterministic.
+  await page.route('**://photon.komoot.io/**', async (route) => {
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ features: [] }) });
+  });
+
   await page.route('**://nominatim.openstreetmap.org/**', async (route) => {
     const body = route.request().url().includes('limit=1')
       ? JSON.stringify(nominatimBratislavaResult)

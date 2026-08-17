@@ -2054,14 +2054,7 @@ export default function CheckoutPage() {
                         onChange={(address, details) => {
                           if (details) {
                             const coords = details.geometry?.location
-                              ? {
-                                  lat: typeof details.geometry.location.lat === 'function'
-                                    ? details.geometry.location.lat()
-                                    : details.geometry.location.lat,
-                                  lng: typeof details.geometry.location.lng === 'function'
-                                    ? details.geometry.location.lng()
-                                    : details.geometry.location.lng,
-                                }
+                              ? { lat: details.geometry.location.lat, lng: details.geometry.location.lng }
                               : null;
                             setAddressFormData({
                               ...addressFormData,
@@ -2231,19 +2224,16 @@ export default function CheckoutPage() {
                     onChange={(address, details) => {
                       if (details) {
                         const coords = details.geometry?.location
-                          ? {
-                              lat: typeof details.geometry.location.lat === 'function'
-                                ? details.geometry.location.lat()
-                                : details.geometry.location.lat,
-                              lng: typeof details.geometry.location.lng === 'function'
-                                ? details.geometry.location.lng()
-                                : details.geometry.location.lng,
-                            }
+                          ? { lat: details.geometry.location.lat, lng: details.geometry.location.lng }
                           : null;
-                        // Auto-fill city and postal code from Google autocomplete
+                        // Auto-fill city, postal code and – when the suggestion is a
+                        // concrete address – the house number field, so the street
+                        // field holds only the street name.
+                        const pickedHouseNumber = (details.houseNumber || '').trim();
                         setGuestData({
                           ...guestData,
-                          street: details.street || address,
+                          street: pickedHouseNumber ? details.road || details.street || address : details.street || address,
+                          houseNumber: pickedHouseNumber || guestData.houseNumber,
                           city: details.city || guestData.city,
                           postalCode: details.postalCode || guestData.postalCode,
                           country: details.country || guestData.country,
