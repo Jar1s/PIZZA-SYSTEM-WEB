@@ -27,3 +27,13 @@ Use this before merging or shipping changes.
 ## Final check
 - Run the smoke tests in `docs/smoke-tests.md`.
 - Do not mark the release complete until the critical flows pass.
+
+## Database connections (Supabase session pooler)
+
+The session pooler allows **15 clients per database in total** — shared by the
+backend, admin scripts, migrations and anything else. The backend caps its own
+Prisma pool (`connection_limit=6`, override with `PRISMA_CONNECTION_LIMIT`).
+Symptom of exhaustion: `EMAXCONNSESSION max clients reached` and HTTP 500 on
+writes (e.g. order creation) while reads still succeed on already-open
+connections. Never run more than 1–2 ad-hoc DB scripts against production at
+once, and disconnect them promptly.
