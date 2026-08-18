@@ -757,51 +757,55 @@ export class OrdersService {
 
     const resolvedAddress = await this.resolveOrderAddressForCreation(userId, data);
 
-    // Resolve products - podporuje productId alebo externalProductIdentifier
-    const products = await Promise.all(
-      data.items.map(async (item) => {
-        let product;
-        
-        if (item.productId) {
-          // Pôvodný spôsob - podľa ID
-          product = await this.prisma.product.findFirst({
-            where: {
-              id: item.productId,
-              tenantId,
-              isActive: true,
-            },
-          });
-        } else if (item.externalProductIdentifier) {
-          // Nový spôsob - konvertujeme externý identifikátor na interný názov
-          const internalName = await this.productMappingService.resolveToInternalName(
-            tenantId,
-            item.externalProductIdentifier,
-            item.source
-          );
-          
-          // Nájdeme produkt podľa interného názvu
-          product = await this.prisma.product.findFirst({
-            where: {
-              tenantId,
-              name: internalName,
-              isActive: true,
-            },
-          });
-        } else {
-          throw new BadRequestException(
-            'Item must have productId or externalProductIdentifier'
-          );
-        }
+    // Resolve products - podporuje productId alebo externalProductIdentifier.
+    //
+    // ONE query for the whole cart. The previous per-item findFirst inside
+    // Promise.all opened one DB connection per cart line at once — a 40-line
+    // order alone exhausted the 15-client Supabase session pool and failed with
+    // 500 (EMAXCONNSESSION), see the 2026-08-18 test order.
+    const externalItems = data.items.filter((item) => !item.productId && item.externalProductIdentifier);
+    const externalNameByIndex = new Map<number, string>();
+    for (const [index, item] of data.items.entries()) {
+      if (!item.productId && !item.externalProductIdentifier) {
+        throw new BadRequestException('Item must have productId or externalProductIdentifier');
+      }
+      if (!item.productId && item.externalProductIdentifier) {
+        // Mapping lookups are cheap and cached per call; keep them sequential to
+        // avoid a second connection burst.
+        const internalName = await this.productMappingService.resolveToInternalName(
+          tenantId,
+          item.externalProductIdentifier,
+          item.source,
+        );
+        externalNameByIndex.set(index, internalName);
+      }
+    }
+    void externalItems;
 
-        if (!product) {
-          throw new BadRequestException(
-            `Product not found for item: ${JSON.stringify(item)}`
-          );
-        }
+    const wantedIds = Array.from(new Set(data.items.map((i) => i.productId).filter((id): id is string => !!id)));
+    const wantedNames = Array.from(new Set(externalNameByIndex.values()));
+    const candidates = await this.prisma.product.findMany({
+      where: {
+        tenantId,
+        isActive: true,
+        OR: [
+          ...(wantedIds.length ? [{ id: { in: wantedIds } }] : []),
+          ...(wantedNames.length ? [{ name: { in: wantedNames } }] : []),
+        ],
+      },
+    });
+    const productById = new Map(candidates.map((p) => [p.id, p]));
+    const productByName = new Map(candidates.map((p) => [p.name, p]));
 
-        return { product, item };
-      })
-    );
+    const products = data.items.map((item, index) => {
+      const product = item.productId
+        ? productById.get(item.productId)
+        : productByName.get(externalNameByIndex.get(index) as string);
+      if (!product) {
+        throw new BadRequestException(`Product not found for item: ${JSON.stringify(item)}`);
+      }
+      return { product, item };
+    });
 
     // Validate all products found
     if (products.length !== data.items.length) {
@@ -828,7 +832,7 @@ export class OrdersService {
     // Validate modifiers for all items before calculating prices
     products.forEach(({ product, item }, index) => {
       if (item.modifiers && product.modifiers) {
-        const productModifiers = product.modifiers as ProductModifier[];
+        const productModifiers = product.modifiers as unknown as ProductModifier[];
         const selectedModifiers = item.modifiers as ModifiersRecord;
         
         // Validate modifier structure
@@ -929,7 +933,7 @@ export class OrdersService {
         }
       } else if (product.modifiers) {
         // Product has modifiers but item doesn't - check if any are required
-        const productModifiers = product.modifiers as ProductModifier[];
+        const productModifiers = product.modifiers as unknown as ProductModifier[];
         if (Array.isArray(productModifiers)) {
           const hasRequiredModifiers = productModifiers.some((m) => m.required);
           if (hasRequiredModifiers) {
