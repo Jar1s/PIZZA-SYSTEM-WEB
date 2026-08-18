@@ -90,8 +90,23 @@ describe('CustomerAuthController', () => {
       );
     });
 
+    it('resolves the tenant from an api.<domain> host when no header is sent (production API host)', async () => {
+      // findTenantByDomain: api.p0rnopizza.sk → null, p0rnopizza.sk → null, www.p0rnopizza.sk → tenant
+      mockTenantsService.findTenantByDomain.mockImplementation(async (domain: string) =>
+        domain === 'www.p0rnopizza.sk'
+          ? { id: 'tenant-pp', slug: 'pornopizza', theme: {}, subdomain: 'p0rnopizza', domain: 'www.p0rnopizza.sk' }
+          : null,
+      );
+      mockCustomerAuthService.checkEmailExists.mockResolvedValue(true);
+
+      const req = { headers: { host: 'api.p0rnopizza.sk' } } as any;
+      await expect(controller.checkEmail(req, { email: 'jaro@example.com' })).resolves.toEqual({ exists: true });
+      expect(mockCustomerAuthService.checkEmailExists).toHaveBeenCalledWith('jaro@example.com', 'tenant-pp');
+      mockTenantsService.findTenantByDomain.mockReset();
+    });
+
     it('should return exists=false when no tenant can be resolved', async () => {
-      mockTenantsService.findTenantByDomain.mockResolvedValueOnce(null);
+      mockTenantsService.findTenantByDomain.mockResolvedValue(null);
       mockTenantsService.getTenantBySlug.mockRejectedValueOnce(new Error('missing tenant'));
 
       const req = { headers: { 'x-tenant': 'missing-tenant' } } as any;

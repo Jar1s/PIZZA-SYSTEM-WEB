@@ -89,8 +89,6 @@ export class CustomerAuthController {
 
   private async resolveTenant(req: Request, options: { stateTenant?: string; queryTenant?: string } = {}) {
     const headerTenant = (req.headers['x-tenant'] as string | undefined)?.toString();
-    const host = (req.headers['host'] || '').toString().split(':')[0];
-    const hostTenant = host ? await this.tenantsService.findTenantByDomain(host) : null;
 
     const tenantCandidates = [options.stateTenant, options.queryTenant, headerTenant]
       .map((candidate) => candidate?.trim())
@@ -104,8 +102,16 @@ export class CustomerAuthController {
       }
     }
 
-    if (hostTenant) {
-      return hostTenant;
+    // Host fallback. The API is served from api.<storefront domain>, so try the
+    // host as-is and with the "api." prefix stripped (with and without "www.").
+    const host = (req.headers['host'] || '').toString().split(':')[0].toLowerCase();
+    if (host) {
+      const bare = host.replace(/^api\./, '');
+      const hostCandidates = Array.from(new Set([host, bare, `www.${bare}`, bare.replace(/^www\./, '')]));
+      for (const candidate of hostCandidates) {
+        const tenant = await this.tenantsService.findTenantByDomain(candidate).catch(() => null);
+        if (tenant) return tenant;
+      }
     }
 
     throw new BadRequestException('Tenant not provided');

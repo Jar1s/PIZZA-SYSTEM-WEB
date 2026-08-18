@@ -13,7 +13,7 @@ import { withTenantThemeDefaults, getTenantSlug } from '@/lib/tenant-utils';
 type Step = 'email' | 'password' | 'register';
 
 export default function CustomerLoginPage() {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const { register, login, loginWithGoogle } = useCustomerAuth();
   const router = useRouter();
   
@@ -68,7 +68,7 @@ export default function CustomerLoginPage() {
     setError(null);
     
     try {
-      const exists = await checkEmailExists(email);
+      const exists = await checkEmailExists(email, tenant?.slug);
       
       if (exists) {
         setStep('password');
@@ -76,7 +76,11 @@ export default function CustomerLoginPage() {
         setStep('register');
       }
     } catch (err: any) {
-      setError(err.message || 'Failed to check email');
+      setError(
+        language === 'sk'
+          ? 'Nepodarilo sa overiť e-mail. Skúste to znova.'
+          : err.message || 'Failed to check email',
+      );
     } finally {
       setLoading(false);
     }
@@ -167,7 +171,18 @@ export default function CustomerLoginPage() {
         window.location.href = redirectUrl;
       }
     } catch (err: any) {
-      setError(err.message || 'Registration failed');
+      const message = String(err?.message || '');
+      if (/already registered|already exists|už (je )?registrovan/i.test(message)) {
+        // The account exists – go straight to the password step instead of a dead end.
+        setStep('password');
+        setError(
+          language === 'sk'
+            ? 'Tento e-mail už máme zaregistrovaný – zadajte svoje heslo.'
+            : 'This e-mail is already registered – enter your password.',
+        );
+        return;
+      }
+      setError(message || (language === 'sk' ? 'Registrácia zlyhala. Skúste to znova.' : 'Registration failed'));
     } finally {
       setLoading(false);
     }
@@ -370,7 +385,10 @@ export default function CustomerLoginPage() {
               </button>
               <button
                 type="button"
-                onClick={() => setStep('email')}
+                onClick={() => {
+                  setError(null);
+                  setStep('email');
+                }}
                 className={`w-full text-sm ${isDark ? 'text-gray-300 hover:text-white' : 'text-gray-600 hover:text-gray-800'}`}
               >
                 {t.back}
@@ -420,7 +438,10 @@ export default function CustomerLoginPage() {
               </button>
               <button
                 type="button"
-                onClick={() => setStep('email')}
+                onClick={() => {
+                  setError(null);
+                  setStep('email');
+                }}
                 className={`w-full text-sm ${isDark ? 'text-gray-300 hover:text-white' : 'text-gray-600 hover:text-gray-800'}`}
               >
                 {t.back}
