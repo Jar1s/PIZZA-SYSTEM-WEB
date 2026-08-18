@@ -26,6 +26,8 @@ export interface DeliveryFeeByDistanceResult {
   distanceMeters: number;
   tierId?: string;
   isOutOfRange?: boolean; // true if distance > max tier
+  /** Resolved drop-off coordinates (from the request or geocoding) – lets callers run further checks without geocoding again */
+  customerCoordinates?: { lat: number; lng: number };
 }
 
 @Injectable()
@@ -343,10 +345,12 @@ export class DeliveryFeeTierService {
 
     // Try to geocode and calculate distance
     let distanceMeters: number;
+    let customerCoordinates: { lat: number; lng: number } | undefined;
     try {
       const customerCoords = await this.geocodeAddress(address);
       const customerLat = customerCoords.lat;
       const customerLng = customerCoords.lng;
+      customerCoordinates = { lat: customerLat, lng: customerLng };
 
       distanceMeters = calculateHaversineDistance(
         kitchenLat,
@@ -393,6 +397,7 @@ export class DeliveryFeeTierService {
         deliveryFeeCents: matchingTier.deliveryFeeCents,
         distanceMeters,
         tierId: matchingTier.id,
+        customerCoordinates,
       };
     }
 
@@ -406,6 +411,7 @@ export class DeliveryFeeTierService {
       return {
         deliveryFeeCents: defaultFeeCents,
         distanceMeters,
+        customerCoordinates,
       };
     }
 
@@ -425,6 +431,7 @@ export class DeliveryFeeTierService {
         deliveryFeeCents: 0,
         distanceMeters,
         isOutOfRange: true,
+        customerCoordinates,
       };
     }
 
@@ -442,6 +449,7 @@ export class DeliveryFeeTierService {
         deliveryFeeCents: closestTier.deliveryFeeCents,
         distanceMeters,
         tierId: closestTier.id,
+        customerCoordinates,
       };
     }
 

@@ -30,6 +30,10 @@ export interface WoltAreaCheckResult {
   fetchedAt?: string;
 }
 
+/** Customer-facing message used everywhere an address is rejected for the Wolt zone. */
+export const OUTSIDE_WOLT_ZONE_MESSAGE =
+  'Adresa je mimo našej doručovacej zóny – na túto adresu momentálne nedoručujeme.';
+
 @Injectable()
 export class DeliveryAreaCacheService {
   private readonly logger = new Logger(DeliveryAreaCacheService.name);
@@ -51,6 +55,40 @@ export class DeliveryAreaCacheService {
     const refreshed = await this.fetchAndNormalize(tenantId, apiKey, merchantId, apiConfig);
     this.cache.set(key, refreshed);
     return refreshed;
+  }
+
+  /**
+   * Zone check for a tenant's own configuration. Returns insideArea=null
+   * (= "cannot tell, do not block") when the tenant does not deliver via Wolt,
+   * has no Wolt credentials, or the areas cannot be fetched/parsed. Only an
+   * explicit `false` means the point is definitely outside the Wolt zone.
+   */
+  async checkTenantPoint(
+    tenant: { id: string; deliveryConfig: unknown },
+    point: WoltPoint,
+  ): Promise<WoltAreaCheckResult> {
+    const deliveryConfig = (tenant.deliveryConfig && typeof tenant.deliveryConfig === 'object'
+      ? tenant.deliveryConfig
+      : {}) as { provider?: string; woltConfig?: { apiKey?: string; merchantId?: string; apiUrl?: string; venueId?: string } };
+    const provider = String(deliveryConfig.provider || '').trim().toLowerCase();
+    if (provider && provider !== 'wolt') {
+      return { insideArea: null, source: 'fallback', reason: `Delivery provider is ${provider}, not Wolt.` };
+    }
+    const woltConfig = deliveryConfig.woltConfig || {};
+    const apiKey = String(woltConfig.apiKey || '').trim();
+    const merchantId = String(woltConfig.merchantId || '').trim();
+    if (!apiKey || !merchantId) {
+      return { insideArea: null, source: 'fallback', reason: 'Wolt credentials are not configured for this tenant.' };
+    }
+    try {
+      return await this.checkPoint(tenant.id, apiKey, merchantId, point, woltConfig);
+    } catch (error: any) {
+      this.logger.warn('[checkTenantPoint] Zone check failed, not blocking', {
+        tenantId: tenant.id,
+        error: error?.message,
+      });
+      return { insideArea: null, source: 'fallback', reason: error?.message || 'Zone check failed.' };
+    }
   }
 
   async checkPoint(

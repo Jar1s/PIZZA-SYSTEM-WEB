@@ -35,6 +35,39 @@ describe('DeliveryAreaCacheService contract', () => {
     jest.clearAllMocks();
   });
 
+  describe('checkTenantPoint (tenant-level guard used by checkout)', () => {
+    it('never blocks when the tenant has no Wolt provider/credentials', async () => {
+      const noConfig = await service.checkTenantPoint({ id: 't', deliveryConfig: {} }, { lat: 48.15, lng: 17.15 });
+      expect(noConfig.insideArea).toBeNull();
+      const otherProvider = await service.checkTenantPoint(
+        { id: 't', deliveryConfig: { provider: 'custom', woltConfig: { apiKey: 'k', merchantId: 'm' } } },
+        { lat: 48.15, lng: 17.15 },
+      );
+      expect(otherProvider.insideArea).toBeNull();
+      expect(woltDriveServiceMock.getDeliveryAreas).not.toHaveBeenCalled();
+    });
+
+    it('returns false only for a point that is definitely outside the fetched polygons', async () => {
+      jest.spyOn(Date, 'now').mockReturnValue(1_000);
+      woltDriveServiceMock.getDeliveryAreas.mockResolvedValue(squareArea);
+      const tenant = { id: 't', deliveryConfig: { provider: 'wolt', woltConfig: { apiKey: 'k', merchantId: 'm', venueId: 'v' } } };
+
+      const inside = await service.checkTenantPoint(tenant, { lat: 48.15, lng: 17.15 });
+      const outside = await service.checkTenantPoint(tenant, { lat: 48.30, lng: 17.15 });
+      expect(inside.insideArea).toBe(true);
+      expect(outside.insideArea).toBe(false);
+    });
+
+    it('never blocks when Wolt areas cannot be fetched', async () => {
+      woltDriveServiceMock.getDeliveryAreas.mockRejectedValue(new Error('wolt down'));
+      const result = await service.checkTenantPoint(
+        { id: 't2', deliveryConfig: { provider: 'wolt', woltConfig: { apiKey: 'k', merchantId: 'm' } } },
+        { lat: 48.9, lng: 18.9 },
+      );
+      expect(result.insideArea).toBeNull();
+    });
+  });
+
   it('returns live area decisions from normalized Wolt polygons', async () => {
     jest.spyOn(Date, 'now').mockReturnValue(1_000);
     woltDriveServiceMock.getDeliveryAreas.mockResolvedValueOnce(squareArea);

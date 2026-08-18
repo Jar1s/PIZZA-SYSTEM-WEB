@@ -121,6 +121,10 @@ export default function CheckoutPage() {
   const [deliveryFeeError, setDeliveryFeeError] = useState<string | null>(null);
   const [deliveryFeeFeatureEnabled, setDeliveryFeeFeatureEnabled] = useState(true);
   const [deliveryFeeCalculated, setDeliveryFeeCalculated] = useState(false);
+  // Server said "we do not deliver here" (outside tiers or outside the Wolt zone).
+  // Blocks the pay button – the backend rejects such orders anyway, this only
+  // tells the customer before they fill in the whole form.
+  const [deliveryUnavailable, setDeliveryUnavailable] = useState(false);
 
   // Inline form state for logged-in users
   const [addressFormData, setAddressFormData] = useState({
@@ -340,6 +344,7 @@ export default function CheckoutPage() {
         setZoneName(null);
         setDeliveryFeeError(null);
         setDeliveryFeeCalculated(false);
+        setDeliveryUnavailable(false);
         return;
       }
 
@@ -359,22 +364,31 @@ export default function CheckoutPage() {
           setMinOrderCents(result.minOrderCents || null);
           setZoneName(result.zoneName || null);
           setDeliveryFeeError(null);
+          setDeliveryUnavailable(false);
           setDeliveryFeeCalculated(true);
           if (!deliveryFeeFeatureEnabled) {
             setDeliveryFeeFeatureEnabled(true);
           }
         } else {
-          // Since delivery is free, don't show error if delivery is not available
+          // Outside delivery tiers or outside the Wolt zone – tell the customer
+          // now instead of failing at "Zaplatiť" (the backend rejects it too).
           setDeliveryFeeCents(0);
           setMinOrderCents(null);
           setZoneName(null);
-          setDeliveryFeeError(null);
+          setDeliveryFeeError(
+            result.message ||
+              (language === 'sk'
+                ? 'Na túto adresu momentálne nedoručujeme.'
+                : 'We currently do not deliver to this address.'),
+          );
+          setDeliveryUnavailable(true);
           setDeliveryFeeCalculated(true);
         }
       } catch (error: any) {
         console.error('Failed to calculate delivery fee:', error);
-        // Since delivery is free, just set fee to 0 and don't show error to user
+        // Fee service unreachable – don't block here, the backend decides on submit
         setDeliveryFeeError(null);
+        setDeliveryUnavailable(false);
         setDeliveryFeeCents(0);
         setMinOrderCents(null);
         setZoneName(null);
@@ -386,7 +400,7 @@ export default function CheckoutPage() {
     };
 
     calculateFee();
-  }, [user, selectedAddressId, addresses, guestData.postalCode, guestData.city, guestData.street, guestData.houseNumber, guestData.coordinates, tenantSlug, deliveryFeeFeatureEnabled, ensureSavedAddressCoordinates]);
+  }, [user, selectedAddressId, addresses, guestData.postalCode, guestData.city, guestData.street, guestData.houseNumber, guestData.coordinates, tenantSlug, deliveryFeeFeatureEnabled, ensureSavedAddressCoordinates, language]);
 
   useEffect(() => {
     const layout = tenantData?.theme?.layout || {};
@@ -1180,6 +1194,10 @@ export default function CheckoutPage() {
     if (submitLockRef.current) {
       return;
     }
+    if (deliveryUnavailable) {
+      alert(deliveryFeeError || (language === 'sk' ? 'Na túto adresu momentálne nedoručujeme.' : 'We currently do not deliver to this address.'));
+      return;
+    }
 
     submitLockRef.current = true;
     setCheckoutError(null);
@@ -1651,7 +1669,12 @@ export default function CheckoutPage() {
               </div>
             )}
             {deliveryFeeError && (
-              <div className="text-sm text-red-600 mt-2">
+              <div
+                role="alert"
+                className={`mt-3 rounded-xl border px-3 py-2 text-sm font-medium ${
+                  isDark ? 'border-red-400/40 bg-red-500/10 text-red-200' : 'border-red-200 bg-red-50 text-red-700'
+                }`}
+              >
                 {deliveryFeeError}
               </div>
             )}
@@ -2594,11 +2617,15 @@ export default function CheckoutPage() {
               {checkoutError}
             </div>
           )}
+          {deliveryUnavailable && deliveryFeeError && (
+            <p className={`mb-2 text-center text-sm font-medium ${isDark ? 'text-red-300' : 'text-red-600'}`}>{deliveryFeeError}</p>
+          )}
           <motion.button
             whileTap={{ scale: 0.98 }}
             onClick={handlePay}
             disabled={
               loading ||
+              deliveryUnavailable ||
               (user && loadingAddresses) ||
               (user && addresses.length === 0) ||
               (!user && (!guestData.name || !guestData.email || !guestData.phone || !guestData.street || !guestData.city || !guestData.postalCode)) ||
