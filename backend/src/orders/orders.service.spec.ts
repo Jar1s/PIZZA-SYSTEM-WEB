@@ -10,6 +10,7 @@ import { CreateOrderDto } from './dto';
 import { OrderStatus } from '@pizza-ecosystem/shared';
 import { SettingsService } from '../settings/settings.service';
 import { DeliveryFeeTierService } from '../delivery/delivery-fee-tier.service';
+import { DeliveryAreaCacheService } from '../delivery/delivery-area-cache.service';
 import { OrderNumberService } from './order-number.service';
 import { TelegramNotificationsService } from '../notifications/telegram-notifications.service';
 
@@ -96,6 +97,11 @@ describe('OrdersService', () => {
     }),
   };
 
+  const mockDeliveryAreaCacheService = {
+    // default: zone unknown → never blocks
+    checkTenantPoint: jest.fn().mockResolvedValue({ insideArea: null, source: 'fallback', reason: 'not configured' }),
+  };
+
   const mockOrderNumberService = {
     getNextOrderNumber: jest.fn().mockResolvedValue(1),
     generateOrderNumber: jest.fn().mockResolvedValue(1),
@@ -138,6 +144,10 @@ describe('OrdersService', () => {
         {
           provide: DeliveryFeeTierService,
           useValue: mockDeliveryFeeTierService,
+        },
+        {
+          provide: DeliveryAreaCacheService,
+          useValue: mockDeliveryAreaCacheService,
         },
         {
           provide: OrderNumberService,
@@ -254,6 +264,56 @@ describe('OrdersService', () => {
       expect(where.OR[0].id.in).toHaveLength(40);
     });
 
+
+    it('rejects an address that is definitely outside the Wolt delivery zone before anything is created', async () => {
+      const product = { id: 'pz-1', tenantId: 'tenant-123', name: 'Margherita', priceCents: 1000, category: 'PIZZA', modifiers: [], isActive: true };
+      mockPrismaService.product.findMany.mockReset();
+      mockPrismaService.product.findMany.mockResolvedValue([product]);
+      mockPrismaService.tenant.findUnique.mockResolvedValue({ id: 'tenant-123', slug: 'pornopizza', theme: {}, deliveryConfig: { provider: 'wolt', woltConfig: { apiKey: 'k', merchantId: 'm' } }, paymentConfig: {} });
+      mockDeliveryFeeTierService.getDeliveryFeeByDistance.mockResolvedValueOnce({
+        deliveryFeeCents: 199, distanceMeters: 4200, isOutOfRange: false, customerCoordinates: { lat: 48.20, lng: 17.20 },
+      });
+      mockDeliveryAreaCacheService.checkTenantPoint.mockResolvedValueOnce({ insideArea: false, source: 'cache', reason: null });
+      mockPrismaService.order.create.mockClear();
+
+      await expect(
+        service.createOrder('tenant-123', {
+          customer: { name: 'Mimo Zóny', email: 'mimo@example.com', phone: '+421900000000' },
+          address: { street: 'Ďaleká 1', city: 'Bratislava', postalCode: '85110', country: 'SK', coordinates: { lat: 48.2, lng: 17.2 } },
+          items: [{ productId: 'pz-1', quantity: 1 }],
+        } as any),
+      ).rejects.toThrow(/mimo našej doručovacej zóny/);
+
+      expect(mockDeliveryAreaCacheService.checkTenantPoint).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'tenant-123' }),
+        { lat: 48.2, lng: 17.2 },
+      );
+      expect(mockPrismaService.order.create).not.toHaveBeenCalled();
+    });
+
+    it('does not block when the Wolt zone cannot be determined', async () => {
+      const product = { id: 'pz-2', tenantId: 'tenant-123', name: 'Margherita', priceCents: 1000, category: 'PIZZA', modifiers: [], isActive: true };
+      mockPrismaService.product.findMany.mockReset();
+      mockPrismaService.product.findMany.mockResolvedValue([product]);
+      mockPrismaService.tenant.findUnique.mockResolvedValue({ id: 'tenant-123', slug: 'pornopizza', theme: {}, deliveryConfig: {}, paymentConfig: {} });
+      mockDeliveryFeeTierService.getDeliveryFeeByDistance.mockResolvedValueOnce({
+        deliveryFeeCents: 199, distanceMeters: 1200, isOutOfRange: false, customerCoordinates: { lat: 48.15, lng: 17.11 },
+      });
+      mockDeliveryAreaCacheService.checkTenantPoint.mockResolvedValueOnce({ insideArea: null, source: 'fallback', reason: 'no config' });
+      let created = false;
+      mockPrismaService.order.create.mockImplementation(async () => { created = true; return { id: 'order-ok', tenantId: 'tenant-123', status: 'PENDING', items: [], statusHistory: [], subtotalCents: 1000, totalCents: 1199, customer: {}, address: {} }; });
+
+      try {
+        await service.createOrder('tenant-123', {
+          customer: { name: 'V zóne', email: 'ok@example.com', phone: '+421900000000' },
+          address: { street: 'Obchodná 5', city: 'Bratislava', postalCode: '81106', country: 'SK', coordinates: { lat: 48.15, lng: 17.11 } },
+          items: [{ productId: 'pz-2', quantity: 1 }],
+        } as any);
+      } catch (e: any) {
+        expect(String(e?.message)).not.toMatch(/doručovacej zóny/);
+      }
+      expect(created).toBe(true);
+    });
 
     const tenantId = 'tenant-123';
     const mockProduct = {

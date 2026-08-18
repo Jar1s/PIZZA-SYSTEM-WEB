@@ -1,4 +1,5 @@
 import { Controller, Get, Post, Patch, Delete, Body, Param, UseGuards, Logger, Query } from '@nestjs/common';
+import { DeliveryAreaCacheService, OUTSIDE_WOLT_ZONE_MESSAGE } from './delivery-area-cache.service';
 import { DeliveryFeeTierService, AddressForGeocoding } from './delivery-fee-tier.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -15,6 +16,7 @@ export class DeliveryFeeTierController {
 
   constructor(
     private deliveryFeeTierService: DeliveryFeeTierService,
+    private deliveryAreaCacheService: DeliveryAreaCacheService,
     private tenantsService: TenantsService,
     private prisma: PrismaService,
   ) {}
@@ -123,6 +125,7 @@ export class DeliveryFeeTierController {
         });
         return {
           available: false,
+          reason: 'no_tier',
           message: 'Doprava nie je dostupná pre túto vzdialenosť',
         };
       }
@@ -135,8 +138,29 @@ export class DeliveryFeeTierController {
         });
         return {
           available: false,
+          reason: 'out_of_range',
           message: 'Adresa je mimo dosahu doručovania',
         };
+      }
+
+      // Same rule as order creation: definitely outside the Wolt zone → not available.
+      if (result.customerCoordinates) {
+        const zone = await this.deliveryAreaCacheService.checkTenantPoint(
+          { id: tenant.id, deliveryConfig: (tenant as any).deliveryConfig },
+          result.customerCoordinates,
+        );
+        if (zone.insideArea === false) {
+          this.logger.warn('Address outside Wolt delivery zone', {
+            tenantSlug,
+            distanceMeters: result.distanceMeters,
+            source: zone.source,
+          });
+          return {
+            available: false,
+            reason: 'outside_wolt_zone',
+            message: OUTSIDE_WOLT_ZONE_MESSAGE,
+          };
+        }
       }
 
       this.logger.log('Delivery fee calculated by distance', {

@@ -89,6 +89,7 @@ describe('DeliveryFeeTierService contract', () => {
       deliveryFeeCents: 250,
       distanceMeters: 0,
       tierId: 'tier-1',
+      customerCoordinates: expect.objectContaining({ lat: expect.any(Number), lng: expect.any(Number) }),
     });
   });
 
@@ -127,6 +128,7 @@ describe('DeliveryFeeTierService contract', () => {
     expect(result).toEqual({
       deliveryFeeCents: 375,
       distanceMeters: expect.any(Number),
+      customerCoordinates: expect.objectContaining({ lat: expect.any(Number), lng: expect.any(Number) }),
     });
     expect(result?.tierId).toBeUndefined();
     expect(result?.distanceMeters).toBeGreaterThan(0);
@@ -177,6 +179,7 @@ describe('DeliveryFeeTierService contract', () => {
     expect(result).toEqual({
       deliveryFeeCents: 450,
       distanceMeters: expect.any(Number),
+      customerCoordinates: expect.objectContaining({ lat: expect.any(Number), lng: expect.any(Number) }),
       tierId: 'tier-2',
     });
     expect(result?.distanceMeters).toBeGreaterThan(2500);

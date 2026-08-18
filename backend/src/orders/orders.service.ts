@@ -14,6 +14,7 @@ import { buildStoryousModifierSelections } from '../storyous/storyous-modifier.u
 import { SettingsService } from '../settings/settings.service';
 import { ProductMappingService } from '../products/product-mapping.service';
 import { DeliveryFeeTierService } from '../delivery/delivery-fee-tier.service';
+import { DeliveryAreaCacheService, OUTSIDE_WOLT_ZONE_MESSAGE } from '../delivery/delivery-area-cache.service';
 import { OrderNumberService } from './order-number.service';
 import { TenantTheme } from '../types/tenant.types';
 import { appConfig } from '../config/app.config';
@@ -438,6 +439,7 @@ export class OrdersService {
     private settingsService: SettingsService,
     private productMappingService: ProductMappingService,
     private deliveryFeeTierService: DeliveryFeeTierService,
+    private deliveryAreaCacheService: DeliveryAreaCacheService,
     private orderNumberService: OrderNumberService,
     private jwtService: JwtService,
     private telegramNotifications: TelegramNotificationsService,
@@ -1112,6 +1114,31 @@ export class OrdersService {
           distanceMeters: distanceResult.distanceMeters,
           deliveryFeeCents,
         });
+
+        // Distance tiers only bound the price. The courier (Wolt) has its own
+        // delivery polygons – an address inside the tier radius but outside
+        // the Wolt zone used to be accepted and paid, and only flagged in the
+        // admin afterwards ("Wolt: mimo zóny"). Reject it here, before payment.
+        // Unknown zone (no Wolt config, areas unavailable) never blocks.
+        const dropoff = distanceResult.customerCoordinates || (resolvedAddress as any).coordinates;
+        if (dropoff && typeof dropoff.lat === 'number' && typeof dropoff.lng === 'number') {
+          const tenantForZone = await this.prisma.tenant.findUnique({
+            where: { id: tenantId },
+            select: { id: true, deliveryConfig: true },
+          });
+          if (tenantForZone) {
+            const zone = await this.deliveryAreaCacheService.checkTenantPoint(tenantForZone, dropoff);
+            if (zone.insideArea === false) {
+              this.logger.warn('Blocked order: address outside Wolt delivery zone', {
+                tenantId,
+                distanceMeters: distanceResult.distanceMeters,
+                source: zone.source,
+                address: { city: resolvedAddress.city, postalCode: resolvedAddress.postalCode },
+              });
+              throw new BadRequestException(OUTSIDE_WOLT_ZONE_MESSAGE);
+            }
+          }
+        }
       }
     } catch (error) {
       if (error instanceof BadRequestException) {
