@@ -53,7 +53,7 @@ function sanitizeCartModifiers(
 }
 
 export default function CheckoutPage() {
-  const { items, clearCart } = useCart();
+  const { items, clearCart, updateQuantity, removeItem } = useCart();
   const total = useCartTotal();
   const router = useRouter();
   const { user, loading: authLoading, setUser } = useCustomerAuth();
@@ -1577,6 +1577,13 @@ export default function CheckoutPage() {
               const modifierPrice = calculateModifierPrice(item.modifiers, item.product.category);
               const itemPrice = item.product.priceCents + modifierPrice;
               const itemTotal = itemPrice * item.quantity;
+              const isLastItem = items.length === 1;
+              const goToMenuIfEmpty = () => {
+                if (isLastItem) router.push(`/?tenant=${tenantSlug}`);
+              };
+              const qtyButtonClass = `w-8 h-8 rounded-full flex items-center justify-center font-bold text-base leading-none transition-colors ${
+                isDark ? 'bg-white/10 border border-white/20 text-white hover:bg-white/20' : 'bg-gray-200 text-gray-900 hover:bg-gray-300'
+              }`;
               return (
                 <div key={item.id} className="mb-4 pb-4 border-b last:border-b-0">
                   <div className="flex justify-between items-start mb-1">
@@ -1591,6 +1598,40 @@ export default function CheckoutPage() {
                       )}
                     </div>
                     <span className="font-semibold ml-4">€{(itemTotal / 100).toFixed(2)}</span>
+                  </div>
+                  <div className="flex items-center gap-2 mt-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (item.quantity <= 1) goToMenuIfEmpty();
+                        updateQuantity(item.id, item.quantity - 1);
+                      }}
+                      className={qtyButtonClass}
+                      aria-label={`${t.remove} 1× ${getProductDisplayName(item.product, language)}`}
+                    >
+                      −
+                    </button>
+                    <span className="w-6 text-center text-sm font-semibold">{item.quantity}</span>
+                    <button
+                      type="button"
+                      onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                      className={qtyButtonClass}
+                      aria-label={`+1 ${getProductDisplayName(item.product, language)}`}
+                    >
+                      +
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        goToMenuIfEmpty();
+                        removeItem(item.id);
+                      }}
+                      className={`ml-auto text-sm font-semibold ${
+                        isDark ? 'text-rose-300 hover:text-rose-200' : 'text-red-500 hover:text-red-700'
+                      }`}
+                    >
+                      {t.remove}
+                    </button>
                   </div>
                 </div>
               );
