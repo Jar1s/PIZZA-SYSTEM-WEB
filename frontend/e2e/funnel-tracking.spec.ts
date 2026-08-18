@@ -73,7 +73,11 @@ const trackedEvents = (page: Page) =>
 
 async function walkFunnel(page: Page) {
   await page.goto('/?tenant=pornopizza');
-  const addButton = page.getByRole('button', { name: 'Pridať' }).first();
+  // Click the drink's own "Pridať" (direct add). The mock catalog also has a
+  // STANGLE product whose button opens the customization modal instead —
+  // .first() could land on it depending on render order.
+  const drinkCard = page.locator('div').filter({ hasText: 'Testovacia Limonada' }).filter({ has: page.getByRole('button', { name: 'Pridať' }) }).last();
+  const addButton = drinkCard.getByRole('button', { name: 'Pridať' }).first();
   const checkoutButton = page.getByRole('button', { name: 'Pokračovať k platbe' });
   await expect(async () => {
     await addButton.click();
