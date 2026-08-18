@@ -1209,6 +1209,21 @@ export async function checkWoltDeliveryArea(
   return res.json();
 }
 
+export async function applyDeliverySettingsToAllTenants(
+  tenantSlug: string,
+): Promise<{ source: string; applied: string[]; skipped: string[] }> {
+  const normalizedTenant = normalizeTenantSlug(tenantSlug);
+  const res = await fetch(
+    `${API_URL}/api/settings/tenants/${encodeURIComponent(normalizedTenant)}/delivery/apply-to-all`,
+    { method: 'POST', headers: buildAuthHeaders(true), credentials: 'include' },
+  );
+  if (!res.ok) {
+    const errorText = await res.text().catch(() => '');
+    throw new Error(errorText || 'Failed to apply delivery settings to all brands');
+  }
+  return res.json();
+}
+
 export async function refreshWoltDeliveryAreas(tenantSlug: string): Promise<{
   ok: boolean;
   polygons: number;
