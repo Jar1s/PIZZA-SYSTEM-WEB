@@ -120,6 +120,53 @@ function currentConsent(): { marketing: boolean; analytics: boolean } {
   }
 }
 
+// Events fired before the tag scripts finish loading (a fast customer adds
+// to cart within the first second) must not be lost: queue them and flush
+// once fbq/gtag appear. Consent is re-checked at flush time.
+type PendingEvent = { pixelEvent: string; pixelPayload: Record<string, unknown>; gaEvent: string; gaPayload: Record<string, unknown> };
+const pending: PendingEvent[] = [];
+let flushTimer: ReturnType<typeof setInterval> | null = null;
+
+function deliver(ev: PendingEvent): { pixel: boolean; ga: boolean; needsPixel: boolean; needsGa: boolean } {
+  const consent = currentConsent();
+  const w = window as any;
+  const needsPixel = consent.marketing;
+  const needsGa = consent.analytics;
+  let pixel = false;
+  let ga = false;
+  if (needsPixel && typeof w.fbq === 'function') {
+    try {
+      w.fbq('track', ev.pixelEvent, ev.pixelPayload);
+      pixel = true;
+    } catch {
+      /* ignore */
+    }
+  }
+  if (needsGa && typeof w.gtag === 'function') {
+    try {
+      w.gtag('event', ev.gaEvent, ev.gaPayload);
+      ga = true;
+    } catch {
+      /* ignore */
+    }
+  }
+  return { pixel, ga, needsPixel, needsGa };
+}
+
+function flushPending(): void {
+  for (let i = pending.length - 1; i >= 0; i--) {
+    const ev = pending[i];
+    const r = deliver(ev);
+    const pixelDone = !r.needsPixel || r.pixel;
+    const gaDone = !r.needsGa || r.ga;
+    if (pixelDone && gaDone) pending.splice(i, 1);
+  }
+  if (pending.length === 0 && flushTimer) {
+    clearInterval(flushTimer);
+    flushTimer = null;
+  }
+}
+
 function fire(
   pixelEvent: string,
   pixelPayload: Record<string, unknown>,
@@ -128,20 +175,25 @@ function fire(
 ): void {
   if (typeof window === 'undefined') return;
   const consent = currentConsent();
-  const w = window as any;
-  if (consent.marketing && typeof w.fbq === 'function') {
-    try {
-      w.fbq('track', pixelEvent, pixelPayload);
-    } catch {
-      /* ignore */
-    }
-  }
-  if (consent.analytics && typeof w.gtag === 'function') {
-    try {
-      w.gtag('event', gaEvent, gaPayload);
-    } catch {
-      /* ignore */
-    }
+  if (!consent.marketing && !consent.analytics) return;
+  const ev: PendingEvent = { pixelEvent, pixelPayload, gaEvent, gaPayload };
+  const r = deliver(ev);
+  const pixelDone = !r.needsPixel || r.pixel;
+  const gaDone = !r.needsGa || r.ga;
+  if (pixelDone && gaDone) return;
+  // Tag not loaded yet — keep the event and retry until it is (max ~30 s).
+  pending.push(ev);
+  if (!flushTimer) {
+    let ticks = 0;
+    flushTimer = setInterval(() => {
+      ticks += 1;
+      flushPending();
+      if (ticks >= 60 && flushTimer) {
+        clearInterval(flushTimer);
+        flushTimer = null;
+        pending.length = 0;
+      }
+    }, 500);
   }
 }
 

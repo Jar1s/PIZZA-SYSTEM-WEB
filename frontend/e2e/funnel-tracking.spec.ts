@@ -125,3 +125,23 @@ test.describe('pixel funnel events', () => {
     expect(events.filter((e: any) => ['AddToCart', 'InitiateCheckout', 'AddPaymentInfo'].includes(e.event))).toHaveLength(0);
   });
 });
+
+test('an event fired before the pixel script loads is delivered once it does', async ({ page }) => {
+  await setUpPage(page, true);
+  // Hold the pixel script for 3 s so the first AddToCart happens before fbq exists.
+  await page.unroute('**://connect.facebook.net/**');
+  await page.route('**://connect.facebook.net/**', async (route) => {
+    await new Promise((r) => setTimeout(r, 3000));
+    await route.fulfill({ status: 200, contentType: 'application/javascript', body: '/* stub */' });
+  });
+  await page.goto('/?tenant=pornopizza');
+  const drinkCard = page.locator('div').filter({ hasText: 'Testovacia Limonada' }).filter({ has: page.getByRole('button', { name: 'Pridať' }) }).last();
+  await expect(async () => {
+    await drinkCard.getByRole('button', { name: 'Pridať' }).first().click();
+    await expect(page.getByRole('button', { name: 'Pokračovať k platbe' })).toBeVisible({ timeout: 2_000 });
+  }).toPass({ timeout: 60_000 });
+  // Wait for the queued event to be flushed after fbq appears.
+  await expect
+    .poll(async () => (await page.evaluate(() => JSON.parse(window.sessionStorage.getItem('__fbq_snapshot') || '[]'))).some((e: any) => e.event === 'AddToCart'), { timeout: 15_000 })
+    .toBe(true);
+});
