@@ -203,6 +203,32 @@ describe('OrdersService', () => {
   });
 
   describe('createOrder', () => {
+    it('drops modifier groups the product does not define (stale cart) instead of rejecting the order', async () => {
+      const posuch = { id: 'posuch-1', tenantId: 'tenant-123', name: 'Bezlepkový posúch', priceCents: 450, category: 'STANGLE', isActive: true,
+        modifiers: [{ id: 'edge', name: 'OKRAJ', type: 'single', required: false, options: [{ id: 'garlic', name: 'Cesnakom', priceCents: 0 }] }] };
+      mockPrismaService.product.findMany.mockReset();
+      mockPrismaService.product.findMany.mockResolvedValue([posuch]);
+      mockPrismaService.tenant.findUnique.mockResolvedValue({ id: 'tenant-123', slug: 'pornopizza', theme: {}, deliveryConfig: {}, paymentConfig: {} });
+      let createArgs: any = null;
+      mockPrismaService.order.create.mockImplementation(async (args: any) => { createArgs = args; return { id: 'order-stale', tenantId: 'tenant-123', status: 'PENDING', items: [], statusHistory: [], subtotalCents: 450, totalCents: 450, customer: {}, address: {} }; });
+
+      let threw: any = null;
+      try {
+        await service.createOrder('tenant-123', {
+          customer: { name: 'Stale Cart', email: 'stale@example.com', phone: '+421900000000' },
+          address: { street: 'Testovacia 1', city: 'Bratislava', postalCode: '81101', country: 'SK', coordinates: { lat: 48.14, lng: 17.1 } },
+          // dough/cheese/sauce were selectable under the old category preset; the product only defines edge
+          items: [{ productId: 'posuch-1', quantity: 1, modifiers: { dough: ['classic-32'], cheese: ['mozzarella'], sauce: ['tomato'], edge: ['garlic'] } }],
+        } as any);
+      } catch (e) { threw = e; }
+
+      expect(threw?.message || '').not.toMatch(/Invalid modifier ID/);
+      if (createArgs) {
+        const savedMods = createArgs.data.items.create[0].modifiers;
+        expect(Object.keys(savedMods)).toEqual(['edge']);
+      }
+    });
+
     it('resolves the whole cart with a single product query (no per-item connection burst)', async () => {
       const items = Array.from({ length: 40 }, (_, i) => ({ productId: `p-${i}`, quantity: 1 }));
       const products = items.map((it, i) => ({ id: it.productId, tenantId: 'tenant-123', name: `Pizza ${i}`, priceCents: 1000, category: 'PIZZA', modifiers: [], isActive: true }));

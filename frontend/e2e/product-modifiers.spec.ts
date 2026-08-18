@@ -37,3 +37,47 @@ test.describe('product-defined modifiers', () => {
     await expect(page.getByRole('button', { name: 'Pokračovať k platbe' })).toBeVisible({ timeout: 10_000 });
   });
 });
+
+test('a cart persisted with stale modifier groups still checks out (payload is sanitized)', async ({ page }) => {
+  await page.addInitScript(() => {
+    for (const key of ['cookie_analytics', 'cookie_marketing']) window.localStorage.setItem(key, 'false');
+    // Simulate a cart saved by the OLD modal: STANGLE product with dough/cheese/sauce chosen.
+    const cart = {
+      state: {
+        items: [{
+          id: 'e2e-posuch-1-{"dough":["classic-32"],"cheese":["mozzarella"],"sauce":["tomato"],"edge":["garlic"]}',
+          product: { id: 'e2e-posuch-1', name: 'Testovaci posuch', priceCents: 450, category: 'STANGLE', isActive: true,
+            modifiers: [{ id: 'edge', name: 'OKRAJ', type: 'single', required: true, options: [{ id: 'garlic', name: 'Cesnakom', priceCents: 0 }] }] },
+          quantity: 1,
+          modifiers: { dough: ['classic-32'], cheese: ['mozzarella'], sauce: ['tomato'], edge: ['garlic'] },
+        }],
+      },
+      version: 0,
+    };
+    window.localStorage.setItem('cart-storage', JSON.stringify(cart));
+  });
+  await page.route('**://nominatim.openstreetmap.org/**', async (route) => {
+    const body = route.request().url().includes('limit=1')
+      ? JSON.stringify([{ display_name: 'Testovacia 1, Bratislava', lat: '48.1486', lon: '17.1077', address: { road: 'Testovacia', house_number: '1', city: 'Bratislava', postcode: '81101', country_code: 'sk' } }])
+      : '[]';
+    await route.fulfill({ status: 200, contentType: 'application/json', body });
+  });
+
+  await page.goto('/checkout?tenant=pornopizza');
+  await expect(page.getByRole('heading', { name: 'Pokladňa' })).toBeVisible({ timeout: 90_000 });
+  await page.getByPlaceholder('Např. Ján Novák').fill('Jan Tester');
+  await page.getByPlaceholder('napr. jan.novak@email.com').fill(`stale-${Date.now()}@example.com`);
+  await page.getByPlaceholder('900 123 456').fill('912345678');
+  await page.getByPlaceholder('Zadajte adresu').fill('Testovacia 1');
+  await page.locator('label:has-text("Mesto") + input').fill('Bratislava');
+  await page.locator('label:has-text("PSČ") + input').fill('81101');
+  await expect(page.getByText('Bratislava Test Zone')).toBeVisible({ timeout: 30_000 });
+
+  const orderReq = page.waitForRequest((r) => r.url().includes('/api/pornopizza/orders') && r.method() === 'POST');
+  await page.getByRole('button', { name: 'Zaplatiť', exact: true }).click();
+  const req = await orderReq;
+  const body = req.postDataJSON();
+  // Only the group the product defines survives.
+  expect(Object.keys(body.items[0].modifiers)).toEqual(['edge']);
+  await page.waitForURL('**/mock-gateway**', { timeout: 90_000 });
+});

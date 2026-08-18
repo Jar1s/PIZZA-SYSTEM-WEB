@@ -10,6 +10,7 @@ import { useCustomerAuth } from '@/contexts/CustomerAuthContext';
 import { useTenant } from '@/contexts/TenantContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { trackInitiateCheckout, trackAddPaymentInfo } from '@/lib/conversion-tracking';
+import { getProductCustomizations } from '@pizza-ecosystem/shared';
 import { calculateModifierPrice } from '@/lib/calculate-modifier-price';
 import { validateReturnUrl } from '@/lib/validate-return-url';
 import { getTenant } from '@/lib/api';
@@ -31,6 +32,24 @@ interface Address {
     lat: number;
     lng: number;
   };
+}
+
+/** Keep only modifier groups/options the product currently defines. */
+function sanitizeCartModifiers(
+  modifiers: Record<string, string[]> | undefined | null,
+  product: any,
+): Record<string, string[]> | undefined {
+  if (!modifiers || Object.keys(modifiers).length === 0) return modifiers ?? undefined;
+  const allowed = getProductCustomizations(product);
+  if (allowed.length === 0) return modifiers;
+  const out: Record<string, string[]> = {};
+  for (const [groupId, optionIds] of Object.entries(modifiers)) {
+    const group = allowed.find((g) => g.id === groupId);
+    if (!group) continue;
+    const valid = (optionIds || []).filter((id) => group.options.some((o) => o.id === id));
+    if (valid.length) out[groupId] = valid;
+  }
+  return out;
 }
 
 export default function CheckoutPage() {
@@ -1319,7 +1338,10 @@ export default function CheckoutPage() {
         items: items.map(item => ({
           productId: item.product.id,
           quantity: item.quantity,
-          modifiers: item.modifiers,
+          // A cart persisted in localStorage can carry selections made under an
+          // older option set (e.g. dough/cheese for a posúch that only allows
+          // edge). Send only what this product accepts today.
+          modifiers: sanitizeCartModifiers(item.modifiers, item.product),
         })),
         addressId: user ? selectedAddress?.id : undefined,
         userId: user?.id,
