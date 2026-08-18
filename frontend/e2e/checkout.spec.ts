@@ -75,7 +75,8 @@ async function setUpPage(page: Page): Promise<string[]> {
 async function addProductAndOpenCheckout(page: Page) {
   await page.goto('/?tenant=pornopizza', { timeout: 120_000, waitUntil: 'domcontentloaded' });
 
-  const addButton = page.getByRole('button', { name: 'Pridať' }).first();
+  const drinkCard = page.locator('div').filter({ hasText: 'Testovacia Limonada' }).filter({ has: page.getByRole('button', { name: 'Pridať' }) }).last();
+  const addButton = drinkCard.getByRole('button', { name: 'Pridať' }).first();
   await expect(addButton).toBeVisible({ timeout: 90_000 });
 
   // On a cold dev server the first click can land before React hydration and
