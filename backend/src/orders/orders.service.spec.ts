@@ -168,6 +168,28 @@ describe('OrdersService', () => {
     // Reset all mocks
     jest.clearAllMocks();
     mockPrismaService.tenant.findMany.mockResolvedValue([]);
+    // createOrder resolves the whole cart with ONE product.findMany. Existing
+    // tests describe products via product.findFirst mocks (one per item); derive
+    // the batched answer from those so each test keeps its single source of
+    // product fixtures.
+    mockPrismaService.product.findMany.mockImplementation(async (args: any) => {
+      const wantedIds: string[] = args?.where?.OR?.flatMap((c: any) => c?.id?.in || []) || [];
+      const wantedNames: string[] = args?.where?.OR?.flatMap((c: any) => c?.name?.in || []) || [];
+      const results: any[] = [];
+      const seen = new Set<string>();
+      // Replay the configured findFirst answers (mockResolvedValueOnce queue + default)
+      const collected: any[] = [];
+      for (let i = 0; i < wantedIds.length + wantedNames.length + 5; i++) {
+        let v: any;
+        try { v = await mockPrismaService.product.findFirst({ where: {} }); } catch { v = undefined; }
+        if (v) collected.push(v);
+      }
+      for (const pr of collected) {
+        if (!pr || seen.has(pr.id)) continue;
+        if (wantedIds.includes(pr.id) || wantedNames.includes(pr.name)) { seen.add(pr.id); results.push(pr); }
+      }
+      return results;
+    });
     mockTelegramNotificationsService.notifyError.mockResolvedValue(undefined);
     mockPrismaService.user.update.mockImplementation(({ data }) => ({
       id: 'updated-user',
@@ -181,6 +203,32 @@ describe('OrdersService', () => {
   });
 
   describe('createOrder', () => {
+    it('resolves the whole cart with a single product query (no per-item connection burst)', async () => {
+      const items = Array.from({ length: 40 }, (_, i) => ({ productId: `p-${i}`, quantity: 1 }));
+      const products = items.map((it, i) => ({ id: it.productId, tenantId: 'tenant-123', name: `Pizza ${i}`, priceCents: 1000, category: 'PIZZA', modifiers: [], isActive: true }));
+      mockPrismaService.product.findMany.mockReset();
+      mockPrismaService.product.findMany.mockResolvedValue(products);
+      mockPrismaService.order.create.mockResolvedValue({ id: 'order-batch', tenantId: 'tenant-123', status: 'PENDING', items: [], statusHistory: [], subtotalCents: 40000, totalCents: 40000, customer: {}, address: {} });
+      mockPrismaService.tenant.findUnique.mockResolvedValue({ id: 'tenant-123', slug: 'pornopizza', theme: {}, deliveryConfig: {}, paymentConfig: {} });
+
+      try {
+        await service.createOrder('tenant-123', {
+          customer: { name: 'Batch Tester', email: 'batch@example.com', phone: '+421900000000' },
+          address: { street: 'Testovacia 1', city: 'Bratislava', postalCode: '81101', country: 'SK', coordinates: { lat: 48.14, lng: 17.1 } },
+          items,
+        } as any);
+      } catch {
+        // Downstream steps may not be fully mocked here; the assertion below is
+        // about the lookup strategy, which runs first.
+      }
+
+      expect(mockPrismaService.product.findMany).toHaveBeenCalledTimes(1);
+      expect(mockPrismaService.product.findFirst).not.toHaveBeenCalled();
+      const where = mockPrismaService.product.findMany.mock.calls[0][0].where;
+      expect(where.OR[0].id.in).toHaveLength(40);
+    });
+
+
     const tenantId = 'tenant-123';
     const mockProduct = {
       id: 'product-1',
