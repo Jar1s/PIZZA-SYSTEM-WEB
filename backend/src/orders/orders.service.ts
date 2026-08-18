@@ -870,12 +870,18 @@ export class OrdersService {
           validModifiers.set(modifier.id, { modifier, options: optionsMap });
         }
         
-        // Validate all modifier IDs in request exist in product
+        // Modifier groups the product does not define are DROPPED, not rejected:
+        // carts persist in the browser and can carry selections made under an
+        // older option set (dough/cheese on a posúch that only allows edge).
+        // Rejecting would block the whole order for a harmless leftover; the
+        // customer never sees these options for this product anymore. Options
+        // WITHIN a known group are still validated strictly below.
         for (const modifierId of Object.keys(selectedModifiers)) {
           if (!validModifiers.has(modifierId)) {
-            throw new BadRequestException(
-              `Invalid modifier ID "${modifierId}" for item ${index + 1} (product: ${product.name}). This modifier does not exist for this product.`
+            this.logger.warn(
+              `Dropping unknown modifier group "${modifierId}" for item ${index + 1} (product: ${product.name}) — stale cart selection`,
             );
+            delete (selectedModifiers as any)[modifierId];
           }
         }
         
