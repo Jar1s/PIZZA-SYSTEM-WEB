@@ -1306,28 +1306,28 @@ export function OrderCard({
 
                     return (
                       <div key={i} className="border-b border-zinc-200 pb-2.5 last:border-b-0 last:pb-0">
-                        <div className="flex items-start justify-between gap-4 text-[14px] leading-5">
-                          <span className="min-w-0 font-semibold text-zinc-950">
-                            <span className="mr-2 text-orange-600">{item.quantity}x</span>
+                        <div className="flex items-start justify-between gap-4 text-[16px] leading-6">
+                          <span className="min-w-0 font-bold text-zinc-950">
+                            <span className="mr-2 font-black text-orange-600 tabular-nums">{item.quantity}×</span>
                             {displayName}
                           </span>
-                          <span className="shrink-0 font-semibold text-zinc-900">
+                          <span className="shrink-0 font-semibold text-zinc-900 tabular-nums">
                             {formatEurPrice(itemTotal)}
                           </span>
                         </div>
                         {modifierLines.length > 0 && (
-                          <div className="mt-1.5 space-y-0.5 pl-4.5">
+                          <div className="mt-1.5 space-y-1 pl-6">
                             {modifierLines.map((modifier, idx) => (
                               <div
                                 key={idx}
-                                className="flex items-start justify-between gap-4 text-[12px] text-zinc-600"
+                                className="flex items-start justify-between gap-4 text-[14px] leading-5 text-zinc-800"
                               >
-                                <span className="min-w-0 truncate">
-                                  <span className="mr-2 text-orange-500">1x</span>
+                                <span className="min-w-0">
+                                  <span className="mr-2 text-zinc-400" aria-hidden="true">•</span>
                                   {modifier.label}
                                 </span>
-                                <span className="shrink-0 whitespace-nowrap">
-                                  {formatEurPrice(modifier.priceCents)}
+                                <span className="shrink-0 whitespace-nowrap tabular-nums">
+                                  {modifier.priceCents > 0 ? `+${formatEurPrice(modifier.priceCents)}` : ''}
                                 </span>
                               </div>
                             ))}
@@ -1815,30 +1815,36 @@ export function OrderCard({
                 const displayName = item.productName;
 
                 return (
-                  <div key={i} className="mb-4 border-b border-gray-200 pb-3 last:border-b-0">
-                    <div className="flex justify-between gap-3 text-[15px] leading-6">
-                      <span className="truncate font-semibold text-gray-900">
-                        <span className="mr-1 font-bold text-red-500">{item.quantity}x</span>
+                  <div key={i} className="mb-5 border-b border-gray-200 pb-4 last:border-b-0">
+                    {/* Kitchen-readable: larger, darker, and the item name never
+                        truncates — a cut-off "Quattro Formaggi Bi…" is a wrong pizza. */}
+                    <div className="flex items-baseline justify-between gap-4 text-[18px] leading-7">
+                      <span className="font-bold text-gray-900">
+                        <span className="mr-2 font-black text-red-600 tabular-nums">{item.quantity}×</span>
                         {displayName}
                       </span>
-                      <span className="whitespace-nowrap font-semibold text-gray-800">
+                      <span className="whitespace-nowrap font-semibold text-gray-800 tabular-nums">
                         {formatEurPrice(itemTotal)}
                       </span>
                     </div>
                     {modifierLines.length > 0 && (
-                      <div className="mt-1.5 ml-5 space-y-1">
+                      <ul className="mt-2 ml-7 space-y-1.5">
                         {modifierLines.map((modifier, idx) => (
-                          <div key={idx} className="flex justify-between gap-3 text-[14px] leading-5 text-gray-700">
-                            <span className="truncate">
-                              <span className="mr-1 font-semibold text-red-500">1x</span>
+                          <li key={idx} className="flex items-baseline justify-between gap-4 text-[16px] leading-6 text-gray-800">
+                            <span>
+                              <span className="mr-2 text-gray-400" aria-hidden="true">•</span>
                               {modifier.label}
                             </span>
-                            <span className="whitespace-nowrap text-gray-700">
-                              {formatEurPrice(modifier.priceCents)}
-                            </span>
-                          </div>
+                            {/* Price only when it actually adds something — a
+                                column of "0 EUR" is noise at the pass. */}
+                            {modifier.priceCents > 0 && (
+                              <span className="whitespace-nowrap font-medium text-gray-700 tabular-nums">
+                                +{formatEurPrice(modifier.priceCents)}
+                              </span>
+                            )}
+                          </li>
                         ))}
-                      </div>
+                      </ul>
                     )}
                   </div>
                 );
