@@ -412,10 +412,15 @@ export async function validateMinOrder(
   return res.json();
 }
 
-export async function checkEmailExists(email: string): Promise<boolean> {
+export async function checkEmailExists(email: string, tenantSlug?: string): Promise<boolean> {
+  // The API resolves the brand from the x-tenant header (the API host itself
+  // is api.<domain>, which does not identify a tenant). Without it the server
+  // answered "exists: false" for everyone and registered customers were sent
+  // to the registration form.
+  const tenant = tenantSlug || getTenantSlug();
   const res = await fetch(`${API_URL}/api/auth/customer/check-email`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', 'x-tenant': tenant },
     body: JSON.stringify({ email }),
   });
 
