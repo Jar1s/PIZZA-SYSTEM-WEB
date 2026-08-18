@@ -206,3 +206,76 @@ export function calculateModifierPrice(
   return totalPrice;
 }
 
+
+// ---------------------------------------------------------------------------
+// Product-aware resolution
+//
+// The backend validates an order item's modifiers against the PRODUCT's own
+// `modifiers` column when it is non-empty, and only falls back to the category
+// preset when the product has none. The storefront must offer exactly the same
+// set, otherwise it can build a selection the backend rejects (this happened
+// for STANGLE: category preset offered dough/cheese/sauce/edge, the products
+// only allow edge). Use this everywhere the customer picks options.
+// ---------------------------------------------------------------------------
+
+type ProductLike = {
+  category?: string | null;
+  modifiers?: Array<{
+    id: string;
+    name: string;
+    type?: 'single' | 'multiple';
+    required?: boolean;
+    options: Array<{ id: string; name: string; priceCents?: number; price?: number }>;
+  }> | null;
+};
+
+export function getProductCustomizations(product: ProductLike): CustomizationCategory[] {
+  const own = Array.isArray(product?.modifiers) ? product.modifiers : [];
+  if (own.length === 0) {
+    return getCustomizationOptions(product?.category || '');
+  }
+  const preset = getCustomizationOptions(product?.category || '');
+  return own.map((m) => {
+    // Prefer the preset's richer presentation (emoji label, EN name, option
+    // labels) when the ids match; fall back to the DB definition otherwise.
+    const presetCat = preset.find((c) => c.id === m.id);
+    const options: CustomizationOption[] = (m.options || []).map((o) => {
+      const presetOpt = presetCat?.options.find((po) => po.id === o.id);
+      const price = typeof o.priceCents === 'number' ? o.priceCents : typeof o.price === 'number' ? o.price : presetOpt?.price ?? 0;
+      return {
+        id: o.id,
+        name: o.name || presetOpt?.name || o.id,
+        nameEn: presetOpt?.nameEn || o.name || o.id,
+        price,
+        priceCents: price,
+      };
+    });
+    return {
+      id: m.id,
+      name: m.name || presetCat?.name || m.id,
+      nameEn: presetCat?.nameEn || m.name || m.id,
+      required: typeof m.required === 'boolean' ? m.required : presetCat?.required ?? false,
+      maxSelection: m.type === 'multiple' ? presetCat?.maxSelection ?? 10 : 1,
+      options,
+    };
+  });
+}
+
+/** Modifier price that mirrors the backend: product modifiers first, category preset as fallback. */
+export function calculateProductModifierPrice(
+  modifiers: Record<string, string[]> | undefined | null,
+  product: ProductLike,
+): number {
+  if (!modifiers || Object.keys(modifiers).length === 0) return 0;
+  const customizations = getProductCustomizations(product);
+  let total = 0;
+  for (const [categoryId, optionIds] of Object.entries(modifiers)) {
+    const category = customizations.find((c) => c.id === categoryId);
+    if (!category) continue;
+    for (const optionId of optionIds || []) {
+      const option = category.options.find((o) => o.id === optionId);
+      if (option) total += option.price || 0;
+    }
+  }
+  return total;
+}

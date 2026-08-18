@@ -10,7 +10,7 @@ import {
   stangleCustomizations,
   CustomizationOption,
   CustomizationCategory,
-  getCustomizationOptions,
+  getProductCustomizations,
 } from '@/shared/types/customization-options';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { getProductTranslation, getAllergenDescription, getProductDisplayName, getLocalizedDescription } from '@/lib/product-translations';
@@ -86,8 +86,10 @@ export default function CustomizationModal({
 
   // Get customization options based on product category
   const customizations: CustomizationCategory[] = useMemo(() => {
-    return getCustomizationOptions(product.category || '');
-  }, [product.category]);
+    // Product-aware: offers exactly what the backend will accept.
+    return getProductCustomizations(product);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [product.id, product.category, product.modifiers]);
 
   const calculateTotal = useCallback((currentSelections: Record<string, string[]>) => {
     let additionalCost = 0;
