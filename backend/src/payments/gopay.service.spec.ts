@@ -145,3 +145,21 @@ describe('GopayService', () => {
     ]);
   });
 });
+
+describe('GopayService.describeGopayError', () => {
+  it('includes GoPay error_code / error_name / description instead of a bare status text', () => {
+    const body = {
+      date_issued: 1755555555,
+      errors: [{ scope: 'G', field: null, message: 'Payment is not in a refundable state', description: 'PAYMENT_NOT_PAID', error_code: 340, error_name: 'PAYMENT_NOT_IN_VALID_STATE' }],
+    };
+    expect(GopayService.describeGopayError(body, 409, 'Conflict')).toBe(
+      '409 Conflict: #340 PAYMENT_NOT_IN_VALID_STATE PAYMENT_NOT_PAID',
+    );
+  });
+
+  it('falls back to description/message or the HTTP status', () => {
+    expect(GopayService.describeGopayError({ message: 'boom' }, 500, 'Internal Server Error')).toBe('500 Internal Server Error: boom');
+    expect(GopayService.describeGopayError({}, 409, 'Conflict')).toBe('409 Conflict');
+    expect(GopayService.describeGopayError('not json', 502, 'Bad Gateway')).toBe('502 Bad Gateway');
+  });
+});

@@ -315,6 +315,22 @@ export class GopayService {
     return statusResponse.json();
   }
 
+  /** Human-readable summary of a GoPay error body (`errors[]`) incl. HTTP status. */
+  static describeGopayError(errorData: any, status: number, statusText: string): string {
+    const errors = Array.isArray(errorData?.errors) ? errorData.errors : [];
+    if (errors.length > 0) {
+      const parts = errors.map((e: any) => {
+        const code = e?.error_code !== undefined ? `#${e.error_code}` : '';
+        const name = e?.error_name ? String(e.error_name) : '';
+        const text = e?.description || e?.message || '';
+        return [code, name, text].filter(Boolean).join(' ');
+      });
+      return `${status} ${statusText}: ${parts.join('; ')}`;
+    }
+    const text = errorData?.description || errorData?.message;
+    return text ? `${status} ${statusText}: ${text}` : `${status} ${statusText}`;
+  }
+
   async refundPayment(paymentId: string, amountCents: number, tenant: Tenant): Promise<void> {
     // GoPay refund API integration
     // https://doc.gopay.com/
@@ -386,7 +402,7 @@ export class GopayService {
 
       if (!refundResponse.ok) {
         const errorText = await refundResponse.text();
-        let errorData;
+        let errorData: any;
         try {
           errorData = JSON.parse(errorText);
         } catch {
@@ -399,7 +415,11 @@ export class GopayService {
           paymentId,
           amountCents,
         });
-        throw new Error(`GoPay refund error: ${errorData.description || errorData.message || refundResponse.statusText}`);
+        // GoPay reports the reason in an `errors[]` array (error_code / error_name /
+        // description). Without it the alert only said "Conflict" (= HTTP 409),
+        // which is useless when deciding whether to retry.
+        const detail = GopayService.describeGopayError(errorData, refundResponse.status, refundResponse.statusText);
+        throw new Error(`GoPay refund error: ${detail}`);
       }
 
       const refundData = await refundResponse.json();
