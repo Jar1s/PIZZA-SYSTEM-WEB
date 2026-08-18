@@ -3,7 +3,7 @@ import { Injectable, NotFoundException, BadRequestException, Logger, Inject, for
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../prisma/prisma.service';
 import { Prisma, User, UserRole, Order as PrismaOrder } from '@prisma/client';
-import { Order, OrderStatus, CustomerInfo, Address, calculateModifierPrice as calculateModifierPriceShared } from '@pizza-ecosystem/shared';
+import { Order, OrderStatus, CustomerInfo, Address, calculateProductModifierPrice } from '@pizza-ecosystem/shared';
 import { CreateOrderDto } from './dto';
 import { EmailService } from '../email/email.service';
 import {
@@ -951,8 +951,9 @@ export class OrdersService {
       let modifierPrice = 0;
       
       if (item.modifiers) {
-        // Use shared customization options based on product category
-        modifierPrice = calculateModifierPriceShared(item.modifiers, product.category);
+        // Same source of truth as validation above: the product's own
+        // modifiers when defined, the category preset otherwise.
+        modifierPrice = calculateProductModifierPrice(item.modifiers, product as any);
         
         this.logger.log('Calculated modifier price from shared options', {
           productName: product.name,

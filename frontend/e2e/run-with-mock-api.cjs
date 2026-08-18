@@ -39,6 +39,31 @@ const products = [
     isActive: true,
     isBestSeller: true,
   },
+  {
+    // Mirrors production STANGLE products: the product defines its OWN
+    // modifiers (edge only), which must override the category preset that
+    // would otherwise offer dough/cheese/sauce/edge and get rejected.
+    id: 'e2e-posuch-1',
+    name: 'Testovaci posuch',
+    description: 'Bezlepkovy posuch pre e2e testy.',
+    priceCents: 450,
+    category: 'STANGLE',
+    isActive: true,
+    isBestSeller: true,
+    modifiers: [
+      {
+        id: 'edge',
+        name: 'OKRAJ',
+        type: 'single',
+        required: true,
+        options: [
+          { id: 'garlic', name: 'Cesnakom', priceCents: 0 },
+          { id: 'olive-oil', name: 'Olejom', priceCents: 0 },
+          { id: 'none', name: 'Raw', priceCents: 0 },
+        ],
+      },
+    ],
+  },
 ];
 
 // Recorded state so specs can assert what the storefront actually sent.
