@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, Put, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Put, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -50,13 +50,6 @@ export class TenantSettingsController {
     @Param('tenantSlug') tenantSlug: string,
   ): Promise<TenantDeliverySettings> {
     return this.settingsService.getTenantDeliverySettings(tenantSlug);
-  }
-
-  @Post(':tenantSlug/delivery/apply-to-all')
-  async applyDeliveryToAll(
-    @Param('tenantSlug') tenantSlug: string,
-  ): Promise<{ source: string; applied: string[]; skipped: string[] }> {
-    return this.settingsService.applyDeliverySettingsToAllTenants(tenantSlug);
   }
 
   @Put(':tenantSlug/delivery')
