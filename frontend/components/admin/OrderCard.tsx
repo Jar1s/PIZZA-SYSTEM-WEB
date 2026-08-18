@@ -43,6 +43,19 @@ const STATUS_COLORS: Record<OrderStatus, string> = {
 
 // Active flow: PENDING → PAID (automatic) → PREPARING → READY → OUT_FOR_DELIVERY → DELIVERED (automatic)
 // PAID is automatic via webhook, DELIVERED is automatic via Wolt webhook or time-based
+
+/** "Okraj: Cesnakom" → light "Okraj:" + bold "Cesnakom" so the eye lands on what goes on the pizza. */
+function ModifierLabel({ label }: { label: string }) {
+  const idx = label.indexOf(':');
+  if (idx === -1) return <span className="font-bold">{label}</span>;
+  return (
+    <>
+      <span className="font-medium text-zinc-500">{label.slice(0, idx + 1)}</span>{' '}
+      <span className="font-bold text-zinc-900">{label.slice(idx + 1).trim()}</span>
+    </>
+  );
+}
+
 const NEXT_STATUS: Record<OrderStatus, OrderStatus | null> = {
   PENDING: null, // PAID is automatic via payment webhook
   PAID: OrderStatus.PREPARING,
@@ -1320,11 +1333,11 @@ export function OrderCard({
                             {modifierLines.map((modifier, idx) => (
                               <div
                                 key={idx}
-                                className="flex items-start justify-between gap-4 text-[14px] leading-5 text-zinc-800"
+                                className="flex items-start justify-between gap-4 text-[16px] leading-6 text-zinc-900"
                               >
                                 <span className="min-w-0">
                                   <span className="mr-2 text-zinc-400" aria-hidden="true">•</span>
-                                  {modifier.label}
+                                  <ModifierLabel label={modifier.label} />
                                 </span>
                                 <span className="shrink-0 whitespace-nowrap tabular-nums">
                                   {modifier.priceCents > 0 ? `+${formatEurPrice(modifier.priceCents)}` : ''}
@@ -1830,10 +1843,10 @@ export function OrderCard({
                     {modifierLines.length > 0 && (
                       <ul className="mt-2 ml-7 space-y-1.5">
                         {modifierLines.map((modifier, idx) => (
-                          <li key={idx} className="flex items-baseline justify-between gap-4 text-[16px] leading-6 text-gray-800">
+                          <li key={idx} className="flex items-baseline justify-between gap-4 text-[18px] leading-7 text-gray-900">
                             <span>
                               <span className="mr-2 text-gray-400" aria-hidden="true">•</span>
-                              {modifier.label}
+                              <ModifierLabel label={modifier.label} />
                             </span>
                             {/* Price only when it actually adds something — a
                                 column of "0 EUR" is noise at the pass. */}
