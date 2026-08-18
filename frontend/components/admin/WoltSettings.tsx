@@ -41,9 +41,16 @@ function isPresent(value: string): boolean {
   return Boolean(String(value || '').trim());
 }
 
-export function WoltSettings() {
+interface WoltSettingsProps {
+  /** Pin the card to one brand (used inside the brand edit modal); default: brand selected in the admin header */
+  tenantSlug?: string;
+  /** Start expanded (brand modal) */
+  defaultExpanded?: boolean;
+}
+
+export function WoltSettings({ tenantSlug: pinnedTenantSlug, defaultExpanded = false }: WoltSettingsProps = {}) {
   const { selectedTenant } = useAdminContext();
-  const [tenantSlug, setTenantSlug] = useState('pornopizza');
+  const [tenantSlug, setTenantSlug] = useState(pinnedTenantSlug || 'pornopizza');
   const [tenantSettings, setTenantSettings] = useState<TenantDeliverySettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -51,7 +58,7 @@ export function WoltSettings() {
   const [areasTesting, setAreasTesting] = useState(false);
   const [areasResult, setAreasResult] = useState<string | null>(null);
   const [webhookStatus, setWebhookStatus] = useState<WoltWebhookRegistrationResult | null>(null);
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(defaultExpanded);
 
   const [apiKey, setApiKey] = useState('');
   const [apiUrl, setApiUrl] = useState('');
@@ -74,7 +81,7 @@ export function WoltSettings() {
       try {
         setLoading(true);
         const activeSlug = normalizeSlug(
-          selectedTenant && selectedTenant !== 'all' ? selectedTenant : getTenantSlug(),
+          pinnedTenantSlug || (selectedTenant && selectedTenant !== 'all' ? selectedTenant : getTenantSlug()),
         );
         setTenantSlug(activeSlug);
         const settings = await getTenantDeliverySettings(activeSlug);
@@ -107,7 +114,7 @@ export function WoltSettings() {
     };
 
     load();
-  }, [selectedTenant]);
+  }, [selectedTenant, pinnedTenantSlug]);
 
   const handleSave = async () => {
     setSaving(true);

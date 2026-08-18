@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { WoltSettings } from '@/components/admin/WoltSettings';
 import { Tenant } from '@pizza-ecosystem/shared';
 import { updateTenant } from '@/lib/api';
 
@@ -58,17 +59,6 @@ export function EditBrandModal({
   const [gopayGoId, setGopayGoId] = useState('');
   const [gopayEnvironment, setGopayEnvironment] = useState('sandbox');
 
-  // Wolt/Delivery settings
-  const [woltApiKey, setWoltApiKey] = useState('');
-  const [pickupStreet, setPickupStreet] = useState('');
-  const [pickupCity, setPickupCity] = useState('');
-  const [pickupPostalCode, setPickupPostalCode] = useState('');
-  const [pickupCountry, setPickupCountry] = useState('SK');
-  const [pickupLat, setPickupLat] = useState('');
-  const [pickupLng, setPickupLng] = useState('');
-  const [pickupPhone, setPickupPhone] = useState('');
-  const [pickupInstructions, setPickupInstructions] = useState('');
-
   // Email / SMTP settings
   const [fromEmail, setFromEmail] = useState('');
   const [smtpHost, setSmtpHost] = useState('');
@@ -92,9 +82,6 @@ export function EditBrandModal({
         : {};
       
       const paymentConfig = (tenant.paymentConfig as any) || {};
-      const deliveryConfig = (tenant.deliveryConfig as any) || {};
-      const woltConfig = deliveryConfig.woltConfig || {};
-      const pickupAddress = deliveryConfig.pickupAddress || {};
       const emailConfig = (tenant.emailConfig as any) || {};
       
       setFormData({
@@ -178,15 +165,6 @@ export function EditBrandModal({
       });
       
       // Load Wolt/Delivery settings
-      setWoltApiKey(woltConfig.apiKey || '');
-      setPickupStreet(pickupAddress.street || '');
-      setPickupCity(pickupAddress.city || '');
-      setPickupPostalCode(pickupAddress.postalCode || '');
-      setPickupCountry(pickupAddress.country || 'SK');
-      setPickupLat(pickupAddress.coordinates?.lat?.toString() || '');
-      setPickupLng(pickupAddress.coordinates?.lng?.toString() || '');
-      setPickupPhone(pickupAddress.phone || '');
-      setPickupInstructions(pickupAddress.instructions || '');
       // Email / SMTP
       setFromEmail(emailConfig.fromEmail || '');
       setSmtpHost(emailConfig.smtpHost || emailConfig.host || '');
@@ -235,43 +213,9 @@ export function EditBrandModal({
     try {
       // Get existing paymentConfig to preserve other properties
       const existingPaymentConfig = (tenant.paymentConfig as any) || {};
-      const existingDeliveryConfig = (tenant.deliveryConfig as any) || {};
-      
-      // Build deliveryConfig with Wolt settings
-      const deliveryConfig: any = {
-        ...existingDeliveryConfig,
-      };
-      
-      // Add Wolt config if API key is provided
-      if (woltApiKey.trim()) {
-        deliveryConfig.woltConfig = {
-          ...(existingDeliveryConfig.woltConfig || {}),
-          apiKey: woltApiKey.trim(),
-        };
-      }
-      
-      // Validate and add pickup address if required fields are present (even without API key)
-      if (pickupStreet.trim() && pickupCity.trim() && pickupPostalCode.trim() && pickupCountry.trim() && pickupLat.trim() && pickupLng.trim()) {
-        const lat = parseFloat(pickupLat);
-        const lng = parseFloat(pickupLng);
-        
-        if (!isNaN(lat) && !isNaN(lng)) {
-          deliveryConfig.pickupAddress = {
-            street: pickupStreet.trim(),
-            city: pickupCity.trim(),
-            postalCode: pickupPostalCode.trim(),
-            country: pickupCountry.trim(),
-            coordinates: {
-              lat: lat,
-              lng: lng,
-            },
-            phone: pickupPhone.trim() || undefined,
-            instructions: pickupInstructions.trim() || undefined,
-          };
-        } else {
-          throw new Error('GPS súradnice musia byť platné čísla');
-        }
-      }
+      // Wolt/delivery config is managed by the embedded <WoltSettings> (own save),
+      // so this modal must not touch tenant.deliveryConfig – it would overwrite it
+      // with stale values.
       
       // Build paymentConfig with GoPay credentials
       const paymentConfig: any = {
@@ -311,11 +255,6 @@ export function EditBrandModal({
         };
       }
 
-      // Only include deliveryConfig if it has content
-      if (Object.keys(deliveryConfig).length > 0 || Object.keys(existingDeliveryConfig).length > 0) {
-        updateData.deliveryConfig = deliveryConfig;
-      }
-      
       // Update theme with analytics config
       const existingTheme = (tenant.theme as any) || {};
       const updatedTheme: any = {
@@ -868,154 +807,17 @@ export function EditBrandModal({
                   </div>
                 </div>
 
-                {/* Wolt Delivery Settings */}
+                {/* Wolt Delivery Settings – full per-brand form (same component as Settings → Wolt + Delivery) */}
                 <div className="border-t pt-4 mt-4">
-                  <h4 className="text-md font-semibold mb-3 text-gray-900">
-                    🚚 Wolt Delivery Settings
+                  <h4 className="text-md font-semibold mb-1 text-gray-900">
+                    🚚 Wolt + doručovanie
                   </h4>
                   <p className="text-sm text-gray-600 mb-4">
-                    Konfigurácia Wolt API a adresy kuchyne pre doručovanie.
+                    Každý brand má vlastný Wolt účet: API URL (ostré/testovacie), API kľúč, Merchant ID, Venue ID,
+                    webhook, spôsob rozvozu a adresa kuchyne. Ukladá sa vlastným tlačidlom nižšie, nezávisle od
+                    ostatných nastavení brandu.
                   </p>
-                  
-                  <div className="space-y-4">
-                    {/* Wolt API Key */}
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Wolt API Kľúč <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        type="password"
-                        value={woltApiKey}
-                        onChange={(e) => setWoltApiKey(e.target.value)}
-                        placeholder="wolt_api_key_..."
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                      />
-                      <p className="mt-1 text-xs text-gray-500">
-                        API kľúč z Wolt Drive dashboardu
-                      </p>
-                    </div>
-
-                    {/* Pickup Address Section */}
-                    <div className="border-t pt-4">
-                      <h5 className="text-sm font-semibold text-gray-700 mb-3">
-                        📍 Adresa Kuchyne (Pickup Address)
-                      </h5>
-                      
-                      <div className="grid grid-cols-2 gap-3">
-                        <div className="col-span-2">
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Ulica <span className="text-red-500">*</span>
-                          </label>
-                          <input
-                            type="text"
-                            value={pickupStreet}
-                            onChange={(e) => setPickupStreet(e.target.value)}
-                            placeholder="Hlavná 123"
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                          />
-                        </div>
-                        
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Mesto <span className="text-red-500">*</span>
-                          </label>
-                          <input
-                            type="text"
-                            value={pickupCity}
-                            onChange={(e) => setPickupCity(e.target.value)}
-                            placeholder="Bratislava"
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                          />
-                        </div>
-                        
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
-                            PSČ <span className="text-red-500">*</span>
-                          </label>
-                          <input
-                            type="text"
-                            value={pickupPostalCode}
-                            onChange={(e) => setPickupPostalCode(e.target.value)}
-                            placeholder="81101"
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                          />
-                        </div>
-                        
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Krajina <span className="text-red-500">*</span>
-                          </label>
-                          <input
-                            type="text"
-                            value={pickupCountry}
-                            onChange={(e) => setPickupCountry(e.target.value)}
-                            placeholder="SK"
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                          />
-                        </div>
-                        
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
-                            GPS Lat <span className="text-red-500">*</span>
-                          </label>
-                          <input
-                            type="number"
-                            step="any"
-                            value={pickupLat}
-                            onChange={(e) => setPickupLat(e.target.value)}
-                            placeholder="48.1486"
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                          />
-                        </div>
-                        
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
-                            GPS Lng <span className="text-red-500">*</span>
-                          </label>
-                          <input
-                            type="number"
-                            step="any"
-                            value={pickupLng}
-                            onChange={(e) => setPickupLng(e.target.value)}
-                            placeholder="17.1077"
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                          />
-                        </div>
-                        
-                        <div className="col-span-2">
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Telefón Kuchyne
-                          </label>
-                          <input
-                            type="text"
-                            value={pickupPhone}
-                            onChange={(e) => setPickupPhone(e.target.value)}
-                            placeholder="+421900000000"
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                          />
-                          <p className="mt-1 text-xs text-gray-500">
-                            Telefón pre kontakt s kuchyňou (voliteľné, ale odporúčané)
-                          </p>
-                        </div>
-                        
-                        <div className="col-span-2">
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Inštrukcie pre kuriéra
-                          </label>
-                          <textarea
-                            value={pickupInstructions}
-                            onChange={(e) => setPickupInstructions(e.target.value)}
-                            placeholder="Napríklad: Vchod z ulice, 2. poschodie..."
-                            rows={2}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                          />
-                          <p className="mt-1 text-xs text-gray-500">
-                            Voliteľné inštrukcie pre kuriéra pri vyzdvihnutí
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+                  <WoltSettings tenantSlug={tenant.slug} defaultExpanded />
                 </div>
 
                 {/* Email / SMTP Settings */}
