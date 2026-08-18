@@ -55,6 +55,7 @@ export function StoryousSettings() {
   const [placeId, setPlaceId] = useState('');
   const [enabled, setEnabled] = useState(false);
   const [autoSync, setAutoSync] = useState(false);
+  const [autoSyncTrigger, setAutoSyncTrigger] = useState<'on_accept' | 'on_paid'>('on_accept');
   const [defaultDeliveryLeadMinutes, setDefaultDeliveryLeadMinutes] = useState(45);
   const [autoAcceptPrintMode, setAutoAcceptPrintMode] = useState(true);
   const [receiptIncludeModifierLines, setReceiptIncludeModifierLines] = useState(true);
@@ -86,6 +87,7 @@ export function StoryousSettings() {
           setPlaceId(data.placeId || '');
           setEnabled(data.enabled || false);
           setAutoSync(data.autoSync || false);
+          setAutoSyncTrigger(data.autoSyncTrigger === 'on_paid' ? 'on_paid' : 'on_accept');
           setDefaultDeliveryLeadMinutes(data.defaultDeliveryLeadMinutes ?? 45);
           setAutoAcceptPrintMode(data.autoAcceptPrintMode ?? true);
           setReceiptIncludeModifierLines(data.receiptIncludeModifierLines ?? true);
@@ -162,6 +164,7 @@ export function StoryousSettings() {
         placeId: placeId.trim(),
         enabled,
         autoSync,
+        autoSyncTrigger,
         defaultDeliveryLeadMinutes: Math.max(1, Number(defaultDeliveryLeadMinutes) || 45),
         autoAcceptPrintMode,
         receiptIncludeModifierLines,
@@ -263,7 +266,7 @@ export function StoryousSettings() {
               {enabled ? 'Aktivované' : 'Deaktivované'}
             </SettingsBadge>
             <SettingsBadge tone={autoSync ? 'accent' : 'neutral'}>
-              Auto-sync {autoSync ? 'zap.' : 'vyp.'}
+              Auto-sync {autoSync ? (autoSyncTrigger === 'on_paid' ? 'po zaplatení' : 'po prijatí') : 'vyp.'}
             </SettingsBadge>
           </div>
           {enabled ? (
@@ -365,6 +368,18 @@ export function StoryousSettings() {
           <div className="flex items-center gap-2">
             <input type="checkbox" checked={autoSync} onChange={(e) => setAutoSync(e.target.checked)} disabled={saving || !enabled} className="rounded" />
             <span className="text-xs text-gray-700">Automatické posielanie</span>
+          </div>
+
+          <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-3">
+            <div className="text-xs font-semibold text-gray-700 mb-2">Kedy poslať objednávku do Storyous</div>
+            <label className="flex items-start gap-2 mb-2 cursor-pointer">
+              <input type="radio" name="autoSyncTrigger" className="mt-0.5" checked={autoSyncTrigger === 'on_accept'} onChange={() => setAutoSyncTrigger('on_accept')} disabled={saving || !enabled || !autoSync} />
+              <span className="text-xs text-gray-700"><span className="font-semibold">Až po prijatí obsluhou</span> — zaplatená objednávka čaká v admine; do kuchyne ide, keď ju potvrdíš (Potvrdiť → V príprave). Odporúčané.</span>
+            </label>
+            <label className="flex items-start gap-2 cursor-pointer">
+              <input type="radio" name="autoSyncTrigger" className="mt-0.5" checked={autoSyncTrigger === 'on_paid'} onChange={() => setAutoSyncTrigger('on_paid')} disabled={saving || !enabled || !autoSync} />
+              <span className="text-xs text-gray-700"><span className="font-semibold">Hneď po zaplatení</span> — bonček sa tlačí automaticky bez zásahu obsluhy.</span>
+            </label>
           </div>
 
           <div>

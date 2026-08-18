@@ -10,6 +10,13 @@ export interface StoryousSettings {
   placeId: string;
   enabled: boolean;
   autoSync: boolean;
+  /**
+   * When auto-sync sends a paid order to Storyous:
+   *  - 'on_accept' (default): only after staff accepts it in the admin
+   *    (PAID -> PREPARING). Payment alone does not reach the kitchen.
+   *  - 'on_paid': immediately when payment is confirmed.
+   */
+  autoSyncTrigger: 'on_accept' | 'on_paid';
   defaultDeliveryLeadMinutes: number;
   autoAcceptPrintMode: boolean;
   receiptIncludeModifierLines: boolean;
@@ -240,6 +247,7 @@ export class SettingsService {
       placeId: raw.placeId || '',
       enabled: raw.enabled ?? false,
       autoSync: raw.autoSync ?? false,
+      autoSyncTrigger: raw.autoSyncTrigger === 'on_paid' ? 'on_paid' : 'on_accept',
       defaultDeliveryLeadMinutes: raw.defaultDeliveryLeadMinutes ?? 45,
       autoAcceptPrintMode: raw.autoAcceptPrintMode ?? true,
       receiptIncludeModifierLines: raw.receiptIncludeModifierLines ?? true,
@@ -260,6 +268,8 @@ export class SettingsService {
       placeId: data.placeId ?? currentStoryous.placeId ?? '',
       enabled: data.enabled ?? currentStoryous.enabled ?? false,
       autoSync: data.autoSync ?? currentStoryous.autoSync ?? false,
+      autoSyncTrigger:
+        (data.autoSyncTrigger ?? currentStoryous.autoSyncTrigger) === 'on_paid' ? 'on_paid' : 'on_accept',
       defaultDeliveryLeadMinutes:
         data.defaultDeliveryLeadMinutes ?? currentStoryous.defaultDeliveryLeadMinutes ?? 45,
       autoAcceptPrintMode: data.autoAcceptPrintMode ?? currentStoryous.autoAcceptPrintMode ?? true,

@@ -101,7 +101,14 @@ describe('OrderStatusService', () => {
     loggerWarnSpy.mockRestore();
   });
 
-  it('auto-syncs to Storyous on accept when order moves from PENDING to PAID', async () => {
+  it('auto-syncs to Storyous on payment when trigger is on_paid (PENDING -> PAID)', async () => {
+    mockSettingsService.getStoryousSettings.mockResolvedValue({
+      enabled: true,
+      autoSync: true,
+      autoSyncTrigger: 'on_paid',
+      merchantId: 'merchant-1',
+      placeId: 'place-1',
+    });
     mockPrisma.order.findUnique.mockResolvedValue({
       ...baseOrder,
       status: OrderStatus.PENDING,
@@ -141,7 +148,38 @@ describe('OrderStatusService', () => {
     );
   });
 
+  it('does NOT sync on payment in the default on_accept mode — the kitchen must accept first', async () => {
+    // default settings mock has no autoSyncTrigger => on_accept
+    mockPrisma.order.findUnique.mockResolvedValue({ ...baseOrder, status: OrderStatus.PENDING, storyousOrderId: null });
+    mockStoryousService.createOrder.mockResolvedValue({ id: 'should-not-happen', storyousState: 'CONFIRMED' });
+
+    await service.updateStatus('order-1', OrderStatus.PAID);
+
+    expect(mockStoryousService.createOrder).not.toHaveBeenCalled();
+  });
+
+  it('syncs when staff accepts the paid order (PAID -> PREPARING) in on_accept mode', async () => {
+    mockPrisma.order.findUnique.mockResolvedValue({ ...baseOrder, status: OrderStatus.PAID, storyousOrderId: null });
+    mockStoryousService.createOrder.mockResolvedValue({ id: 'storyous-accepted-2', storyousState: 'CONFIRMED' });
+
+    await service.updateStatus('order-1', OrderStatus.PREPARING);
+
+    expect(mockStoryousService.createOrder).toHaveBeenCalledTimes(1);
+    expect(mockStoryousService.createOrder).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'order-1', status: OrderStatus.PREPARING }),
+      'merchant-1',
+      'place-1',
+    );
+  });
+
   it('persists NEW Storyous state on accept and logs warning without failing status update', async () => {
+    mockSettingsService.getStoryousSettings.mockResolvedValue({
+      enabled: true,
+      autoSync: true,
+      autoSyncTrigger: 'on_paid',
+      merchantId: 'merchant-1',
+      placeId: 'place-1',
+    });
     mockPrisma.order.findUnique.mockResolvedValue({
       ...baseOrder,
       status: OrderStatus.PENDING,
@@ -172,6 +210,13 @@ describe('OrderStatusService', () => {
   });
 
   it('alerts admin when auto-sync reaches Storyous but returns no order id', async () => {
+    mockSettingsService.getStoryousSettings.mockResolvedValue({
+      enabled: true,
+      autoSync: true,
+      autoSyncTrigger: 'on_paid',
+      merchantId: 'merchant-1',
+      placeId: 'place-1',
+    });
     mockPrisma.order.findUnique.mockResolvedValue({
       ...baseOrder,
       status: OrderStatus.PENDING,

@@ -48,11 +48,19 @@ export class OrderStatusService implements OnModuleInit, OnModuleDestroy {
     return state === 'CONFIRMED' || state === 'SCHEDULING_DELIVERY' || state === 'DISPATCHED';
   }
 
-  private shouldAutoSyncToStoryous(currentStatus: OrderStatus, newStatus: OrderStatus): boolean {
-    return (
-      (currentStatus === OrderStatus.PENDING && newStatus === OrderStatus.PAID) ||
-      (currentStatus === OrderStatus.PAID && newStatus === OrderStatus.PREPARING)
-    );
+  private shouldAutoSyncToStoryous(
+    currentStatus: OrderStatus,
+    newStatus: OrderStatus,
+    trigger: 'on_accept' | 'on_paid',
+  ): boolean {
+    const acceptedByStaff = currentStatus === OrderStatus.PAID && newStatus === OrderStatus.PREPARING;
+    if (trigger === 'on_paid') {
+      const justPaid = currentStatus === OrderStatus.PENDING && newStatus === OrderStatus.PAID;
+      return justPaid || acceptedByStaff;
+    }
+    // on_accept (default): the kitchen only learns about the order once staff
+    // accepted it in the admin — payment alone must not print a ticket.
+    return acceptedByStaff;
   }
 
   private async maybeAutoSyncToStoryous(
@@ -60,10 +68,7 @@ export class OrderStatusService implements OnModuleInit, OnModuleDestroy {
     newStatus: OrderStatus,
     statusSyncSource: 'dashboard' | 'storyous' | 'system',
   ): Promise<void> {
-    if (
-      statusSyncSource === 'storyous' ||
-      !this.shouldAutoSyncToStoryous(order.status as OrderStatus, newStatus)
-    ) {
+    if (statusSyncSource === 'storyous') {
       return;
     }
 
@@ -79,6 +84,16 @@ export class OrderStatusService implements OnModuleInit, OnModuleDestroy {
         !storyousSettings?.autoSync ||
         !storyousSettings?.merchantId ||
         !storyousSettings?.placeId
+      ) {
+        return;
+      }
+
+      if (
+        !this.shouldAutoSyncToStoryous(
+          order.status as OrderStatus,
+          newStatus,
+          storyousSettings.autoSyncTrigger || 'on_accept',
+        )
       ) {
         return;
       }
