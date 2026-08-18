@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, Logger } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { StoryousCatalogAddition, autoFillStoryousModifierMappings } from './storyous-mapping.util';
@@ -94,7 +94,6 @@ export interface TenantDeliverySettings {
 
 @Injectable()
 export class SettingsService {
-  private readonly logger = new Logger(SettingsService.name);
   constructor(private prisma: PrismaService) {}
 
   private async getTenantBySlug(tenantSlug: string) {
@@ -229,53 +228,6 @@ export class SettingsService {
     });
 
     return this.getTenantDeliverySettings(tenantSlug);
-  }
-
-  /**
-   * Copy the courier/Wolt part of one brand's deliveryConfig to every other
-   * active brand. All brands cook in one kitchen and share one Wolt account, so
-   * entering the same credentials three times by hand is error-prone. Only the
-   * courier-related keys are copied; zone/tier data stays per brand.
-   */
-  async applyDeliverySettingsToAllTenants(
-    sourceSlug: string,
-  ): Promise<{ source: string; applied: string[]; skipped: string[] }> {
-    const source = await this.getTenantBySlug(sourceSlug);
-    const sourceConfig = this.toRecord(source.deliveryConfig);
-    const COPIED_KEYS = ['provider', 'woltConfig', 'defaultFeeCents', 'dispatchMode', 'pickupAddress'] as const;
-    const patch: Record<string, unknown> = {};
-    for (const key of COPIED_KEYS) {
-      if (sourceConfig[key] !== undefined) patch[key] = sourceConfig[key];
-    }
-    if (Object.keys(patch).length === 0) {
-      throw new BadRequestException('Zdrojový brand nemá žiadne nastavenia rozvozu na skopírovanie.');
-    }
-
-    const targets = await this.prisma.tenant.findMany({
-      where: { isActive: true, id: { not: source.id } },
-      select: { id: true, slug: true, deliveryConfig: true },
-    });
-
-    const applied: string[] = [];
-    const skipped: string[] = [];
-    for (const target of targets) {
-      try {
-        await this.prisma.tenant.update({
-          where: { id: target.id },
-          data: {
-            deliveryConfig: {
-              ...this.toRecord(target.deliveryConfig),
-              ...patch,
-            } as Prisma.InputJsonValue,
-          },
-        });
-        applied.push(target.slug);
-      } catch (error) {
-        this.logger.error(`[applyDeliverySettingsToAllTenants] Failed for ${target.slug}`, error);
-        skipped.push(target.slug);
-      }
-    }
-    return { source: source.slug, applied, skipped };
   }
 
   async getStoryousSettings(): Promise<StoryousSettings | null> {

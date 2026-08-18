@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react';
 import { useAdminContext } from '@/app/admin/admin-context';
 import { getTenantSlug } from '@/lib/tenant-utils';
 import {
-  applyDeliverySettingsToAllTenants,
   getTenantDeliverySettings,
   listWoltWebhooks,
   refreshWoltDeliveryAreas,
@@ -48,7 +47,6 @@ export function WoltSettings() {
   const [tenantSettings, setTenantSettings] = useState<TenantDeliverySettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [applyingToAll, setApplyingToAll] = useState(false);
   const [webhookSyncing, setWebhookSyncing] = useState(false);
   const [areasTesting, setAreasTesting] = useState(false);
   const [areasResult, setAreasResult] = useState<string | null>(null);
@@ -160,24 +158,6 @@ export function WoltSettings() {
       alert(`Nepodarilo sa uložiť Wolt nastavenia: ${error?.message || 'Unknown error'}`);
     } finally {
       setSaving(false);
-    }
-  };
-
-  const handleApplyToAll = async () => {
-    const confirmed = confirm(
-      `Skopírovať uložené Wolt nastavenia brandu „${tenantSlug}“ (API URL, kľúč, Merchant ID, Venue ID, webhook secret, spôsob rozvozu, adresa kuchyne, predvolený poplatok) do všetkých ostatných brandov?\n\nNajprv ich tu ulož – kopírujú sa uložené hodnoty, nie rozpísané v formulári.`,
-    );
-    if (!confirmed) return;
-    setApplyingToAll(true);
-    try {
-      const result = await applyDeliverySettingsToAllTenants(tenantSlug);
-      const applied = result.applied.length ? result.applied.join(', ') : '–';
-      const skipped = result.skipped.length ? `\nPreskočené: ${result.skipped.join(', ')}` : '';
-      alert(`Wolt nastavenia skopírované do: ${applied}${skipped}\n\nPri každom brande ešte spusti „Otestovať zóny“.`);
-    } catch (error: any) {
-      alert(`Nepodarilo sa skopírovať nastavenia: ${error?.message || 'Unknown error'}`);
-    } finally {
-      setApplyingToAll(false);
     }
   };
 
@@ -426,18 +406,6 @@ export function WoltSettings() {
           >
             {saving ? 'Ukladám...' : 'Uložiť Wolt nastavenia'}
           </button>
-          <button
-            type="button"
-            onClick={handleApplyToAll}
-            disabled={applyingToAll || saving}
-            className="w-full rounded-2xl border border-zinc-300 bg-white px-4 py-3 text-sm font-semibold text-zinc-800 transition hover:border-zinc-500 disabled:opacity-50"
-          >
-            {applyingToAll ? 'Kopírujem...' : 'Použiť tieto Wolt nastavenia pre všetky brandy'}
-          </button>
-          <p className="text-xs text-zinc-500">
-            Všetky brandy varia v jednej kuchyni a používajú jeden Wolt účet – toto tlačidlo skopíruje uložené nastavenia
-            tohto brandu do ostatných, aby si ich nemusel zadávať trikrát.
-          </p>
         </div>
       )}
     </SettingsCard>
