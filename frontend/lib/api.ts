@@ -606,6 +606,7 @@ export type StoryousSettings = {
   placeId: string;
   enabled: boolean;
   autoSync: boolean;
+  autoSyncTrigger?: 'on_accept' | 'on_paid';
   defaultDeliveryLeadMinutes: number;
   autoAcceptPrintMode: boolean;
   receiptIncludeModifierLines: boolean;
