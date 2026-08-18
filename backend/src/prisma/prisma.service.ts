@@ -15,9 +15,23 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
         // Add SSL parameter if missing
         const separator = databaseUrl.includes('?') ? '&' : '?';
         databaseUrl = `${databaseUrl}${separator}sslmode=require`;
-        // Update process.env for Prisma to use
-        process.env.DATABASE_URL = databaseUrl;
       }
+
+      // Cap Prisma's connection pool. Prisma defaults to (2 * CPUs + 1)
+      // connections; the Supabase SESSION pooler allows only 15 clients per
+      // database in total. A single backend instance could take almost all of
+      // them, and every other client (a second instance, a migration, an admin
+      // script) then hits EMAXCONNSESSION — and so does the backend itself
+      // under a burst, which surfaced as 500s on order creation. Leave
+      // headroom for the rest of the world.
+      if (!/[?&]connection_limit=/.test(databaseUrl)) {
+        const separator = databaseUrl.includes('?') ? '&' : '?';
+        const limit = process.env.PRISMA_CONNECTION_LIMIT || '6';
+        databaseUrl = `${databaseUrl}${separator}connection_limit=${limit}&pool_timeout=20`;
+      }
+
+      // Update process.env for Prisma to use
+      process.env.DATABASE_URL = databaseUrl;
     }
 
     // Use datasource override to ensure PrismaClient uses the correct DATABASE_URL
@@ -70,17 +84,10 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
           this.logger.log('ℹ️ Using port 5432. If connection fails, try port 6543 (Session Pooler standard port)');
         }
 
-        // Connection-pool safety: Supabase caps connections. Without a bounded pool
-        // Prisma opens num_cpus*2+1 per instance and can exhaust Supabase (P1001).
-        // Use the pooler with `?pgbouncer=true&connection_limit=N` in production.
-        const hasConnectionLimit = /[?&]connection_limit=/.test(databaseUrl);
-        const usesPgBouncer = /[?&]pgbouncer=true/.test(databaseUrl);
-        if (process.env.NODE_ENV === 'production' && !hasConnectionLimit && !usesPgBouncer) {
-          this.logger.warn(
-            '⚠️ DATABASE_URL has no connection_limit/pgbouncer. Under load this can exhaust ' +
-              'Supabase connections (P1001). Use the pooler URL with ?pgbouncer=true&connection_limit=N.',
-          );
-        }
+        // Pool size is capped in the constructor (connection_limit) so one backend
+        // instance cannot exhaust the 15-client Supabase session pool.
+        const limitMatch = databaseUrl.match(/[?&]connection_limit=(\d+)/);
+        this.logger.log(`ℹ️ Prisma connection pool limit: ${limitMatch ? limitMatch[1] : 'default'}`);
       }
 
       // Try to connect with retry logic
