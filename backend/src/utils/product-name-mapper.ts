@@ -267,20 +267,20 @@ const productNameMappings: Record<string, ProductNameMapping> = {
     en: 'Pepsi',
   },
   'Pepsi Zero 1l': {
-    sk: 'Pepsi Zero',
-    en: 'Pepsi Zero',
+    sk: 'Pepsi Max',
+    en: 'Pepsi Max',
   },
   'Kofola 2l': {
     sk: 'Kofola',
     en: 'Kofola',
   },
   'Bonaqua Nesýtená 1,5l': {
-    sk: 'Bonaqua Nesýtená',
-    en: 'Bonaqua Still',
+    sk: 'Budiš Nesýtená',
+    en: 'Budiš Still',
   },
   'Bonaqua Sýtená 1,5l': {
-    sk: 'Bonaqua Sýtená',
-    en: 'Bonaqua Sparkling',
+    sk: 'Budiš Sýtená',
+    en: 'Budiš Sparkling',
   },
   'Beer': {
     sk: 'Pivo',
@@ -291,8 +291,8 @@ const productNameMappings: Record<string, ProductNameMapping> = {
     en: 'Wine',
   },
   'Water': {
-    sk: 'Bonaqua Nesýtená 1,5l',
-    en: 'Bonaqua Still 1.5l',
+    sk: 'Budiš Nesýtená 1,5l',
+    en: 'Budiš Still 1.5l',
   },
   
   // Desserts

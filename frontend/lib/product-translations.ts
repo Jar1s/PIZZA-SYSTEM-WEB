@@ -560,7 +560,7 @@ export const productTranslations: Record<string, ProductTranslation> = {
     allergens: []
   },
   'Pepsi Zero 1l': {
-    name: { sk: 'Pepsi Zero', en: 'Pepsi Zero' },
+    name: { sk: 'Pepsi Max', en: 'Pepsi Max' },
     description: { sk: 'Pepsi bez cukru', en: 'Zero sugar Pepsi' },
     weight: '1l',
     allergens: []
@@ -572,13 +572,13 @@ export const productTranslations: Record<string, ProductTranslation> = {
     allergens: []
   },
   'Bonaqua Nesýtená 1,5l': {
-    name: { sk: 'Bonaqua Nesýtená', en: 'Bonaqua Still' },
+    name: { sk: 'Budiš Nesýtená', en: 'Budiš Still' },
     description: { sk: 'Nesýtená minerálna voda', en: 'Still mineral water' },
     weight: '1.5l',
     allergens: []
   },
   'Bonaqua Sýtená 1,5l': {
-    name: { sk: 'Bonaqua Sýtená', en: 'Bonaqua Sparkling' },
+    name: { sk: 'Budiš Sýtená', en: 'Budiš Sparkling' },
     description: { sk: 'Sýtená minerálna voda', en: 'Sparkling mineral water' },
     weight: '1.5l',
     allergens: []
@@ -596,7 +596,7 @@ export const productTranslations: Record<string, ProductTranslation> = {
     allergens: []
   },
   'Water': {
-    name: { sk: 'Bonaqua Nesýtená 1,5l', en: 'Bonaqua Still 1.5l' },
+    name: { sk: 'Budiš Nesýtená 1,5l', en: 'Budiš Still 1.5l' },
     description: { sk: 'Nesýtená minerálna voda', en: 'Still mineral water' },
     weight: '1.5l',
     allergens: []
