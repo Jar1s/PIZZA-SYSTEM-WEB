@@ -552,9 +552,9 @@ export class EmailService {
     
     // Build logo URL
     const logoUrl =
-      buildAssetUrl(tenantTheme?.logo) ||
-      buildAssetUrl('/PORNO PIZZA PINK GRANDIENT.png') ||
-      '';
+      // Only the tenant's own logo — a hard-coded PornoPizza fallback would brand
+      // other tenants' e-mails wrong; without a logo the template shows the name.
+      buildAssetUrl(tenantTheme?.logo) || '';
 
     return `
 <!DOCTYPE html>
@@ -825,9 +825,9 @@ export class EmailService {
     
     // Build logo URL
     const logoUrl =
-      buildAssetUrl(tenantTheme?.logo) ||
-      buildAssetUrl('/PORNO PIZZA PINK GRANDIENT.png') ||
-      '';
+      // Only the tenant's own logo — a hard-coded PornoPizza fallback would brand
+      // other tenants' e-mails wrong; without a logo the template shows the name.
+      buildAssetUrl(tenantTheme?.logo) || '';
     
     // Build image URLs for items and log them
     const itemsWithImageUrls = itemsWithImages.map((item: any) => {
@@ -1329,9 +1329,9 @@ export class EmailService {
     
     // Build logo URL
     const logoUrl =
-      buildAssetUrl(tenantTheme?.logo) ||
-      buildAssetUrl('/PORNO PIZZA PINK GRANDIENT.png') ||
-      '';
+      // Only the tenant's own logo — a hard-coded PornoPizza fallback would brand
+      // other tenants' e-mails wrong; without a logo the template shows the name.
+      buildAssetUrl(tenantTheme?.logo) || '';
 
     return `
 <!DOCTYPE html>
@@ -1494,9 +1494,9 @@ export class EmailService {
     
     // Build logo URL - same fallback as other emails (PNG, SVG is not rendered by Gmail/Outlook)
     const logoUrl =
-      buildAssetUrl(tenantTheme?.logo) ||
-      buildAssetUrl('/PORNO PIZZA PINK GRANDIENT.png') ||
-      '';
+      // Only the tenant's own logo — a hard-coded PornoPizza fallback would brand
+      // other tenants' e-mails wrong; without a logo the template shows the name.
+      buildAssetUrl(tenantTheme?.logo) || '';
     
     return `
 <!DOCTYPE html>

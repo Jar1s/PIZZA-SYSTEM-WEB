@@ -20,6 +20,7 @@ export function Header({ tenant }: HeaderProps) {
   const { user } = useCustomerAuth();
   const router = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [logoFailed, setLogoFailed] = useState(false);
   const itemCount = items.reduce((sum, item) => sum + item.quantity, 0);
 
   // Get tenant from URL or use prop
@@ -105,7 +106,7 @@ export function Header({ tenant }: HeaderProps) {
             className="flex items-center min-w-0"
             aria-label={t.home || 'Home'}
           >
-            {normalizedTenant?.theme?.logo ? (
+            {normalizedTenant?.theme?.logo && !logoFailed ? (
               <Image
                 src={normalizedTenant.theme.logo}
                 alt={normalizedTenant.name}
@@ -114,8 +115,11 @@ export function Header({ tenant }: HeaderProps) {
                 className="h-8 sm:h-10 w-auto max-w-[140px] sm:max-w-[180px] md:max-w-[200px]"
                 priority
                 unoptimized={normalizedTenant.theme.logo.includes(' ') || normalizedTenant.theme.logo.includes('%20')}
-                onError={(e) => {
+                onError={() => {
+                  // Dead logo URL (e.g. upload lost on an old host) – fall back to the
+                  // brand name instead of a broken-image icon.
                   console.error('Logo failed to load:', normalizedTenant.theme.logo);
+                  setLogoFailed(true);
                 }}
               />
             ) : (
