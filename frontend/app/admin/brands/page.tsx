@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { Tenant } from '@pizza-ecosystem/shared';
 import { getAllTenants, updateTenant, syncFromMaster } from '@/lib/api';
 import { EditBrandModal } from '@/components/admin/EditBrandModal';
+import { BrandReadiness } from '@/components/admin/BrandReadiness';
 import { CloneBrandModal } from '@/components/admin/CloneBrandModal';
 import { ProtectedRoute } from '@/components/admin/ProtectedRoute';
 
@@ -215,6 +216,11 @@ export default function BrandsPage() {
                       </div>
                     </div>
                   </div>
+                </div>
+
+                {/* Go-live checklist */}
+                <div className="mt-4">
+                  <BrandReadiness tenantSlug={tenant.slug} />
                 </div>
 
                 {/* Actions */}

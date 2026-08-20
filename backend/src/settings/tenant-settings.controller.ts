@@ -45,6 +45,11 @@ export class TenantSettingsController {
     return this.settingsService.updateTenantPaymentSettings(tenantSlug, data || {});
   }
 
+  @Get(':tenantSlug/readiness')
+  async getReadiness(@Param('tenantSlug') tenantSlug: string) {
+    return this.settingsService.getTenantReadiness(tenantSlug);
+  }
+
   @Get(':tenantSlug/delivery')
   async getDelivery(
     @Param('tenantSlug') tenantSlug: string,

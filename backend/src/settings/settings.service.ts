@@ -2,6 +2,7 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { StoryousCatalogAddition, autoFillStoryousModifierMappings } from './storyous-mapping.util';
+import { ReadinessReport, buildReadinessReport } from './tenant-readiness';
 
 export interface StoryousSettings {
   clientId: string;
@@ -228,6 +229,51 @@ export class SettingsService {
     });
 
     return this.getTenantDeliverySettings(tenantSlug);
+  }
+
+  /** Brand go-live checklist. See tenant-readiness.ts for the rules. */
+  async getTenantReadiness(tenantSlug: string): Promise<ReadinessReport> {
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { slug: tenantSlug },
+      select: {
+        id: true,
+        slug: true,
+        name: true,
+        domain: true,
+        subdomain: true,
+        isActive: true,
+        theme: true,
+        paymentProvider: true,
+        paymentConfig: true,
+        deliveryConfig: true,
+        emailConfig: true,
+      },
+    });
+    if (!tenant) {
+      throw new BadRequestException(`Tenant ${tenantSlug} not found`);
+    }
+
+    const deliveryTierCount = await this.prisma.deliveryFeeTier.count({
+      where: { isActive: true, OR: [{ tenantId: tenant.id }, { tenantId: null }] },
+    });
+
+    // Probe absolute logo URLs (dead uploads on decommissioned hosts are a real
+    // failure mode). Relative paths are frontend assets – assume present.
+    let logoReachable: boolean | null = null;
+    const logo = (this.toRecord(tenant.theme).logo || '') as string;
+    if (typeof logo === 'string' && /^https?:\/\//.test(logo)) {
+      try {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 4000);
+        const res = await fetch(logo, { method: 'HEAD', signal: controller.signal });
+        clearTimeout(timer);
+        logoReachable = res.ok;
+      } catch {
+        logoReachable = false;
+      }
+    }
+
+    return buildReadinessReport({ tenant, deliveryTierCount, logoReachable });
   }
 
   async getStoryousSettings(): Promise<StoryousSettings | null> {
