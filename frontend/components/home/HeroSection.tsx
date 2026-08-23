@@ -4,6 +4,8 @@ import { motion } from 'framer-motion';
 import Image from 'next/image';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useMemo } from 'react';
+import { resolveBrandImage } from '@/lib/brand-image-overrides';
+import { getTenantSlug } from '@/lib/tenant-utils';
 
 interface HeroSectionProps {
   tenantName: string;
@@ -12,6 +14,8 @@ interface HeroSectionProps {
 }
 
 export const HeroSection = ({ tenantName, primaryColor, isDark = false }: HeroSectionProps) => {
+  // Brands can ship their own hero photo (public/images/brands/<slug>/hero/pizza-hero.jpg)
+  const heroImage = resolveBrandImage('/images/hero/pizza-hero.jpg', getTenantSlug()) || '/images/hero/pizza-hero.jpg';
   const { t } = useLanguage();
   const accentColor = primaryColor || 'var(--color-primary)';
 
@@ -49,7 +53,7 @@ export const HeroSection = ({ tenantName, primaryColor, isDark = false }: HeroSe
       {/* Background Image */}
       <div className="absolute inset-0" style={{ position: 'absolute', zIndex: 0 }}>
         <Image
-          src="/images/hero/pizza-hero.jpg"
+          src={heroImage}
           alt={`${tenantName} - rozvoz pizze`}
           fill
           sizes="100vw"
