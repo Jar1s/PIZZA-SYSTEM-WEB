@@ -12,9 +12,16 @@ describe('resolveBrandImage', () => {
     expect(resolveBrandImage('/images/drinks/kofola.webp', 'partypizza')).toBe('/images/brands/partypizza/drinks/kofola.webp');
   });
 
+  it('resolves slug aliases (DB slug vs storefront slug) to the same brand folder', () => {
+    expect(resolveBrandImage('/images/hero/pizza-hero.jpg', 'pizzavnudzi')).toBe('/images/brands/pizzavnudzi/hero/pizza-hero.jpg');
+    expect(resolveBrandImage('/images/hero/pizza-hero.jpg', 'pizzavnudzi-sk')).toBe('/images/brands/pizzavnudzi/hero/pizza-hero.jpg');
+    expect(resolveBrandImage('/images/drinks/sprite.webp', 'pizzavnudzi-sk')).toBe('/images/brands/pizzavnudzi/drinks/sprite.webp');
+    expect(resolveBrandImage('/images/pizzas/premium/diavola.jpg', 'pizzaparty')).toBe('/images/brands/partypizza/pizzas/premium/diavola.jpg');
+  });
+
   it('falls back to the shared image for other brands, unknown paths and remote URLs', () => {
     expect(resolveBrandImage('/images/pizzas/premium/diavola.jpg', 'pornopizza')).toBe('/images/pizzas/premium/diavola.jpg');
-    expect(resolveBrandImage('/images/drinks/kofola.webp', 'pizzavnudzi')).toBe('/images/drinks/kofola.webp');
+    expect(resolveBrandImage('/images/drinks/kofola.webp', 'unknown-brand')).toBe('/images/drinks/kofola.webp');
     expect(resolveBrandImage('/images/placeholder-pizza.webp', 'partypizza')).toBe('/images/placeholder-pizza.webp');
     expect(resolveBrandImage('https://cdn.example/x.jpg', 'partypizza')).toBe('https://cdn.example/x.jpg');
     expect(resolveBrandImage(undefined, 'partypizza')).toBeUndefined();
