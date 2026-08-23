@@ -202,9 +202,12 @@ export function getTenantSlug(): string {
 
   // Always allow explicit query override (?tenant=partypizza) – needed when
   // spravovanie partypizza beží na doméne pornopizza.
-  const tenantParam = normalize(params.get('tenant'));
-  if (tenantParam) {
-    return tenantParam;
+  // NOTE: only when the param is actually present – normalize(null) would
+  // return the default brand and make the hostname checks below unreachable
+  // (pizzaparty.sk / pizzavnudzi.sk would silently act as pornopizza).
+  const rawTenantParam = params.get('tenant');
+  if (rawTenantParam) {
+    return normalize(rawTenantParam);
   }
   
   // Check for known production domains

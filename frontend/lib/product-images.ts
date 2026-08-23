@@ -2,6 +2,7 @@
  * Centralized product image fallback logic
  * Works regardless of product category - finds images by product name
  */
+import { resolveBrandImage } from './brand-image-overrides';
 
 // Image maps for different product types
 const dessertImageMap: Record<string, string> = {
@@ -83,8 +84,14 @@ function toWebpIfLocal(path: string | undefined): string | undefined {
  */
 export function getProductFallbackImage(
   productName: string,
-  translatedName?: string
+  translatedName?: string,
+  tenantSlug?: string | null,
 ): string | undefined {
+  const shared = getSharedFallbackImage(productName, translatedName);
+  return resolveBrandImage(shared, tenantSlug);
+}
+
+function getSharedFallbackImage(productName: string, translatedName?: string): string | undefined {
   const key = productName.toLowerCase().trim();
   const translatedKey = translatedName?.toLowerCase().trim();
   
@@ -140,13 +147,14 @@ export function getProductFallbackImage(
  */
 export function getProductDisplayImage(
   product: { image?: string | null; name: string },
-  translatedName?: string
+  translatedName?: string,
+  tenantSlug?: string | null,
 ): string | undefined {
   // Use product image if available and not empty
   if (product.image && product.image.trim() !== '') {
-    return toWebpIfLocal(product.image);
+    return resolveBrandImage(toWebpIfLocal(product.image), tenantSlug);
   }
   
   // Otherwise use fallback
-  return getProductFallbackImage(product.name, translatedName);
+  return getProductFallbackImage(product.name, translatedName, tenantSlug);
 }

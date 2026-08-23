@@ -15,6 +15,7 @@ import {
 import { useLanguage } from '@/contexts/LanguageContext';
 import { getProductTranslation, getAllergenDescription, getProductDisplayName, getLocalizedDescription } from '@/lib/product-translations';
 import { getProductDisplayImage } from '@/lib/product-images';
+import { getTenantSlug } from '@/lib/tenant-utils';
 import Image from 'next/image';
 
 const BLUR_DATA_URL = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjIyNSIgdmlld0JveD0iMCAwIDQwMCAyMjUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjQwMCIgaGVpZ2h0PSIyMjUiIGZpbGw9IiNlMWUxZTEiLz48L3N2Zz4=';
@@ -81,7 +82,7 @@ export default function CustomizationModal({
   const displayDescription = getLocalizedDescription(product, language, translation);
   // Use centralized image logic
   const displayImage = useMemo(() => {
-    return getProductDisplayImage(product, translation.name);
+    return getProductDisplayImage(product, translation.name, getTenantSlug());
   }, [product, translation.name]);
 
   // Get customization options based on product category

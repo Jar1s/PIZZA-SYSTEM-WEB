@@ -50,8 +50,8 @@ export function CartItem({ item, variant = 'light' }: CartItemProps) {
   
   // Use centralized image logic
   const displayImage = useMemo(() => {
-    return getProductDisplayImage(item.product, translation.name);
-  }, [item.product, translation.name]);
+    return getProductDisplayImage(item.product, translation.name, tenant?.slug);
+  }, [item.product, translation.name, tenant?.slug]);
   
   return (
     <motion.div

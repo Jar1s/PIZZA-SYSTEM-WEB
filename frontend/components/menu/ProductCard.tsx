@@ -65,8 +65,8 @@ export const ProductCard = memo(function ProductCard({ product, index = 0, isBes
   }, [product, language]);
   // Use centralized fallback image logic
   const fallbackImage = useMemo(() => {
-    return getProductFallbackImage(product.name, translation.name);
-  }, [product.name, translation.name]);
+    return getProductFallbackImage(product.name, translation.name, tenant?.slug);
+  }, [product.name, translation.name, tenant?.slug]);
   
   // Use centralized display image logic
   // For soups, always prefer fallback image if available (to override wrong DB images)
@@ -74,8 +74,8 @@ export const ProductCard = memo(function ProductCard({ product, index = 0, isBes
     if (product.category === 'SOUP' || product.category === 'SOUPS') {
       return fallbackImage || (product.image && product.image.trim() !== '' ? product.image : undefined);
     }
-    return getProductDisplayImage(product, translation.name);
-  }, [product, translation.name, fallbackImage]);
+    return getProductDisplayImage(product, translation.name, tenant?.slug);
+  }, [product, translation.name, fallbackImage, tenant?.slug]);
 
   const placeholderImage = '/images/placeholder-pizza.webp';
 
