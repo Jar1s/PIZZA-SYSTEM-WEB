@@ -19,13 +19,20 @@ interface ProductCardProps {
   index?: number;
   isBestSeller?: boolean; // Indicates if this product is from Best Sellers section
   isDark?: boolean;
+  /**
+   * Tenant slug known at render time (server-rendered pages pass tenant.slug).
+   * Falls back to the client TenantContext; passing it explicitly keeps the
+   * server and client markup identical so branded images never "swap in".
+   */
+  tenantSlug?: string;
 }
 
-export const ProductCard = memo(function ProductCard({ product, index = 0, isBestSeller = false, isDark = false }: ProductCardProps) {
+export const ProductCard = memo(function ProductCard({ product, index = 0, isBestSeller = false, isDark = false, tenantSlug }: ProductCardProps) {
   const { addItem } = useCart();
   const { t, language } = useLanguage();
   const toast = useToastContext();
   const { tenant } = useTenant();
+  const brandSlug = tenantSlug ?? tenant?.slug;
   const [isAdding, setIsAdding] = useState(false);
   const [showCustomization, setShowCustomization] = useState(false);
   const [imageError, setImageError] = useState(false);
@@ -65,8 +72,8 @@ export const ProductCard = memo(function ProductCard({ product, index = 0, isBes
   }, [product, language]);
   // Use centralized fallback image logic
   const fallbackImage = useMemo(() => {
-    return getProductFallbackImage(product.name, translation.name, tenant?.slug);
-  }, [product.name, translation.name, tenant?.slug]);
+    return getProductFallbackImage(product.name, translation.name, brandSlug);
+  }, [product.name, translation.name, brandSlug]);
   
   // Use centralized display image logic
   // For soups, always prefer fallback image if available (to override wrong DB images)
@@ -74,8 +81,8 @@ export const ProductCard = memo(function ProductCard({ product, index = 0, isBes
     if (product.category === 'SOUP' || product.category === 'SOUPS') {
       return fallbackImage || (product.image && product.image.trim() !== '' ? product.image : undefined);
     }
-    return getProductDisplayImage(product, translation.name, tenant?.slug);
-  }, [product, translation.name, fallbackImage, tenant?.slug]);
+    return getProductDisplayImage(product, translation.name, brandSlug);
+  }, [product, translation.name, fallbackImage, brandSlug]);
 
   const placeholderImage = '/images/placeholder-pizza.webp';
 
@@ -371,6 +378,7 @@ export const ProductCard = memo(function ProductCard({ product, index = 0, isBes
           onClose={() => setShowCustomization(false)}
           onAddToCart={handleCustomizedAdd}
           hideBackground={isBestSeller}
+          tenantSlug={brandSlug}
         />
       )}
     </motion.div>

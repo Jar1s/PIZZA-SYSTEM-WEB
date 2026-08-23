@@ -5,17 +5,23 @@ import Image from 'next/image';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useMemo } from 'react';
 import { resolveBrandImage } from '@/lib/brand-image-overrides';
-import { getTenantSlug } from '@/lib/tenant-utils';
+import { useTenant } from '@/contexts/TenantContext';
 
 interface HeroSectionProps {
   tenantName: string;
   primaryColor: string;
   isDark?: boolean;
+  /** Server-known tenant slug; keeps SSR and client markup identical. */
+  tenantSlug?: string;
 }
 
-export const HeroSection = ({ tenantName, primaryColor, isDark = false }: HeroSectionProps) => {
-  // Brands can ship their own hero photo (public/images/brands/<slug>/hero/pizza-hero.jpg)
-  const heroImage = resolveBrandImage('/images/hero/pizza-hero.jpg', getTenantSlug()) || '/images/hero/pizza-hero.jpg';
+export const HeroSection = ({ tenantName, primaryColor, isDark = false, tenantSlug }: HeroSectionProps) => {
+  const { tenant } = useTenant();
+  // Brands can ship their own hero photo (public/images/brands/<slug>/hero/pizza-hero.jpg).
+  // Never read window here – it differs between server and client and caused a
+  // hydration mismatch (the shared hero sometimes stayed on branded sites).
+  const heroImage =
+    resolveBrandImage('/images/hero/pizza-hero.jpg', tenantSlug ?? tenant?.slug) || '/images/hero/pizza-hero.jpg';
   const { t } = useLanguage();
   const accentColor = primaryColor || 'var(--color-primary)';
 

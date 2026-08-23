@@ -26,6 +26,8 @@ interface CustomizationModalProps {
   onClose: () => void;
   onAddToCart: (customizations: Record<string, string[]>, totalPrice: number) => void;
   hideBackground?: boolean; // Only hide background for best sellers
+  /** Tenant slug for branded images; falls back to hostname detection. */
+  tenantSlug?: string;
 }
 
 // Helper function to convert hex to rgba
@@ -44,6 +46,7 @@ export default function CustomizationModal({
   onClose,
   onAddToCart,
   hideBackground = false,
+  tenantSlug,
 }: CustomizationModalProps) {
   const { language } = useLanguage();
   const [selections, setSelections] = useState<Record<string, string[]>>({});
@@ -82,8 +85,8 @@ export default function CustomizationModal({
   const displayDescription = getLocalizedDescription(product, language, translation);
   // Use centralized image logic
   const displayImage = useMemo(() => {
-    return getProductDisplayImage(product, translation.name, getTenantSlug());
-  }, [product, translation.name]);
+    return getProductDisplayImage(product, translation.name, tenantSlug ?? getTenantSlug());
+  }, [product, translation.name, tenantSlug]);
 
   // Get customization options based on product category
   const customizations: CustomizationCategory[] = useMemo(() => {
