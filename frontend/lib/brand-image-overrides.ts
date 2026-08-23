@@ -42,6 +42,15 @@ export const BRAND_IMAGE_OVERRIDES: Record<string, readonly string[]> = {
     '/images/stangle/stangle-regular.jpg',
     '/images/soups/tomato-soup.jpg',
     '/images/desserts/tiramissu.png',
+    '/images/drinks/bonaqua-nesytena.png',
+    '/images/drinks/bonaqua-sytena.png',
+    '/images/drinks/coca-cola-1l.png',
+    '/images/drinks/cola-zero-1l.png',
+    '/images/drinks/fanta-1l.png',
+    '/images/drinks/kofola.png',
+    '/images/drinks/pepsi-1l.png',
+    '/images/drinks/pepsi-cola-zero.png',
+    '/images/drinks/sprite.png',
   ],
 };
 
