@@ -145,6 +145,8 @@ export default function CheckoutPage() {
   const [addressFormError, setAddressFormError] = useState<string | null>(null);
   const [phoneFormError, setPhoneFormError] = useState<string | null>(null);
   const addressCoordinateRequestsRef = useRef(new Map<string, Promise<Address>>());
+  // Serializes delivery-fee calculations: only the latest request may apply its result.
+  const feeRequestSeqRef = useRef(0);
   const submitLockRef = useRef(false);
   const initiateCheckoutTrackedRef = useRef(false);
 
@@ -307,8 +309,14 @@ export default function CheckoutPage() {
     [persistAddressCoordinates],
   );
 
-  // Calculate delivery fee when address changes
+  // Calculate delivery fee when address changes.
+  // Debounced + sequence-guarded: the effect fires on every keystroke of the
+  // street/house-number fields, and without the guard slow responses could
+  // arrive out of order – the fee (or an "out of zone" error) then flickered
+  // and could settle on a value for an OLD address.
   useEffect(() => {
+    const requestId = ++feeRequestSeqRef.current;
+    const isStale = () => requestId !== feeRequestSeqRef.current;
     const calculateFee = async () => {
       let address: DeliveryFeeRequest['address'] | null = null;
 
@@ -316,6 +324,7 @@ export default function CheckoutPage() {
         const selectedAddress = addresses.find(addr => addr.id === selectedAddressId);
         if (selectedAddress) {
           const resolvedAddress = await ensureSavedAddressCoordinates(selectedAddress);
+          if (isStale()) return;
           address = {
             street: resolvedAddress.street,
             postalCode: resolvedAddress.postalCode,
@@ -358,7 +367,8 @@ export default function CheckoutPage() {
 
       try {
         const result = await calculateDeliveryFee(tenantSlug, address);
-        
+        if (isStale()) return;
+
         if (result.available) {
           setDeliveryFeeCents(result.deliveryFeeCents || 0);
           setMinOrderCents(result.minOrderCents || null);
@@ -385,6 +395,7 @@ export default function CheckoutPage() {
           setDeliveryFeeCalculated(true);
         }
       } catch (error: any) {
+        if (isStale()) return;
         console.error('Failed to calculate delivery fee:', error);
         // Fee service unreachable – don't block here, the backend decides on submit
         setDeliveryFeeError(null);
@@ -395,11 +406,14 @@ export default function CheckoutPage() {
         setDeliveryFeeCalculated(false);
         // Don't disable deliveryFeeFeatureEnabled - allow retry on next address change
       } finally {
-        setDeliveryFeeLoading(false);
+        if (!isStale()) setDeliveryFeeLoading(false);
       }
     };
 
-    calculateFee();
+    // Debounce typing; a pick from the autocomplete updates several fields at
+    // once and still results in a single request.
+    const timer = setTimeout(calculateFee, 600);
+    return () => clearTimeout(timer);
   }, [user, selectedAddressId, addresses, guestData.postalCode, guestData.city, guestData.street, guestData.houseNumber, guestData.coordinates, tenantSlug, deliveryFeeFeatureEnabled, ensureSavedAddressCoordinates, language]);
 
   useEffect(() => {
