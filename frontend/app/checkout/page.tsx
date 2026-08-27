@@ -1590,7 +1590,9 @@ export default function CheckoutPage() {
 
 
   return (
-    <div className={`min-h-screen ${backgroundClass} ${isDark ? 'text-white py-10' : 'py-8'}`}>
+    // pb-28 on mobile: iOS Safari's floating bottom bar overlays the page end,
+    // clipping the last button ("Späť na menu") – give it room to scroll clear.
+    <div className={`min-h-screen ${backgroundClass} ${isDark ? 'text-white pt-10 pb-28 sm:pb-10' : 'pt-8 pb-28 sm:pb-8'}`}>
       <div className="container mx-auto px-4 max-w-2xl">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
