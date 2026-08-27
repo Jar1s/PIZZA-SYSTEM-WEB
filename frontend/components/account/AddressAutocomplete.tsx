@@ -136,8 +136,10 @@ export default function AddressAutocomplete({ value, onChange, onSelectFromMap }
           aria-expanded={listOpen}
           aria-controls={listId}
           aria-autocomplete="list"
-          className="w-full px-4 py-3 pr-24 border-2 rounded-lg focus:outline-none focus:border-orange-500"
-          style={{ borderColor: value ? 'var(--color-primary)' : '#e5e7eb' }}
+          // Neutral border also when filled – a permanent brand-coloured (red/pink)
+          // outline reads as a validation error. The brand colour only marks focus.
+          className="w-full px-4 py-3 pr-24 border-2 border-[#e5e7eb] rounded-lg focus:outline-none focus:border-[var(--color-primary)]"
+
         />
         <div className="absolute right-3 top-1/2 transform -translate-y-1/2 flex gap-2">
           {value && (
