@@ -149,10 +149,11 @@ export default function AddressAutocomplete({ value, onChange, onSelectFromMap }
                 onChange('');
                 setSuggestions([]);
               }}
-              className="w-5 h-5 rounded-full bg-red-500 flex items-center justify-center"
+              // Plain white ×: the old red badge suggested the address was invalid.
+              className="w-5 h-5 flex items-center justify-center text-white hover:text-gray-300"
               aria-label="Vymazať adresu"
             >
-              <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
