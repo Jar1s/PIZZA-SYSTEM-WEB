@@ -2633,6 +2633,24 @@ export default function CheckoutPage() {
               {checkoutError}
             </div>
           )}
+          {/* Compact total right above the pay button – the full summary sits at
+              the top of the page and is out of view on mobile by this point. */}
+          <div className={`mb-4 rounded-2xl border px-4 py-3 ${isDark ? 'border-white/15 bg-white/5' : 'border-gray-200 bg-gray-50'}`}>
+            <div className="flex justify-between text-sm">
+              <span>{t.subtotal}</span>
+              <span>€{(total / 100).toFixed(2)}</span>
+            </div>
+            {deliveryFeeCalculated && (
+              <div className="flex justify-between text-sm mt-1">
+                <span>{t.deliveryFee}</span>
+                <span>€{(deliveryFeeCents / 100).toFixed(2)}</span>
+              </div>
+            )}
+            <div className={`flex justify-between text-lg font-bold mt-2 pt-2 border-t ${isDark ? 'border-white/15' : 'border-gray-200'}`}>
+              <span>{t.total}:</span>
+              <span>€{((total + deliveryFeeCents) / 100).toFixed(2)}</span>
+            </div>
+          </div>
           {deliveryUnavailable && deliveryFeeError && (
             <p className={`mb-2 text-center text-sm font-medium ${isDark ? 'text-red-300' : 'text-red-600'}`}>{deliveryFeeError}</p>
           )}
