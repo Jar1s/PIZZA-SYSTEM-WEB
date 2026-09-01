@@ -1593,11 +1593,11 @@ export default function CheckoutPage() {
     // pb-28 on mobile: iOS Safari's floating bottom bar overlays the page end,
     // clipping the last button ("Späť na menu") – give it room to scroll clear.
     <div className={`min-h-screen ${backgroundClass} ${isDark ? 'text-white pt-10 pb-28 sm:pb-10' : 'pt-8 pb-28 sm:pb-8'}`}>
-      <div className="container mx-auto px-4 max-w-2xl">
+      <div className="container mx-auto px-2 sm:px-4 max-w-2xl">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className={`${isDark ? 'checkout-card-dark p-8' : 'bg-white rounded-lg shadow-md p-8'}`}
+          className={`${isDark ? 'checkout-card-dark p-5 sm:p-8' : 'bg-white rounded-lg shadow-md p-5 sm:p-8'}`}
         >
           <h1 className="text-3xl font-bold mb-8" style={{ color: 'var(--color-primary)' }}>
             {t.checkoutTitle}
