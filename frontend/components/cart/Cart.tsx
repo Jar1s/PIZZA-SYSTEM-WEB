@@ -191,6 +191,10 @@ export function Cart({ tenant = null, isDark: isDarkOverride }: CartProps) {
         }}
         className="fixed right-0 top-0 h-screen w-full sm:max-w-[28rem] p-4 sm:p-6 flex flex-col z-[10001]"
         style={{
+          // iOS Safari: 100vh is taller than the visible viewport while the
+          // bottom bar is shown, which clipped the drawer footer (Menu button).
+          // dvh tracks the real height; older browsers drop it and keep h-screen.
+          height: '100dvh',
           backgroundColor: secondaryColor,
           color: textColor,
           boxShadow: '-4px 0 20px rgba(0, 0, 0, 0.3)',
@@ -243,7 +247,7 @@ export function Cart({ tenant = null, isDark: isDarkOverride }: CartProps) {
               ))}
             </div>
 
-            <div className="mt-auto space-y-4 pt-4 border-t border-white/10 pb-4 flex-shrink-0">
+            <div className="mt-auto space-y-4 pt-4 border-t border-white/10 pb-6 sm:pb-4 flex-shrink-0">
             <div
               className="rounded-2xl p-4 flex items-center justify-between"
               style={{ backgroundColor: cardBg, border: `1px solid ${cardBorder}` }}
