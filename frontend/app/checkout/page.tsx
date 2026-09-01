@@ -1760,7 +1760,7 @@ export default function CheckoutPage() {
                             setPhoneFormError(null);
                           }
                         }}
-                        className={`px-3 py-2 border rounded-lg min-w-[120px] ${
+                        className={`shrink-0 px-3 py-2 border rounded-lg min-w-[110px] ${
                           isDark 
                             ? 'bg-white/10 border-white/20 text-white' 
                             : 'bg-white border-gray-300'
@@ -1817,7 +1817,7 @@ export default function CheckoutPage() {
                           }
                         }}
                         placeholder={t.phonePlaceholder || '912345678'}
-                        className={`flex-1 px-4 py-2 border rounded-lg ${
+                        className={`flex-1 min-w-0 px-4 py-2 border rounded-lg ${
                           phoneFormError 
                             ? 'border-red-500' 
                             : isDark 
@@ -1951,7 +1951,7 @@ export default function CheckoutPage() {
                           setPhoneError(validation.isValid ? null : validation.message || null);
                         }
                       }}
-                      className={`px-3 py-2 border rounded-lg min-w-[120px] ${
+                      className={`shrink-0 px-3 py-2 border rounded-lg min-w-[110px] ${
                         isDark 
                           ? 'bg-white/10 border-white/20 text-white' 
                           : 'bg-white border-gray-300'
@@ -2011,7 +2011,7 @@ export default function CheckoutPage() {
                       }}
                       placeholder={t.phonePlaceholder || '912345678'}
                       required
-                      className={`flex-1 px-4 py-2 border rounded-lg ${
+                      className={`flex-1 min-w-0 px-4 py-2 border rounded-lg ${
                         phoneError 
                           ? 'border-red-500' 
                           : isDark 
