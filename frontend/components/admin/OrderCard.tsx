@@ -12,7 +12,7 @@ import {
   refundOrder,
   WoltAreaCheckResult,
 } from '@/lib/api';
-import { formatWoltStatus } from '@/lib/wolt-status';
+import { formatWoltStatus, getWoltStatusMeta } from '@/lib/wolt-status';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { calculateOrderItemPrice } from '@/lib/calculate-order-item-price';
 import { getTranslations } from '@/lib/translations';
@@ -1413,11 +1413,14 @@ export function OrderCard({
                         </span>
                       )}
                       {renderWoltZoneBadge()}
-                      {isWoltDelivery && (
-                        <span className="rounded-full border border-orange-200 bg-orange-50 px-2.5 py-1 text-[10px] font-semibold text-orange-800">
-                          {formatWoltStatus(woltDelivery?.status, language === 'sk' ? 'sk' : 'en')}
-                        </span>
-                      )}
+                      {isWoltDelivery && (() => {
+                        const woltMeta = getWoltStatusMeta(woltDelivery?.status, language === 'sk' ? 'sk' : 'en');
+                        return (
+                          <span className={`rounded-full border px-2.5 py-1 text-[10px] font-semibold ${woltMeta.badgeClass}`}>
+                            {woltMeta.icon} {woltMeta.label}
+                          </span>
+                        );
+                      })()}
                       {woltPickupEtaRounded != null && (
                         <span className="rounded-full border border-zinc-200 bg-white px-2.5 py-1 text-[10px] font-semibold text-zinc-700">
                           {language === 'sk' ? 'Wolt ETA ~' : 'Wolt ETA ~'}
