@@ -10,14 +10,19 @@ const PIXEL_ID = '2179689519431618';
  */
 async function setUpPage(page: Page, consent: boolean): Promise<void> {
   await page.route('**/api/tenants/**', async (route) => {
-    const response = await route.fetch();
-    const body = await response.json().catch(() => null);
-    if (body && typeof body === 'object' && body.theme) {
-      body.theme.analyticsConfig = { facebookPixel: { enabled: true, pixelId: PIXEL_ID } };
-      await route.fulfill({ response, json: body });
-      return;
+    // Fulfill with copied data, not the live response object – reusing it
+    // across navigation raced with its disposal and flaked in CI.
+    try {
+      const response = await route.fetch();
+      const status = response.status();
+      const body = await response.json().catch(() => null);
+      if (body && typeof body === 'object' && body.theme) {
+        body.theme.analyticsConfig = { facebookPixel: { enabled: true, pixelId: PIXEL_ID } };
+      }
+      await route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) });
+    } catch {
+      await route.continue().catch(() => {});
     }
-    await route.fulfill({ response });
   });
   await page.route('**://connect.facebook.net/**', (route) =>
     route.fulfill({ status: 200, contentType: 'application/javascript', body: '/* stub */' }),

@@ -15,17 +15,22 @@ const ORDER_ID = 'e2e-order-purchase-1';
  */
 async function setUpPage(page: Page): Promise<void> {
   await page.route('**/api/tenants/**', async (route) => {
-    const response = await route.fetch();
-    const body = await response.json().catch(() => null);
-    if (body && typeof body === 'object' && body.theme) {
-      body.theme.analyticsConfig = {
-        facebookPixel: { enabled: true, pixelId: PIXEL_ID },
-        googleAnalytics: { enabled: true, measurementId: GA_ID },
-      };
-      await route.fulfill({ response, json: body });
-      return;
+    // Fulfill with copied data, not the live response object – reusing it
+    // across navigation raced with its disposal and flaked in CI.
+    try {
+      const response = await route.fetch();
+      const status = response.status();
+      const body = await response.json().catch(() => null);
+      if (body && typeof body === 'object' && body.theme) {
+        body.theme.analyticsConfig = {
+          facebookPixel: { enabled: true, pixelId: PIXEL_ID },
+          googleAnalytics: { enabled: true, measurementId: GA_ID },
+        };
+      }
+      await route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) });
+    } catch {
+      await route.continue().catch(() => {});
     }
-    await route.fulfill({ response });
   });
 
   // Replace the real tag loaders with recorders. AnalyticsScripts injects
