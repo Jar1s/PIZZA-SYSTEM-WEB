@@ -147,6 +147,19 @@ export function HomePageClient({ products, tenant }: HomePageClientProps) {
     return (value?.trim() || defaultSubCategoryText[key].title);
   }, [subCategoryLabels, language, defaultSubCategoryText]);
 
+  // Section emoji: PornoPizza's 🔥😈💋🍑 are only the *default*; a brand can
+  // override (or hide with '') via theme.subCategoryLabels[key].emoji.
+  const defaultSubCategoryEmoji: Record<SubLabelKey, string> = {
+    foreplay: '🔥', mainAction: '😈', deluxeFetish: '💋', premiumSins: '🍑',
+    stangle: '🥖', soups: '🥴', drinks: '', desserts: '',
+  };
+  const getSubCategoryEmoji = useCallback((key: SubLabelKey) => {
+    const custom = (subCategoryLabels?.[key] as any)?.emoji;
+    const emoji = typeof custom === 'string' ? custom : defaultSubCategoryEmoji[key];
+    return emoji ? `${emoji} ` : '';
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [subCategoryLabels]);
+
   const getSubCategoryDesc = useCallback((key: SubLabelKey) => {
     const label = subCategoryLabels?.[key];
     const showDescription = label?.showDescription !== false;
@@ -538,7 +551,7 @@ export function HomePageClient({ products, tenant }: HomePageClientProps) {
                         letterSpacing: '-0.02em'
                       }}
                     >
-                      🔥 {getSubCategoryTitle('foreplay')}
+                      {getSubCategoryEmoji('foreplay')}{getSubCategoryTitle('foreplay')}
                     </h3>
                     {(() => {
                       const desc = getSubCategoryDesc('foreplay');
@@ -575,7 +588,7 @@ export function HomePageClient({ products, tenant }: HomePageClientProps) {
                         letterSpacing: '-0.02em'
                       }}
                     >
-                      😈 {getSubCategoryTitle('mainAction')}
+                      {getSubCategoryEmoji('mainAction')}{getSubCategoryTitle('mainAction')}
                     </h3>
                     {(() => {
                       const desc = getSubCategoryDesc('mainAction');
@@ -612,7 +625,7 @@ export function HomePageClient({ products, tenant }: HomePageClientProps) {
                         letterSpacing: '-0.02em'
                       }}
                     >
-                      💋 {getSubCategoryTitle('deluxeFetish')}
+                      {getSubCategoryEmoji('deluxeFetish')}{getSubCategoryTitle('deluxeFetish')}
                     </h3>
                     {(() => {
                       const desc = getSubCategoryDesc('deluxeFetish');
@@ -649,7 +662,7 @@ export function HomePageClient({ products, tenant }: HomePageClientProps) {
                         letterSpacing: '-0.02em'
                       }}
                     >
-                      🍑 {getSubCategoryTitle('premiumSins')}
+                      {getSubCategoryEmoji('premiumSins')}{getSubCategoryTitle('premiumSins')}
                     </h3>
                     {(() => {
                       const desc = getSubCategoryDesc('premiumSins');
@@ -722,7 +735,7 @@ export function HomePageClient({ products, tenant }: HomePageClientProps) {
                       letterSpacing: '-0.02em'
                     }}
                   >
-                    🥖 {getSubCategoryTitle('stangle')}
+                    {getSubCategoryEmoji('stangle')}{getSubCategoryTitle('stangle')}
                   </h3>
                   {(() => {
                     const desc = getSubCategoryDesc('stangle');
@@ -754,7 +767,7 @@ export function HomePageClient({ products, tenant }: HomePageClientProps) {
                       letterSpacing: '-0.02em'
                     }}
                   >
-                    🥴 {getSubCategoryTitle('soups')}
+                    {getSubCategoryEmoji('soups')}{getSubCategoryTitle('soups')}
                   </h3>
                   {(() => {
                     const desc = getSubCategoryDesc('soups');
