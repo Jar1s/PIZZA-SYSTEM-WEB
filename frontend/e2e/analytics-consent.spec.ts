@@ -13,16 +13,23 @@ async function setUpPage(page: Page): Promise<void> {
   // Inject an analytics config into the tenant theme so the theme-driven
   // loader has something to render.
   await page.route('**/api/tenants/**', async (route) => {
-    const response = await route.fetch();
-    const body = await response.json().catch(() => null);
-    if (body && typeof body === 'object' && body.theme) {
-      body.theme.analyticsConfig = {
-        googleAnalytics: { enabled: true, measurementId: GA_ID },
-      };
-      await route.fulfill({ response, json: body });
-      return;
+    // Copy status + body out of the fetched response and fulfill with plain
+    // data: reusing the live `response` object across a reload raced with its
+    // disposal ("Fetch response has been disposed" – flaked in CI repeatedly).
+    try {
+      const response = await route.fetch();
+      const status = response.status();
+      const body = await response.json().catch(() => null);
+      if (body && typeof body === 'object' && body.theme) {
+        body.theme.analyticsConfig = {
+          googleAnalytics: { enabled: true, measurementId: GA_ID },
+        };
+      }
+      await route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) });
+    } catch {
+      // Page navigated/closed mid-flight – don't fail the test on the stub.
+      await route.continue().catch(() => {});
     }
-    await route.fulfill({ response });
   });
 
   // Keep CI hermetic — the tag script must never actually download.
@@ -72,14 +79,17 @@ test.describe('analytics consent gating', () => {
 test.describe('consent survives account changes', () => {
   test('logging in as admin after consenting keeps the pixel loaded', async ({ page }) => {
     await page.route('**/api/tenants/**', async (route) => {
-      const response = await route.fetch();
-      const body = await response.json().catch(() => null);
-      if (body && typeof body === 'object' && body.theme) {
-        body.theme.analyticsConfig = { facebookPixel: { enabled: true, pixelId: '2179689519431618' } };
-        await route.fulfill({ response, json: body });
-        return;
+      try {
+        const response = await route.fetch();
+        const status = response.status();
+        const body = await response.json().catch(() => null);
+        if (body && typeof body === 'object' && body.theme) {
+          body.theme.analyticsConfig = { facebookPixel: { enabled: true, pixelId: '2179689519431618' } };
+        }
+        await route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) });
+      } catch {
+        await route.continue().catch(() => {});
       }
-      await route.fulfill({ response });
     });
     await page.route('**://connect.facebook.net/**', (route) =>
       route.fulfill({ status: 200, contentType: 'application/javascript', body: '/* stub */' }),
@@ -107,14 +117,18 @@ test.describe('consent survives account changes', () => {
       route.fulfill({ status: 200, contentType: 'application/javascript', body: '/* stub */' }),
     );
     await page.route('**/api/tenants/**', async (route) => {
-      const response = await route.fetch();
-      const body = await response.json().catch(() => null);
-      if (body && typeof body === 'object' && body.theme) {
-        body.theme.analyticsConfig = { facebookPixel: { enabled: true, pixelId: '2179689519431618' } };
-        await route.fulfill({ response, json: body });
-        return;
+      try {
+        const response = await route.fetch();
+        const status = response.status();
+        const body = await response.json().catch(() => null);
+        if (body && typeof body === 'object' && body.theme) {
+          body.theme.analyticsConfig = { facebookPixel: { enabled: true, pixelId: '2179689519431618' } };
+        }
+        await route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) });
+      } catch {
+        // Page navigated/closed mid-flight – don't fail the test on the stub.
+        await route.continue().catch(() => {});
       }
-      await route.fulfill({ response });
     });
     // Old scheme: consent stored only under the user-scoped key.
     await page.addInitScript(() => {
