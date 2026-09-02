@@ -287,12 +287,18 @@ export default function CustomizationModal({
 
                 <div className="flex gap-3 sm:gap-4 items-start pr-12 sm:pr-14">
                   {displayImage && (
-                    <div className="relative w-16 h-16 sm:w-20 sm:h-20 rounded-lg overflow-hidden flex-shrink-0 shadow-md">
+                    <div className="relative w-16 h-16 sm:w-20 sm:h-20 rounded-lg overflow-hidden flex-shrink-0 shadow-md bg-gray-100">
+                      {/* Same `sizes`/quality as ProductCard so the browser reuses the
+                          already-downloaded variant instead of fetching a new 80px one
+                          (that showed as a white box until the cold request landed). */}
                       <Image
                         src={displayImage}
                         alt={product.name}
                         fill
-                        sizes="80px"
+                        sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                        quality={60}
+                        placeholder="blur"
+                        blurDataURL={BLUR_DATA_URL}
                         className="object-cover"
                       />
                     </div>
