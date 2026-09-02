@@ -212,6 +212,11 @@ export function getTenantSlug(): string {
   
   // Check for known production domains
   if (hostname.includes('partypizza') || hostname.includes('pizzaparty')) return 'partypizza';
+  if (hostname.includes('pizzalover')) return 'pizzalover';
+  if (hostname.includes('pizzaprefirmy')) return 'pizzaprefirmy';
+  if (hostname.includes('threesomepizza')) return 'threesomepizza';
+  if (hostname.includes('skinnyb1tchpizza')) return 'skinnyb1tchpizza';
+  if (hostname.includes('ozemp1cpizza')) return 'ozemp1cpizza';
   if (hostname.includes('pornopizza.sk') || hostname.includes('p0rnopizza.sk')) return 'pornopizza';
   if (hostname.includes('pizzavnudzi.sk')) return 'pizzavnudzi';
   if (hostname.includes('pornopizza') || hostname.includes('p0rnopizza')) return 'pornopizza';
