@@ -78,7 +78,7 @@ const overrideSets: Record<string, Set<string>> = Object.fromEntries(
   Object.entries(BRAND_IMAGE_OVERRIDES).map(([slug, paths]) => [slug, new Set(paths)]),
 );
 
-function normalizeSlug(slug: string | null | undefined): string {
+export function normalizeBrandSlug(slug: string | null | undefined): string {
   const lower = String(slug || '').trim().toLowerCase();
   return SLUG_ALIASES[lower] ?? lower;
 }
@@ -92,7 +92,7 @@ export function resolveBrandImage(
   tenantSlug: string | null | undefined,
 ): string | undefined {
   if (!path) return path ?? undefined;
-  const slug = normalizeSlug(tenantSlug);
+  const slug = normalizeBrandSlug(tenantSlug);
   const set = slug ? overrideSets[slug] : undefined;
   if (!set || !path.startsWith('/images/')) return path;
 

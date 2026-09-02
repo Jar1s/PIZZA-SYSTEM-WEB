@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useMemo } from 'react';
 import { resolveBrandImage } from '@/lib/brand-image-overrides';
+import { resolveBrandHeroFlavor } from '@/lib/brand-hero';
 import { useTenant } from '@/contexts/TenantContext';
 
 interface HeroSectionProps {
@@ -24,14 +25,17 @@ export const HeroSection = ({ tenantName, primaryColor, isDark = false, tenantSl
     resolveBrandImage('/images/hero/pizza-hero.jpg', tenantSlug ?? tenant?.slug) || '/images/hero/pizza-hero.jpg';
   const { t } = useLanguage();
   const accentColor = primaryColor || 'var(--color-primary)';
+  // Slug comes from the same SSR-safe source as heroImage – flavor must not
+  // differ between server and client either.
+  const flavor = resolveBrandHeroFlavor(tenantSlug ?? tenant?.slug);
 
   const stats = useMemo(() => (
     [
-      { icon: '🕐', label: t.deliveryLabel, value: t.deliveryTime },
-      { icon: '🍕', label: t.pizzasLabel, value: t.pizzasCount },
-      { icon: '⭐', label: t.ratingLabel, value: t.rating },
+      { icon: flavor.statIcons[0], label: t.deliveryLabel, value: t.deliveryTime },
+      { icon: flavor.statIcons[1], label: t.pizzasLabel, value: t.pizzasCount },
+      { icon: flavor.statIcons[2], label: t.ratingLabel, value: t.rating },
     ]
-  ), [t]);
+  ), [t, flavor]);
 
   const highlight = useMemo(() => ({
     name: t.heroFloatingHighlightName,
@@ -95,7 +99,7 @@ export const HeroSection = ({ tenantName, primaryColor, isDark = false, tenantSl
             className="inline-flex items-center gap-1.5 sm:gap-2 rounded-full px-3 sm:px-4 py-1.5 sm:py-2 text-[11px] sm:text-xs font-semibold mb-4 sm:mb-6"
             style={{ backgroundColor: accentColor, color: '#fff' }}
           >
-            <span className="text-sm sm:text-base">🌶️</span>
+            <span className="text-sm sm:text-base">{flavor.badgeEmoji}</span>
             <span className="whitespace-nowrap">{t.heroBadge}</span>
           </motion.span>
 
@@ -150,7 +154,7 @@ export const HeroSection = ({ tenantName, primaryColor, isDark = false, tenantSl
                 border: 'none'
               }}
             >
-              {t.orderNow} 🍕
+              {t.orderNow} {flavor.ctaEmoji}
             </button>
           </motion.div>
 
