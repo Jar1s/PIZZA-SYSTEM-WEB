@@ -10,7 +10,9 @@ services:
     runtime: node
     region: frankfurt
     plan: starter
-    buildCommand: cd backend && npm ci && npm run build && npm run prisma:deploy
+    # Mirror shared/ into backend/shared before installing, exactly like Backend CI
+    # does — the file:./shared dependency and the build expect the mirror to exist.
+    buildCommand: rm -rf backend/shared && cp -R shared backend/shared && cd backend && npm ci && npm run build && npm run prisma:deploy
     startCommand: cd backend && npm run start:prod
     healthCheckPath: /api/health
     # Persistent volume for product-image uploads. Without it the filesystem is
