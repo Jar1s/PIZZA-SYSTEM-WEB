@@ -1619,7 +1619,7 @@ export default function CheckoutPage() {
                 isDark ? 'bg-white/10 border border-white/20 text-white hover:bg-white/20' : 'bg-gray-200 text-gray-900 hover:bg-gray-300'
               }`;
               return (
-                <div key={item.id} className="mb-4 pb-4 border-b last:border-b-0">
+                <div key={item.id} className="mb-4 pb-4 border-b last:mb-0 last:pb-0 last:border-b-0">
                   <div className="flex justify-between items-start mb-1">
                     <div className="flex-1">
                       <div className="font-semibold">{getProductDisplayName(item.product, language)} x {item.quantity}</div>
