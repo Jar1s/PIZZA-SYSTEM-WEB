@@ -102,9 +102,9 @@ async function fillGuestCheckoutForm(page: Page, email: string) {
   await page.locator('label:has-text("Mesto") + input').fill('Bratislava');
   await page.locator('label:has-text("PSČ") + input').fill('81101');
 
-  // The mocked delivery-zone fee response renders its zone name in the order
-  // summary; waiting for it proves the calculate-fee call settled.
-  await expect(page.getByText('Bratislava Test Zone')).toBeVisible({ timeout: 15_000 });
+  // The compact summary above the pay button renders its Doprava row once the
+  // mocked calculate-fee call settled (the zone name is no longer shown).
+  await expect(page.getByText('Doprava:')).toBeVisible({ timeout: 15_000 });
 }
 
 async function readCartItems(page: Page): Promise<unknown[]> {
