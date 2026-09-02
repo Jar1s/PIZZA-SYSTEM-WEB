@@ -12,6 +12,7 @@ import {
   refundOrder,
   WoltAreaCheckResult,
 } from '@/lib/api';
+import { formatWoltStatus } from '@/lib/wolt-status';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { calculateOrderItemPrice } from '@/lib/calculate-order-item-price';
 import { getTranslations } from '@/lib/translations';
@@ -1414,7 +1415,7 @@ export function OrderCard({
                       {renderWoltZoneBadge()}
                       {isWoltDelivery && (
                         <span className="rounded-full border border-orange-200 bg-orange-50 px-2.5 py-1 text-[10px] font-semibold text-orange-800">
-                          {woltDelivery?.status || 'Wolt'}
+                          {formatWoltStatus(woltDelivery?.status, language === 'sk' ? 'sk' : 'en')}
                         </span>
                       )}
                       {woltPickupEtaRounded != null && (
@@ -1771,7 +1772,7 @@ export function OrderCard({
                 <div className="flex flex-col gap-3">
                   <div className="min-w-0">
                     <div className="text-sm font-semibold text-orange-900">
-                      🚚 Wolt Delivery: {woltDelivery.status}
+                      🚚 Wolt Delivery: {formatWoltStatus(woltDelivery.status, language === 'sk' ? 'sk' : 'en')}
                       {woltDelivery.jobId && (
                         <span className="ml-2 font-medium text-gray-600">(Job: {woltDelivery.jobId})</span>
                       )}
