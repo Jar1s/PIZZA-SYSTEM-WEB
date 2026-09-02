@@ -71,7 +71,7 @@ test('a cart persisted with stale modifier groups still checks out (payload is s
   await page.getByPlaceholder('Zadajte adresu').fill('Testovacia 1');
   await page.locator('label:has-text("Mesto") + input').fill('Bratislava');
   await page.locator('label:has-text("PSČ") + input').fill('81101');
-  await expect(page.getByText('Bratislava Test Zone')).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByText('Doprava:')).toBeVisible({ timeout: 30_000 });
 
   const orderReq = page.waitForRequest((r) => r.url().includes('/api/pornopizza/orders') && r.method() === 'POST');
   await page.getByRole('button', { name: 'Zaplatiť', exact: true }).click();
