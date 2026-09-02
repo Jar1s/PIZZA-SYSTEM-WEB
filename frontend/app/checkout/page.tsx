@@ -1670,12 +1670,6 @@ export default function CheckoutPage() {
                 </div>
               );
             })}
-            {deliveryFeeCalculated && (
-              <div className="flex justify-between text-sm mt-2">
-                <span>{t.deliveryFee}</span>
-                <span>€{(deliveryFeeCents / 100).toFixed(2)} {zoneName && `(${zoneName})`}</span>
-              </div>
-            )}
             {minOrderCents !== null && (
               <div className={`text-xs mt-1 ${total < minOrderCents ? 'text-red-600 font-semibold' : 'text-gray-500'}`}>
                 {total < minOrderCents 
@@ -1694,10 +1688,8 @@ export default function CheckoutPage() {
                 {deliveryFeeError}
               </div>
             )}
-            <div className="flex justify-between text-xl font-bold mt-4 pt-4 border-t">
-              <span>{t.total}:</span>
-              <span>€{((total + deliveryFeeCents) / 100).toFixed(2)}</span>
-            </div>
+            {/* Doprava + Celkom sú v kompaktnom súhrne nad tlačidlom Zaplatiť –
+                tu by boli duplicitné a robili zo súhrnu hustú stenu čiar. */}
           </div>
           
           {/* Optional Login */}

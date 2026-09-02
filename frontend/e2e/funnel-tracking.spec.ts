@@ -96,7 +96,7 @@ async function walkFunnel(page: Page) {
   await page.getByPlaceholder('Zadajte adresu').fill('Testovacia 1');
   await page.locator('label:has-text("Mesto") + input').fill('Bratislava');
   await page.locator('label:has-text("PSČ") + input').fill('81101');
-  await expect(page.getByText('Bratislava Test Zone')).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByText('Doprava:')).toBeVisible({ timeout: 30_000 });
   // Read the recorder BEFORE the cross-origin redirect to the mock gateway
   // (127.0.0.1:3100 has its own sessionStorage).
   const snapshotBeforePay = () =>
