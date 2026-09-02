@@ -56,6 +56,11 @@ const FULL_BRAND_SET: readonly string[] = [
 export const BRAND_IMAGE_OVERRIDES: Record<string, readonly string[]> = {
   partypizza: FULL_BRAND_SET,
   pizzavnudzi: FULL_BRAND_SET,
+  pizzalover: FULL_BRAND_SET,
+  pizzaprefirmy: FULL_BRAND_SET,
+  threesomepizza: FULL_BRAND_SET,
+  skinnyb1tchpizza: FULL_BRAND_SET,
+  ozemp1cpizza: FULL_BRAND_SET,
 };
 
 /**
