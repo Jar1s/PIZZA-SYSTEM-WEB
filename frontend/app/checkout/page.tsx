@@ -1704,14 +1704,14 @@ export default function CheckoutPage() {
           {!user && (
             <div className="mb-8 pb-8 border-b">
               <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg">
-                <div className="flex items-center justify-between">
-                  <div>
+                <div className="flex items-center justify-between gap-3">
+                  <div className="min-w-0">
                     <p className="text-gray-900 font-semibold mb-1">{t.alreadyHaveAccount}</p>
                     <p className="text-sm text-gray-600">{t.loginForFasterCheckout}</p>
                   </div>
                   <button
                     onClick={() => router.push(`/auth/login?tenant=${tenantSlug}&returnUrl=${encodeURIComponent(`/checkout?tenant=${tenantSlug}`)}`)}
-                    className="px-4 py-2 rounded-lg font-semibold text-sm hover:opacity-90 transition-opacity"
+                    className="shrink-0 whitespace-nowrap px-4 py-2 rounded-lg font-semibold text-sm hover:opacity-90 transition-opacity"
                     style={{ 
                       backgroundColor: 'var(--color-primary)',
                       color: 'white'
