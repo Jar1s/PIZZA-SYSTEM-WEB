@@ -1,6 +1,7 @@
 type TenantLike = {
   name?: string | null;
   description?: string | null;
+  theme?: unknown;
 } | null | undefined;
 
 function cleanText(value?: string | null): string {
@@ -11,6 +12,15 @@ function cleanText(value?: string | null): string {
 }
 
 export function buildSeoTitle(tenant: TenantLike): string {
+  // Per-brand override: admins can set theme.seoTitle to fully control the
+  // browser tab / Google result title; brands without it keep the template.
+  const theme = tenant?.theme;
+  if (theme && typeof theme === 'object' && !Array.isArray(theme)) {
+    const custom = cleanText((theme as { seoTitle?: string | null }).seoTitle);
+    if (custom) {
+      return custom;
+    }
+  }
   const siteName = cleanText(tenant?.name) || 'Pizza Ordering';
   return `${siteName} | Rozvoz pizze`;
 }
