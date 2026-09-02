@@ -17,6 +17,16 @@ describe('getTenantSlug', () => {
     expect(getTenantSlug()).toBe('pizzavnudzi');
     mockWindow('www.p0rnopizza.sk');
     expect(getTenantSlug()).toBe('pornopizza');
+    mockWindow('www.pizzalover.sk');
+    expect(getTenantSlug()).toBe('pizzalover');
+    mockWindow('pizzaprefirmy.sk');
+    expect(getTenantSlug()).toBe('pizzaprefirmy');
+    mockWindow('www.threesomepizza.sk');
+    expect(getTenantSlug()).toBe('threesomepizza');
+    mockWindow('skinnyb1tchpizza.sk');
+    expect(getTenantSlug()).toBe('skinnyb1tchpizza');
+    mockWindow('www.ozemp1cpizza.sk');
+    expect(getTenantSlug()).toBe('ozemp1cpizza');
   });
 
   it('lets an explicit ?tenant override the domain and normalizes aliases', () => {
