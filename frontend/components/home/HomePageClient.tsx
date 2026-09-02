@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+import { useState, useMemo, useCallback, useEffect, useRef, type CSSProperties } from 'react';
 import { Product, Tenant } from '@pizza-ecosystem/shared';
 import { ProductCard } from '@/components/menu/ProductCard';
 import { HeroSection } from '@/components/home/HeroSection';
@@ -14,6 +14,12 @@ import { motion } from 'framer-motion';
 import { isDarkTheme as resolveDarkTheme, getBackgroundClass, getSectionShellClass, getBodyBackgroundClass } from '@/lib/tenant-utils';
 import { isCurrentlyOpen } from '@/lib/opening-hours';
 import Image from 'next/image';
+
+function hexToRgba(hex: string, opacity: number): string {
+  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  if (!result) return hex;
+  return `rgba(${parseInt(result[1], 16)}, ${parseInt(result[2], 16)}, ${parseInt(result[3], 16)}, ${opacity})`;
+}
 
 // Import Cart directly instead of lazy loading to avoid chunk loading issues
 import { Cart } from '@/components/cart/Cart';
@@ -292,6 +298,16 @@ export function HomePageClient({ products, tenant }: HomePageClientProps) {
   const primaryColor = tenant.theme?.primaryColor || '#E91E63';
   const secondaryColor = tenant.theme?.secondaryColor || '#f8fafc';
 
+  // Section headings glow in the brand colour – the halo used to be hard-coded
+  // PornoPizza pink, which read as a red error highlight on the other dark brands.
+  const sectionHeadingStyle: CSSProperties = {
+    color: primaryColor,
+    textShadow: isDarkTheme
+      ? `0 0 20px ${hexToRgba(primaryColor, 0.55)}, 0 2px 8px rgba(0, 0, 0, 0.9)`
+      : '0 2px 4px rgba(0, 0, 0, 0.1)',
+    letterSpacing: '-0.02em',
+  };
+
   const isHexDark = (hex?: string) => {
     if (!hex) return false;
     const value = hex.replace('#', '');
@@ -543,13 +559,7 @@ export function HomePageClient({ products, tenant }: HomePageClientProps) {
                   >
                     <h3 
                       className={`text-4xl md:text-5xl font-black mb-2 ${isDarkTheme ? 'text-porno-glow' : ''}`}
-                      style={{ 
-                        color: isDarkTheme ? '#FF6B9D' : primaryColor,
-                        textShadow: isDarkTheme 
-                          ? '0 0 20px rgba(255, 107, 157, 0.7), 0 0 40px rgba(255, 107, 157, 0.4), 0 2px 8px rgba(0, 0, 0, 0.9)'
-                          : '0 2px 4px rgba(0, 0, 0, 0.1)',
-                        letterSpacing: '-0.02em'
-                      }}
+                      style={sectionHeadingStyle}
                     >
                       {getSubCategoryEmoji('foreplay')}{getSubCategoryTitle('foreplay')}
                     </h3>
@@ -580,13 +590,7 @@ export function HomePageClient({ products, tenant }: HomePageClientProps) {
                   >
                     <h3 
                       className={`text-4xl md:text-5xl font-black mb-2 ${isDarkTheme ? 'text-porno-glow' : ''}`}
-                      style={{ 
-                        color: isDarkTheme ? '#FF6B9D' : primaryColor,
-                        textShadow: isDarkTheme 
-                          ? '0 0 20px rgba(255, 107, 157, 0.7), 0 0 40px rgba(255, 107, 157, 0.4), 0 2px 8px rgba(0, 0, 0, 0.9)'
-                          : '0 2px 4px rgba(0, 0, 0, 0.1)',
-                        letterSpacing: '-0.02em'
-                      }}
+                      style={sectionHeadingStyle}
                     >
                       {getSubCategoryEmoji('mainAction')}{getSubCategoryTitle('mainAction')}
                     </h3>
@@ -617,13 +621,7 @@ export function HomePageClient({ products, tenant }: HomePageClientProps) {
                   >
                     <h3 
                       className={`text-4xl md:text-5xl font-black mb-2 ${isDarkTheme ? 'text-porno-glow' : ''}`}
-                      style={{ 
-                        color: isDarkTheme ? '#FF6B9D' : primaryColor,
-                        textShadow: isDarkTheme 
-                          ? '0 0 20px rgba(255, 107, 157, 0.7), 0 0 40px rgba(255, 107, 157, 0.4), 0 2px 8px rgba(0, 0, 0, 0.9)'
-                          : '0 2px 4px rgba(0, 0, 0, 0.1)',
-                        letterSpacing: '-0.02em'
-                      }}
+                      style={sectionHeadingStyle}
                     >
                       {getSubCategoryEmoji('deluxeFetish')}{getSubCategoryTitle('deluxeFetish')}
                     </h3>
@@ -654,13 +652,7 @@ export function HomePageClient({ products, tenant }: HomePageClientProps) {
                   >
                     <h3 
                       className={`text-4xl md:text-5xl font-black mb-2 ${isDarkTheme ? 'text-porno-glow' : ''}`}
-                      style={{ 
-                        color: isDarkTheme ? '#FF6B9D' : primaryColor,
-                        textShadow: isDarkTheme 
-                          ? '0 0 20px rgba(255, 107, 157, 0.7), 0 0 40px rgba(255, 107, 157, 0.4), 0 2px 8px rgba(0, 0, 0, 0.9)'
-                          : '0 2px 4px rgba(0, 0, 0, 0.1)',
-                        letterSpacing: '-0.02em'
-                      }}
+                      style={sectionHeadingStyle}
                     >
                       {getSubCategoryEmoji('premiumSins')}{getSubCategoryTitle('premiumSins')}
                     </h3>
@@ -692,13 +684,7 @@ export function HomePageClient({ products, tenant }: HomePageClientProps) {
                 >
                   <h3 
                     className={`text-3xl md:text-4xl font-black mb-2 ${isDarkTheme ? 'text-porno-glow' : ''}`}
-                    style={{ 
-                      color: isDarkTheme ? '#FF6B9D' : primaryColor,
-                      textShadow: isDarkTheme 
-                        ? '0 0 20px rgba(255, 107, 157, 0.7), 0 0 40px rgba(255, 107, 157, 0.4), 0 2px 8px rgba(0, 0, 0, 0.9)'
-                        : '0 2px 4px rgba(0, 0, 0, 0.1)',
-                      letterSpacing: '-0.02em'
-                    }}
+                    style={sectionHeadingStyle}
                   >
                     {getSubCategoryTitle('drinks')}
                   </h3>
@@ -727,13 +713,7 @@ export function HomePageClient({ products, tenant }: HomePageClientProps) {
                 >
                   <h3 
                     className={`text-3xl md:text-4xl font-black mb-2 ${isDarkTheme ? 'text-porno-glow' : ''}`}
-                    style={{ 
-                      color: isDarkTheme ? '#FF6B9D' : primaryColor,
-                      textShadow: isDarkTheme 
-                        ? '0 0 20px rgba(255, 107, 157, 0.7), 0 0 40px rgba(255, 107, 157, 0.4), 0 2px 8px rgba(0, 0, 0, 0.9)'
-                        : '0 2px 4px rgba(0, 0, 0, 0.1)',
-                      letterSpacing: '-0.02em'
-                    }}
+                    style={sectionHeadingStyle}
                   >
                     {getSubCategoryEmoji('stangle')}{getSubCategoryTitle('stangle')}
                   </h3>
@@ -759,13 +739,7 @@ export function HomePageClient({ products, tenant }: HomePageClientProps) {
                 >
                   <h3 
                     className={`text-3xl md:text-4xl font-black mb-2 ${isDarkTheme ? 'text-porno-glow' : ''}`}
-                    style={{ 
-                      color: isDarkTheme ? '#FF6B9D' : primaryColor,
-                      textShadow: isDarkTheme 
-                        ? '0 0 20px rgba(255, 107, 157, 0.7), 0 0 40px rgba(255, 107, 157, 0.4), 0 2px 8px rgba(0, 0, 0, 0.9)'
-                        : '0 2px 4px rgba(0, 0, 0, 0.1)',
-                      letterSpacing: '-0.02em'
-                    }}
+                    style={sectionHeadingStyle}
                   >
                     {getSubCategoryEmoji('soups')}{getSubCategoryTitle('soups')}
                   </h3>
@@ -791,13 +765,7 @@ export function HomePageClient({ products, tenant }: HomePageClientProps) {
                 >
                   <h3 
                     className={`text-3xl md:text-4xl font-black mb-2 ${isDarkTheme ? 'text-porno-glow' : ''}`}
-                    style={{ 
-                      color: isDarkTheme ? '#FF6B9D' : primaryColor,
-                      textShadow: isDarkTheme 
-                        ? '0 0 20px rgba(255, 107, 157, 0.7), 0 0 40px rgba(255, 107, 157, 0.4), 0 2px 8px rgba(0, 0, 0, 0.9)'
-                        : '0 2px 4px rgba(0, 0, 0, 0.1)',
-                      letterSpacing: '-0.02em'
-                    }}
+                    style={sectionHeadingStyle}
                   >
                     {getSubCategoryTitle('desserts')}
                   </h3>
