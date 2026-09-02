@@ -15,6 +15,21 @@ const STATIC_ALLOWED_ORIGINS = [
   'https://www.pornopizza.sk',
   'https://pizzavnudzi.sk',
   'https://www.pizzavnudzi.sk',
+  'https://pizzalover.sk',
+  'https://www.pizzalover.sk',
+  'https://pizzalover.vercel.app',
+  'https://pizzaprefirmy.sk',
+  'https://www.pizzaprefirmy.sk',
+  'https://pizzaprefirmy.vercel.app',
+  'https://threesomepizza.sk',
+  'https://www.threesomepizza.sk',
+  'https://threesomepizza.vercel.app',
+  'https://skinnyb1tchpizza.sk',
+  'https://www.skinnyb1tchpizza.sk',
+  'https://skinnyb1tchpizza.vercel.app',
+  'https://ozemp1cpizza.sk',
+  'https://www.ozemp1cpizza.sk',
+  'https://ozemp1cpizza.vercel.app',
 ];
 
 const CORS_METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'] as const;
