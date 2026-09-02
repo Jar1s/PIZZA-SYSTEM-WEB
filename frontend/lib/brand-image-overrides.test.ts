@@ -19,6 +19,13 @@ describe('resolveBrandImage', () => {
     expect(resolveBrandImage('/images/pizzas/premium/diavola.jpg', 'pizzaparty')).toBe('/images/brands/partypizza/pizzas/premium/diavola.jpg');
   });
 
+  it('maps the five new sub-brands to their own folders', () => {
+    for (const slug of ['pizzalover', 'pizzaprefirmy', 'threesomepizza', 'skinnyb1tchpizza', 'ozemp1cpizza']) {
+      expect(resolveBrandImage('/images/hero/pizza-hero.jpg', slug)).toBe(`/images/brands/${slug}/hero/pizza-hero.jpg`);
+      expect(resolveBrandImage('/images/drinks/kofola.webp', slug)).toBe(`/images/brands/${slug}/drinks/kofola.webp`);
+    }
+  });
+
   it('falls back to the shared image for other brands, unknown paths and remote URLs', () => {
     expect(resolveBrandImage('/images/pizzas/premium/diavola.jpg', 'pornopizza')).toBe('/images/pizzas/premium/diavola.jpg');
     expect(resolveBrandImage('/images/drinks/kofola.webp', 'unknown-brand')).toBe('/images/drinks/kofola.webp');
