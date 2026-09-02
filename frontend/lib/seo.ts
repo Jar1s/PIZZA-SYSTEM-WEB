@@ -28,7 +28,15 @@ export function buildSeoTitle(tenant: TenantLike): string {
 export function buildSeoDescription(tenant: TenantLike, fallbackName?: string): string {
   const siteName = cleanText(tenant?.name) || cleanText(fallbackName) || 'Pizza Ordering';
   const fallback = `${siteName} ponúka rozvoz pravej talianskej pizze. Objednajte online s rýchlym doručením a čerstvými surovinami.`;
-  const candidate = cleanText(tenant?.description);
+  // Admins store the brand description in theme.description; the top-level
+  // field only exists on some legacy payloads, so fall back to the theme.
+  let candidate = cleanText(tenant?.description);
+  if (!candidate) {
+    const theme = tenant?.theme;
+    if (theme && typeof theme === 'object' && !Array.isArray(theme)) {
+      candidate = cleanText((theme as { description?: string | null }).description);
+    }
+  }
 
   if (!candidate) {
     return fallback;
