@@ -606,7 +606,7 @@ export class EmailService {
           <!-- Header -->
           <tr>
             <td class="email-header" style="background-color: ${primaryColor}; padding: 30px 20px; text-align: center;">
-              ${logoUrl ? `<img src="${logoUrl}" alt="${tenantName}" class="logo-img" style="max-width: 200px; height: auto; margin: 0 0 10px 0;" />` : `<h1 style="color: #ffffff; margin: 0; font-size: 28px;">${tenantName}</h1>`}
+              ${logoUrl ? `<span style="display: inline-block; background-color: #ffffff; border-radius: 12px; padding: 10px 18px; margin: 0 0 10px 0;"><img src="${logoUrl}" alt="${tenantName}" class="logo-img" style="max-width: 200px; height: auto; display: block;" /></span>` : `<h1 style="color: #ffffff; margin: 0; font-size: 28px;">${tenantName}</h1>`}
               <p style="color: #ffffff; margin: 10px 0 0 0; font-size: 16px;">Nastavte si heslo</p>
             </td>
           </tr>
@@ -963,7 +963,7 @@ export class EmailService {
           <!-- Header -->
           <tr>
             <td class="email-header" style="background-color: ${primaryColor}; padding: 30px 20px; text-align: center;">
-              <img src="${logoUrl}" alt="${tenantName}" class="logo-img" style="max-width: 200px; height: auto; margin-bottom: 10px;" />
+              <span style="display: inline-block; background-color: #ffffff; border-radius: 12px; padding: 10px 18px; margin-bottom: 10px;"><img src="${logoUrl}" alt="${tenantName}" class="logo-img" style="max-width: 200px; height: auto; display: block;" /></span>
               <p style="color: #ffffff; margin: 10px 0 0 0; font-size: 16px;">Objednávka prijatá!</p>
             </td>
           </tr>
@@ -1379,7 +1379,7 @@ export class EmailService {
           <!-- Header -->
           <tr>
             <td class="email-header" style="background-color: ${primaryColor}; padding: 30px 20px; text-align: center;">
-              ${logoUrl ? `<img src="${logoUrl}" alt="${tenantName}" class="logo-img" style="max-width: 200px; height: auto; margin: 0 0 10px 0;" />` : `<h1 style="color: #ffffff; margin: 0; font-size: 28px;">${tenantName}</h1>`}
+              ${logoUrl ? `<span style="display: inline-block; background-color: #ffffff; border-radius: 12px; padding: 10px 18px; margin: 0 0 10px 0;"><img src="${logoUrl}" alt="${tenantName}" class="logo-img" style="max-width: 200px; height: auto; display: block;" /></span>` : `<h1 style="color: #ffffff; margin: 0; font-size: 28px;">${tenantName}</h1>`}
               <p style="color: #ffffff; margin: 10px 0 0 0; font-size: 16px;">Aktualizácia stavu objednávky</p>
             </td>
           </tr>
@@ -1552,7 +1552,7 @@ export class EmailService {
           <!-- Header -->
           <tr>
             <td class="email-header" style="background-color: ${primaryColor}; padding: 30px 20px; text-align: center;">
-              ${logoUrl ? `<img src="${logoUrl}" alt="${tenantName}" class="logo-img" style="max-width: 200px; height: auto; margin: 0 0 10px 0;" />` : `<h1 style="color: #ffffff; margin: 0; font-size: 28px;">${tenantName}</h1>`}
+              ${logoUrl ? `<span style="display: inline-block; background-color: #ffffff; border-radius: 12px; padding: 10px 18px; margin: 0 0 10px 0;"><img src="${logoUrl}" alt="${tenantName}" class="logo-img" style="max-width: 200px; height: auto; display: block;" /></span>` : `<h1 style="color: #ffffff; margin: 0; font-size: 28px;">${tenantName}</h1>`}
               <p style="color: #ffffff; margin: 10px 0 0 0; font-size: 16px;">Vitajte v našej rodine!</p>
             </td>
           </tr>
