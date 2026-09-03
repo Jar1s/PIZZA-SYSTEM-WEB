@@ -22,9 +22,10 @@ type DispatchGroupKey =
   | 'scheduled'
   | 'recentDone';
 
-type BrandSlug = 'all' | 'pornopizza' | 'partypizza' | 'pizzavnudzi';
+type BrandSlug = string;
 
-const BRAND_FILTER_SLUGS: BrandSlug[] = ['all', 'pornopizza', 'partypizza', 'pizzavnudzi'];
+// Fallback until the tenant list loads from the API.
+const LEGACY_BRAND_SLUGS: BrandSlug[] = ['pornopizza', 'partypizza', 'pizzavnudzi'];
 
 const DISPATCH_GROUPS: Array<{
   key: DispatchGroupKey;
@@ -39,7 +40,7 @@ const DISPATCH_GROUPS: Array<{
   { key: 'recentDone', label: 'Nedavno dokoncene', defaultCollapsed: false },
 ];
 
-const BRAND_META: Record<BrandSlug, { label: string; initials: string; color: string }> = {
+const BRAND_META: Record<string, { label: string; initials: string; color: string }> = {
   all: {
     label: 'Vsetky brandy',
     initials: 'ALL',
@@ -60,7 +61,40 @@ const BRAND_META: Record<BrandSlug, { label: string; initials: string; color: st
     initials: 'VN',
     color: 'from-lime-500 to-emerald-700',
   },
+  pizzalover: {
+    label: 'Pizza Lover',
+    initials: 'LV',
+    color: 'from-fuchsia-500 to-purple-700',
+  },
+  pizzaprefirmy: {
+    label: 'Pizza pre firmy',
+    initials: 'PF',
+    color: 'from-blue-500 to-indigo-700',
+  },
+  threesomepizza: {
+    label: 'Threesome Pizza',
+    initials: '3S',
+    color: 'from-purple-500 to-violet-700',
+  },
+  skinnyb1tchpizza: {
+    label: 'Skinny B1tch Pizza',
+    initials: 'SB',
+    color: 'from-teal-500 to-emerald-700',
+  },
+  ozemp1cpizza: {
+    label: 'Ozemp1c Pizza',
+    initials: 'OZ',
+    color: 'from-sky-500 to-cyan-700',
+  },
 };
+
+// Any brand created after this build still renders (name-derived initials, neutral colour).
+const getBrandMeta = (slug: string): { label: string; initials: string; color: string } =>
+  BRAND_META[slug] ?? {
+    label: slug,
+    initials: slug.replace(/[^a-z0-9]/gi, '').slice(0, 2).toUpperCase() || '??',
+    color: 'from-zinc-500 to-zinc-700',
+  };
 
 const GROUP_META: Record<
   DispatchGroupKey,
@@ -102,14 +136,13 @@ const GROUP_META: Record<
   },
 };
 
-const isKnownTenantBrand = (value: string): value is Exclude<BrandSlug, 'all'> =>
-  value === 'pornopizza' || value === 'partypizza' || value === 'pizzavnudzi';
+// Canonical storefront slug for a tenant (the DB stores 'pizzavnudzi-sk').
+const canonicalBrandSlug = (value: string): string =>
+  value === 'pizzavnudzi-sk' ? 'pizzavnudzi' : value;
 
 const normalizeBrandSlug = (value: string): BrandSlug => {
-  if (value === 'all' || isKnownTenantBrand(value)) {
-    return value;
-  }
-  return 'all';
+  const canonical = canonicalBrandSlug(String(value || '').trim());
+  return canonical || 'all';
 };
 
 const getTodayDate = () => {
@@ -293,6 +326,7 @@ export function OrderList({
   });
   const [loading, setLoading] = useState(true);
   const [tenantIdToSlug, setTenantIdToSlug] = useState<Record<string, string>>({});
+  const [activeBrandSlugs, setActiveBrandSlugs] = useState<string[]>(LEGACY_BRAND_SLUGS);
   const [expandedOrders, setExpandedOrders] = useState<Set<string>>(new Set());
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
   const [collapsedGroups, setCollapsedGroups] = useState<Record<DispatchGroupKey, boolean>>({
@@ -325,31 +359,39 @@ export function OrderList({
     }
     const headers: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {};
 
-    const tenantsToFetch =
-      filters.tenantSlug === 'all'
-        ? ['pornopizza', 'pizzavnudzi', 'partypizza']
-        : [filters.tenantSlug];
-
-    const mapping: Record<string, string> = {};
     const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
 
-    for (const tenantSlug of tenantsToFetch) {
-      try {
-        const res = await fetch(`${API_URL}/api/tenants/${tenantSlug}`, { headers });
-        if (res.ok) {
-          const tenantData = await res.json();
-          mapping[tenantData.id] = tenantSlug;
-        } else if (res.status === 401 || res.status === 403) {
-          handleUnauthorized(`tenant mapping ${tenantSlug} ${res.status}`);
-          return;
-        }
-      } catch (error) {
-        console.error(`Failed to fetch tenant ${tenantSlug}:`, error);
+    try {
+      // One call for every active brand: id->slug mapping + the filter chips.
+      const res = await fetch(`${API_URL}/api/tenants`, { headers });
+      if (res.status === 401 || res.status === 403) {
+        handleUnauthorized(`tenant mapping ${res.status}`);
+        return;
       }
+      if (!res.ok) {
+        console.error(`Failed to fetch tenants: ${res.status}`);
+        return;
+      }
+      const tenants = await res.json();
+      if (!Array.isArray(tenants)) {
+        return;
+      }
+      const mapping: Record<string, string> = {};
+      const slugs: string[] = [];
+      for (const tenant of tenants) {
+        if (!tenant?.id || !tenant?.slug) continue;
+        const slug = canonicalBrandSlug(tenant.slug);
+        mapping[tenant.id] = slug;
+        slugs.push(slug);
+      }
+      setTenantIdToSlug(mapping);
+      if (slugs.length > 0) {
+        setActiveBrandSlugs(slugs);
+      }
+    } catch (error) {
+      console.error('Failed to fetch tenants:', error);
     }
-
-    setTenantIdToSlug(mapping);
-  }, [filters.tenantSlug, handleUnauthorized]);
+  }, [handleUnauthorized]);
 
   const fetchOrders = useCallback(async () => {
     const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
@@ -373,9 +415,7 @@ export function OrderList({
       }
 
       const tenantsToFetch =
-        filters.tenantSlug === 'all'
-          ? ['pornopizza', 'pizzavnudzi', 'partypizza']
-          : [filters.tenantSlug];
+        filters.tenantSlug === 'all' ? activeBrandSlugs : [filters.tenantSlug];
 
       const todayDate = getTodayDate();
       const startDate = todayOnly ? todayDate : filters.startDate;
@@ -448,7 +488,7 @@ export function OrderList({
         setLoading(false);
       }
     }
-  }, [filters, tenantIdToSlug, fetchTenantMapping, todayOnly, handleUnauthorized]);
+  }, [filters, tenantIdToSlug, activeBrandSlugs, fetchTenantMapping, todayOnly, handleUnauthorized]);
 
   useEffect(() => {
     if (!selectedTenant) return;
@@ -515,23 +555,26 @@ export function OrderList({
     [orders],
   );
 
+  const brandFilterSlugs = useMemo<BrandSlug[]>(
+    () => ['all', ...activeBrandSlugs],
+    [activeBrandSlugs],
+  );
+
   const brandCounts = useMemo<Record<BrandSlug, number>>(() => {
-    const counts: Record<BrandSlug, number> = {
-      all: orders.length,
-      pornopizza: 0,
-      partypizza: 0,
-      pizzavnudzi: 0,
-    };
+    const counts: Record<BrandSlug, number> = { all: orders.length };
+    for (const slug of activeBrandSlugs) {
+      counts[slug] = 0;
+    }
 
     for (const order of orders) {
       const slug = tenantIdToSlug[order.tenantId];
-      if (slug && isKnownTenantBrand(slug)) {
-        counts[slug] += 1;
+      if (slug) {
+        counts[slug] = (counts[slug] ?? 0) + 1;
       }
     }
 
     return counts;
-  }, [orders, tenantIdToSlug]);
+  }, [orders, tenantIdToSlug, activeBrandSlugs]);
 
   const handleStatusUpdate = async (orderId: string, newStatus: OrderStatus) => {
     try {
@@ -623,9 +666,9 @@ export function OrderList({
                 </div>
 
                 <div className="-mx-1.5 mt-1 flex items-center gap-2 overflow-x-auto px-1.5 pb-1 pt-1.5">
-                  {BRAND_FILTER_SLUGS.map((slug) => {
+                  {brandFilterSlugs.map((slug) => {
                     const isActive = filters.tenantSlug === slug;
-                    const brand = BRAND_META[slug];
+                    const brand = getBrandMeta(slug);
                     return (
                       <button
                         key={slug}
@@ -651,7 +694,7 @@ export function OrderList({
                               : 'border-zinc-200 bg-white text-zinc-700'
                           }`}
                         >
-                          {brandCounts[slug]}
+                          {brandCounts[slug] ?? 0}
                         </span>
                       </button>
                     );
@@ -721,7 +764,7 @@ export function OrderList({
                                 const tenantSlugForOrder = normalizeBrandSlug(
                                   tenantIdToSlug[order.tenantId] || filters.tenantSlug,
                                 );
-                                const brand = BRAND_META[tenantSlugForOrder];
+                                const brand = getBrandMeta(tenantSlugForOrder);
                                 const queueTimer = getQueueTimer(order, renderNow);
                                 const isFinished = order.status === OrderStatus.DELIVERED;
                                 const isCanceled = order.status === OrderStatus.CANCELED;
