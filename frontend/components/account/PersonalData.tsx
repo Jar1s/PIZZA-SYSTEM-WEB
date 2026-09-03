@@ -216,7 +216,7 @@ export default function PersonalData({ tenant, isDark = false }: PersonalDataPro
     return (
       <div className="flex items-center justify-center py-12">
         <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-12 w-12 border-t-4 border-b-4 border-orange-600"></div>
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-t-4 border-b-4" style={{ borderColor: 'var(--color-primary)' }}></div>
           <p className={`mt-4 ${mutedText}`}>{t.loading}</p>
         </div>
       </div>
@@ -289,8 +289,8 @@ export default function PersonalData({ tenant, isDark = false }: PersonalDataPro
                 <div className="flex gap-2 ml-4">
                   <button
                     onClick={() => handleSave(field.key)}
-                    className={`px-4 py-2 rounded-full text-sm font-semibold ${isDark ? 'bg-gradient-to-r from-[#ff5e00] via-[#ff0066] to-[#ff2d55]' : 'text-white'}`}
-                    style={!isDark ? { backgroundColor: 'var(--color-primary)' } : undefined}
+                    className={`px-4 py-2 rounded-full text-sm font-semibold text-white hover:opacity-90`}
+                    style={{ backgroundColor: 'var(--color-primary)' }}
                   >
                     {t.save}
                   </button>
