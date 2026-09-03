@@ -1,6 +1,6 @@
 name: Health Watchdog
 
-# Uptime watchdog: checks the API and all three storefronts every ~5 minutes
+# Uptime watchdog: checks the API and all eight storefronts every ~5 minutes
 # and alerts the ops Telegram chat when anything is down or degraded.
 # Complements the in-app Telegram error reporting, which cannot fire when the
 # whole backend process is dead.
@@ -43,6 +43,11 @@ jobs:
           check_http "p0rnopizza.sk" "https://www.p0rnopizza.sk"
           check_http "pizzaparty.sk" "https://www.pizzaparty.sk"
           check_http "pizzavnudzi.sk" "https://pizzavnudzi.sk"
+          check_http "pizzalover.sk" "https://pizzalover.sk"
+          check_http "pizzaprefirmy.sk" "https://pizzaprefirmy.sk"
+          check_http "threesomepizza.sk" "https://threesomepizza.sk"
+          check_http "skinnyb1tchpizza.sk" "https://skinnyb1tchpizza.sk"
+          check_http "ozemp1cpizza.sk" "https://ozemp1cpizza.sk"
 
           if [ -n "$FAILURES" ]; then
             echo "failures=$FAILURES" >> "$GITHUB_OUTPUT"
