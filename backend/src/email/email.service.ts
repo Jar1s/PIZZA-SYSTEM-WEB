@@ -333,8 +333,9 @@ export class EmailService {
     const customer = order.customer as any;
     const address = order.address as any;
     
-    // Generate tracking URL - use FRONTEND_URL if available, otherwise fix tenantDomain
-    let trackingDomain = process.env.FRONTEND_URL || tenantDomain;
+    // Generate tracking URL - the brand's own domain first; FRONTEND_URL is a
+    // single global value (p0rnopizza) and must never win for other brands.
+    let trackingDomain = tenantDomain || process.env.FRONTEND_URL;
     
     // Remove protocol if present
     trackingDomain = trackingDomain.replace(/^https?:\/\//, '');
@@ -448,8 +449,8 @@ export class EmailService {
     emailConfig?: any,
   ): Promise<void> {
     const resolvedEmailConfig = await this.resolveEmailConfig(emailConfig, undefined);
-    // Generate frontend URL - use FRONTEND_URL if available, otherwise fix tenantDomain
-    let frontendDomain = process.env.FRONTEND_URL || tenantDomain;
+    // Generate frontend URL - the brand's own domain first, FRONTEND_URL as fallback
+    let frontendDomain = tenantDomain || process.env.FRONTEND_URL;
     
     // Remove protocol if present
     frontendDomain = frontendDomain.replace(/^https?:\/\//, '');
@@ -478,6 +479,7 @@ export class EmailService {
       resetUrl,
       tenantName,
       tenantTheme,
+      tenantDomain,
     );
 
     const transporter = this.getTenantTransporter(resolvedEmailConfig);
@@ -512,12 +514,14 @@ export class EmailService {
     resetUrl: string,
     tenantName: string,
     tenantTheme?: any,
+    tenantDomain?: string,
   ): string {
     // Get theme colors - fallback to brand colors
     const primaryColor = tenantTheme?.primaryColor || '#E91E63';
     
-    // Build logo URL - same logic as order confirmation
+    // Build logo URL - same logic as order confirmation (brand domain first)
     let rawAssetBase =
+      tenantDomain ||
       process.env.FRONTEND_URL ||
       process.env.EMAIL_ASSET_BASE_URL ||
       '';
@@ -780,11 +784,11 @@ export class EmailService {
       : order.id.slice(0, 8).toUpperCase(); // Fallback for old orders without orderNumber
 
     // Prefer explicit base for assets (fixes broken images in emails when tenantDomain differs from live frontend)
-    // Use FRONTEND_URL first, then EMAIL_ASSET_BASE_URL, then tenantDomain
+    // Brand domain first, then FRONTEND_URL, then EMAIL_ASSET_BASE_URL
     let rawAssetBase =
+      tenantDomain ||
       process.env.FRONTEND_URL ||
       process.env.EMAIL_ASSET_BASE_URL ||
-      tenantDomain ||
       '';
     
     // Fix common domain issues: add www. prefix if missing and not localhost
@@ -1111,8 +1115,9 @@ export class EmailService {
       return; // No email to send to
     }
 
-    // Generate tracking URL - use FRONTEND_URL if available, otherwise fix tenantDomain
-    let trackingDomain = process.env.FRONTEND_URL || tenantDomain;
+    // Generate tracking URL - the brand's own domain first; FRONTEND_URL is a
+    // single global value (p0rnopizza) and must never win for other brands.
+    let trackingDomain = tenantDomain || process.env.FRONTEND_URL;
     
     // Remove protocol if present
     trackingDomain = trackingDomain.replace(/^https?:\/\//, '');
@@ -1293,9 +1298,9 @@ export class EmailService {
     
     // Build asset base URL for logo
     let rawAssetBase =
+      tenantDomain ||
       process.env.FRONTEND_URL ||
       process.env.EMAIL_ASSET_BASE_URL ||
-      tenantDomain ||
       '';
     
     // Fix common domain issues: add www. prefix if missing and not localhost
@@ -1429,9 +1434,10 @@ export class EmailService {
     tenantTheme?: any,
     tenantSlug?: string,
   ): string {
-    // Build frontend URL - use FRONTEND_URL if available, otherwise construct from tenantDomain
-    let frontendUrl = process.env.FRONTEND_URL || '';
-    
+    // Build frontend URL - prefer the brand's own domain; FRONTEND_URL is only
+    // a fallback for tenants without a domain.
+    let frontendUrl = tenantDomain ? '' : (process.env.FRONTEND_URL || '');
+
     if (!frontendUrl) {
       // Remove protocol if present
       let domain = tenantDomain.replace(/^https?:\/\//, '');
@@ -1458,9 +1464,9 @@ export class EmailService {
     
     // Build asset base URL for logo
     let rawAssetBase =
+      tenantDomain ||
       process.env.FRONTEND_URL ||
       process.env.EMAIL_ASSET_BASE_URL ||
-      tenantDomain ||
       '';
     
     // Fix common domain issues: add www. prefix if missing and not localhost
