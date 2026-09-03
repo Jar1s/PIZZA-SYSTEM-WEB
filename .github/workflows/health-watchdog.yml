@@ -16,29 +16,49 @@ on:
 jobs:
   check:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    # Worst case with retries: 9 endpoints x (20s + 30s + 20s) — keep headroom
+    # so a total outage still reaches the Telegram alert step.
+    timeout-minutes: 15
     steps:
       - name: Check endpoints
         id: health
         run: |
           FAILURES=""
 
+          # One transient miss must not page anyone: every endpoint gets a
+          # second attempt after 30s before it counts as down. `|| code=000`
+          # (not `|| echo`) so a connect failure reports 000, not 000000 —
+          # curl already prints 000 via -w when the request never connects.
           check_http() {
             local label="$1" url="$2"
-            local code
-            code=$(curl -s -o /dev/null -w '%{http_code}' -m 20 -L "$url" || echo "000")
-            if [ "$code" != "200" ]; then
-              FAILURES="${FAILURES}${label}: HTTP ${code}%0A"
-            fi
+            local code attempt
+            for attempt in 1 2; do
+              code=$(curl -s -o /dev/null -w '%{http_code}' -m 20 -L "$url") || code="000"
+              if [ "$code" = "200" ]; then
+                return 0
+              fi
+              [ "$attempt" = "1" ] && sleep 30
+            done
+            FAILURES="${FAILURES}${label}: HTTP ${code}%0A"
           }
 
-          # API health must be HTTP 200 AND report status ok
-          BODY=$(curl -s -m 20 "https://api.p0rnopizza.sk/api/health" || echo "")
-          if [ -z "$BODY" ]; then
-            FAILURES="${FAILURES}API: neodpovedá%0A"
-          elif ! echo "$BODY" | grep -q '"status":"ok"'; then
-            FAILURES="${FAILURES}API: $(echo "$BODY" | head -c 200)%0A"
-          fi
+          # API health must be HTTP 200 AND report status ok (same retry rule)
+          check_api() {
+            local body attempt
+            for attempt in 1 2; do
+              body=$(curl -s -m 20 "https://api.p0rnopizza.sk/api/health") || body=""
+              if echo "$body" | grep -q '"status":"ok"'; then
+                return 0
+              fi
+              [ "$attempt" = "1" ] && sleep 30
+            done
+            if [ -z "$body" ]; then
+              FAILURES="${FAILURES}API: neodpovedá%0A"
+            else
+              FAILURES="${FAILURES}API: $(echo "$body" | head -c 200)%0A"
+            fi
+          }
+          check_api
 
           check_http "p0rnopizza.sk" "https://www.p0rnopizza.sk"
           check_http "pizzaparty.sk" "https://www.pizzaparty.sk"
