@@ -1528,7 +1528,7 @@ export default function CheckoutPage() {
       <div className={`min-h-screen ${backgroundClass} ${isDark ? 'text-white' : ''} flex items-center justify-center`}>
         <div className={`text-center ${isDark ? 'text-white' : 'text-gray-900'}`}>
           <div className={`inline-block animate-spin rounded-full h-16 w-16 border-t-4 border-b-4`}
-          style={{ borderColor: isDark ? '#ff5e00' : 'var(--color-primary)' }}></div>
+          style={{ borderColor: 'var(--color-primary)' }}></div>
           <p className="mt-4 text-lg">Načítavam...</p>
         </div>
       </div>
@@ -1553,7 +1553,7 @@ export default function CheckoutPage() {
       <div className={`min-h-screen ${backgroundClass} ${isDark ? 'text-white' : ''} flex items-center justify-center`}>
         <div className={`text-center ${isDark ? 'text-white' : 'text-gray-900'}`}>
           <div className={`inline-block animate-spin rounded-full h-16 w-16 border-t-4 border-b-4`}
-          style={{ borderColor: isDark ? '#ff5e00' : 'var(--color-primary)' }}></div>
+          style={{ borderColor: 'var(--color-primary)' }}></div>
           <p className="mt-4 text-lg">{t.loading}</p>
         </div>
       </div>
@@ -1567,7 +1567,7 @@ export default function CheckoutPage() {
       <div className={`min-h-screen ${backgroundClass} ${isDark ? 'text-white' : ''} flex items-center justify-center`}>
         <div className={`text-center ${isDark ? 'text-white' : 'text-gray-900'}`}>
           <div className={`inline-block animate-spin rounded-full h-16 w-16 border-t-4 border-b-4`}
-          style={{ borderColor: isDark ? '#ff5e00' : 'var(--color-primary)' }}></div>
+          style={{ borderColor: 'var(--color-primary)' }}></div>
           <p className="mt-4 text-lg">Načítavam košík...</p>
         </div>
       </div>
@@ -1581,7 +1581,7 @@ export default function CheckoutPage() {
       <div className={`min-h-screen ${backgroundClass} ${isDark ? 'text-white' : ''} flex items-center justify-center`}>
         <div className={`text-center ${isDark ? 'text-white' : 'text-gray-900'}`}>
           <div className={`inline-block animate-spin rounded-full h-16 w-16 border-t-4 border-b-4`}
-          style={{ borderColor: isDark ? '#ff5e00' : 'var(--color-primary)' }}></div>
+          style={{ borderColor: 'var(--color-primary)' }}></div>
           <p className="mt-4 text-lg">{t.loading}</p>
         </div>
       </div>
@@ -2551,14 +2551,8 @@ export default function CheckoutPage() {
                           onClick={() =>
                             router.push(`/auth/login?tenant=${tenantSlug}&returnUrl=${encodeURIComponent(`/checkout?tenant=${tenantSlug}`)}`)
                           }
-                          className={`px-5 py-2 rounded-full text-sm font-semibold transition-colors ${
-                            isDark
-                              ? 'bg-gradient-to-r from-[#ff5e00] via-[#ff0066] to-[#ff2d55] text-white shadow-lg'
-                              : 'text-white hover:opacity-90'
-                          }`}
-                          style={!isDark ? {
-                            backgroundColor: 'var(--color-primary)'
-                          } : undefined}
+                          className={`px-5 py-2 rounded-full text-sm font-semibold transition-colors text-white shadow-lg hover:opacity-90`}
+                          style={{ backgroundColor: 'var(--color-primary)' }}
                         >
                           {t.orSignIn}
                         </button>
@@ -2658,14 +2652,7 @@ export default function CheckoutPage() {
               (paymentType === 'cash_on_delivery' && !cashOnDeliveryMethod)
             }
             className="w-full py-3 rounded-2xl font-semibold text-lg disabled:opacity-50 disabled:cursor-not-allowed text-white shadow-lg hover:brightness-110 active:brightness-90 transition-all"
-            style={{
-              backgroundColor: isDark 
-                ? undefined
-                : 'var(--color-primary)',
-              background: isDark 
-                ? 'linear-gradient(to right, #E91E63, #ff0066, #ff2d55)'
-                : undefined,
-            }}
+            style={{ backgroundColor: 'var(--color-primary)' }}
           >
             {loading ? t.processing : paymentType === 'cash_on_delivery' ? t.confirmOrder : t.pay}
           </motion.button>

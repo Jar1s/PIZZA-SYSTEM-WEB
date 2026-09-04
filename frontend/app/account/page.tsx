@@ -114,7 +114,7 @@ export default function AccountPage() {
             <button
               onClick={() => router.push(`/auth/login?tenant=${tenant}`)}
               className={`px-6 py-3 rounded-full font-semibold ${gradientClass}`}
-              style={!isDark ? { backgroundColor: primaryColor, color: 'white' } : undefined}
+              style={{ backgroundColor: primaryColor, color: 'white' }}
             >
               Prihlásiť sa
             </button>
@@ -127,7 +127,7 @@ export default function AccountPage() {
       <div className={`min-h-screen ${backgroundClass} ${isDark || (tenantLoading && fallbackIsDark) ? 'text-white' : 'text-gray-900'} flex items-center justify-center`}>
         <div className="text-center">
           <div className={`inline-block animate-spin rounded-full h-16 w-16 border-t-4 border-b-4`}
-          style={{ borderColor: isDark ? '#ff5e00' : primaryColor }}></div>
+          style={{ borderColor: primaryColor }}></div>
           <p className={`mt-4 text-lg ${isDark ? 'text-white' : 'text-gray-700'}`}>{t.loading}</p>
         </div>
       </div>
@@ -188,6 +188,7 @@ export default function AccountPage() {
             <button
               onClick={handleBackToHome}
               className={`flex items-center gap-2 px-4 py-2 rounded-full transition-transform hover:scale-[1.02] font-semibold ${gradientClass}`}
+              style={{ backgroundColor: primaryColor, color: 'white' }}
             >
               <svg
                 className="w-5 h-5"
