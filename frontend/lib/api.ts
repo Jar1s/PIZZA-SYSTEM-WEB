@@ -1,6 +1,10 @@
-import { Tenant, Product, Order, OrderStatus, ProductTenantOverride } from '@pizza-ecosystem/shared';
+// Local fallback types because shared package is missing some exports in the deployed bundle
+import { Tenant, Product, Order, OrderStatus } from '@pizza-ecosystem/shared';
 import { withTenantThemeDefaults, getTenantSlug } from '@/lib/tenant-utils';
 import { TenantSchema, ProductSchema, OrderSchema, safeParse } from '@/lib/schemas/api.schema';
+
+// ProductTenantOverride is missing from shared typings here, so use a permissive type.
+type ProductTenantOverride = any;
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
 const normalizeTenantSlug = (slug: string): string => {
@@ -17,14 +21,28 @@ export async function getTenant(slug: string): Promise<Tenant> {
     
     console.log(`[getTenant] Fetching tenant: ${API_URL}/api/tenants/${normalizedSlug}`);
     
-    const res = await fetch(`${API_URL}/api/tenants/${normalizedSlug}`, {
+    let res = await fetch(`${API_URL}/api/tenants/${normalizedSlug}`, {
       signal: controller.signal,
       headers: {
         'Content-Type': 'application/json',
       },
-      // Client-side fetch doesn't need cache: 'no-store'
-      // Next.js will handle caching appropriately
     });
+
+    if (!res.ok && res.status === 404) {
+      const alt =
+        normalizedSlug === 'partypizza'
+          ? 'pizzaparty'
+          : normalizedSlug === 'pizzaparty'
+            ? 'partypizza'
+            : null;
+      if (alt) {
+        console.warn(`[getTenant] ${normalizedSlug} 404, trying fallback slug: ${alt}`);
+        res = await fetch(`${API_URL}/api/tenants/${alt}`, {
+          signal: controller.signal,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
+    }
     
     clearTimeout(timeoutId);
     
@@ -37,9 +55,21 @@ export async function getTenant(slug: string): Promise<Tenant> {
     const data = await res.json();
     console.log('[getTenant] Received data:', { name: data.name, slug: data.slug, hasTheme: !!data.theme });
     
+    // ALWAYS log full theme structure for debugging
+    console.log('[getTenant] DEBUG: Full theme from API:', JSON.stringify(data.theme, null, 2));
+    console.log('[getTenant] DEBUG: openingHours from API:', data.theme?.openingHours ? JSON.stringify(data.theme.openingHours, null, 2) : 'NOT PRESENT');
+    console.log('[getTenant] DEBUG: maintenanceMode from API:', data.theme?.maintenanceMode !== undefined ? data.theme.maintenanceMode : 'NOT PRESENT');
+    
     const validated = safeParse(TenantSchema, data, data as any);
     const result = withTenantThemeDefaults(validated) as Tenant;
     console.log('[getTenant] Validated tenant:', { name: result.name, slug: result.slug });
+    
+    // ALWAYS log theme after validation
+    const resultTheme = result.theme as any;
+    console.log('[getTenant] DEBUG: Full theme after validation:', JSON.stringify(resultTheme, null, 2));
+    console.log('[getTenant] DEBUG: openingHours after validation:', resultTheme?.openingHours ? JSON.stringify(resultTheme.openingHours, null, 2) : 'NOT PRESENT');
+    console.log('[getTenant] DEBUG: maintenanceMode after validation:', resultTheme?.maintenanceMode !== undefined ? resultTheme.maintenanceMode : 'NOT PRESENT');
+    
     return result;
   } catch (error: any) {
     console.error('[getTenant] Error:', error);
@@ -60,345 +90,198 @@ export async function getTenant(slug: string): Promise<Tenant> {
   }
 }
 
-export async function getProducts(tenantSlug: string): Promise<Product[]> {
-  const normalizedSlug = normalizeTenantSlug(tenantSlug);
-  // Add timestamp to prevent browser caching
-  const timestamp = Date.now();
-  const res = await fetch(`${API_URL}/api/${normalizedSlug}/products?t=${timestamp}`, {
-    headers: {
-      'Content-Type': 'application/json',
-      'Cache-Control': 'no-cache, no-store, must-revalidate',
-      'Pragma': 'no-cache',
-      'Expires': '0',
-    },
-  });
-  
-  if (!res.ok) {
-    const errorText = await res.text();
-    throw new Error(`Failed to fetch products: ${errorText}`);
-  }
-  
-  const data = await res.json();
-  // Validate products array
-  if (Array.isArray(data)) {
-    return data.map(product => safeParse(ProductSchema, product, product as any)) as Product[];
-  }
-  return [];
-}
-
-export async function getCategories(tenantSlug: string): Promise<string[]> {
-  const normalizedSlug = normalizeTenantSlug(tenantSlug);
-  const res = await fetch(`${API_URL}/api/${normalizedSlug}/products/categories`, {
-    next: { revalidate: 60 },
-  });
-  
-  if (!res.ok) throw new Error('Failed to fetch categories');
-  return res.json();
-}
-
-export async function getProductById(productId: string): Promise<Product> {
-  // Need to find which tenant this product belongs to
-  // For admin, we can try all tenants or get from product
-  const res = await fetch(`${API_URL}/api/pornopizza/products/${productId}`);
-  if (!res.ok) {
-    const res2 = await fetch(`${API_URL}/api/pizzavnudzi/products/${productId}`);
-    if (!res2.ok) throw new Error('Product not found');
-    return res2.json();
-  }
-  return res.json();
-}
-
-export async function updateProduct(tenantSlug: string, productId: string, data: Partial<Product>): Promise<Product> {
-  const makeRequest = async (retry = false): Promise<Product> => {
-    const normalizedSlug = normalizeTenantSlug(tenantSlug);
-    const token = localStorage.getItem('auth_token');
-    
-    if (!token && !retry) {
-      // Try to refresh token if available
-      const refreshToken = localStorage.getItem('refresh_token');
-      if (refreshToken) {
-        try {
-          const refreshRes = await fetch(`${API_URL}/api/auth/refresh`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            credentials: 'include',
-            body: JSON.stringify({ refresh_token: refreshToken }),
-          });
-          
-          if (refreshRes.ok) {
-            const refreshData = await refreshRes.json();
-            localStorage.setItem('auth_token', refreshData.access_token);
-            if (refreshData.user) {
-              localStorage.setItem('auth_user', JSON.stringify(refreshData.user));
-            }
-            // Retry with new token
-            return makeRequest(true);
-          }
-        } catch (error) {
-          console.error('Token refresh failed:', error);
-        }
-      }
-      throw new Error('Unauthorized - Please log in again');
-    }
-    
+export async function updateTenant(slug: string, data: any): Promise<Tenant> {
+  try {
+    const normalizedSlug = normalizeTenantSlug(slug);
+    const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
     const headers: HeadersInit = { 'Content-Type': 'application/json' };
     if (token) {
       headers['Authorization'] = `Bearer ${token}`;
     }
     
-    const res = await fetch(`${API_URL}/api/${normalizedSlug}/products/${productId}`, {
+    console.log(`[updateTenant] Updating tenant: ${API_URL}/api/tenants/${normalizedSlug}`, data);
+    
+    // Debug: Log openingHours if present
+    if (data.theme?.openingHours) {
+      console.log('[updateTenant] DEBUG: openingHours being sent:', JSON.stringify(data.theme.openingHours, null, 2));
+    }
+    if (data.theme?.maintenanceMode !== undefined) {
+      console.log('[updateTenant] DEBUG: maintenanceMode being sent:', data.theme.maintenanceMode);
+    }
+    
+    const res = await fetch(`${API_URL}/api/tenants/${normalizedSlug}`, {
       method: 'PATCH',
       headers,
+      credentials: 'include',
       body: JSON.stringify(data),
     });
     
     if (!res.ok) {
-      if (res.status === 401 && !retry) {
-        // Try to refresh token and retry once
-        const refreshToken = localStorage.getItem('refresh_token');
-        if (refreshToken) {
-          try {
-            const refreshRes = await fetch(`${API_URL}/api/auth/refresh`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              credentials: 'include',
-              body: JSON.stringify({ refresh_token: refreshToken }),
-            });
-            
-            if (refreshRes.ok) {
-              const refreshData = await refreshRes.json();
-              localStorage.setItem('auth_token', refreshData.access_token);
-              if (refreshData.user) {
-                localStorage.setItem('auth_user', JSON.stringify(refreshData.user));
-              }
-              // Retry with new token
-              return makeRequest(true);
-            }
-          } catch (error) {
-            console.error('Token refresh failed:', error);
-          }
-        }
+      const errorText = await res.text();
+      console.error(`[updateTenant] HTTP error ${res.status}:`, errorText);
+      if (res.status === 401) {
         throw new Error('Unauthorized - Please log in again');
       }
-      const errorText = await res.text().catch(() => 'Failed to update product');
-      throw new Error(errorText || 'Failed to update product');
+      throw new Error(`Failed to update tenant: ${errorText}`);
     }
     
-    return res.json();
-  };
-  
-  return makeRequest();
+    const responseData = await res.json();
+    console.log('[updateTenant] Tenant updated:', { name: responseData.name, slug: responseData.slug, hasTheme: !!responseData.theme });
+    
+    // Debug: Log openingHours from response
+    if (responseData.theme?.openingHours) {
+      console.log('[updateTenant] DEBUG: openingHours received from API:', JSON.stringify(responseData.theme.openingHours, null, 2));
+    }
+    if (responseData.theme?.maintenanceMode !== undefined) {
+      console.log('[updateTenant] DEBUG: maintenanceMode received from API:', responseData.theme.maintenanceMode);
+    }
+    
+    const validated = safeParse(TenantSchema, responseData, responseData as any);
+    const result = withTenantThemeDefaults(validated) as Tenant;
+    return result;
+  } catch (error: any) {
+    console.error('[updateTenant] Error:', error);
+    throw error;
+  }
 }
 
-export interface ProductMapping {
+export async function getAllTenants(includeInactive: boolean = false): Promise<Tenant[]> {
+  try {
+    const url = includeInactive 
+      ? `${API_URL}/api/tenants?includeInactive=true`
+      : `${API_URL}/api/tenants`;
+    
+    console.log(`[getAllTenants] Fetching: ${url}`);
+    
+    const res = await fetch(url, {
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+    
+    if (!res.ok) {
+      const errorText = await res.text();
+      console.error(`[getAllTenants] HTTP error ${res.status}:`, errorText);
+      throw new Error(`Failed to fetch tenants: ${errorText}`);
+    }
+    
+    const data = await res.json();
+    return data.map((tenant: any) => {
+      const validated = safeParse(TenantSchema, tenant, tenant as any);
+      return withTenantThemeDefaults(validated) as Tenant;
+    });
+  } catch (error: any) {
+    console.error('[getAllTenants] Error:', error);
+    throw error;
+  }
+}
+
+export async function getProducts(tenantSlug: string): Promise<Product[]> {
+  const normalizedSlug = normalizeTenantSlug(tenantSlug);
+  // Add timestamp to prevent browser caching
+  const timestamp = Date.now();
+  const res = await fetch(`${API_URL}/api/products?tenantSlug=${normalizedSlug}&t=${timestamp}`);
+
+  if (!res.ok) {
+    throw new Error('Failed to fetch products');
+  }
+
+  const data = await res.json();
+  const validated = safeParse(ProductSchema.array(), data, data as any[]);
+  return validated.map((product) => ({
+    ...product,
+    priceCents: Math.round(product.price * 100),
+  }));
+}
+
+export type ProductMapping = {
   id: string;
+  tenantId: string;
   externalIdentifier: string;
   internalProductName: string;
-  source: string | null;
-  createdAt: string;
-  updatedAt: string;
-}
+  source?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+};
 
-export async function getProductOverrides(
-  tenantSlug: string,
-  productId: string,
-  targetTenantSlug: string
-): Promise<ProductTenantOverride | null> {
-  const token = localStorage.getItem('auth_token');
-  
-  const headers: HeadersInit = { 'Content-Type': 'application/json' };
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
-  }
-  
-  const res = await fetch(
-    `${API_URL}/api/${tenantSlug}/products/${productId}/overrides/${targetTenantSlug}`,
-    { headers }
-  );
-  
-  const text = await res.text();
-  
-  if (!res.ok) {
-    if (res.status === 404) {
-      return null; // No overrides found
-    }
-    throw new Error(text || 'Failed to fetch product overrides');
-  }
-  
-  if (!text) {
-    return null;
-  }
-  
-  try {
-    return JSON.parse(text);
-  } catch {
-    // If response is not valid JSON, return null to avoid crashing the UI
-    return null;
-  }
-}
+type ProductInput = {
+  name: string;
+  description?: string | null;
+  subHeader?: string | null;
+  priceCents: number;
+  category: string;
+  image?: string | null;
+  isActive?: boolean;
+  isBestSeller?: boolean;
+  displayName?: string | null;
+};
 
-export async function updateProductOverrides(
-  tenantSlug: string,
-  productId: string,
-  targetTenantSlug: string,
-  overrides: ProductTenantOverride
-): Promise<void> {
+export async function createProduct(tenantSlug: string, data: ProductInput): Promise<Product> {
   const normalizedSlug = normalizeTenantSlug(tenantSlug);
-  const token = localStorage.getItem('auth_token');
-  
-  if (!token) {
-    throw new Error('Authentication required');
-  }
-  
-  const headers: HeadersInit = {
-    'Content-Type': 'application/json',
-    'Authorization': `Bearer ${token}`,
-  };
-  
-  const res = await fetch(
-    `${API_URL}/api/${normalizedSlug}/products/${productId}/overrides/${targetTenantSlug}`,
-    {
-      method: 'PATCH',
-      headers,
-      body: JSON.stringify(overrides),
-    }
-  );
-  
+  const res = await fetch(`${API_URL}/api/${normalizedSlug}/products`, {
+    method: 'POST',
+    headers: buildAuthHeaders(true),
+    credentials: 'include',
+    body: JSON.stringify(data),
+  });
+
   if (!res.ok) {
-    const text = await res.text().catch(() => '');
-    let message = 'Failed to update product overrides';
-    if (text) {
-      try {
-        const parsed = JSON.parse(text);
-        message = parsed.message || message;
-      } catch {
-        message = text;
-      }
-    }
-    throw new Error(message);
+    const errorText = await res.text().catch(() => '');
+    throw new Error(errorText || 'Failed to create product');
+  }
+
+  const created = await res.json();
+  return safeParse(ProductSchema, created, created as any);
+}
+
+export async function updateProduct(
+  tenantSlug: string,
+  productId: string,
+  data: Partial<ProductInput>
+): Promise<Product> {
+  const normalizedSlug = normalizeTenantSlug(tenantSlug);
+  const res = await fetch(`${API_URL}/api/${normalizedSlug}/products/${productId}`, {
+    method: 'PATCH',
+    headers: buildAuthHeaders(true),
+    credentials: 'include',
+    body: JSON.stringify(data),
+  });
+
+  if (!res.ok) {
+    const errorText = await res.text().catch(() => '');
+    throw new Error(errorText || 'Failed to update product');
+  }
+
+  const updated = await res.json();
+  return safeParse(ProductSchema, updated, updated as any);
+}
+
+export async function deleteProduct(tenantSlug: string, productId: string): Promise<void> {
+  const normalizedSlug = normalizeTenantSlug(tenantSlug);
+  const res = await fetch(`${API_URL}/api/${normalizedSlug}/products/${productId}`, {
+    method: 'DELETE',
+    headers: buildAuthHeaders(),
+    credentials: 'include',
+  });
+
+  if (!res.ok) {
+    const errorText = await res.text().catch(() => '');
+    throw new Error(errorText || 'Failed to delete product');
   }
 }
 
 export async function getProductMappings(tenantSlug: string, productId: string): Promise<ProductMapping[]> {
-  const token = localStorage.getItem('auth_token');
-  
-  const headers: HeadersInit = { 'Content-Type': 'application/json' };
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
-  }
-  
-  const res = await fetch(`${API_URL}/api/${tenantSlug}/products/${productId}/mappings`, {
-    headers,
+  const normalizedSlug = normalizeTenantSlug(tenantSlug);
+  const res = await fetch(`${API_URL}/api/${normalizedSlug}/products/${productId}/mappings`, {
+    headers: buildAuthHeaders(),
+    credentials: 'include',
   });
-  
+
   if (!res.ok) {
-    // If endpoint doesn't exist or no mappings, return empty array
-    if (res.status === 404 || res.status === 500) return [];
-    if (res.status === 401) {
-      throw new Error('Unauthorized - Please log in again');
-    }
-    throw new Error('Failed to fetch product mappings');
+    const errorText = await res.text().catch(() => '');
+    throw new Error(errorText || 'Failed to fetch product mappings');
   }
-  
-  return res.json();
-}
 
-export async function deleteProduct(tenantSlug: string, productId: string): Promise<void> {
-  const token = localStorage.getItem('auth_token');
-  
-  const headers: HeadersInit = {};
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
-  }
-  
-  const res = await fetch(`${API_URL}/api/${tenantSlug}/products/${productId}`, {
-    method: 'DELETE',
-    headers,
-  });
-  
-  if (!res.ok) {
-    if (res.status === 401) {
-      throw new Error('Unauthorized - Please log in again');
-    }
-    throw new Error('Failed to delete product');
-  }
-}
-
-export async function createProduct(tenantSlug: string, data: Partial<Product>): Promise<Product> {
-  const token = localStorage.getItem('auth_token');
-  
-  const headers: HeadersInit = { 'Content-Type': 'application/json' };
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
-  }
-  
-  const res = await fetch(`${API_URL}/api/${tenantSlug}/products`, {
-    method: 'POST',
-    headers,
-    body: JSON.stringify(data),
-  });
-  
-  if (!res.ok) {
-    if (res.status === 401) {
-      throw new Error('Unauthorized - Please log in again');
-    }
-    const errorData = await res.json().catch(() => ({ message: 'Failed to create product' }));
-    throw new Error(errorData.message || 'Failed to create product');
-  }
-  return res.json();
-}
-
-export async function createOrder(tenantSlug: string, orderData: any): Promise<Order | { order: Order; authToken?: string; refreshToken?: string; user?: any }> {
-  const token = typeof window !== 'undefined' ? localStorage.getItem('customer_auth_token') : null;
-  
-  const headers: HeadersInit = { 'Content-Type': 'application/json' };
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
-  }
-  
-  const res = await fetch(`${API_URL}/api/${tenantSlug}/orders`, {
-    method: 'POST',
-    headers,
-    body: JSON.stringify(orderData),
-  });
-  
-  if (!res.ok) {
-    const errorData = await res.json().catch(() => ({ message: 'Failed to create order' }));
-    throw new Error(errorData.message || 'Failed to create order');
-  }
-  const data = await res.json();
-  // Validate order response (could be Order or { order: Order, ... })
-  if ('order' in data) {
-    return {
-      ...data,
-      order: safeParse(OrderSchema, data.order, data.order as any),
-    };
-  }
-  return safeParse(OrderSchema, data, data as any) as Order;
-}
-
-export async function createPaymentSession(orderId: string) {
-  const res = await fetch(`${API_URL}/api/payments/session`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ orderId }),
-  });
-  
-  if (!res.ok) {
-    let message = 'Failed to create payment';
-    const contentType = res.headers.get('content-type') || '';
-
-    if (contentType.includes('application/json')) {
-      const errorData = await res.json().catch(() => null);
-      if (errorData?.message) message = errorData.message;
-      if (errorData?.error) message = `${message}: ${errorData.error}`;
-    } else {
-      const errorText = await res.text().catch(() => '');
-      if (errorText) message = errorText;
-    }
-
-    throw new Error(message);
-  }
   return res.json();
 }
 
@@ -406,535 +289,921 @@ export async function getOrder(orderId: string): Promise<Order> {
   const res = await fetch(`${API_URL}/api/track/${orderId}?t=${Date.now()}`, {
     cache: 'no-store',
   });
-  
-  if (!res.ok) throw new Error('Order not found');
+
+  if (!res.ok) {
+    throw new Error('Order not found');
+  }
+
   const data = await res.json();
   return safeParse(OrderSchema, data, data as any) as Order;
 }
 
-// Tenant/Brand management
-export async function getAllTenants(includeInactive: boolean = false): Promise<Tenant[]> {
-  const url = includeInactive 
-    ? `${API_URL}/api/tenants?includeInactive=true`
-    : `${API_URL}/api/tenants`;
-    
-  const res = await fetch(url);
-  
-  if (!res.ok) throw new Error('Failed to fetch tenants');
+type CreateOrderPayload = {
+  customer: {
+    name: string;
+    email: string;
+    phone: string;
+  };
+  address: {
+    street: string;
+    city: string;
+    postalCode: string;
+    country?: string;
+    houseNumber?: string;
+    instructions?: string;
+    coordinates?: { lat: number; lng: number };
+  };
+  items: Array<{
+    productId: string;
+    quantity: number;
+    modifiers?: Record<string, string[]>;
+  }>;
+  addressId?: string;
+  userId?: string;
+  paymentMethod?: string | null;
+  saveAccount?: boolean;
+  deliveryFeeCents?: number;
+  clientRequestId?: string;
+};
+
+type CreateOrderResult = Order | {
+  order: Order;
+  authToken?: string;
+  refreshToken?: string;
+  user?: any;
+};
+
+export async function createOrder(tenantSlug: string, data: CreateOrderPayload): Promise<CreateOrderResult> {
+  const normalizedSlug = normalizeTenantSlug(tenantSlug);
+  const res = await fetch(`${API_URL}/api/${normalizedSlug}/orders`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify(data),
+  });
+
+  if (!res.ok) {
+    const errorText = await res.text().catch(() => '');
+    throw new Error(errorText || 'Failed to create order');
+  }
+
   return res.json();
 }
 
-export async function updateTenant(tenantSlug: string, data: Partial<Tenant>): Promise<Tenant> {
-  const normalizedSlug = normalizeTenantSlug(tenantSlug);
-  const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
+export async function createPaymentSession(orderId: string): Promise<{ redirectUrl?: string; [key: string]: any }> {
+  const customerToken = typeof window !== 'undefined' ? localStorage.getItem('customer_auth_token') : null;
   const headers: HeadersInit = { 'Content-Type': 'application/json' };
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
+  if (customerToken) {
+    headers['Authorization'] = `Bearer ${customerToken}`;
   }
-  
-  const res = await fetch(`${API_URL}/api/tenants/${normalizedSlug}`, {
-    method: 'PATCH',
+
+  const res = await fetch(`${API_URL}/api/payments/session`, {
+    method: 'POST',
     headers,
     credentials: 'include',
-    body: JSON.stringify(data),
+    body: JSON.stringify({ orderId }),
   });
-  
+
   if (!res.ok) {
-    if (res.status === 401) {
-      throw new Error('Unauthorized - Please log in again');
-    }
-    throw new Error('Failed to update tenant');
+    const errorText = await res.text().catch(() => '');
+    throw new Error(errorText || 'Failed to create payment session');
   }
+
   return res.json();
 }
 
-export async function createTenant(data: Partial<Tenant>): Promise<Tenant> {
-  const res = await fetch(`${API_URL}/api/tenants`, {
+export type DeliveryFeeRequest = {
+  address: {
+    street?: string;
+    postalCode: string;
+    city: string;
+    cityPart?: string;
+    coordinates?: { lat: number; lng: number };
+  };
+};
+
+type DeliveryFeeResponse = {
+  available: boolean;
+  deliveryFeeCents?: number;
+  minOrderCents?: number | null;
+  zoneName?: string | null;
+  message?: string | null;
+  [key: string]: any;
+};
+
+export async function calculateDeliveryFee(
+  tenantSlug: string,
+  address: DeliveryFeeRequest['address']
+): Promise<DeliveryFeeResponse> {
+  const normalizedSlug = normalizeTenantSlug(tenantSlug);
+  const res = await fetch(`${API_URL}/api/delivery-zones/${normalizedSlug}/calculate-fee`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
+    body: JSON.stringify({ address }),
   });
-  
-  if (!res.ok) throw new Error('Failed to create tenant');
+
+  if (!res.ok) {
+    const errorText = await res.text().catch(() => '');
+    throw new Error(errorText || 'Failed to calculate delivery fee');
+  }
+
   return res.json();
 }
 
-// SMS Verification API functions
-export async function sendSmsCode(phoneNumber: string, userId: string): Promise<void> {
-  const res = await fetch(`${API_URL}/api/auth/send-sms-code`, {
+export async function validateMinOrder(
+  tenantSlug: string,
+  address: DeliveryFeeRequest['address'],
+  orderTotalCents: number
+): Promise<{ valid: boolean; minOrderCents?: number | null; zoneName?: string | null; message?: string | null }> {
+  const normalizedSlug = normalizeTenantSlug(tenantSlug);
+  const res = await fetch(`${API_URL}/api/delivery-zones/${normalizedSlug}/validate-min-order`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ phoneNumber, userId }),
+    body: JSON.stringify({ address, orderTotalCents }),
   });
-  
+
   if (!res.ok) {
-    const error = await res.json();
-    throw new Error(error.message || 'Failed to send SMS code');
+    const errorText = await res.text().catch(() => '');
+    throw new Error(errorText || 'Failed to validate minimum order');
   }
+
+  return res.json();
 }
 
-export async function verifySmsCode(phoneNumber: string, code: string, userId: string): Promise<any> {
-  const res = await fetch(`${API_URL}/api/auth/verify-sms`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    credentials: 'include', // Include cookies for HttpOnly tokens
-    body: JSON.stringify({ phoneNumber, code, userId }),
-  });
-  
-  if (!res.ok) {
-    const error = await res.json();
-    throw new Error(error.message || 'Invalid SMS code');
-  }
-  
-  // Store tokens if returned
-  const data = await res.json();
-  const isProduction = process.env.NODE_ENV === 'production';
-  
-  if (data.access_token) {
-    if (!isProduction) {
-      localStorage.setItem('auth_token', data.access_token);
-      if (data.refresh_token) {
-        localStorage.setItem('refresh_token', data.refresh_token);
-      }
-    } else {
-      // Production: Tokens are in HttpOnly cookies, but we still need access_token for Authorization header
-      localStorage.setItem('auth_token', data.access_token);
-    }
-    if (data.user) {
-      localStorage.setItem('auth_user', JSON.stringify(data.user));
-    }
-  }
-  
-  return data;
-}
-
-// Customer Authentication API functions
 export async function checkEmailExists(email: string): Promise<boolean> {
-  const tenant = getTenantSlug();
   const res = await fetch(`${API_URL}/api/auth/customer/check-email`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-tenant': tenant },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email }),
   });
-  
+
   if (!res.ok) {
-    throw new Error('Failed to check email');
+    const errorText = await res.text().catch(() => '');
+    throw new Error(errorText || 'Failed to check email');
   }
-  
+
   const data = await res.json();
-  return data.exists;
+  return !!data?.exists;
 }
 
-export async function registerCustomer(email: string, password: string, name: string): Promise<any> {
-  const tenant = getTenantSlug();
-  const res = await fetch(`${API_URL}/api/auth/customer/register`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-tenant': tenant },
-    credentials: 'include',
-    body: JSON.stringify({ email, password, name }),
-  });
-  
-  if (!res.ok) {
-    const error = await res.json();
-    throw new Error(error.message || 'Registration failed');
-  }
-  
-  return res.json();
-}
-
-export async function loginCustomer(email: string, password: string): Promise<any> {
-  const tenant = getTenantSlug();
-  const res = await fetch(`${API_URL}/api/auth/customer/login`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-tenant': tenant },
-    credentials: 'include',
-    body: JSON.stringify({ email, password }),
-  });
-  
-  if (!res.ok) {
-    const error = await res.json();
-    throw new Error(error.message || 'Login failed');
-  }
-  
-  return res.json();
-}
-
-export async function sendCustomerSmsCode(phone: string, userId: string): Promise<void> {
+export async function sendCustomerSmsCode(phone: string, userId: string): Promise<any> {
   const res = await fetch(`${API_URL}/api/auth/customer/send-sms-code`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
     body: JSON.stringify({ phone, userId }),
   });
-  
-  if (!res.ok) {
-    const error = await res.json();
-    throw new Error(error.message || 'Failed to send SMS code');
-  }
-}
 
-export async function verifyCustomerPhone(phone: string, code: string, userId: string): Promise<any> {
-  const res = await fetch(`${API_URL}/api/auth/customer/verify-sms`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    credentials: 'include',
-    body: JSON.stringify({ phone, code, userId }),
-  });
-  
   if (!res.ok) {
-    const error = await res.json();
-    throw new Error(error.message || 'Invalid SMS code');
+    const errorText = await res.text().catch(() => '');
+    throw new Error(errorText || 'Failed to send SMS code');
   }
-  
+
   return res.json();
 }
 
-// Admin: Update order status
-export async function updateOrderStatus(
-  orderId: string, 
-  status: OrderStatus,
-  tenantSlug: string // Add tenant slug parameter
-): Promise<void> {
-  const res = await fetch(`${API_URL}/api/${tenantSlug}/orders/${orderId}/status`, {
+export async function getOrders(
+  token: string,
+  tenantSlug: string,
+  startDate?: string,
+  endDate?: string
+): Promise<Order[]> {
+  try {
+    const normalizedSlug = normalizeTenantSlug(tenantSlug);
+    const params = new URLSearchParams({
+      tenantSlug: normalizedSlug,
+    });
+
+    if (startDate) {
+      params.append('startDate', startDate);
+    }
+    if (endDate) {
+      params.append('endDate', endDate);
+    }
+
+    console.log('[getOrders] Fetching orders:', { url: `${API_URL}/api/orders?${params.toString()}`, hasToken: !!token, tokenLength: token?.length, headers: ['Authorization'] });
+
+    const res = await fetch(`${API_URL}/api/orders?${params.toString()}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      cache: 'no-store', // Ensure fresh data on each request
+    });
+
+    const statusText = res.statusText || '';
+    console.log('[OrderList] Response:', { status: res.status, statusText, ok: res.ok });
+
+    if (!res.ok) {
+      const errorText = await res.text();
+      console.error(`[getOrders] HTTP error ${res.status}:`, errorText);
+      throw new Error(`Failed to fetch orders: ${errorText}`);
+    }
+
+    const data = await res.json();
+    return safeParse(OrderSchema.array(), data, data as any);
+  } catch (error) {
+    console.error('[getOrders] Error:', error);
+    throw error;
+  }
+}
+
+export async function updateOrderStatus(orderId: string, status: OrderStatus, token: string) {
+  const res = await fetch(`${API_URL}/api/orders/${orderId}/status`, {
     method: 'PATCH',
-    headers: { 
+    headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${localStorage.getItem('auth_token') || ''}`,
+      Authorization: `Bearer ${token}`,
     },
     body: JSON.stringify({ status }),
   });
-  
+
   if (!res.ok) {
-    const error = await res.json().catch(() => ({ message: 'Failed to update order status' }));
-    throw new Error(error.message || 'Failed to update order status');
+    throw new Error('Failed to update order status');
   }
 }
 
-// Admin: Check Wolt availability and get shipment promise
-export interface WoltShipmentPromise {
-  promiseId: string;
-  feeCents: number;
-  etaMinutes: number;
-  pickupEtaMinutes?: number;
-  dropoffEtaMinutes?: number;
-  validUntil: string;
-  currency: string;
-  distance?: number;
-}
-
-export async function checkWoltAvailability(orderId: string): Promise<WoltShipmentPromise> {
-  const token = localStorage.getItem('auth_token');
-  const headers: HeadersInit = { 'Content-Type': 'application/json' };
-  
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
-  }
-  
-  const res = await fetch(`${API_URL}/api/delivery/check-availability`, {
-    method: 'POST',
-    headers,
-    body: JSON.stringify({ orderId }),
-  });
-  
-  if (!res.ok) {
-    const error = await res.json().catch(() => ({ message: 'Nepodarilo sa skontrolovať dostupnosť Wolt' }));
-    // Backend now returns user-friendly messages in error.message
-    throw new Error(error.message || error.error || 'Nepodarilo sa skontrolovať dostupnosť Wolt');
-  }
-  
-  return await res.json();
-}
-
-// Admin: Create Wolt delivery
-export async function createWoltDelivery(
-  orderId: string,
-  promiseId?: string,
-  promiseData?: WoltShipmentPromise | null,
-): Promise<{ success: boolean; deliveryId?: string; trackingUrl?: string | null; message: string }> {
-  const token = localStorage.getItem('auth_token');
-  const headers: HeadersInit = { 'Content-Type': 'application/json' };
-  
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
-  }
-  
-  const res = await fetch(`${API_URL}/api/delivery/create`, {
-    method: 'POST',
-    headers,
-    body: JSON.stringify({
-      orderId,
-      promiseId,
-      promiseData: promiseData
-        ? {
-            promiseId: promiseData.promiseId,
-            feeCents: promiseData.feeCents,
-            etaMinutes: promiseData.etaMinutes,
-            pickupEtaMinutes: promiseData.pickupEtaMinutes,
-            dropoffEtaMinutes: promiseData.dropoffEtaMinutes,
-            validUntil: promiseData.validUntil,
-            currency: promiseData.currency,
-            distance: promiseData.distance,
-          }
-        : undefined,
-    }),
-  });
-  
-  if (!res.ok) {
-    const error = await res.json().catch(() => ({ message: 'Nepodarilo sa vytvoriť Wolt doručenie' }));
-    // Backend now returns user-friendly messages in error.message
-    throw new Error(error.message || error.error || 'Nepodarilo sa vytvoriť Wolt doručenie');
-  }
-  
-  const delivery = await res.json();
-  // Backend returns delivery object, convert to expected format
-  return {
-    success: true,
-    deliveryId: delivery.id,
-    trackingUrl: delivery.trackingUrl || null,
-    message: 'Wolt delivery created successfully',
-  };
-}
-
-// Admin: Sync order to Storyous
-export async function syncOrderToStoryous(orderId: string, tenantSlug?: string): Promise<{ success: boolean; storyousOrderId?: string; message: string }> {
-  // If tenantSlug is not provided, try to determine it from the order
-  // For now, we'll use a generic endpoint that works with any tenant
-  // The backend will handle tenant resolution
-  const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
-  const headers: HeadersInit = { 'Content-Type': 'application/json' };
-  if (token) {
-    (headers as Record<string, string>)['Authorization'] = `Bearer ${token}`;
-  }
-
-  const res = await fetch(`${API_URL}/api/pornopizza/orders/${orderId}/sync-storyous`, {
-    method: 'POST',
-    headers,
-  });
-  
-  if (!res.ok) {
-    // Try the other tenant if first fails
-    if (!tenantSlug || tenantSlug === 'pornopizza') {
-      const res2 = await fetch(`${API_URL}/api/pizzavnudzi/orders/${orderId}/sync-storyous`, {
-        method: 'POST',
-        headers,
-      });
-      if (res2.ok) {
-        return res2.json();
-      }
+export async function getProductOverrides(
+  tenantSlug: string,
+  productId: string,
+  targetTenantSlug: string
+): Promise<ProductTenantOverride | null> {
+  const normalizedSlug = normalizeTenantSlug(tenantSlug);
+  const normalizedTarget = normalizeTenantSlug(targetTenantSlug);
+  const res = await fetch(
+    `${API_URL}/api/${normalizedSlug}/products/${productId}/overrides/${normalizedTarget}`,
+    {
+      headers: buildAuthHeaders(),
+      credentials: 'include',
     }
-    const error = await res.json().catch(() => ({ message: 'Failed to sync order to Storyous' }));
-    throw new Error(error.message || 'Failed to sync order to Storyous');
+  );
+  if (!res.ok) {
+    if (res.status === 404) {
+      return null;
+    }
+    const errorText = await res.text().catch(() => '');
+    throw new Error(errorText || 'Failed to fetch product overrides');
   }
-  
   return res.json();
 }
 
-// Storyous Settings API
-export interface StoryousSettings {
+export async function updateProductOverrides(
+  tenantSlug: string,
+  productId: string,
+  targetTenantSlug: string,
+  overrides: ProductTenantOverride
+): Promise<ProductTenantOverride> {
+  const normalizedSlug = normalizeTenantSlug(tenantSlug);
+  const normalizedTarget = normalizeTenantSlug(targetTenantSlug);
+  const res = await fetch(
+    `${API_URL}/api/${normalizedSlug}/products/${productId}/overrides/${normalizedTarget}`,
+    {
+      method: 'PATCH',
+      headers: buildAuthHeaders(true),
+      credentials: 'include',
+      body: JSON.stringify(overrides),
+    }
+  );
+
+  if (!res.ok) {
+    const errorText = await res.text().catch(() => '');
+    throw new Error(errorText || 'Failed to update product overrides');
+  }
+
+  return res.json();
+}
+
+export async function cloneTenant(sourceSlug: string, cloneData: any): Promise<Tenant> {
+  const normalizedSlug = normalizeTenantSlug(sourceSlug);
+  const res = await fetch(`${API_URL}/api/tenants/${normalizedSlug}/clone`, {
+    method: 'POST',
+    headers: buildAuthHeaders(true),
+    credentials: 'include',
+    body: JSON.stringify(cloneData),
+  });
+
+  if (!res.ok) {
+    const errorText = await res.text().catch(() => '');
+    throw new Error(errorText || 'Failed to clone tenant');
+  }
+
+  const data = await res.json();
+  const validated = safeParse(TenantSchema, data, data as any);
+  return withTenantThemeDefaults(validated) as Tenant;
+}
+
+export function getTenantSlugFromHeaders(hostHeader?: string): string | null {
+  if (!hostHeader) return null;
+  const host = hostHeader.split(':')[0].toLowerCase();
+  
+  const knownDomains: Record<string, string> = {
+    'p0rnopizza.sk': 'pornopizza',
+    'pornopizza.sk': 'pornopizza',
+    'www.pornopizza.sk': 'pornopizza',
+    'pizzaparty.sk': 'partypizza',
+    'www.pizzaparty.sk': 'partypizza',
+    'partypizza.sk': 'partypizza',
+    'pizzavnudzi.sk': 'pizzavnudzi',
+    'www.pizzavnudzi.sk': 'pizzavnudzi',
+  };
+  
+  return knownDomains[host] || null;
+}
+
+type StoryousSyncResult = {
+  success: boolean;
+  storyousOrderId?: string;
+  storyousState?: string | null;
+  message: string;
+  warnings?: string[];
+};
+
+type SyncFromMasterResult = {
+  synced: string[];
+  errors: string[];
+};
+
+export type StoryousSettings = {
   clientId: string;
   clientSecret: string;
   merchantId: string;
   placeId: string;
   enabled: boolean;
   autoSync: boolean;
-}
+  defaultDeliveryLeadMinutes: number;
+  autoAcceptPrintMode: boolean;
+  receiptIncludeModifierLines: boolean;
+  receiptIncludeOrderNumber: boolean;
+};
+
+export type StoryousModifierMapping = {
+  id: string;
+  tenantId: string;
+  optionId: string;
+  externalAdditionId: string;
+  labelOverride: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
+export type StoryousModifierMappingInput = {
+  optionId: string;
+  externalAdditionId: string;
+  labelOverride?: string | null;
+};
+
+export type StoryousModifierAutoFillResult = {
+  mappings: StoryousModifierMapping[];
+  matchedCount: number;
+  unmatchedCount: number;
+  ambiguousCount: number;
+  additionsCount: number;
+  unmatchedOptions: Array<{ optionId: string; label: string }>;
+  ambiguousOptions: Array<{
+    optionId: string;
+    label: string;
+    matches: Array<{
+      additionId: string;
+      title: string;
+      additionCategoryId?: string;
+      categoryTitle?: string;
+    }>;
+  }>;
+};
+
+export type StoryousAutoPrintReadiness = {
+  ready: boolean;
+  blockers: string[];
+  warnings: string[];
+  checks: {
+    enabled: boolean;
+    credentialsConfigured: boolean;
+    merchantPlaceConfigured: boolean;
+    autoAcceptPrintMode: boolean;
+    receiptIncludeModifierLines: boolean;
+    receiptIncludeOrderNumber: boolean;
+  };
+};
+
+type WoltAvailabilityResult = {
+  promiseId: string;
+  feeCents: number;
+  etaMinutes: number;
+  validUntil: string;
+  currency: string;
+};
+
+type WoltCreateResult = {
+  success?: boolean;
+  message?: string;
+  trackingUrl?: string;
+  [key: string]: any;
+};
+
+export type WoltAreaCheckResult = {
+  insideArea: boolean | null;
+  source: 'cache' | 'live' | 'fallback';
+  reason: string | null;
+  fetchedAt?: string;
+};
+
+export type TenantOperationsSettings = {
+  tenantId: string;
+  tenantSlug: string;
+  tenantSubdomain: string;
+  primaryColor: string | null;
+  secondaryColor: string | null;
+  maintenanceMode: boolean;
+  openingHours: any | null;
+};
+
+export type TenantPaymentSettings = {
+  tenantId: string;
+  tenantSlug: string;
+  tenantSubdomain: string;
+  paymentProvider: string | null;
+  paymentConfig: Record<string, any>;
+};
+
+export type TenantDeliverySettings = {
+  tenantId: string;
+  tenantSlug: string;
+  tenantSubdomain: string;
+  deliveryConfig: Record<string, any>;
+};
 
 function getAuthToken(): string | null {
   if (typeof window === 'undefined') return null;
-  return localStorage.getItem('auth_token') || localStorage.getItem('authToken');
+  return localStorage.getItem('auth_token');
 }
 
-export async function getStoryousSettings(): Promise<StoryousSettings | null> {
+function buildAuthHeaders(includeJson = false): HeadersInit {
   const token = getAuthToken();
-  if (!token) {
-    throw new Error('Not authenticated');
+  const headers: HeadersInit = {};
+  if (includeJson) {
+    headers['Content-Type'] = 'application/json';
   }
-  
-  const res = await fetch(`${API_URL}/api/settings/storyous`, {
-    headers: {
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json',
-    },
-  });
-  
-  if (!res.ok) {
-    if (res.status === 404) {
-      return null;
-    }
-    const error = await res.json().catch(() => ({ message: 'Failed to get Storyous settings' }));
-    throw new Error(error.message || 'Failed to get Storyous settings');
-  }
-  
-  return res.json();
-}
-
-export async function updateStoryousSettings(data: Partial<StoryousSettings>): Promise<StoryousSettings> {
-  const token = getAuthToken();
-  if (!token) {
-    throw new Error('Not authenticated');
-  }
-  
-  const res = await fetch(`${API_URL}/api/settings/storyous`, {
-    method: 'PUT',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`,
-    },
-    body: JSON.stringify(data),
-  });
-  
-  if (!res.ok) {
-    const error = await res.json().catch(() => ({ message: 'Failed to update Storyous settings' }));
-    throw new Error(error.message || 'Failed to update Storyous settings');
-  }
-  
-  return res.json();
-}
-
-// Delivery zones
-export interface DeliveryFeeRequest {
-  address: {
-    street?: string;
-    postalCode?: string;
-    city?: string;
-    cityPart?: string;
-    coordinates?: { lat: number; lng: number };
-  };
-}
-
-export interface DeliveryFeeResponse {
-  available: boolean;
-  deliveryFeeCents?: number;
-  deliveryFeeEuros?: string;
-  distanceMeters?: number;
-  distanceKm?: string;
-  minOrderCents?: number | null;
-  minOrderEuros?: string | null;
-  zoneName?: string;
-  message?: string;
-  isOutOfRange?: boolean; // true if address is outside delivery range
-}
-
-export async function calculateDeliveryFee(
-  tenantSlug: string,
-  address: DeliveryFeeRequest['address'],
-): Promise<DeliveryFeeResponse> {
-  const res = await fetch(`${API_URL}/api/delivery-zones/${tenantSlug}/calculate-fee`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ address }),
-  });
-  
-  if (!res.ok) {
-    const errorText = await res.text();
-    throw new Error(`Failed to calculate delivery fee: ${errorText}`);
-  }
-  
-  return res.json();
-}
-
-export interface ValidateMinOrderRequest {
-  address: {
-  };
-  orderTotalCents: number;
-}
-
-export interface ValidateMinOrderResponse {
-  valid: boolean;
-  minOrderCents: number | null;
-  minOrderEuros: string | null;
-  zoneName: string | null;
-  message: string | null;
-}
-
-export async function validateMinOrder(
-  tenantSlug: string,
-  address: ValidateMinOrderRequest['address'],
-  orderTotalCents: number,
-): Promise<ValidateMinOrderResponse> {
-  const res = await fetch(`${API_URL}/api/delivery-zones/${tenantSlug}/validate-min-order`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ address, orderTotalCents }),
-  });
-  
-  if (!res.ok) {
-    const errorText = await res.text();
-    throw new Error(`Failed to validate min order: ${errorText}`);
-  }
-  
-  return res.json();
-}
-
-/**
- * Clone a tenant with all its data
- */
-export async function cloneTenant(
-  sourceSlug: string,
-  cloneData: {
-    name: string;
-    slug: string;
-    subdomain: string;
-    domain?: string;
-    theme?: any;
-    emailConfig?: any;
-    deliveryConfig?: any;
-    productOverrides?: Record<string, any>;
-  }
-): Promise<Tenant> {
-  const token =
-    (typeof window !== 'undefined' && (
-      localStorage.getItem('auth_token') ||
-      localStorage.getItem('access_token') ||
-      localStorage.getItem('token') ||
-      localStorage.getItem('accessToken') ||
-      localStorage.getItem('customer_refresh_token')
-    )) ||
-    null;
-
-  console.log('[cloneTenant] token present?', !!token);
-
-  const headers: HeadersInit = { 'Content-Type': 'application/json' };
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
   }
+  return headers;
+}
 
-  const res = await fetch(`${API_URL}/api/tenants/${sourceSlug}/clone`, {
-    method: 'POST',
-    headers,
+export async function getTenantOperationsSettings(
+  tenantSlug: string,
+): Promise<TenantOperationsSettings> {
+  const normalizedTenant = normalizeTenantSlug(tenantSlug);
+  const res = await fetch(`${API_URL}/api/settings/tenants/${encodeURIComponent(normalizedTenant)}/operations`, {
+    method: 'GET',
+    headers: buildAuthHeaders(),
     credentials: 'include',
-    body: JSON.stringify(cloneData),
   });
 
   if (!res.ok) {
-    const errorText = await res.text().catch(() => 'Unknown error');
-    throw new Error(`Failed to clone tenant: ${errorText}`);
+    const errorText = await res.text().catch(() => '');
+    throw new Error(errorText || 'Failed to fetch tenant operations settings');
   }
 
   return res.json();
 }
 
-/**
- * Sync functional data from master tenant to other tenants
- */
-export async function syncFromMaster(
-  masterSlug: string,
-  targetSlugs?: string[]
-): Promise<{ success: boolean; synced: string[]; errors: string[] }> {
+export async function updateTenantOperationsSettings(
+  tenantSlug: string,
+  data: {
+    maintenanceMode?: boolean;
+    openingHours?: any | null;
+  },
+): Promise<TenantOperationsSettings> {
+  const normalizedTenant = normalizeTenantSlug(tenantSlug);
+  const res = await fetch(`${API_URL}/api/settings/tenants/${encodeURIComponent(normalizedTenant)}/operations`, {
+    method: 'PUT',
+    headers: buildAuthHeaders(true),
+    credentials: 'include',
+    body: JSON.stringify(data),
+  });
+
+  if (!res.ok) {
+    const errorText = await res.text().catch(() => '');
+    throw new Error(errorText || 'Failed to update tenant operations settings');
+  }
+
+  return res.json();
+}
+
+export async function getTenantPaymentSettings(
+  tenantSlug: string,
+): Promise<TenantPaymentSettings> {
+  const normalizedTenant = normalizeTenantSlug(tenantSlug);
+  const res = await fetch(`${API_URL}/api/settings/tenants/${encodeURIComponent(normalizedTenant)}/payment`, {
+    method: 'GET',
+    headers: buildAuthHeaders(),
+    credentials: 'include',
+  });
+
+  if (!res.ok) {
+    const errorText = await res.text().catch(() => '');
+    throw new Error(errorText || 'Failed to fetch tenant payment settings');
+  }
+
+  return res.json();
+}
+
+export async function updateTenantPaymentSettings(
+  tenantSlug: string,
+  paymentConfig: Record<string, any>,
+): Promise<TenantPaymentSettings> {
+  const normalizedTenant = normalizeTenantSlug(tenantSlug);
+  const res = await fetch(`${API_URL}/api/settings/tenants/${encodeURIComponent(normalizedTenant)}/payment`, {
+    method: 'PUT',
+    headers: buildAuthHeaders(true),
+    credentials: 'include',
+    body: JSON.stringify({ paymentConfig }),
+  });
+
+  if (!res.ok) {
+    const errorText = await res.text().catch(() => '');
+    throw new Error(errorText || 'Failed to update tenant payment settings');
+  }
+
+  return res.json();
+}
+
+export async function getTenantDeliverySettings(
+  tenantSlug: string,
+): Promise<TenantDeliverySettings> {
+  const normalizedTenant = normalizeTenantSlug(tenantSlug);
+  const res = await fetch(`${API_URL}/api/settings/tenants/${encodeURIComponent(normalizedTenant)}/delivery`, {
+    method: 'GET',
+    headers: buildAuthHeaders(),
+    credentials: 'include',
+  });
+
+  if (!res.ok) {
+    const errorText = await res.text().catch(() => '');
+    throw new Error(errorText || 'Failed to fetch tenant delivery settings');
+  }
+
+  return res.json();
+}
+
+export async function updateTenantDeliverySettings(
+  tenantSlug: string,
+  deliveryConfig: Record<string, any>,
+): Promise<TenantDeliverySettings> {
+  const normalizedTenant = normalizeTenantSlug(tenantSlug);
+  const res = await fetch(`${API_URL}/api/settings/tenants/${encodeURIComponent(normalizedTenant)}/delivery`, {
+    method: 'PUT',
+    headers: buildAuthHeaders(true),
+    credentials: 'include',
+    body: JSON.stringify({ deliveryConfig }),
+  });
+
+  if (!res.ok) {
+    const errorText = await res.text().catch(() => '');
+    throw new Error(errorText || 'Failed to update tenant delivery settings');
+  }
+
+  return res.json();
+}
+
+export async function getStoryousSettings(): Promise<StoryousSettings | null> {
+  const res = await fetch(`${API_URL}/api/settings/storyous`, {
+    method: 'GET',
+    headers: buildAuthHeaders(),
+    credentials: 'include',
+  });
+
+  if (res.status === 404) {
+    return null;
+  }
+
+  if (!res.ok) {
+    const errorText = await res.text().catch(() => '');
+    throw new Error(errorText || 'Failed to fetch Storyous settings');
+  }
+
+  const data = await res.json();
+  return data as StoryousSettings;
+}
+
+export async function updateStoryousSettings(
+  data: Partial<StoryousSettings>
+): Promise<StoryousSettings> {
+  const res = await fetch(`${API_URL}/api/settings/storyous`, {
+    method: 'PUT',
+    headers: buildAuthHeaders(true),
+    credentials: 'include',
+    body: JSON.stringify(data),
+  });
+
+  if (!res.ok) {
+    const errorText = await res.text().catch(() => '');
+    throw new Error(errorText || 'Failed to update Storyous settings');
+  }
+
+  return res.json();
+}
+
+export async function getStoryousAutoPrintReadiness(): Promise<StoryousAutoPrintReadiness> {
+  const res = await fetch(`${API_URL}/api/settings/storyous/auto-print-readiness`, {
+    method: 'GET',
+    headers: buildAuthHeaders(),
+    credentials: 'include',
+  });
+
+  if (!res.ok) {
+    const errorText = await res.text().catch(() => '');
+    throw new Error(errorText || 'Failed to fetch Storyous auto-print readiness');
+  }
+
+  return res.json();
+}
+
+export async function getStoryousModifierMappings(
+  tenantSlug: string,
+): Promise<StoryousModifierMapping[]> {
+  const normalizedTenant = normalizeTenantSlug(tenantSlug);
+  const res = await fetch(
+    `${API_URL}/api/settings/storyous/modifier-mappings?tenantSlug=${encodeURIComponent(normalizedTenant)}`,
+    {
+      method: 'GET',
+      headers: buildAuthHeaders(),
+      credentials: 'include',
+    },
+  );
+
+  if (!res.ok) {
+    const errorText = await res.text().catch(() => '');
+    throw new Error(errorText || 'Failed to fetch Storyous modifier mappings');
+  }
+
+  return res.json();
+}
+
+export async function updateStoryousModifierMappings(
+  tenantSlug: string,
+  mappings: StoryousModifierMappingInput[],
+): Promise<StoryousModifierMapping[]> {
+  const normalizedTenant = normalizeTenantSlug(tenantSlug);
+  const res = await fetch(
+    `${API_URL}/api/settings/storyous/modifier-mappings?tenantSlug=${encodeURIComponent(normalizedTenant)}`,
+    {
+      method: 'PUT',
+      headers: buildAuthHeaders(true),
+      credentials: 'include',
+      body: JSON.stringify({ mappings }),
+    },
+  );
+
+  if (!res.ok) {
+    const errorText = await res.text().catch(() => '');
+    throw new Error(errorText || 'Failed to update Storyous modifier mappings');
+  }
+
+  return res.json();
+}
+
+export async function autoFillStoryousModifierMappings(
+  tenantSlug: string,
+): Promise<StoryousModifierAutoFillResult> {
+  const normalizedTenant = normalizeTenantSlug(tenantSlug);
+  const res = await fetch(
+    `${API_URL}/api/settings/storyous/modifier-mappings/autofill?tenantSlug=${encodeURIComponent(normalizedTenant)}`,
+    {
+      method: 'POST',
+      headers: buildAuthHeaders(),
+      credentials: 'include',
+    },
+  );
+
+  if (!res.ok) {
+    const errorText = await res.text().catch(() => '');
+    throw new Error(errorText || 'Failed to auto-fill Storyous modifier mappings');
+  }
+
+  return res.json();
+}
+
+export async function syncFromMaster(masterSlug: string, targetSlugs?: string[]): Promise<SyncFromMasterResult> {
   const res = await fetch(`${API_URL}/api/tenants/sync-from-master`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
+    headers: buildAuthHeaders(true),
+    credentials: 'include',
     body: JSON.stringify({ masterSlug, targetSlugs }),
   });
 
   if (!res.ok) {
-    const errorText = await res.text();
-    throw new Error(`Failed to sync from master: ${errorText}`);
+    const errorText = await res.text().catch(() => '');
+    throw new Error(errorText || 'Failed to sync from master tenant');
+  }
+
+  return res.json();
+}
+
+export async function syncOrderToStoryous(orderId: string, tenantSlug?: string): Promise<StoryousSyncResult> {
+  const normalizedTenant = tenantSlug ? normalizeTenantSlug(tenantSlug) : null;
+  const urls = [
+    `${API_URL}/api/orders/${orderId}/sync-storyous`,
+    ...(normalizedTenant ? [`${API_URL}/api/${normalizedTenant}/orders/${orderId}/sync-storyous`] : []),
+  ];
+
+  let lastErrorText = '';
+
+  for (const url of urls) {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: buildAuthHeaders(true),
+      credentials: 'include',
+    });
+
+    if (res.ok) {
+      return res.json();
+    }
+
+    const errorText = await res.text().catch(() => '');
+    lastErrorText = errorText || `HTTP ${res.status}`;
+
+    // Try fallback URL only for not found route
+    if (res.status !== 404) {
+      throw new Error(lastErrorText || 'Failed to sync order to Storyous');
+    }
+  }
+
+  throw new Error(lastErrorText || 'Failed to sync order to Storyous');
+}
+
+export type StoryousReceiptPreviewItem = {
+  quantity: number;
+  name: string;
+  modifierLines: string[];
+};
+
+export type StoryousReceiptPreview = {
+  printedTime: string;
+  printedDate: string;
+  title: string | null;
+  orderReference: string;
+  website: string;
+  noteLines: string[];
+  customerName: string;
+  customerDetailLines: string[];
+  items: StoryousReceiptPreviewItem[];
+  warnings: string[];
+};
+
+export async function getStoryousReceiptPreview(orderId: string): Promise<StoryousReceiptPreview> {
+  const res = await fetch(`${API_URL}/api/orders/${orderId}/storyous-preview`, {
+    method: 'GET',
+    headers: buildAuthHeaders(),
+    credentials: 'include',
+  });
+
+  if (!res.ok) {
+    const errorText = await res.text().catch(() => '');
+    throw new Error(errorText || 'Failed to load Storyous receipt preview');
+  }
+
+  return res.json();
+}
+
+export async function getStoryousSampleReceiptPreview(tenantSlug: string): Promise<StoryousReceiptPreview> {
+  const normalizedTenant = normalizeTenantSlug(tenantSlug);
+  const res = await fetch(
+    `${API_URL}/api/orders/storyous-preview-sample/current?tenantSlug=${encodeURIComponent(normalizedTenant)}`,
+    {
+      method: 'GET',
+      headers: buildAuthHeaders(),
+      credentials: 'include',
+    },
+  );
+
+  if (!res.ok) {
+    const errorText = await res.text().catch(() => '');
+    throw new Error(errorText || 'Failed to load Storyous sample receipt preview');
+  }
+
+  return res.json();
+}
+
+export async function checkWoltAvailability(
+  orderId: string,
+  minPreparationTimeMinutes?: number,
+): Promise<WoltAvailabilityResult> {
+  const res = await fetch(`${API_URL}/api/delivery/check-availability`, {
+    method: 'POST',
+    headers: buildAuthHeaders(true),
+    credentials: 'include',
+    body: JSON.stringify({ orderId, minPreparationTimeMinutes }),
+  });
+
+  if (!res.ok) {
+    const errorText = await res.text().catch(() => '');
+    throw new Error(errorText || 'Wolt availability check failed');
+  }
+
+  return res.json();
+}
+
+export async function createWoltDelivery(
+  orderId: string,
+  promiseId?: string,
+  minPreparationTimeMinutes?: number,
+): Promise<WoltCreateResult> {
+  const res = await fetch(`${API_URL}/api/delivery/create`, {
+    method: 'POST',
+    headers: buildAuthHeaders(true),
+    credentials: 'include',
+    body: JSON.stringify({ orderId, promiseId, minPreparationTimeMinutes }),
+  });
+
+  if (!res.ok) {
+    const errorText = await res.text().catch(() => '');
+    throw new Error(errorText || 'Failed to create Wolt delivery');
+  }
+
+  const data = await res.json();
+  return {
+    success: true,
+    ...data,
+  };
+}
+
+export async function cancelWoltDelivery(orderId: string): Promise<WoltCreateResult> {
+  const res = await fetch(`${API_URL}/api/delivery/cancel`, {
+    method: 'POST',
+    headers: buildAuthHeaders(true),
+    credentials: 'include',
+    body: JSON.stringify({ orderId }),
+  });
+
+  if (!res.ok) {
+    const errorText = await res.text().catch(() => '');
+    throw new Error(errorText || 'Failed to cancel Wolt delivery');
+  }
+
+  const data = await res.json();
+  return {
+    success: true,
+    ...data,
+  };
+}
+
+export async function rebookWoltDelivery(
+  orderId: string,
+  minPreparationTimeMinutes: number,
+): Promise<WoltCreateResult> {
+  const res = await fetch(`${API_URL}/api/delivery/rebook`, {
+    method: 'POST',
+    headers: buildAuthHeaders(true),
+    credentials: 'include',
+    body: JSON.stringify({ orderId, minPreparationTimeMinutes }),
+  });
+
+  if (!res.ok) {
+    const errorText = await res.text().catch(() => '');
+    throw new Error(errorText || 'Failed to rebook Wolt delivery');
+  }
+
+  const data = await res.json();
+  return {
+    success: true,
+    ...data,
+  };
+}
+
+export async function checkWoltDeliveryArea(
+  tenantSlug: string,
+  dropoffAddress: Record<string, any>,
+): Promise<WoltAreaCheckResult> {
+  const res = await fetch(`${API_URL}/api/delivery/check-area`, {
+    method: 'POST',
+    headers: buildAuthHeaders(true),
+    credentials: 'include',
+    body: JSON.stringify({ tenantSlug, dropoffAddress }),
+  });
+
+  if (!res.ok) {
+    const errorText = await res.text().catch(() => '');
+    throw new Error(errorText || 'Failed to check Wolt delivery area');
+  }
+
+  return res.json();
+}
+
+export async function refreshWoltDeliveryAreas(tenantSlug: string): Promise<{
+  ok: boolean;
+  polygons: number;
+  fetchedAt: string;
+}> {
+  const res = await fetch(`${API_URL}/api/delivery/areas/refresh`, {
+    method: 'POST',
+    headers: buildAuthHeaders(true),
+    credentials: 'include',
+    body: JSON.stringify({ tenantSlug }),
+  });
+
+  if (!res.ok) {
+    const errorText = await res.text().catch(() => '');
+    throw new Error(errorText || 'Failed to refresh Wolt delivery areas');
   }
 
   return res.json();

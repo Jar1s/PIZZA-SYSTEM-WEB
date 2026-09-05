@@ -28,7 +28,9 @@ model Tenant {
   deliveryZones   DeliveryZone[]
   deliveryFeeTiers DeliveryFeeTier[]
   orders          Order[]
+  orderCounter    TenantOrderCounter?
   productMappings ProductMapping[]
+  storyousModifierMappings StoryousModifierMapping[]
   products        Product[]
   users           User[]
 
@@ -69,6 +71,7 @@ model Order {
   id               String      @id @default(cuid())
   tenantId         String
   orderNumber      Int?
+  clientRequestId  String?
   status           OrderStatus @default(PENDING)
   customer         Json
   address          Json
@@ -82,6 +85,7 @@ model Order {
   createdAt        DateTime    @default(now())
   updatedAt        DateTime    @updatedAt
   storyousOrderId  String?
+  storyousOrderState String?
   userId           String?
   items            OrderItem[]
   statusHistory    OrderStatusHistory[]
@@ -90,12 +94,24 @@ model Order {
   user             User?       @relation(fields: [userId], references: [id])
 
   @@unique([tenantId, orderNumber])
+  @@unique([tenantId, clientRequestId])
   @@index([tenantId, status])
   @@index([tenantId, createdAt])
   @@index([tenantId, orderNumber])
+  @@index([tenantId, clientRequestId])
   @@index([paymentRef])
   @@index([userId])
   @@map("orders")
+}
+
+model TenantOrderCounter {
+  tenantId         String   @id
+  lastOrderNumber  Int
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  tenant           Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@map("tenant_order_counters")
 }
 
 model OrderStatusHistory {
@@ -122,6 +138,21 @@ model OrderItem {
   product     Product @relation(fields: [productId], references: [id])
 
   @@map("order_items")
+}
+
+model StoryousModifierMapping {
+  id                 String   @id @default(cuid())
+  tenantId           String
+  optionId           String
+  externalAdditionId String
+  labelOverride      String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  tenant             Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, optionId])
+  @@index([tenantId])
+  @@map("storyous_modifier_mappings")
 }
 
 model Delivery {
@@ -218,6 +249,8 @@ model Address {
   city        String
   postalCode  String
   country     String   @default("SK")
+  latitude    Float?
+  longitude   Float?
   isPrimary   Boolean  @default(false)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt

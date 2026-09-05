@@ -11,6 +11,7 @@ import { OrderStatus } from '@pizza-ecosystem/shared';
 import { SettingsService } from '../settings/settings.service';
 import { DeliveryFeeTierService } from '../delivery/delivery-fee-tier.service';
 import { OrderNumberService } from './order-number.service';
+import { TelegramNotificationsService } from '../notifications/telegram-notifications.service';
 
 describe('OrdersService', () => {
   let service: OrdersService;
@@ -25,10 +26,19 @@ describe('OrdersService', () => {
   const mockPrismaService = {
     user: {
       findUnique: jest.fn(),
+      findFirst: jest.fn(),
       create: jest.fn(),
+    },
+    address: {
+      findFirst: jest.fn(),
+      update: jest.fn(),
     },
     product: {
       findFirst: jest.fn(),
+      findMany: jest.fn(),
+    },
+    productMapping: {
+      findMany: jest.fn(),
     },
     tenant: {
       findUnique: jest.fn(),
@@ -36,6 +46,7 @@ describe('OrdersService', () => {
     order: {
       create: jest.fn(),
       update: jest.fn(),
+      findFirst: jest.fn(),
       findMany: jest.fn(),
       findUnique: jest.fn(),
     },
@@ -59,6 +70,19 @@ describe('OrdersService', () => {
 
   const mockSettingsService = {
     getStoryousSettings: jest.fn().mockResolvedValue(null),
+    getStoryousAutoPrintReadiness: jest.fn().mockResolvedValue({
+      ready: true,
+      blockers: [],
+      warnings: [],
+      checks: {
+        enabled: true,
+        credentialsConfigured: true,
+        merchantPlaceConfigured: true,
+        autoAcceptPrintMode: true,
+        receiptIncludeModifierLines: true,
+        receiptIncludeOrderNumber: true,
+      },
+    }),
   };
 
   const mockDeliveryFeeTierService = {
@@ -81,6 +105,11 @@ describe('OrdersService', () => {
 
   const mockJwtService = {
     sign: jest.fn(),
+  };
+
+  const mockTelegramNotificationsService = {
+    notifyOrderCreated: jest.fn(),
+    notifyOrderStatusChange: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -118,6 +147,10 @@ describe('OrdersService', () => {
         {
           provide: JwtService,
           useValue: mockJwtService,
+        },
+        {
+          provide: TelegramNotificationsService,
+          useValue: mockTelegramNotificationsService,
         },
       ],
     }).compile();
@@ -200,6 +233,7 @@ describe('OrdersService', () => {
     it('should create order with correct pricing (no modifiers)', async () => {
       mockPrismaService.product.findFirst.mockResolvedValue(mockProduct);
       mockPrismaService.tenant.findUnique.mockResolvedValue(mockTenant);
+      mockPrismaService.order.findFirst.mockResolvedValue(null);
       mockPrismaService.order.create.mockResolvedValue(buildOrderResult());
 
       const result = await service.createOrder(tenantId, baseOrderDto);
@@ -226,6 +260,128 @@ describe('OrdersService', () => {
           }),
         }),
       });
+    });
+
+    it('should deduplicate repeated clientRequestId and return existing order', async () => {
+      const duplicateDto: CreateOrderDto = {
+        ...baseOrderDto,
+        clientRequestId: 'checkout-request-1',
+      };
+
+      mockPrismaService.product.findFirst.mockResolvedValue(mockProduct);
+      mockPrismaService.tenant.findUnique.mockResolvedValue(mockTenant);
+      mockPrismaService.order.findFirst
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce({ id: 'order-1' });
+      mockPrismaService.order.findUnique.mockResolvedValue(
+        buildOrderResult({
+          id: 'order-1',
+          items: [],
+          delivery: null,
+          statusHistory: [],
+        }),
+      );
+      mockPrismaService.order.create.mockRejectedValue({
+        code: 'P2002',
+        meta: {
+          target: ['tenantId', 'clientRequestId'],
+        },
+      });
+
+      const result = await service.createOrder(tenantId, duplicateDto);
+
+      expect(mockPrismaService.order.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            clientRequestId: 'checkout-request-1',
+          }),
+        }),
+      );
+      expect(mockPrismaService.order.findFirst).toHaveBeenCalledTimes(2);
+      expect((result as any).id).toBe('order-1');
+    });
+
+    it('should use saved address coordinates as backend fallback for logged-in user orders', async () => {
+      const orderDtoWithoutCoordinates: CreateOrderDto = {
+        ...baseOrderDto,
+        userId: 'user-1',
+        addressId: 'address-1',
+        address: {
+          street: 'Wrong payload street',
+          city: 'Wrong payload city',
+          postalCode: '99999',
+          country: 'SK',
+        },
+      };
+
+      mockPrismaService.address.findFirst.mockResolvedValue({
+        id: 'address-1',
+        street: 'Saved Street 12',
+        description: '3. poschodie',
+        city: 'Bratislava',
+        postalCode: '81101',
+        country: 'SK',
+        latitude: 48.1486,
+        longitude: 17.1077,
+      });
+      mockPrismaService.product.findFirst.mockResolvedValue(mockProduct);
+      mockPrismaService.tenant.findUnique.mockResolvedValue(mockTenant);
+      mockPrismaService.order.create.mockResolvedValue(
+        buildOrderResult({
+          userId: 'user-1',
+          address: {
+            street: 'Saved Street 12',
+            city: 'Bratislava',
+            postalCode: '81101',
+            country: 'SK',
+            instructions: '3. poschodie',
+            coordinates: { lat: 48.1486, lng: 17.1077 },
+          },
+        }),
+      );
+
+      await service.createOrder(tenantId, orderDtoWithoutCoordinates);
+
+      expect(mockPrismaService.address.findFirst).toHaveBeenCalledWith({
+        where: {
+          id: 'address-1',
+          userId: 'user-1',
+        },
+        select: {
+          id: true,
+          street: true,
+          description: true,
+          city: true,
+          postalCode: true,
+          country: true,
+          latitude: true,
+          longitude: true,
+        },
+      });
+      expect(mockDeliveryFeeTierService.getDeliveryFeeByDistance).toHaveBeenCalledWith(
+        tenantId,
+        expect.objectContaining({
+          street: 'Saved Street 12',
+          city: 'Bratislava',
+          postalCode: '81101',
+          country: 'SK',
+          coordinates: { lat: 48.1486, lng: 17.1077 },
+        }),
+      );
+      expect(mockPrismaService.order.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            address: expect.objectContaining({
+              street: 'Saved Street 12',
+              city: 'Bratislava',
+              postalCode: '81101',
+              country: 'SK',
+              instructions: '3. poschodie',
+              coordinates: { lat: 48.1486, lng: 17.1077 },
+            }),
+          }),
+        }),
+      );
     });
 
     it('should calculate modifier prices correctly', async () => {
@@ -410,6 +566,7 @@ describe('OrdersService', () => {
         data: expect.objectContaining({
           userId: 'user-1',
           paymentStatus: 'pending',
+          paymentRef: 'cod:cash',
         }),
         include: expect.objectContaining({
           items: true,
@@ -429,6 +586,48 @@ describe('OrdersService', () => {
       expect(result).toHaveProperty('authToken');
       expect(result).toHaveProperty('refreshToken');
       expect(result).toHaveProperty('user');
+    });
+
+    it('should store card-on-delivery marker in paymentRef without changing pending payment status', async () => {
+      const cardOrderDto: CreateOrderDto = {
+        ...baseOrderDto,
+        paymentMethod: 'card',
+      };
+
+      mockPrismaService.product.findFirst.mockResolvedValue(mockProduct);
+      mockPrismaService.user.findFirst.mockResolvedValue({
+        id: 'user-card',
+        email: 'john@example.com',
+        name: 'John Doe',
+        phone: '+421912345678',
+        role: 'CUSTOMER',
+      });
+      mockPrismaService.tenant.findUnique.mockResolvedValue(mockTenant);
+      mockPrismaService.order.create.mockResolvedValue(
+        buildOrderResult({
+          userId: 'user-card',
+          paymentStatus: 'pending',
+          paymentRef: 'cod:card',
+        }),
+      );
+      mockPrismaService.refreshToken.create.mockResolvedValue({
+        id: 'refresh-card',
+        userId: 'user-card',
+        token: process.env.TEST_REFRESH_TOKEN || 'test-refresh-token',
+        expiresAt: new Date(),
+      });
+      mockJwtService.sign.mockReturnValue('jwt-token');
+
+      await service.createOrder(tenantId, cardOrderDto);
+
+      expect(mockPrismaService.order.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          userId: 'user-card',
+          paymentStatus: 'pending',
+          paymentRef: 'cod:card',
+        }),
+        include: expect.any(Object),
+      });
     });
 
     it('should auto-login existing user by email', async () => {
@@ -599,12 +798,17 @@ describe('OrdersService', () => {
 
       const result = await service.getOrderById('order-1');
 
-      expect(result).toEqual(mockOrder);
+      expect(result).toEqual(expect.objectContaining(mockOrder));
       expect(mockPrismaService.order.findUnique).toHaveBeenCalledWith({
         where: { id: 'order-1' },
         include: {
           items: true,
           delivery: true,
+          statusHistory: {
+            orderBy: {
+              createdAt: 'asc',
+            },
+          },
         },
       });
     });
@@ -613,6 +817,138 @@ describe('OrdersService', () => {
       mockPrismaService.order.findUnique.mockResolvedValue(null);
 
       await expect(service.getOrderById('non-existent')).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('syncOrderToStoryous', () => {
+    const syncedOrderBase = {
+      id: 'order-storyous-1',
+      tenantId: 'tenant-123',
+      storyousOrderId: null,
+      storyousOrderState: null,
+      status: OrderStatus.PREPARING,
+      customer: {
+        name: 'John Doe',
+        email: 'john@example.com',
+        phone: '+421912345678',
+      },
+      address: {
+        street: 'Main Street',
+        city: 'Bratislava',
+        postalCode: '81101',
+        country: 'SK',
+      },
+      items: [
+        {
+          id: 'item-1',
+          productId: 'product-1',
+          productName: 'Margherita',
+          quantity: 1,
+          priceCents: 1000,
+          modifiers: null,
+        },
+      ],
+      tenant: {
+        id: 'tenant-123',
+        slug: 'testpizza',
+        subdomain: 'testpizza',
+        domain: 'testpizza.local',
+        theme: {
+          taxRate: 20,
+        },
+      },
+      delivery: null,
+      subtotalCents: 1000,
+      taxCents: 0,
+      deliveryFeeCents: 300,
+      totalCents: 1300,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    beforeEach(() => {
+      mockSettingsService.getStoryousSettings.mockResolvedValue({
+        clientId: 'client',
+        clientSecret: 'secret',
+        merchantId: 'merchant-123',
+        placeId: 'place-123',
+        enabled: true,
+        autoSync: true,
+        defaultDeliveryLeadMinutes: 45,
+        autoAcceptPrintMode: true,
+        receiptIncludeModifierLines: true,
+        receiptIncludeOrderNumber: true,
+      });
+      mockPrismaService.product.findMany.mockResolvedValue([
+        {
+          id: 'product-1',
+          name: 'Margherita',
+          category: 'PIZZA',
+        },
+      ]);
+      mockPrismaService.productMapping.findMany.mockResolvedValue([
+        {
+          externalIdentifier: 'storyous-item-1',
+          internalProductName: 'Margherita',
+          updatedAt: new Date(),
+        },
+      ]);
+    });
+
+    it('returns success and persists CONFIRMED state when Storyous confirms the order', async () => {
+      mockPrismaService.order.findUnique.mockResolvedValue(syncedOrderBase);
+      mockStoryousService.createOrder.mockResolvedValue({
+        id: 'storyous-1',
+        storyousState: 'CONFIRMED',
+      });
+      mockPrismaService.order.update.mockResolvedValue({
+        ...syncedOrderBase,
+        storyousOrderId: 'storyous-1',
+        storyousOrderState: 'CONFIRMED',
+      });
+
+      const result = await service.syncOrderToStoryous('order-storyous-1');
+
+      expect(result).toEqual({
+        success: true,
+        storyousOrderId: 'storyous-1',
+        storyousState: 'CONFIRMED',
+        message: 'Order confirmed in Storyous successfully (storyous-1)',
+      });
+      expect(mockPrismaService.order.update).toHaveBeenCalledWith({
+        where: { id: 'order-storyous-1' },
+        data: {
+          storyousOrderId: 'storyous-1',
+          storyousOrderState: 'CONFIRMED',
+        },
+      });
+    });
+
+    it('returns failure and persists NEW state when Storyous still requires manual acceptance', async () => {
+      mockPrismaService.order.findUnique.mockResolvedValue(syncedOrderBase);
+      mockStoryousService.createOrder.mockResolvedValue({
+        id: 'storyous-2',
+        storyousState: 'NEW',
+      });
+      mockPrismaService.order.update.mockResolvedValue({
+        ...syncedOrderBase,
+        storyousOrderId: 'storyous-2',
+        storyousOrderState: 'NEW',
+      });
+
+      const result = await service.syncOrderToStoryous('order-storyous-1');
+
+      expect(result.success).toBe(false);
+      expect(result.storyousOrderId).toBe('storyous-2');
+      expect(result.storyousState).toBe('NEW');
+      expect(result.message).toContain('still requires manual acceptance');
+      expect(mockPrismaService.order.update).toHaveBeenCalledWith({
+        where: { id: 'order-storyous-1' },
+        data: {
+          storyousOrderId: 'storyous-2',
+          storyousOrderState: 'NEW',
+        },
+      });
     });
   });
 });

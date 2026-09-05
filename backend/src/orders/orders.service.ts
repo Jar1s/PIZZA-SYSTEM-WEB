@@ -2,10 +2,14 @@ import { Injectable, NotFoundException, BadRequestException, Logger, Inject, for
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../prisma/prisma.service';
 import { Prisma, User, UserRole, Order as PrismaOrder } from '@prisma/client';
-import { Order, OrderStatus, CustomerInfo, Address, getCustomizationOptions, calculateModifierPrice as calculateModifierPriceShared } from '@pizza-ecosystem/shared';
+import { Order, OrderStatus, CustomerInfo, Address, calculateModifierPrice as calculateModifierPriceShared } from '@pizza-ecosystem/shared';
 import { CreateOrderDto } from './dto';
 import { EmailService } from '../email/email.service';
-import { StoryousService } from '../storyous/storyous.service';
+import {
+  StoryousReceiptPreview,
+  StoryousService,
+} from '../storyous/storyous.service';
+import { buildStoryousModifierSelections } from '../storyous/storyous-modifier.util';
 import { SettingsService } from '../settings/settings.service';
 import { ProductMappingService } from '../products/product-mapping.service';
 import { DeliveryFeeTierService } from '../delivery/delivery-fee-tier.service';
@@ -19,6 +23,14 @@ import * as crypto from 'crypto';
 // Type definitions for Prisma JSON fields
 type UserWithPasswordReset = User & {
   passwordResetToken?: string | null;
+};
+
+type StoryousSyncResult = {
+  success: boolean;
+  storyousOrderId?: string;
+  storyousState?: string | null;
+  message: string;
+  warnings?: string[];
 };
 
 type OrderWithRelations = Prisma.OrderGetPayload<{
@@ -37,6 +49,31 @@ type OrderWithRelations = Prisma.OrderGetPayload<{
   };
 }>;
 
+const isStoryousAcceptedState = (state: string | null | undefined): boolean =>
+  state === 'CONFIRMED' || state === 'SCHEDULING_DELIVERY' || state === 'DISPATCHED';
+
+const buildStoryousSyncMessage = (
+  state: string | null | undefined,
+  storyousOrderId?: string,
+): string => {
+  if (isStoryousAcceptedState(state)) {
+    return `Order confirmed in Storyous successfully (${storyousOrderId || 'ID neznáme'})`;
+  }
+  if (state === 'NEW') {
+    return 'Storyous order was created, but it still requires manual acceptance in Storyous.';
+  }
+  if (state === 'DECLINED') {
+    return 'Storyous order was declined and will not continue without intervention.';
+  }
+  if (state === 'VERIFICATION_FAILED') {
+    return 'Storyous order was created, but confirmation could not be verified.';
+  }
+  if (storyousOrderId) {
+    return `Storyous order exists (${storyousOrderId}), but its acceptance state is unknown.`;
+  }
+  return 'Storyous API did not return order ID';
+};
+
 type OrderWithItems = Prisma.OrderGetPayload<{
   include: {
     items: true;
@@ -53,9 +90,125 @@ type ProductWithModifiers = Prisma.ProductGetPayload<{
   };
 }>;
 
+type StoryousSyncOrder = Prisma.OrderGetPayload<{
+  include: {
+    items: true;
+    tenant: true;
+    delivery: true;
+  };
+}>;
+
 @Injectable()
 export class OrdersService {
   private readonly logger = new Logger(OrdersService.name);
+
+  private getPrismaErrorMetaTarget(error: unknown): string[] {
+    const target = (error as any)?.meta?.target;
+    if (!Array.isArray(target)) {
+      return [];
+    }
+
+    return target.map((entry) => String(entry));
+  }
+
+  private isPrismaKnownRequestError(error: unknown, code: string): boolean {
+    return typeof (error as any)?.code === 'string' && (error as any).code === code;
+  }
+
+  private isUniqueConstraintErrorForFields(error: unknown, fields: string[]): boolean {
+    if (!this.isPrismaKnownRequestError(error, 'P2002')) {
+      return false;
+    }
+
+    const targetFields = this.getPrismaErrorMetaTarget(error);
+    return fields.every((field) => targetFields.includes(field));
+  }
+
+  private async getExistingOrderByClientRequestId(
+    tenantId: string,
+    clientRequestId?: string | null,
+  ): Promise<Order | null> {
+    const normalizedClientRequestId = clientRequestId?.trim();
+    if (!normalizedClientRequestId) {
+      return null;
+    }
+
+    const existingOrder = await this.prisma.order.findFirst({
+      where: {
+        tenantId,
+        clientRequestId: normalizedClientRequestId,
+      } as any,
+      select: {
+        id: true,
+      },
+    });
+
+    if (!existingOrder) {
+      return null;
+    }
+
+    return this.getOrderById(existingOrder.id);
+  }
+
+  private async buildCreateOrderResponse(
+    order: any,
+    tenantId: string,
+    shouldReturnAuthToken: boolean,
+    createdUser: UserWithPasswordReset | null,
+  ): Promise<Order | { order: Order; authToken?: string; refreshToken?: string; user?: any }> {
+    let validatedOrder: Order;
+    try {
+      validatedOrder = OrderResponseSchema.parse(order) as unknown as Order;
+    } catch (error) {
+      this.logger.error(`Order response validation failed`, { error, orderId: order?.id, tenantId });
+      validatedOrder = order as unknown as Order;
+    }
+
+    if (shouldReturnAuthToken && createdUser) {
+      const payload = {
+        userId: createdUser.id,
+        email: createdUser.email,
+        role: createdUser.role,
+      };
+
+      const access_token = this.jwtService.sign(payload);
+      const refreshToken = crypto.randomBytes(32).toString('hex');
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + 7);
+
+      await this.prisma.refreshToken.deleteMany({
+        where: {
+          userId: createdUser.id,
+          expiresAt: {
+            lt: new Date(),
+          },
+        },
+      });
+
+      await this.prisma.refreshToken.create({
+        data: {
+          userId: createdUser.id,
+          token: refreshToken,
+          expiresAt,
+        },
+      });
+
+      return {
+        order: validatedOrder,
+        authToken: access_token,
+        refreshToken,
+        user: {
+          id: createdUser.id,
+          email: createdUser.email || '',
+          name: createdUser.name,
+          phone: createdUser.phone || undefined,
+          role: createdUser.role,
+        },
+      };
+    }
+
+    return validatedOrder;
+  }
 
   private collectUniqueProductIds(rawProductIds: unknown[]): string[] {
     return [
@@ -86,6 +239,155 @@ export class OrdersService {
       message.includes('statusHistory') ||
       message.includes('orderStatusHistory')
     );
+  }
+
+  private normalizeCoordinates(
+    coordinates?: { lat?: number | null; lng?: number | null } | null,
+  ): { lat: number; lng: number } | undefined {
+    if (coordinates?.lat == null || coordinates?.lng == null) {
+      return undefined;
+    }
+
+    const lat = Number(coordinates.lat);
+    const lng = Number(coordinates.lng);
+
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+      return undefined;
+    }
+
+    return { lat, lng };
+  }
+
+  private async persistSavedAddressCoordinates(
+    addressId: string,
+    coordinates: { lat: number; lng: number },
+  ): Promise<void> {
+    await (this.prisma as any).address.update({
+      where: { id: addressId },
+      data: {
+        latitude: coordinates.lat,
+        longitude: coordinates.lng,
+      },
+    });
+  }
+
+  private async resolveOrderAddressForCreation(
+    userId: string | undefined,
+    data: CreateOrderDto,
+  ): Promise<CreateOrderDto['address']> {
+    const normalizedInputCoordinates = this.normalizeCoordinates((data.address as any)?.coordinates);
+    const resolvedAddress: CreateOrderDto['address'] = {
+      ...data.address,
+      country: data.address.country || 'SK',
+      ...(normalizedInputCoordinates ? { coordinates: normalizedInputCoordinates } : {}),
+    };
+
+    const addressId = typeof data.addressId === 'string' ? data.addressId.trim() : '';
+    if (!userId || !addressId) {
+      return resolvedAddress;
+    }
+
+    try {
+      const savedAddress = await (this.prisma as any).address.findFirst({
+        where: {
+          id: addressId,
+          userId,
+        },
+        select: {
+          id: true,
+          street: true,
+          description: true,
+          city: true,
+          postalCode: true,
+          country: true,
+          latitude: true,
+          longitude: true,
+        },
+      });
+
+      if (!savedAddress) {
+        this.logger.warn('Saved customer address not found during order creation fallback', {
+          userId,
+          addressId,
+        });
+        return resolvedAddress;
+      }
+
+      const savedCoordinates = this.normalizeCoordinates({
+        lat: savedAddress.latitude,
+        lng: savedAddress.longitude,
+      });
+
+      const canonicalAddress: CreateOrderDto['address'] = {
+        ...resolvedAddress,
+        street: savedAddress.street || resolvedAddress.street,
+        city: savedAddress.city || resolvedAddress.city,
+        postalCode: savedAddress.postalCode || resolvedAddress.postalCode,
+        country: savedAddress.country || resolvedAddress.country || 'SK',
+        instructions: resolvedAddress.instructions || savedAddress.description || undefined,
+        ...(savedCoordinates
+          ? { coordinates: savedCoordinates }
+          : normalizedInputCoordinates
+            ? { coordinates: normalizedInputCoordinates }
+            : {}),
+      };
+
+      if (!savedCoordinates && normalizedInputCoordinates) {
+        try {
+          await this.persistSavedAddressCoordinates(savedAddress.id, normalizedInputCoordinates);
+          this.logger.log('Persisted checkout coordinates to saved customer address', {
+            userId,
+            addressId: savedAddress.id,
+          });
+        } catch (persistError) {
+          this.logger.warn('Failed to persist checkout coordinates to saved customer address', {
+            userId,
+            addressId: savedAddress.id,
+            error: persistError instanceof Error ? persistError.message : String(persistError),
+          });
+        }
+        return canonicalAddress;
+      }
+
+      if (!savedCoordinates && !normalizedInputCoordinates) {
+        try {
+          const geocoded = await this.deliveryFeeTierService.geocodeAddress({
+            street: canonicalAddress.street,
+            city: canonicalAddress.city,
+            postalCode: canonicalAddress.postalCode,
+            country: canonicalAddress.country || 'SK',
+          });
+
+          const geocodedCoordinates = {
+            lat: geocoded.lat,
+            lng: geocoded.lng,
+          };
+
+          canonicalAddress.coordinates = geocodedCoordinates;
+          await this.persistSavedAddressCoordinates(savedAddress.id, geocodedCoordinates);
+
+          this.logger.log('Backfilled saved customer address coordinates during order creation', {
+            userId,
+            addressId: savedAddress.id,
+          });
+        } catch (geocodeError) {
+          this.logger.warn('Unable to backfill saved customer address coordinates during order creation', {
+            userId,
+            addressId: savedAddress.id,
+            error: geocodeError instanceof Error ? geocodeError.message : String(geocodeError),
+          });
+        }
+      }
+
+      return canonicalAddress;
+    } catch (error) {
+      this.logger.warn('Saved address fallback failed during order creation', {
+        userId,
+        addressId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      return resolvedAddress;
+    }
   }
 
   async createOrder(tenantId: string, data: CreateOrderDto): Promise<Order | { order: Order; authToken?: string; refreshToken?: string; user?: any }> {
@@ -154,6 +456,21 @@ export class OrdersService {
 
       userId = user.id;
     }
+
+    const existingOrder = await this.getExistingOrderByClientRequestId(
+      tenantId,
+      data.clientRequestId,
+    );
+    if (existingOrder) {
+      this.logger.warn('Duplicate checkout request returned existing order before create', {
+        tenantId,
+        clientRequestId: data.clientRequestId,
+        orderId: existingOrder.id,
+      });
+      return this.buildCreateOrderResponse(existingOrder, tenantId, shouldReturnAuthToken, createdUser);
+    }
+
+    const resolvedAddress = await this.resolveOrderAddressForCreation(userId, data);
 
     // Resolve products - podporuje productId alebo externalProductIdentifier
     const products = await Promise.all(
@@ -450,11 +767,11 @@ export class OrdersService {
       const distanceResult = await this.deliveryFeeTierService.getDeliveryFeeByDistance(
         tenantId,
         {
-          street: data.address.street,
-          city: data.address.city,
-          postalCode: data.address.postalCode,
-          country: data.address.country || 'SK',
-          coordinates: (data.address as any).coordinates,
+          street: resolvedAddress.street,
+          city: resolvedAddress.city,
+          postalCode: resolvedAddress.postalCode,
+          country: resolvedAddress.country || 'SK',
+          coordinates: (resolvedAddress as any).coordinates,
         }
       );
 
@@ -476,7 +793,7 @@ export class OrdersService {
         } else {
           this.logger.warn('No delivery tier found for distance', {
             tenantId,
-            address: data.address,
+            address: resolvedAddress,
           });
           throw new BadRequestException(
             'Delivery is not available to this address. Please check the delivery distance.'
@@ -487,7 +804,7 @@ export class OrdersService {
         this.logger.warn('Address is outside delivery range', {
           tenantId,
           distanceMeters: distanceResult.distanceMeters,
-          address: data.address,
+          address: resolvedAddress,
         });
         throw new BadRequestException(
           'Adresa je mimo dosahu doručovania. Delivery is not available to this address.'
@@ -507,7 +824,7 @@ export class OrdersService {
       this.logger.error('Error calculating delivery fee', {
         error: error instanceof Error ? error.message : String(error),
         tenantId,
-        address: data.address,
+        address: resolvedAddress,
       });
       throw new BadRequestException('Failed to calculate delivery fee. Please try again.');
     }
@@ -547,13 +864,19 @@ export class OrdersService {
         data: {
           tenantId,
           orderNumber,
+          clientRequestId: data.clientRequestId?.trim() || null,
           userId: userId || null, // Can be null for guest orders
           status: OrderStatus.PENDING,
           paymentStatus: data.paymentMethod ? 'pending' : null, // For cash on delivery
+          paymentRef: data.paymentMethod === 'card'
+            ? 'cod:card'
+            : data.paymentMethod === 'cash'
+              ? 'cod:cash'
+              : null,
           customer: data.customer as unknown as Prisma.InputJsonValue,
           address: {
-            ...data.address,
-            houseNumber: data.address.houseNumber, // Include houseNumber
+            ...resolvedAddress,
+            houseNumber: resolvedAddress.houseNumber, // Include houseNumber
           } as unknown as Prisma.InputJsonValue,
           subtotalCents,
           taxCents,
@@ -586,52 +909,32 @@ export class OrdersService {
             } as any, // Type assertion needed until Prisma types are fully regenerated
           },
         },
-      });
+      } as any);
     } catch (error) {
-      if (!this.isStatusHistoryUnavailable(error)) {
-        throw error;
+      if (this.isUniqueConstraintErrorForFields(error, ['tenantId', 'clientRequestId'])) {
+        const duplicateOrder = await this.getExistingOrderByClientRequestId(
+          tenantId,
+          data.clientRequestId,
+        );
+
+        if (duplicateOrder) {
+          this.logger.warn('Duplicate checkout request deduplicated after unique conflict', {
+            tenantId,
+            clientRequestId: data.clientRequestId,
+            orderId: duplicateOrder.id,
+          });
+          return this.buildCreateOrderResponse(duplicateOrder, tenantId, shouldReturnAuthToken, createdUser);
+        }
       }
 
-      this.logger.warn(
-        '[createOrder] statusHistory relation not available, falling back to legacy create',
-      );
-
-      order = await this.prisma.order.create({
-        data: {
+      if (this.isUniqueConstraintErrorForFields(error, ['tenantId', 'orderNumber'])) {
+        this.logger.error('Invariant violation: duplicate tenant order number generated', {
           tenantId,
           orderNumber,
-          userId: userId || null,
-          status: OrderStatus.PENDING,
-          paymentStatus: data.paymentMethod ? 'pending' : null,
-          customer: data.customer as unknown as Prisma.InputJsonValue,
-          address: {
-            ...data.address,
-            houseNumber: data.address.houseNumber,
-          } as unknown as Prisma.InputJsonValue,
-          subtotalCents,
-          taxCents,
-          deliveryFeeCents,
-          totalCents,
-          items: {
-            create: orderItems,
-          },
-        } as any,
-        include: {
-          items: true,
-          tenant: {
-            select: {
-              id: true,
-              name: true,
-              slug: true,
-              domain: true,
-              subdomain: true,
-              currency: true,
-              theme: true,
-              emailConfig: true,
-            } as any,
-          },
-        },
-      });
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
+      throw error;
     }
 
     // Log what was actually saved to database
@@ -716,74 +1019,7 @@ export class OrdersService {
     // Storyous sync removed - now happens only when order is confirmed (PREPARING status)
     // or manually via button in admin dashboard
 
-    // If auto-login happened, return auth token
-    if (shouldReturnAuthToken && createdUser) {
-      const payload = {
-        userId: createdUser.id,
-        email: createdUser.email,
-        role: createdUser.role,
-      };
-
-      const access_token = this.jwtService.sign(payload);
-      const refreshToken = crypto.randomBytes(32).toString('hex');
-      const expiresAt = new Date();
-      expiresAt.setDate(expiresAt.getDate() + 7); // 7 days
-
-      // Clean up expired refresh tokens for this user
-      await this.prisma.refreshToken.deleteMany({
-        where: {
-          userId: createdUser.id,
-          expiresAt: {
-            lt: new Date(), // Delete tokens that have already expired
-          },
-        },
-      });
-
-      // Store refresh token
-      await this.prisma.refreshToken.create({
-        data: {
-          userId: createdUser.id,
-          token: refreshToken,
-          expiresAt,
-        },
-      });
-
-      // Validate order response with Zod
-      let validatedOrder: Order;
-      try {
-        validatedOrder = OrderResponseSchema.parse(order) as unknown as Order;
-      } catch (error) {
-        this.logger.error(`Order response validation failed`, { error, orderId: order.id, tenantId });
-        validatedOrder = order as unknown as Order; // Fallback
-      }
-
-      return {
-        order: validatedOrder,
-        authToken: access_token,
-        refreshToken: refreshToken,
-        user: {
-          id: createdUser.id,
-          email: createdUser.email || '',
-          name: createdUser.name,
-          phone: createdUser.phone || undefined,
-          role: createdUser.role,
-        },
-      };
-    }
-
-    // Validate order response with Zod
-    try {
-      return OrderResponseSchema.parse(order) as unknown as Order;
-    } catch (error) {
-      this.logger.error(`Order response validation failed`, { error, orderId: order.id, tenantId });
-      // Validate order response with Zod
-    try {
-      return OrderResponseSchema.parse(order) as unknown as Order;
-    } catch (error) {
-      this.logger.error(`Order response validation failed`, { error, orderId: order.id });
-      return order as unknown as Order; // Fallback
-    } // Fallback
-    }
+    return this.buildCreateOrderResponse(order, tenantId, shouldReturnAuthToken, createdUser);
   }
 
   async getOrderById(id: string): Promise<Order> {
@@ -965,15 +1201,6 @@ export class OrdersService {
             || getProductDisplayName(productNameForMapping, 'sk')
             || item.productName;
           
-          this.logger.log('getOrders: Adding displayName to item', {
-            itemId: item.id,
-            productId: item.productId,
-            productName: item.productName,
-            productDbName: product?.name,
-            productDisplayName: product?.displayName,
-            finalDisplayName: displayName,
-          });
-          
           return {
             id: item.id,
             productId: item.productId,
@@ -995,12 +1222,13 @@ export class OrdersService {
     });
   }
 
-  async syncOrderToStoryous(orderId: string): Promise<{ success: boolean; storyousOrderId?: string; message: string }> {
+  async syncOrderToStoryous(orderId: string): Promise<StoryousSyncResult> {
     const order = await this.prisma.order.findUnique({
       where: { id: orderId },
       include: {
         items: true,
         tenant: true,
+        delivery: true,
       },
     });
 
@@ -1018,10 +1246,12 @@ export class OrdersService {
     
     const orderWithStoryous = order as OrderWithStoryous;
     if (orderWithStoryous.storyousOrderId) {
+      const existingState = String((orderWithStoryous as any).storyousOrderState || '').trim().toUpperCase() || null;
       return {
-        success: true,
+        success: isStoryousAcceptedState(existingState),
         storyousOrderId: orderWithStoryous.storyousOrderId,
-        message: 'Order already synced to Storyous',
+        storyousState: existingState,
+        message: buildStoryousSyncMessage(existingState, orderWithStoryous.storyousOrderId),
       };
     }
 
@@ -1029,9 +1259,6 @@ export class OrdersService {
       // Get global Storyous settings
       const storyousSettings = await this.settingsService.getStoryousSettings();
       this.logger.log('[Storyous sync] Starting manual sync', { orderId, tenantId: orderWithStoryous.tenantId, settingsEnabled: storyousSettings?.enabled, merchantId: storyousSettings?.merchantId, placeId: storyousSettings?.placeId });
-      // #region agent log
-      fetch('http://127.0.0.1:7244/ingest/c8c401c8-9b71-4e06-9291-444154701c07',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'orders.service.ts:894',message:'storyous settings loaded',data:{enabled:storyousSettings?.enabled,merchantId:storyousSettings?.merchantId,placeId:storyousSettings?.placeId,hasMerchantId:!!storyousSettings?.merchantId,hasPlaceId:!!storyousSettings?.placeId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-      // #endregion
       
       if (!storyousSettings?.enabled || !storyousSettings?.merchantId || !storyousSettings?.placeId) {
         this.logger.warn('[Storyous sync] Missing Storyous settings', { orderId, tenantId: orderWithStoryous.tenantId, settings: storyousSettings });
@@ -1041,18 +1268,10 @@ export class OrdersService {
         };
       }
 
-      // Convert Prisma Order to shared Order type for Storyous
-      const orderForStoryous: Order = {
-        ...orderWithStoryous,
-        status: orderWithStoryous.status as OrderStatus,
-        customer: orderWithStoryous.customer as unknown as CustomerInfo,
-        address: orderWithStoryous.address as unknown as Address,
-      } as unknown as Order;
+      const orderForStoryous = await this.buildStoryousOrderPayload(orderWithStoryous as StoryousSyncOrder);
+      const autoPrintReadiness = await this.settingsService.getStoryousAutoPrintReadiness();
 
       this.logger.debug('[Storyous sync] Payload ready', { orderId, merchantId: storyousSettings.merchantId, placeId: storyousSettings.placeId, totalCents: orderForStoryous.totalCents, items: orderForStoryous.items?.length });
-      // #region agent log
-      fetch('http://127.0.0.1:7244/ingest/c8c401c8-9b71-4e06-9291-444154701c07',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'orders.service.ts:910',message:'calling createOrder',data:{orderId:orderForStoryous.id,merchantId:storyousSettings.merchantId,placeId:storyousSettings.placeId,merchantIdType:typeof storyousSettings.merchantId,placeIdType:typeof storyousSettings.placeId,merchantIdLength:storyousSettings.merchantId?.length,placeIdLength:storyousSettings.placeId?.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-      // #endregion
       const storyousResult = await this.storyousService.createOrder(
         orderForStoryous,
         storyousSettings.merchantId,
@@ -1060,23 +1279,58 @@ export class OrdersService {
       );
       
       if (storyousResult?.id) {
+        const storyousState = storyousResult.storyousState || null;
         await this.prisma.order.update({
           where: { id: orderId },
-          data: { storyousOrderId: storyousResult.id },
+          data: {
+            storyousOrderId: storyousResult.id,
+            storyousOrderState: storyousState,
+          },
         });
-        this.logger.log('[Storyous sync] Success', { orderId, storyousOrderId: storyousResult.id, tenantId: orderWithStoryous.tenantId });
-        this.logger.log(`✅ Order ${orderId} manually synced to Storyous: ${storyousResult.id}`, { orderId, storyousOrderId: storyousResult.id, tenantId: orderWithStoryous.tenantId });
+        const syncSuccess = isStoryousAcceptedState(storyousState);
+        const readinessSuffix =
+          autoPrintReadiness.ready && autoPrintReadiness.warnings.length === 0
+            ? ''
+            : ` (Auto-confirm readiness: ${autoPrintReadiness.ready ? 'warning' : 'not ready'})`;
+        const message = `${buildStoryousSyncMessage(storyousState, storyousResult.id)}${readinessSuffix}`;
+
+        if (syncSuccess) {
+          this.logger.log('[Storyous sync] Success', {
+            orderId,
+            storyousOrderId: storyousResult.id,
+            storyousState,
+            tenantId: orderWithStoryous.tenantId,
+          });
+          this.logger.log(`✅ Order ${orderId} manually synced to Storyous: ${storyousResult.id}`, {
+            orderId,
+            storyousOrderId: storyousResult.id,
+            storyousState,
+            tenantId: orderWithStoryous.tenantId,
+          });
+        } else {
+          this.logger.warn('[Storyous sync] Order created but auto-confirm goal was not achieved', {
+            orderId,
+            storyousOrderId: storyousResult.id,
+            storyousState,
+            tenantId: orderWithStoryous.tenantId,
+          });
+        }
+
         return {
-          success: true,
+          success: syncSuccess,
           storyousOrderId: storyousResult.id,
-          message: 'Order synced to Storyous successfully',
+          storyousState,
+          message,
+          warnings: storyousResult.warnings,
         };
       }
 
       this.logger.error('[Storyous sync] Missing Storyous order ID', { orderId, tenantId: orderWithStoryous.tenantId });
       return {
         success: false,
+        storyousState: storyousResult?.storyousState || null,
         message: 'Storyous API did not return order ID',
+        warnings: storyousResult?.warnings,
       };
     } catch (error: any) {
       this.logger.error(`❌ Failed to sync order ${orderId} to Storyous:`, { orderId, error: error.message, stack: error.stack });
@@ -1085,6 +1339,24 @@ export class OrdersService {
         message: error.message || 'Failed to sync order to Storyous',
       };
     }
+  }
+
+  async getStoryousReceiptPreview(orderId: string): Promise<StoryousReceiptPreview> {
+    const order = await this.prisma.order.findUnique({
+      where: { id: orderId },
+      include: {
+        items: true,
+        tenant: true,
+        delivery: true,
+      },
+    });
+
+    if (!order) {
+      throw new NotFoundException(`Order ${orderId} not found`);
+    }
+
+    const orderForStoryous = await this.buildStoryousOrderPayload(order as StoryousSyncOrder);
+    return this.storyousService.getReceiptPreview(orderForStoryous);
   }
 
   async updatePaymentRef(orderId: string, paymentRef: string, paymentStatus: string): Promise<Order> {
@@ -1155,13 +1427,9 @@ export class OrdersService {
 
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
-        // Convert Prisma Order to shared Order type for Storyous
-        const orderForStoryous: Order = {
-          ...order,
-          status: order.status as OrderStatus,
-          customer: order.customer as unknown as CustomerInfo,
-          address: order.address as unknown as Address,
-        } as unknown as Order;
+        const orderForStoryous = await this.buildStoryousOrderPayload(order as unknown as StoryousSyncOrder, {
+          tenantTheme,
+        });
         
         const storyousResult = await this.storyousService.createOrder(
           orderForStoryous,
@@ -1171,11 +1439,29 @@ export class OrdersService {
         
         // Save Storyous order ID
         if (storyousResult?.id) {
+          const storyousState = storyousResult.storyousState || null;
           await this.prisma.order.update({
             where: { id: order.id },
-            data: { storyousOrderId: storyousResult.id },
+            data: {
+              storyousOrderId: storyousResult.id,
+              storyousOrderState: storyousState,
+            },
           });
-          this.logger.log(`✅ Order ${order.id} synchronized to Storyous: ${storyousResult.id}`, { orderId: order.id, storyousOrderId: storyousResult.id, tenantId });
+          if (isStoryousAcceptedState(storyousState)) {
+            this.logger.log(`✅ Order ${order.id} synchronized to Storyous: ${storyousResult.id}`, {
+              orderId: order.id,
+              storyousOrderId: storyousResult.id,
+              storyousState,
+              tenantId,
+            });
+          } else {
+            this.logger.warn(`⚠️ Order ${order.id} created in Storyous without automatic confirmation`, {
+              orderId: order.id,
+              storyousOrderId: storyousResult.id,
+              storyousState,
+              tenantId,
+            });
+          }
           return; // Success, exit
         } else {
           // API didn't return order ID - treat as error
@@ -1210,5 +1496,193 @@ export class OrdersService {
         }
       }
     }
+  }
+
+  private resolveModifierLines(
+    modifiers: Record<string, any> | null | undefined,
+    productCategory: string = 'PIZZA',
+    tenantTheme?: TenantTheme,
+  ): string[] {
+    return buildStoryousModifierSelections(modifiers, productCategory, tenantTheme).map(
+      (selection) => selection.receiptLabel,
+    );
+  }
+
+  private async buildStoryousOrderPayload(
+    order: StoryousSyncOrder,
+    options?: { tenantTheme?: TenantTheme },
+  ): Promise<Order> {
+    if (!Array.isArray(order.items) || order.items.length === 0) {
+      throw new BadRequestException(`Order ${order.id} has no items for Storyous sync`);
+    }
+
+    if (!order.address || !(order.address as any)?.street || !(order.address as any)?.city || !(order.address as any)?.postalCode) {
+      throw new BadRequestException(`Order ${order.id} has no valid delivery address for Storyous sync`);
+    }
+
+    const productIds = Array.from(new Set(order.items.map((item: any) => item.productId).filter(Boolean)));
+    const products = productIds.length > 0
+      ? await this.prisma.product.findMany({
+          where: {
+            tenantId: order.tenantId,
+            id: { in: productIds },
+          },
+          select: {
+            id: true,
+            name: true,
+            category: true,
+          },
+        })
+      : [];
+
+    const productById = new Map(products.map((product) => [product.id, product]));
+    const internalNames = Array.from(
+      new Set(
+        order.items
+          .map((item: any) => productById.get(item.productId)?.name || item.productName)
+          .filter((name): name is string => !!name),
+      ),
+    );
+
+    const mappings = internalNames.length > 0
+      ? await this.prisma.productMapping.findMany({
+          where: {
+            tenantId: order.tenantId,
+            source: 'storyous',
+            internalProductName: { in: internalNames },
+          },
+          orderBy: {
+            updatedAt: 'desc',
+          },
+        })
+      : [];
+
+    const mappingByInternalName = new Map<string, (typeof mappings)[number]>();
+    for (const mapping of mappings) {
+      if (!mappingByInternalName.has(mapping.internalProductName)) {
+        mappingByInternalName.set(mapping.internalProductName, mapping);
+      }
+    }
+
+    const tenantTheme = options?.tenantTheme || (order.tenant?.theme as TenantTheme | undefined);
+    const enrichedItems = order.items.map((item: any) => {
+      const product = productById.get(item.productId);
+      const internalProductName = product?.name || item.productName;
+      const mapping = internalProductName ? mappingByInternalName.get(internalProductName) : undefined;
+
+      if (!mapping?.externalIdentifier) {
+        throw new BadRequestException(
+          `Storyous mapping missing for product "${internalProductName || item.productName}" (${item.productId}) in tenant ${order.tenantId} (order ${order.id}). Please add product_mappings.externalIdentifier for source='storyous'.`,
+        );
+      }
+
+      return {
+        ...item,
+        productName: item.productName || internalProductName,
+        storyousItemId: mapping.externalIdentifier,
+        resolvedModifierLines: this.resolveModifierLines(
+          item.modifiers as any,
+          product?.category || 'PIZZA',
+          tenantTheme,
+        ),
+        storyousModifierSelections: buildStoryousModifierSelections(
+          item.modifiers as any,
+          product?.category || 'PIZZA',
+          tenantTheme,
+        ),
+      };
+    });
+
+    if (!enrichedItems.some((item) => !!item.storyousItemId)) {
+      throw new BadRequestException(`Order ${order.id} has no valid Storyous item mappings`);
+    }
+
+    return {
+      ...order,
+      status: order.status as OrderStatus,
+      customer: order.customer as unknown as CustomerInfo,
+      address: order.address as unknown as Address,
+      items: enrichedItems,
+    } as unknown as Order;
+  }
+
+  async getStoryousSampleReceiptPreview(tenantSlug?: string): Promise<StoryousReceiptPreview> {
+    const normalizedTenantSlug = String(tenantSlug || '').trim().toLowerCase();
+    const tenant = normalizedTenantSlug
+      ? await this.prisma.tenant.findFirst({
+          where: {
+            OR: [
+              { slug: normalizedTenantSlug },
+              { subdomain: normalizedTenantSlug },
+            ],
+          },
+        })
+      : await this.prisma.tenant.findFirst({
+          where: { isActive: true },
+          orderBy: { createdAt: 'asc' },
+        });
+
+    if (!tenant) {
+      throw new NotFoundException(`Tenant ${tenantSlug || '(default)'} not found`);
+    }
+
+    const tenantTheme = tenant.theme as TenantTheme | undefined;
+    const sampleModifiers = {
+      dough: ['classic-32'],
+      sauce: ['tomato'],
+      cheese: ['mozzarella'],
+      edge: ['olive-oil'],
+    };
+    const storyousModifierSelections = buildStoryousModifierSelections(
+      sampleModifiers,
+      'PIZZA',
+      tenantTheme,
+    );
+
+    const sampleOrder = {
+      id: 'storyous-preview-sample',
+      tenantId: tenant.id,
+      orderNumber: 119,
+      status: OrderStatus.PREPARING,
+      customer: {
+        name: 'Jaro',
+        email: 'jardo.bir@gmail.com',
+        phone: '+421100200400',
+      },
+      address: {
+        street: 'Námestie F. X. Messerschmidta',
+        city: 'Bratislava I',
+        postalCode: '811 02',
+        country: 'SK',
+      },
+      subtotalCents: 1849,
+      taxCents: 0,
+      deliveryFeeCents: 0,
+      totalCents: 1849,
+      paymentRef: null,
+      paymentStatus: 'pending',
+      deliveryId: null,
+      storyousOrderId: null,
+      storyousOrderState: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      tenant,
+      items: [
+        {
+          id: 'preview-item-1',
+          orderId: 'storyous-preview-sample',
+          productId: 'preview-product-1',
+          productName: 'Pizza Bon Salami',
+          quantity: 1,
+          priceCents: 1849,
+          modifiers: sampleModifiers,
+          storyousItemId: 'preview-storyous-item-1',
+          resolvedModifierLines: storyousModifierSelections.map((selection) => selection.receiptLabel),
+          storyousModifierSelections,
+        },
+      ],
+    } as unknown as Order;
+
+    return this.storyousService.getReceiptPreview(sampleOrder);
   }
 }

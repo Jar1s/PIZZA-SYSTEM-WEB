@@ -1,10 +1,8 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAdminContext } from '@/app/admin/admin-context';
-import { getTenantSlug } from '@/lib/tenant-utils';
 import { handleAdmin401Response } from '@/lib/api-helpers';
 
 interface Customer {
@@ -14,8 +12,6 @@ interface Customer {
   phone: string | null;
   phoneVerified: boolean;
   isActive: boolean;
-  tenantSlug: string | null;
-  tenantName: string | null;
   orderCount: number;
   totalSpentCents: number;
   createdAt: string;
@@ -34,7 +30,6 @@ interface CustomersResponse {
 
 export default function CustomersPage() {
   const { user } = useAuth();
-  const router = useRouter();
   const { selectedTenant } = useAdminContext();
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);

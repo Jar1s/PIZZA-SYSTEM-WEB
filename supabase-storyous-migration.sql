@@ -40,3 +40,6 @@ SELECT * FROM "global_settings" WHERE "id" = 'global';
 
 
 
+
+
+

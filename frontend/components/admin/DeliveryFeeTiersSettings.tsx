@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAdminContext } from '@/app/admin/admin-context';
+import { SettingsBadge, SettingsCard, SettingsCardHeader } from '@/components/admin/SettingsCard';
 
 interface DeliveryFeeTier {
   id: string;
@@ -18,6 +19,13 @@ interface DeliveryFeeTier {
 }
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+
+function normalizeTenant(slug: string | null): string | null {
+  if (!slug || slug === 'all') return null;
+  if (slug === 'p0rnopizza') return 'pornopizza';
+  if (slug === 'pizzaparty') return 'partypizza';
+  return slug;
+}
 
 export default function DeliveryFeeTiersSettings() {
   const { selectedTenant } = useAdminContext();
@@ -48,7 +56,12 @@ export default function DeliveryFeeTiersSettings() {
         await handleUnauthorized();
         return;
       }
-      const response = await fetch(`${API_URL}/api/delivery-fee-tiers`, {
+      const tenantSlug = normalizeTenant(selectedTenant);
+      const endpoint = tenantSlug
+        ? `${API_URL}/api/delivery-fee-tiers?tenantSlug=${encodeURIComponent(tenantSlug)}`
+        : `${API_URL}/api/delivery-fee-tiers`;
+
+      const response = await fetch(endpoint, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -61,12 +74,7 @@ export default function DeliveryFeeTiersSettings() {
         throw new Error('Failed to fetch tiers');
       }
       const data = await response.json();
-      // Filter by selected tenant or show global (null) tiers
-      const tenantSlug = selectedTenant === 'all' ? null : selectedTenant;
-      const filtered = tenantSlug
-        ? data.filter((t: DeliveryFeeTier) => t.tenantId === tenantSlug || t.tenantId === null)
-        : data.filter((t: DeliveryFeeTier) => t.tenantId === null);
-      setTiers(filtered);
+      setTiers(data);
     } catch (error) {
       console.error('Failed to fetch tiers:', error);
     } finally {
@@ -167,26 +175,33 @@ export default function DeliveryFeeTiersSettings() {
   };
 
   if (loading) {
-    return <div className="p-4">Loading...</div>;
+    return <div className="animate-pulse rounded-[28px] bg-gray-200 p-10" />;
   }
 
   return (
-    <div className="p-4 bg-white rounded-lg shadow">
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-xl font-bold">Delivery Fee Tiers</h2>
+    <SettingsCard className="h-full min-h-[640px]">
+      <SettingsCardHeader
+        eyebrow="Delivery"
+        title="Delivery Fee Tiers"
+        subtitle={selectedTenant && selectedTenant !== 'all' ? `Brand: ${selectedTenant}` : 'Globálne pásma a priorita poplatkov.'}
+      />
+
+      <div className="mt-4 flex flex-wrap gap-2">
+        <SettingsBadge tone="neutral">{tiers.length} pásiem</SettingsBadge>
+        <SettingsBadge tone="accent">Úprava existujúcich</SettingsBadge>
       </div>
 
       {showAddForm && editingId && (
-        <div className="mb-4 p-4 border rounded">
-          <h3 className="font-semibold mb-2">Edit Tier</h3>
-          <div className="grid grid-cols-2 gap-4">
+        <div className="mt-5 rounded-[24px] border border-zinc-200 bg-zinc-50 p-4">
+          <h3 className="mb-3 text-base font-black tracking-tight text-zinc-900">Edit Tier</h3>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div>
               <label className="block text-sm font-medium mb-1">Min Distance (m)</label>
               <input
                 type="number"
                 value={formData.minDistanceMeters}
                 onChange={(e) => setFormData({ ...formData, minDistanceMeters: parseInt(e.target.value) })}
-                className="w-full px-3 py-2 border rounded"
+                className="w-full rounded-2xl border border-zinc-200 px-3 py-2.5"
               />
             </div>
             <div>
@@ -195,7 +210,7 @@ export default function DeliveryFeeTiersSettings() {
                 type="number"
                 value={formData.maxDistanceMeters}
                 onChange={(e) => setFormData({ ...formData, maxDistanceMeters: parseInt(e.target.value) })}
-                className="w-full px-3 py-2 border rounded"
+                className="w-full rounded-2xl border border-zinc-200 px-3 py-2.5"
               />
             </div>
             <div>
@@ -204,7 +219,7 @@ export default function DeliveryFeeTiersSettings() {
                 type="number"
                 value={formData.deliveryFeeCents}
                 onChange={(e) => setFormData({ ...formData, deliveryFeeCents: parseInt(e.target.value) })}
-                className="w-full px-3 py-2 border rounded"
+                className="w-full rounded-2xl border border-zinc-200 px-3 py-2.5"
               />
             </div>
             <div>
@@ -213,7 +228,7 @@ export default function DeliveryFeeTiersSettings() {
                 type="number"
                 value={formData.priority}
                 onChange={(e) => setFormData({ ...formData, priority: parseInt(e.target.value) })}
-                className="w-full px-3 py-2 border rounded"
+                className="w-full rounded-2xl border border-zinc-200 px-3 py-2.5"
               />
             </div>
             <div className="col-span-2">
@@ -231,7 +246,7 @@ export default function DeliveryFeeTiersSettings() {
           <div className="mt-4 flex gap-2">
             <button
               onClick={handleSave}
-              className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
+              className="rounded-full bg-orange-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-orange-600"
             >
               Save
             </button>
@@ -240,7 +255,7 @@ export default function DeliveryFeeTiersSettings() {
                 setShowAddForm(false);
                 setEditingId(null);
               }}
-              className="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400"
+              className="rounded-full border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-700 transition hover:bg-zinc-50"
             >
               Cancel
             </button>
@@ -248,46 +263,48 @@ export default function DeliveryFeeTiersSettings() {
         </div>
       )}
 
-      <div className="overflow-x-auto">
-        <table className="w-full border-collapse">
+      <div className="mt-5 rounded-[24px] border border-zinc-200 bg-zinc-50/70 p-3">
+        <div className="overflow-hidden rounded-[20px] border border-zinc-200 bg-white shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]">
+          <div className="overflow-x-auto">
+        <table className="w-full min-w-[720px] border-collapse">
           <thead>
-            <tr className="bg-gray-100">
-              <th className="border p-2 text-left">Distance Range</th>
-              <th className="border p-2 text-left">Fee (€)</th>
-              <th className="border p-2 text-left">Priority</th>
-              <th className="border p-2 text-left">Status</th>
-              <th className="border p-2 text-left">Scope</th>
-              <th className="border p-2 text-left">Actions</th>
+            <tr className="bg-zinc-50">
+              <th className="border-b border-zinc-200 px-4 py-3 text-left text-sm font-black text-zinc-700">Distance Range</th>
+              <th className="border-b border-zinc-200 px-4 py-3 text-left text-sm font-black text-zinc-700">Fee (€)</th>
+              <th className="border-b border-zinc-200 px-4 py-3 text-left text-sm font-black text-zinc-700">Priority</th>
+              <th className="border-b border-zinc-200 px-4 py-3 text-left text-sm font-black text-zinc-700">Status</th>
+              <th className="border-b border-zinc-200 px-4 py-3 text-left text-sm font-black text-zinc-700">Scope</th>
+              <th className="border-b border-zinc-200 px-4 py-3 text-left text-sm font-black text-zinc-700">Actions</th>
             </tr>
           </thead>
           <tbody>
             {tiers.map((tier) => (
-              <tr key={tier.id}>
-                <td className="border p-2">
+              <tr key={tier.id} className="bg-white transition-colors hover:bg-zinc-50/60">
+                <td className="border-b border-zinc-100 px-4 py-4 text-sm text-zinc-900">
                   {tier.minDistanceMeters}m - {tier.maxDistanceMeters}m
                 </td>
-                <td className="border p-2">{(tier.deliveryFeeCents / 100).toFixed(2)}</td>
-                <td className="border p-2">{tier.priority}</td>
-                <td className="border p-2">
+                <td className="border-b border-zinc-100 px-4 py-4 text-sm text-zinc-900">{(tier.deliveryFeeCents / 100).toFixed(2)}</td>
+                <td className="border-b border-zinc-100 px-4 py-4 text-sm text-zinc-900">{tier.priority}</td>
+                <td className="border-b border-zinc-100 px-4 py-4 text-sm">
                   {tier.isActive ? (
-                    <span className="text-green-600">Active</span>
+                    <SettingsBadge tone="success">Active</SettingsBadge>
                   ) : (
-                    <span className="text-gray-400">Inactive</span>
+                    <SettingsBadge tone="neutral">Inactive</SettingsBadge>
                   )}
                 </td>
-                <td className="border p-2">
-                  {tier.tenantId ? 'Tenant-specific' : 'Global'}
+                <td className="border-b border-zinc-100 px-4 py-4 text-sm">
+                  <SettingsBadge tone="neutral">{tier.tenantId ? 'Tenant-specific' : 'Global'}</SettingsBadge>
                 </td>
-                <td className="border p-2">
+                <td className="border-b border-zinc-100 px-4 py-4">
                   <button
                     onClick={() => handleEdit(tier)}
-                    className="px-2 py-1 bg-blue-500 text-white rounded text-sm mr-2"
+                    className="mr-2 rounded-full bg-zinc-900 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-zinc-800"
                   >
                     Edit
                   </button>
                   <button
                     onClick={() => handleDelete(tier.id)}
-                    className="px-2 py-1 bg-red-500 text-white rounded text-sm"
+                    className="rounded-full border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-semibold text-rose-700 transition hover:bg-rose-100"
                   >
                     Delete
                   </button>
@@ -296,7 +313,9 @@ export default function DeliveryFeeTiersSettings() {
             ))}
           </tbody>
         </table>
+        </div>
+        </div>
       </div>
-    </div>
+    </SettingsCard>
   );
 }
