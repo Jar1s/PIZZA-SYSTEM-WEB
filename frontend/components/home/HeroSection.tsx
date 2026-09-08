@@ -8,6 +8,7 @@ import { resolveBrandImage } from '@/lib/brand-image-overrides';
 import { resolveBrandHeroFlavor } from '@/lib/brand-hero';
 import { getLayoutConfig } from '@/lib/tenant-utils';
 import { useTenant } from '@/contexts/TenantContext';
+import type { Tenant } from '@pizza-ecosystem/shared';
 
 interface HeroSectionProps {
   tenantName: string;
@@ -15,13 +16,17 @@ interface HeroSectionProps {
   isDark?: boolean;
   /** Server-known tenant slug; keeps SSR and client markup identical. */
   tenantSlug?: string;
+  /** Server-fetched tenant; the context only fills after hydration, which
+   *  made SSR fall back to the classic hero and shared copy. */
+  tenant?: Tenant | null;
 }
 
 const HERO_BLUR =
   'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDABsSFBcUERsXFhceHBsgKEIrKCUlKFE6PTBCYFVlZF9VXVtqeJmBanGQc1tdhbWGkJ6jq62rZ4C8ybqmx5moq6T/2wBDARweHigjKE4rK06kbl1upKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKSkpKT/wAARCAAIAAoDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAb/xAAhEAACAQMDBQAAAAAAAAAAAAABAgMABAUGIWEREiMxUf/EABUBAQEAAAAAAAAAAAAAAAAAAAMF/8QAGhEAAgIDAAAAAAAAAAAAAAAAAAECEgMRkf/aAAwDAQACEQMRAD8AltJagyeH0AthI5xdrLcNM91BF5pX2HaH9bcfaSXWGaRmknyJckliyjqTzSlT54b6bk+h0R//2Q==';
 
-export const HeroSection = ({ tenantName, primaryColor, isDark = false, tenantSlug }: HeroSectionProps) => {
-  const { tenant } = useTenant();
+export const HeroSection = ({ tenantName, primaryColor, isDark = false, tenantSlug, tenant: tenantProp }: HeroSectionProps) => {
+  const { tenant: contextTenant } = useTenant();
+  const tenant = tenantProp ?? contextTenant;
   // Brands can ship their own hero photo (public/images/brands/<slug>/hero/pizza-hero.jpg).
   // Never read window here – it differs between server and client and caused a
   // hydration mismatch (the shared hero sometimes stayed on branded sites).
