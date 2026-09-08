@@ -803,7 +803,7 @@ export function HomePageClient({ products, tenant }: HomePageClientProps) {
         </div>
       </section>
 
-      <Footer tenantName={tenant.name} primaryColor={tenant.theme.primaryColor} />
+      <Footer tenantName={tenant.name} primaryColor={tenant.theme.primaryColor} tenantDomain={tenant.domain} />
       <Cart tenant={tenant} isDark={isDarkTheme} />
     </div>
   );
