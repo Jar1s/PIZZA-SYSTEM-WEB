@@ -27,8 +27,32 @@ export const HeroSection = ({ tenantName, primaryColor, isDark = false, tenantSl
   // hydration mismatch (the shared hero sometimes stayed on branded sites).
   const heroImage =
     resolveBrandImage('/images/hero/pizza-hero.jpg', tenantSlug ?? tenant?.slug) || '/images/hero/pizza-hero.jpg';
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const accentColor = primaryColor || 'var(--color-primary)';
+  // Per-brand hero copy from theme; **segment** renders in the accent colour.
+  const themeAny: any = tenant?.theme || {};
+  const customHeadline: string | undefined =
+    language === 'en'
+      ? themeAny.heroHeadlineEn || themeAny.heroHeadlineSk
+      : themeAny.heroHeadlineSk || themeAny.heroHeadlineEn;
+  const customTagline: string | undefined =
+    language === 'en'
+      ? themeAny.heroTaglineEn || themeAny.heroTaglineSk
+      : themeAny.heroTaglineSk || themeAny.heroTaglineEn;
+  const subtitleText = customTagline || t.heroSubtitle;
+  const headlineContent = customHeadline ? (
+    customHeadline.split('**').map((part, i) =>
+      i % 2 === 1 ? (
+        <span key={i} style={{ color: accentColor }}>{part}</span>
+      ) : (
+        <span key={i}>{part}</span>
+      ),
+    )
+  ) : (
+    <>
+      {t.heroTitle} <span style={{ color: accentColor }}>{tenantName}</span>
+    </>
+  );
   // Slug comes from the same SSR-safe source as heroImage – flavor must not
   // differ between server and client either.
   const flavor = resolveBrandHeroFlavor(tenantSlug ?? tenant?.slug);
@@ -145,7 +169,7 @@ export const HeroSection = ({ tenantName, primaryColor, isDark = false, tenantSl
               className="text-4xl sm:text-4xl md:text-5xl lg:text-6xl font-black mb-3 sm:mb-4 md:mb-6 leading-[1.1]"
               style={{ letterSpacing: '0.03em' }}
             >
-              {t.heroTitle} <span style={{ color: accentColor }}>{tenantName}</span>
+              {headlineContent}
             </motion.h1>
             <motion.p
               initial={{ opacity: 0, y: 20 }}
@@ -154,7 +178,7 @@ export const HeroSection = ({ tenantName, primaryColor, isDark = false, tenantSl
               className="text-base md:text-lg mb-5 sm:mb-6 max-w-xl leading-relaxed"
               style={{ color: isDark ? '#d4d4d4' : '#4b5563' }}
             >
-              {t.heroSubtitle}
+              {subtitleText}
             </motion.p>
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -214,7 +238,7 @@ export const HeroSection = ({ tenantName, primaryColor, isDark = false, tenantSl
               className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-black mb-4 leading-[1.05]"
               style={{ letterSpacing: '0.02em' }}
             >
-              {t.heroTitle} <span style={{ color: accentColor }}>{tenantName}</span>
+              {headlineContent}
             </h1>
             <div
               className="mx-auto mb-5 sm:mb-6 h-1 w-24 rounded-full"
@@ -225,7 +249,7 @@ export const HeroSection = ({ tenantName, primaryColor, isDark = false, tenantSl
               className="text-base md:text-lg mb-7 sm:mb-8 max-w-xl mx-auto leading-relaxed"
               style={{ color: isDark ? '#d4d4d4' : '#6b7280' }}
             >
-              {t.heroSubtitle}
+              {subtitleText}
             </p>
             <div className="flex justify-center mb-8 sm:mb-10">{ctaButton}</div>
             <motion.div
@@ -302,16 +326,7 @@ export const HeroSection = ({ tenantName, primaryColor, isDark = false, tenantSl
               letterSpacing: '0.03em'
             }}
           >
-            {t.heroTitle}{' '}
-            <span
-              style={{
-                color: accentColor,
-                textShadow: 'none',
-                letterSpacing: '0.03em'
-              }}
-            >
-              {tenantName}
-            </span>
+            {headlineContent}
           </motion.h1>
 
           <motion.p
@@ -324,7 +339,7 @@ export const HeroSection = ({ tenantName, primaryColor, isDark = false, tenantSl
               textShadow: isDark ? '0 1px 2px rgba(0,0,0,0.5)' : '0 1px 2px rgba(0,0,0,0.3)'
             }}
           >
-            {t.heroSubtitle}
+            {subtitleText}
           </motion.p>
 
           <motion.div
