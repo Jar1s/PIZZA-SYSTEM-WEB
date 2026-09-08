@@ -12,6 +12,7 @@ import { useState, useMemo, useCallback, memo, useEffect } from 'react';
 
 const BLUR_DATA_URL = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzIwIiBoZWlnaHQ9IjE4MCIgdmlld0JveD0iMCAwIDMyMCAxODAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjMyMCIgaGVpZ2h0PSIxODAiIGZpbGw9IiNlMWUxZTEiLz48L3N2Zz4=';
 import { useTenant } from '@/contexts/TenantContext';
+import { getLayoutConfig } from '@/lib/tenant-utils';
 import CustomizationModal from './CustomizationModal';
 
 interface ProductCardProps {
@@ -40,6 +41,16 @@ export const ProductCard = memo(function ProductCard({ product, index = 0, isBes
   const [currentImageSrc, setCurrentImageSrc] = useState<string | undefined>(undefined);
   const isPremium = useMemo(() => product.priceCents >= 1100, [product.priceCents]);
   const primaryColor = tenant?.theme?.primaryColor || 'var(--color-primary)';
+  // Per-brand card shape (theme.layout.cardStyle): rounded (default) | sharp | framed.
+  const { cardStyle } = getLayoutConfig(tenant);
+  const cardShapeClassName =
+    cardStyle === 'sharp' ? 'rounded-none border-2' : cardStyle === 'framed' ? 'rounded-xl border-8' : 'rounded-3xl';
+  const cardShapeStyle =
+    cardStyle === 'sharp'
+      ? { borderColor: primaryColor }
+      : cardStyle === 'framed'
+        ? { borderColor: isDark ? '#26262a' : '#ffffff', boxShadow: '0 16px 40px -18px rgba(0,0,0,0.45)' }
+        : undefined;
   
   // Reset image state when product changes
   useEffect(() => {
@@ -132,12 +143,12 @@ export const ProductCard = memo(function ProductCard({ product, index = 0, isBes
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: '-50px' }}
       transition={{ duration: 0.3, delay: Math.min(index * 0.03, 0.5) }}
-      className={`group relative overflow-hidden transition-all duration-300 flex flex-col h-full rounded-3xl ${
+      className={`group relative overflow-hidden transition-all duration-300 flex flex-col h-full ${cardShapeClassName} ${
           isDark
-            ? 'card-sexy border border-white/10'
+            ? cardStyle === 'rounded' ? 'card-sexy border border-white/10' : 'card-sexy'
             : 'bg-white shadow-lg'
       }`}
-      style={{ pointerEvents: 'auto' }}
+      style={{ pointerEvents: 'auto', ...cardShapeStyle }}
     >
       {isDark && <span className="product-card-gradient" aria-hidden />}
       {/* Image Container */}
