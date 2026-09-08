@@ -408,7 +408,7 @@ export function HomePageClient({ products, tenant }: HomePageClientProps) {
         tenantName={tenant.name} 
         primaryColor={primaryColor}
         isDark={isDarkTheme}
-        tenantSlug={tenant.slug}
+        tenantSlug={tenant.slug} tenant={tenant}
       />
 
       {/* Best Sellers Section */}
@@ -461,7 +461,7 @@ export function HomePageClient({ products, tenant }: HomePageClientProps) {
                 className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 gap-4 sm:gap-5 md:gap-6"
               >
                 {productsToShow.map((product, index) => (
-                  <ProductCard key={product.id} product={product} index={index} tenantSlug={tenant.slug} isBestSeller={true} isDark={isDarkTheme} />
+                  <ProductCard key={product.id} product={product} index={index} tenantSlug={tenant.slug} tenant={tenant} isBestSeller={true} isDark={isDarkTheme} />
                 ))}
               </motion.div>
             </div>
@@ -573,7 +573,7 @@ export function HomePageClient({ products, tenant }: HomePageClientProps) {
                   </motion.div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5 md:gap-6">
                     {productsBySubCategory.FOREPLAY.map((product, index) => (
-                      <ProductCard key={product.id} product={product} index={index} tenantSlug={tenant.slug} isDark={isDarkTheme} />
+                      <ProductCard key={product.id} product={product} index={index} tenantSlug={tenant.slug} tenant={tenant} isDark={isDarkTheme} />
                     ))}
                   </div>
                 </div>
@@ -604,7 +604,7 @@ export function HomePageClient({ products, tenant }: HomePageClientProps) {
                   </motion.div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5 md:gap-6">
                     {productsBySubCategory.MAIN_ACTION.map((product, index) => (
-                      <ProductCard key={product.id} product={product} index={index} tenantSlug={tenant.slug} isDark={isDarkTheme} />
+                      <ProductCard key={product.id} product={product} index={index} tenantSlug={tenant.slug} tenant={tenant} isDark={isDarkTheme} />
                     ))}
                   </div>
                 </div>
@@ -635,7 +635,7 @@ export function HomePageClient({ products, tenant }: HomePageClientProps) {
                   </motion.div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5 md:gap-6">
                     {productsBySubCategory.DELUXE_FETISH.map((product, index) => (
-                      <ProductCard key={product.id} product={product} index={index} tenantSlug={tenant.slug} isDark={isDarkTheme} />
+                      <ProductCard key={product.id} product={product} index={index} tenantSlug={tenant.slug} tenant={tenant} isDark={isDarkTheme} />
                     ))}
                   </div>
                 </div>
@@ -666,7 +666,7 @@ export function HomePageClient({ products, tenant }: HomePageClientProps) {
                   </motion.div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5 md:gap-6">
                     {productsBySubCategory.PREMIUM_SINS.map((product, index) => (
-                      <ProductCard key={product.id} product={product} index={index} tenantSlug={tenant.slug} isDark={isDarkTheme} />
+                      <ProductCard key={product.id} product={product} index={index} tenantSlug={tenant.slug} tenant={tenant} isDark={isDarkTheme} />
                     ))}
                   </div>
                 </div>
@@ -783,7 +783,7 @@ export function HomePageClient({ products, tenant }: HomePageClientProps) {
               
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                 {filteredProducts.map((product, index) => (
-                  <ProductCard key={product.id} product={product} index={index} tenantSlug={tenant.slug} isDark={isDarkTheme} />
+                  <ProductCard key={product.id} product={product} index={index} tenantSlug={tenant.slug} tenant={tenant} isDark={isDarkTheme} />
                 ))}
               </div>
             </>

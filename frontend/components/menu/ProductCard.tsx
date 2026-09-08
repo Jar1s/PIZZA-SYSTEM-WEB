@@ -1,6 +1,6 @@
 'use client';
 
-import { Product } from '@pizza-ecosystem/shared';
+import { Product, Tenant } from '@pizza-ecosystem/shared';
 import { useCart } from '@/hooks/useCart';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useToastContext } from '@/contexts/ToastContext';
@@ -26,13 +26,17 @@ interface ProductCardProps {
    * server and client markup identical so branded images never "swap in".
    */
   tenantSlug?: string;
+  /** Server-fetched tenant; the context only fills after hydration, which
+   *  made SSR fall back to the default card style. */
+  tenant?: Tenant | null;
 }
 
-export const ProductCard = memo(function ProductCard({ product, index = 0, isBestSeller = false, isDark = false, tenantSlug }: ProductCardProps) {
+export const ProductCard = memo(function ProductCard({ product, index = 0, isBestSeller = false, isDark = false, tenantSlug, tenant: tenantProp }: ProductCardProps) {
   const { addItem } = useCart();
   const { t, language } = useLanguage();
   const toast = useToastContext();
-  const { tenant } = useTenant();
+  const { tenant: contextTenant } = useTenant();
+  const tenant = tenantProp ?? contextTenant;
   const brandSlug = tenantSlug ?? tenant?.slug;
   const [isAdding, setIsAdding] = useState(false);
   const [showCustomization, setShowCustomization] = useState(false);
