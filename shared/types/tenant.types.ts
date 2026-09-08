@@ -46,6 +46,10 @@ export interface TenantTheme {
   layout?: {
     headerStyle?: 'dark' | 'light';
     backgroundStyle?: 'black' | 'white' | 'gradient';
+    /** Homepage hero composition (per-brand visual variety). */
+    heroVariant?: 'classic' | 'split' | 'minimal';
+    /** Menu card styling (per-brand visual variety). */
+    cardStyle?: 'rounded' | 'sharp' | 'framed';
     showPizzaSlices?: boolean;
     useCustomLogo?: boolean; // Use custom logo component instead of image
     customLogoComponent?: string; // Name of custom logo component (e.g., 'PornoPizzaLogo')

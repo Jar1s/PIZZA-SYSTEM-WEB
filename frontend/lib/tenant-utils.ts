@@ -9,12 +9,19 @@ import type React from 'react';
 export interface LayoutConfig {
   headerStyle: 'dark' | 'light';
   backgroundStyle: 'black' | 'white' | 'gradient';
+  /** Homepage hero composition — set per brand in theme.layout.heroVariant. */
+  heroVariant: 'classic' | 'split' | 'minimal';
+  /** Menu card styling — set per brand in theme.layout.cardStyle. */
+  cardStyle: 'rounded' | 'sharp' | 'framed';
   useCustomLogo: boolean;
   customLogoComponent?: string;
   useCustomBackground: boolean;
   customBackgroundClass?: string;
   bodyBackgroundClass?: string;
 }
+
+const HERO_VARIANTS = ['classic', 'split', 'minimal'] as const;
+const CARD_STYLES = ['rounded', 'sharp', 'framed'] as const;
 
 export function withTenantThemeDefaults(tenant: Tenant | null): Tenant | null {
   if (!tenant) return tenant;
@@ -94,6 +101,10 @@ export function getLayoutConfig(tenant: Tenant | null): LayoutConfig {
   return {
     headerStyle: defaultHeaderStyle,
     backgroundStyle: defaultBackgroundStyle,
+    heroVariant:
+      layout.heroVariant && HERO_VARIANTS.includes(layout.heroVariant) ? layout.heroVariant : 'classic',
+    cardStyle:
+      layout.cardStyle && CARD_STYLES.includes(layout.cardStyle) ? layout.cardStyle : 'rounded',
     useCustomLogo: layout.useCustomLogo ?? false, // Always use logo from theme.logo, not custom components
     customLogoComponent: layout.customLogoComponent || undefined, // Always use logo from theme.logo
     useCustomBackground: layout.useCustomBackground ?? (slug === 'pornopizza'),
