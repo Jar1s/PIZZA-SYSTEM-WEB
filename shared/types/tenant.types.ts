@@ -40,6 +40,16 @@ export interface TenantTheme {
   favicon?: string;
   fontFamily: string;
   heroImage?: string;
+  /**
+   * Per-brand hero copy. Headline replaces the shared "Vitajte v <name>"
+   * line; a **segment** inside it renders in the brand accent colour.
+   * Tagline replaces the shared subtitle. Optional; missing keys fall back
+   * to the shared translations.
+   */
+  heroHeadlineSk?: string;
+  heroHeadlineEn?: string;
+  heroTaglineSk?: string;
+  heroTaglineEn?: string;
   maintenanceMode?: boolean; // Manual maintenance mode (overrides automatic)
   openingHours?: OpeningHours; // Automatic maintenance mode based on opening hours
   taxRate?: number; // Tax rate in percentage (e.g., 20.0 for 20%)
