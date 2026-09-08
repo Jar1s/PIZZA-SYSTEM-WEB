@@ -6,11 +6,18 @@ import { useLanguage } from '@/contexts/LanguageContext';
 interface FooterProps {
   tenantName: string;
   primaryColor: string;
+  /** Brand domain (e.g. mydaypizza.sk) — the contact e-mail is info@<domain>. */
+  tenantDomain?: string | null;
 }
 
-export const Footer = ({ tenantName, primaryColor }: FooterProps) => {
+export const Footer = ({ tenantName, primaryColor, tenantDomain }: FooterProps) => {
   const { t } = useLanguage();
   const year = new Date().getFullYear();
+  // Never derive the address from the display name — "MyDay Pizza" would
+  // become info@myday pizza.sk. Domain first, sanitized name as fallback.
+  const contactEmail = tenantDomain
+    ? `info@${tenantDomain.replace(/^www\./, '')}`
+    : `info@${tenantName.toLowerCase().replace(/[^a-z0-9-]/g, '')}.sk`;
 
   const socialLinks = [
     { icon: '📸', label: 'Instagram' },
@@ -46,7 +53,7 @@ export const Footer = ({ tenantName, primaryColor }: FooterProps) => {
                     <span>0914 363 363</span>
                   </a>
                 </li>
-                <li>✉️ info@{tenantName.toLowerCase()}.sk</li>
+                <li>✉️ {contactEmail}</li>
                 <li>🕐 {t.openingHours}</li>
               </ul>
             </div>
