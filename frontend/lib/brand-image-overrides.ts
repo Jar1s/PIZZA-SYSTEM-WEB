@@ -61,6 +61,12 @@ export const BRAND_IMAGE_OVERRIDES: Record<string, readonly string[]> = {
   threesomepizza: FULL_BRAND_SET,
   skinnyb1tchpizza: FULL_BRAND_SET,
   ozemp1cpizza: FULL_BRAND_SET,
+  pizzacorner: FULL_BRAND_SET,
+  pizzaheaven: FULL_BRAND_SET,
+  healthypizza: FULL_BRAND_SET,
+  zerosugarpizza: FULL_BRAND_SET,
+  anabolicpizza: FULL_BRAND_SET,
+  mydaypizza: FULL_BRAND_SET,
 };
 
 /**

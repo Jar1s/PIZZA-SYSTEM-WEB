@@ -37,9 +37,11 @@ const nextConfig = {
   },
   // Performance optimizations
   experimental: {
-    outputFileTracingIncludes: {
-      '/*': ['./public/**/*'],
-    },
+    // NOTE: public/ is served by Vercel's static CDN layer (verified via
+    // x-matched-path) — bundling it into every function via
+    // outputFileTracingIncludes blew past the 250MB function limit once the
+    // brand image sets grew. The /images|/logos|/favicons route handlers only
+    // ever see paths that do not exist as static files and 404 there anyway.
     optimizePackageImports: ['framer-motion', '@/components'],
   },
   // Optimize production builds

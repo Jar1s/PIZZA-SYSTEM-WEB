@@ -217,6 +217,12 @@ export function getTenantSlug(): string {
   if (hostname.includes('threesomepizza')) return 'threesomepizza';
   if (hostname.includes('skinnyb1tchpizza')) return 'skinnyb1tchpizza';
   if (hostname.includes('ozemp1cpizza')) return 'ozemp1cpizza';
+  if (hostname.includes('pizzacorner')) return 'pizzacorner';
+  if (hostname.includes('pizzaheaven')) return 'pizzaheaven';
+  if (hostname.includes('healthypizza')) return 'healthypizza';
+  if (hostname.includes('zerosugarpizza')) return 'zerosugarpizza';
+  if (hostname.includes('anabolicpizza')) return 'anabolicpizza';
+  if (hostname.includes('mydaypizza')) return 'mydaypizza';
   if (hostname.includes('pornopizza.sk') || hostname.includes('p0rnopizza.sk')) return 'pornopizza';
   if (hostname.includes('pizzavnudzi.sk')) return 'pizzavnudzi';
   if (hostname.includes('pornopizza') || hostname.includes('p0rnopizza')) return 'pornopizza';
