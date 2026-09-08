@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { getTenant, updateTenant } from '@/lib/api';
+import { getAllTenants, getTenant, updateTenant } from '@/lib/api';
 import { Tenant } from '@pizza-ecosystem/shared';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { isCurrentlyOpen, getNextOpeningTime } from '@/lib/opening-hours';
@@ -20,9 +20,26 @@ export function MaintenanceBanner() {
     if (slug === 'pizzaparty') return 'partypizza';
     return slug;
   };
-  const tenantSlugsToUpdate = Array.from(
-    new Set(['pornopizza', 'p0rnopizza', 'partypizza', 'pizzaparty', 'pizzavnudzi'].map(normalizeSlug)),
-  );
+  // Maintenance is shared across brands: sync every ACTIVE tenant, not a
+  // hard-coded trio. Falls back to the original three if the list fails.
+  const fetchTenantSlugsToUpdate = async (): Promise<string[]> => {
+    try {
+      const tenants = await getAllTenants();
+      const slugs = Array.from(
+        new Set(
+          (tenants || [])
+            .map((t) => normalizeSlug(String(t.slug || '')))
+            .filter(Boolean),
+        ),
+      );
+      if (slugs.length > 0) {
+        return slugs;
+      }
+    } catch (error) {
+      console.error('Failed to load tenants for maintenance sync:', error);
+    }
+    return ['pornopizza', 'partypizza', 'pizzavnudzi'];
+  };
 
   useEffect(() => {
     const loadTenant = async () => {
@@ -93,8 +110,9 @@ export function MaintenanceBanner() {
       const maintenancePayload = { theme: { maintenanceMode: newMaintenanceMode } as any };
       
       // Update all tenants to keep maintenance in sync across brands
+      const tenantSlugsToUpdate = await fetchTenantSlugsToUpdate();
       await Promise.allSettled(
-        tenantSlugsToUpdate.map(slug => 
+        tenantSlugsToUpdate.map(slug =>
           updateTenant(normalizeSlug(slug), maintenancePayload)
         )
       );

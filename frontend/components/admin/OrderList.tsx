@@ -86,6 +86,36 @@ const BRAND_META: Record<string, { label: string; initials: string; color: strin
     initials: 'OZ',
     color: 'from-sky-500 to-cyan-700',
   },
+  pizzacorner: {
+    label: 'Pizza Corner',
+    initials: 'CO',
+    color: 'from-orange-500 to-amber-800',
+  },
+  pizzaheaven: {
+    label: 'Pizza Heaven',
+    initials: 'HV',
+    color: 'from-yellow-400 to-amber-600',
+  },
+  healthypizza: {
+    label: 'Healthy Pizza',
+    initials: 'HP',
+    color: 'from-emerald-500 to-green-700',
+  },
+  zerosugarpizza: {
+    label: 'Zero Sugar Pizza',
+    initials: 'ZS',
+    color: 'from-cyan-500 to-slate-700',
+  },
+  anabolicpizza: {
+    label: 'Anabolic Pizza',
+    initials: 'AB',
+    color: 'from-lime-400 to-green-700',
+  },
+  mydaypizza: {
+    label: 'MyDay Pizza',
+    initials: 'MD',
+    color: 'from-yellow-500 to-orange-600',
+  },
 };
 
 // Any brand created after this build still renders (name-derived initials, neutral colour).

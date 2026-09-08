@@ -65,6 +65,36 @@ const BRAND_HERO_FLAVORS: Record<string, BrandHeroFlavor> = {
     ctaEmoji: '😋',
     statIcons: ['🏃', '🍕', '✨'],
   },
+  pizzacorner: {
+    badgeEmoji: '📍',
+    ctaEmoji: '🍕',
+    statIcons: ['🏙️', '🍕', '🔥'],
+  },
+  pizzaheaven: {
+    badgeEmoji: '😇',
+    ctaEmoji: '☁️',
+    statIcons: ['✨', '🍕', '😇'],
+  },
+  healthypizza: {
+    badgeEmoji: '🥦',
+    ctaEmoji: '🥗',
+    statIcons: ['🌿', '🍕', '💚'],
+  },
+  zerosugarpizza: {
+    badgeEmoji: '0️⃣',
+    ctaEmoji: '🧊',
+    statIcons: ['⚪', '🍕', '✨'],
+  },
+  anabolicpizza: {
+    badgeEmoji: '💪',
+    ctaEmoji: '🏋️',
+    statIcons: ['🔥', '🍕', '💪'],
+  },
+  mydaypizza: {
+    badgeEmoji: '🌞',
+    ctaEmoji: '😊',
+    statIcons: ['☀️', '🍕', '😌'],
+  },
 };
 
 export function resolveBrandHeroFlavor(
