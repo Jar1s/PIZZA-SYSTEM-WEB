@@ -46,7 +46,7 @@ describe('GopayService', () => {
       customer: {
         name: 'Jaro Svaty',
         email: 'jaro@example.com',
-        phone: '+421100200400',
+        phone: '+421900000000',
       },
       items: [
         {
@@ -123,7 +123,7 @@ describe('GopayService', () => {
           first_name: 'Jaro',
           last_name: 'Svaty',
           email: 'jaro@example.com',
-          phone_number: '+421100200400',
+          phone_number: '+421900000000',
         },
       },
       callback: {

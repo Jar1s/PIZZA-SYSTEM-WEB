@@ -2069,9 +2069,9 @@ export class OrdersService {
       orderNumber: 119,
       status: OrderStatus.PREPARING,
       customer: {
-        name: 'Jaro',
-        email: 'jardo.bir@gmail.com',
-        phone: '+421100200400',
+        name: 'Sample Customer',
+        email: 'sample@example.com',
+        phone: '+421900000000',
       },
       address: {
         street: 'Námestie F. X. Messerschmidta',
