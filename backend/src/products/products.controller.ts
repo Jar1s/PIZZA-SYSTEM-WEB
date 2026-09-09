@@ -63,6 +63,30 @@ export class ProductsController {
     return this.categoriesService.getCategories(tenant.id);
   }
 
+  /**
+   * Skopíruje Storyous mapovania produktov z iného tenanta (napr. pornopizza)
+   * na tento tenant. Páruje sa cez interný názov produktu.
+   * POST /api/:tenantSlug/products/mappings/copy-from/:sourceSlug
+   */
+  @Post('mappings/copy-from/:sourceSlug')
+  @UseGuards(RolesGuard)
+  @Roles('ADMIN')
+  async copyMappingsFrom(
+    @Param('tenantSlug') tenantSlug: string,
+    @Param('sourceSlug') sourceSlug: string,
+    @Query('source') source?: string,
+  ) {
+    const [target, sourceTenant] = await Promise.all([
+      this.tenantsService.getTenantBySlug(tenantSlug),
+      this.tenantsService.getTenantBySlug(sourceSlug),
+    ]);
+    return this.productMappingService.copyMappingsFromTenant(
+      sourceTenant.id,
+      target.id,
+      source || 'storyous',
+    );
+  }
+
   @Public()
   @Get(':id/mappings')
   async getProductMappings(
