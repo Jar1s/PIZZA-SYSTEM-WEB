@@ -110,13 +110,53 @@ export class ProductMappingService {
       },
     });
   }
+
+  /**
+   * Skopíruje mapovania (default Storyous) z jedného tenanta na druhý.
+   * Páruje sa cez interný názov produktu – cieľový tenant musí mať produkt
+   * s rovnakým `name` (vlastný alebo zdieľaný). Produkty bez páru sa preskočia.
+   * Použitie: tenant, ktorý nevznikol klonom, a preto nemá mapovania pre pokladňu.
+   */
+  async copyMappingsFromTenant(
+    sourceTenantId: string,
+    targetTenantId: string,
+    source: string = 'storyous',
+  ) {
+    const sourceMappings = await this.prisma.productMapping.findMany({
+      where: { tenantId: sourceTenantId, source },
+    });
+    const targetProducts = await this.prisma.product.findMany({
+      where: { OR: [{ tenantId: targetTenantId }, { tenantId: null }] },
+      select: { name: true },
+    });
+    const targetNames = new Set(targetProducts.map((p) => p.name));
+
+    const skipped: string[] = [];
+    let copied = 0;
+    for (const mapping of sourceMappings) {
+      if (!targetNames.has(mapping.internalProductName)) {
+        skipped.push(mapping.internalProductName);
+        continue;
+      }
+      await this.prisma.productMapping.upsert({
+        where: {
+          tenantId_externalIdentifier_source: {
+            tenantId: targetTenantId,
+            externalIdentifier: mapping.externalIdentifier,
+            source,
+          },
+        },
+        create: {
+          tenantId: targetTenantId,
+          externalIdentifier: mapping.externalIdentifier,
+          internalProductName: mapping.internalProductName,
+          source,
+        },
+        update: { internalProductName: mapping.internalProductName },
+      });
+      copied += 1;
+    }
+
+    return { source, total: sourceMappings.length, copied, skipped };
+  }
 }
-
-
-
-
-
-
-
-
-
