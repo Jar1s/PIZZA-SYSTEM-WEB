@@ -39,7 +39,7 @@ describe('OrderStatusService', () => {
     refundGopayPayment: jest.fn(),
   };
 
-  const mockTelegramNotifications = {
+  const mockSlackNotifications = {
     notifyOrderStatusChanged: jest.fn(),
     notifyError: jest.fn(),
   };
@@ -75,7 +75,7 @@ describe('OrderStatusService', () => {
       mockStoryousService as any,
       mockSettingsService as any,
       mockPaymentsService as any,
-      mockTelegramNotifications as any,
+      mockSlackNotifications as any,
     );
 
     jest.clearAllMocks();
@@ -84,8 +84,8 @@ describe('OrderStatusService', () => {
     mockPrisma.order.update.mockResolvedValue({});
     mockPrisma.orderStatusHistory.create.mockResolvedValue({});
     mockEmailService.sendOrderStatusUpdate.mockResolvedValue(undefined);
-    mockTelegramNotifications.notifyOrderStatusChanged.mockResolvedValue(undefined);
-    mockTelegramNotifications.notifyError.mockResolvedValue(undefined);
+    mockSlackNotifications.notifyOrderStatusChanged.mockResolvedValue(undefined);
+    mockSlackNotifications.notifyError.mockResolvedValue(undefined);
     loggerLogSpy = jest.spyOn(Logger.prototype, 'log').mockImplementation(() => undefined);
     loggerWarnSpy = jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
     mockSettingsService.getStoryousSettings.mockResolvedValue({
@@ -229,7 +229,7 @@ describe('OrderStatusService', () => {
 
     await service.updateStatus('order-1', OrderStatus.PAID);
 
-    expect(mockTelegramNotifications.notifyError).toHaveBeenCalledWith(
+    expect(mockSlackNotifications.notifyError).toHaveBeenCalledWith(
       expect.objectContaining({
         title: 'Storyous auto-sync returned no order ID',
         message: 'Storyous API did not return order ID; kitchen may not know about this order.',

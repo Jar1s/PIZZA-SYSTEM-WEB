@@ -12,7 +12,7 @@ import { SettingsService } from '../settings/settings.service';
 import { DeliveryFeeTierService } from '../delivery/delivery-fee-tier.service';
 import { DeliveryAreaCacheService } from '../delivery/delivery-area-cache.service';
 import { OrderNumberService } from './order-number.service';
-import { TelegramNotificationsService } from '../notifications/telegram-notifications.service';
+import { SlackNotificationsService } from '../notifications/slack-notifications.service';
 
 describe('OrdersService', () => {
   let service: OrdersService;
@@ -115,7 +115,7 @@ describe('OrdersService', () => {
     sign: jest.fn(),
   };
 
-  const mockTelegramNotificationsService = {
+  const mockSlackNotificationsService = {
     notifyOrderCreated: jest.fn(),
     notifyOrderStatusChange: jest.fn(),
     notifyError: jest.fn(),
@@ -162,8 +162,8 @@ describe('OrdersService', () => {
           useValue: mockJwtService,
         },
         {
-          provide: TelegramNotificationsService,
-          useValue: mockTelegramNotificationsService,
+          provide: SlackNotificationsService,
+          useValue: mockSlackNotificationsService,
         },
       ],
     }).compile();
@@ -200,7 +200,7 @@ describe('OrdersService', () => {
       }
       return results;
     });
-    mockTelegramNotificationsService.notifyError.mockResolvedValue(undefined);
+    mockSlackNotificationsService.notifyError.mockResolvedValue(undefined);
     mockPrismaService.user.update.mockImplementation(({ data }) => ({
       id: 'updated-user',
       tenantId: 'tenant-123',
@@ -1282,7 +1282,7 @@ describe('OrdersService', () => {
         success: false,
         message: 'Storyous API down',
       });
-      expect(mockTelegramNotificationsService.notifyError).toHaveBeenCalledWith(
+      expect(mockSlackNotificationsService.notifyError).toHaveBeenCalledWith(
         expect.objectContaining({
           title: 'Storyous sync failed',
           message: 'Storyous API down',
@@ -1307,7 +1307,7 @@ describe('OrdersService', () => {
 
       expect(result.success).toBe(false);
       expect(result.message).toBe('Storyous API did not return order ID');
-      expect(mockTelegramNotificationsService.notifyError).toHaveBeenCalledWith(
+      expect(mockSlackNotificationsService.notifyError).toHaveBeenCalledWith(
         expect.objectContaining({
           title: 'Storyous sync returned no order ID',
           message: 'Storyous API did not return order ID',

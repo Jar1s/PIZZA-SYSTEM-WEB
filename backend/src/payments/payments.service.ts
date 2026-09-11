@@ -17,7 +17,7 @@ import { OrderStatusService } from '../orders/order-status.service';
 import { TenantsService } from '../tenants/tenants.service';
 import { DeliveryService } from '../delivery/delivery.service';
 import { OrderStatus } from '@pizza-ecosystem/shared';
-import { TelegramNotificationsService } from '../notifications/telegram-notifications.service';
+import { SlackNotificationsService } from '../notifications/slack-notifications.service';
 import * as crypto from 'crypto';
 
 @Injectable()
@@ -50,7 +50,7 @@ export class PaymentsService implements OnModuleInit, OnModuleDestroy {
     private tenantsService: TenantsService,
     @Inject(forwardRef(() => DeliveryService))
     private deliveryService: DeliveryService,
-    private telegramNotifications: TelegramNotificationsService,
+    private slackNotifications: SlackNotificationsService,
   ) {}
 
   onModuleInit(): void {
@@ -161,7 +161,7 @@ export class PaymentsService implements OnModuleInit, OnModuleDestroy {
     });
 
     try {
-      await this.telegramNotifications.notifyError({
+      await this.slackNotifications.notifyError({
         title: 'Wolt dispatch failed after payment',
         message: `Objednávka ${order.orderNumber ? `#${order.orderNumber}` : order.id} je zaplatená, ale Wolt doručenie sa nevytvorilo: ${message}`,
         tenantId: order.tenantId,
@@ -176,7 +176,7 @@ export class PaymentsService implements OnModuleInit, OnModuleDestroy {
         stack,
       });
     } catch (notifyError) {
-      this.logger.warn('Failed to send delivery-creation failure Telegram notification', {
+      this.logger.warn('Failed to send delivery-creation failure Slack notification', {
         orderId: order.id,
         error: notifyError instanceof Error ? notifyError.message : String(notifyError),
       });
@@ -468,7 +468,7 @@ export class PaymentsService implements OnModuleInit, OnModuleDestroy {
    * total before fulfilling. All providers report the amount in cents. If the
    * webhook does not carry an amount we cannot verify, so we don't block. On a
    * real mismatch we refuse to mark PAID / dispatch and log for manual review
-   * (the alert reaches Sentry/Telegram via the error logger).
+   * (the alert reaches Sentry/Slack via the error logger).
    */
   private isWebhookAmountValid(order: any, parsed: any): boolean {
     const reported = parsed?.amount;
@@ -690,14 +690,14 @@ export class PaymentsService implements OnModuleInit, OnModuleDestroy {
           this.logger.error(`Failed to persist refund_failed for order ${orderId}:`, dbError),
         );
       try {
-        await this.telegramNotifications.notifyError({
+        await this.slackNotifications.notifyError({
           title: '💸 GoPay refund zlyhal',
           message: `Objednávka #${order.orderNumber ?? order.id} (${(order.totalCents / 100).toFixed(2)} €): ${message}`,
           orderId: order.id,
           tenantId: order.tenantId,
         });
       } catch (notifyError) {
-        this.logger.error('Failed to send refund-failure Telegram notification:', notifyError);
+        this.logger.error('Failed to send refund-failure Slack notification:', notifyError);
       }
       throw error;
     }

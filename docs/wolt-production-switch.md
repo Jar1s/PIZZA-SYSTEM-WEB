@@ -52,4 +52,4 @@ admin ich prepísaním stratí.
 - Zóny sa kešujú ~10 minút; po prepnutí ich „Otestovať zóny" obnoví okamžite.
 - Checkout blokuje adresy mimo zóny len keď Wolt vráti jasné „mimo";
   pri výpadku Wolt API prepúšťa (fail-open) a platí post-payment poistka
-  s Telegram alertom.
+  so Slack alertom.

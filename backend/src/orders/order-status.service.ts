@@ -6,7 +6,7 @@ import { TenantsService } from '../tenants/tenants.service';
 import { StoryousService } from '../storyous/storyous.service';
 import { SettingsService } from '../settings/settings.service';
 import { PaymentsService } from '../payments/payments.service';
-import { TelegramNotificationsService } from '../notifications/telegram-notifications.service';
+import { SlackNotificationsService } from '../notifications/slack-notifications.service';
 
 @Injectable()
 export class OrderStatusService implements OnModuleInit, OnModuleDestroy {
@@ -41,7 +41,7 @@ export class OrderStatusService implements OnModuleInit, OnModuleDestroy {
     private settingsService: SettingsService,
     @Inject(forwardRef(() => PaymentsService))
     private paymentsService: PaymentsService,
-    private telegramNotifications: TelegramNotificationsService,
+    private slackNotifications: SlackNotificationsService,
   ) {}
 
   private isAcceptedStoryousState(state: string | null | undefined): boolean {
@@ -118,7 +118,7 @@ export class OrderStatusService implements OnModuleInit, OnModuleDestroy {
           storyousState: storyousResult?.storyousState || null,
           warnings: storyousResult?.warnings || [],
         });
-        await this.telegramNotifications.notifyError({
+        await this.slackNotifications.notifyError({
           title: 'Storyous auto-sync returned no order ID',
           message: 'Storyous API did not return order ID; kitchen may not know about this order.',
           tenantId: order.tenantId,
@@ -163,7 +163,7 @@ export class OrderStatusService implements OnModuleInit, OnModuleDestroy {
         statusSyncSource,
         error: error.message,
       });
-      await this.telegramNotifications.notifyError({
+      await this.slackNotifications.notifyError({
         title: 'Storyous auto-sync failed',
         message: error.message || 'Failed to auto-sync order to Storyous',
         tenantId: order.tenantId,
@@ -247,7 +247,7 @@ export class OrderStatusService implements OnModuleInit, OnModuleDestroy {
 
     await this.maybeAutoSyncToStoryous(order, newStatus, statusSyncSource);
 
-    await this.telegramNotifications.notifyOrderStatusChanged(
+    await this.slackNotifications.notifyOrderStatusChanged(
       order as any,
       order.status as string,
       newStatus,

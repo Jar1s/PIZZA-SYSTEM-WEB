@@ -1,7 +1,7 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { OrderStatus } from '@pizza-ecosystem/shared';
 
-type TelegramOrder = {
+type SlackOrder = {
   id: string;
   orderNumber?: number | string | null;
   status?: string | null;
@@ -39,14 +39,14 @@ type ErrorReport = {
 };
 
 @Injectable()
-export class TelegramNotificationsService implements OnModuleInit {
-  private readonly logger = new Logger(TelegramNotificationsService.name);
+export class SlackNotificationsService implements OnModuleInit {
+  private readonly logger = new Logger(SlackNotificationsService.name);
 
   async onModuleInit(): Promise<void> {
-    if (!this.enabled() || process.env.TELEGRAM_NOTIFY_STARTUP === 'false') return;
+    if (!this.enabled() || process.env.SLACK_NOTIFY_STARTUP === 'false') return;
 
     await this.send([
-      '🟢 <b>Backend spustený</b>',
+      '🟢 *Backend spustený*',
       '',
       `Prostredie: ${this.escape(process.env.NODE_ENV || 'development')}`,
       `Čas: ${this.escape(this.date(new Date()))}`,
@@ -54,8 +54,8 @@ export class TelegramNotificationsService implements OnModuleInit {
     ].join('\n'));
   }
 
-  async notifyOrderCreated(order: TelegramOrder): Promise<void> {
-    if (!this.enabled() || process.env.TELEGRAM_NOTIFY_ORDERS === 'false') return;
+  async notifyOrderCreated(order: SlackOrder): Promise<void> {
+    if (!this.enabled() || process.env.SLACK_NOTIFY_ORDERS === 'false') return;
 
     const customer = this.record(order.customer);
     const address = this.record(order.address);
@@ -64,57 +64,57 @@ export class TelegramNotificationsService implements OnModuleInit {
     const tenantName = order.tenant?.name || order.tenant?.slug || 'unknown tenant';
 
     await this.send([
-      `🆕 <b>Nová objednávka ${this.escape(this.shortOrderLabel(order))}</b>`,
+      `🆕 *Nová objednávka ${this.escape(this.shortOrderLabel(order))}*`,
       this.escape(tenantName),
       '',
-      `📌 Stav: <b>${this.escape(this.statusLabel(order.status))}</b>`,
+      `📌 Stav: *${this.escape(this.statusLabel(order.status))}*`,
       `💳 Platba: ${this.escape(this.payment(order))}`,
       `🕒 Čas: ${this.escape(this.date(order.createdAt || new Date()))}`,
       '',
-      '👤 <b>Zákazník</b>',
+      '👤 *Zákazník*',
       `${this.escape(this.value(customer.name))}`,
       `${this.escape(this.value(customer.phone))}`,
       `${this.escape(this.value(customer.email))}`,
       '',
-      '📍 <b>Doručenie</b>',
+      '📍 *Doručenie*',
       `${this.escape(`${this.value(address.street)} ${this.value(address.houseNumber, '')}`.trim())}`,
       `${this.escape(`${this.value(address.postalCode, '')} ${this.value(address.city)}`.trim())}`,
       `Poznámka: ${this.escape(this.value(address.instructions || address.description, '-'))}`,
       '',
-      '🍕 <b>Položky</b>',
+      '🍕 *Položky*',
       ...items.map((item) => this.itemLine(item, currency)),
       '',
-      '🧾 <b>Súhrn</b>',
+      '🧾 *Súhrn*',
       `Medzisúčet: ${this.escape(this.money(order.subtotalCents, currency))}`,
       `Doprava: ${this.escape(this.money(order.deliveryFeeCents, currency))}`,
-      `💶 <b>Celkom: ${this.escape(this.money(order.totalCents, currency))}</b>`,
+      `💶 *Celkom: ${this.escape(this.money(order.totalCents, currency))}*`,
     ].join('\n'));
   }
 
   async notifyOrderStatusChanged(
-    order: TelegramOrder,
+    order: SlackOrder,
     fromStatus: string,
     toStatus: OrderStatus,
     source: 'dashboard' | 'storyous' | 'system',
   ): Promise<void> {
-    if (!this.enabled() || process.env.TELEGRAM_NOTIFY_STATUS_CHANGES === 'false') return;
+    if (!this.enabled() || process.env.SLACK_NOTIFY_STATUS_CHANGES === 'false') return;
     const tenantName = order.tenant?.name || order.tenant?.slug || 'unknown tenant';
 
     await this.send([
-      `🔄 <b>Zmena stavu ${this.escape(this.shortOrderLabel(order))}</b>`,
+      `🔄 *Zmena stavu ${this.escape(this.shortOrderLabel(order))}*`,
       this.escape(tenantName),
       '',
-      `${this.escape(this.statusLabel(fromStatus))} → <b>${this.escape(this.statusLabel(toStatus))}</b>`,
+      `${this.escape(this.statusLabel(fromStatus))} → *${this.escape(this.statusLabel(toStatus))}*`,
       `Zdroj: ${this.escape(this.sourceLabel(source))}`,
       `🕒 Čas: ${this.escape(this.date(new Date()))}`,
     ].join('\n'));
   }
 
   async notifyError(report: ErrorReport): Promise<void> {
-    if (!this.enabled() || process.env.TELEGRAM_NOTIFY_ERRORS === 'false') return;
+    if (!this.enabled() || process.env.SLACK_NOTIFY_ERRORS === 'false') return;
 
     await this.send([
-      '🚨 <b>Backend chyba</b>',
+      '🚨 *Backend chyba*',
       '',
       `Typ: ${this.escape(report.title)}`,
       `Správa: ${this.escape(report.message || 'no message')}`,
@@ -124,54 +124,76 @@ export class TelegramNotificationsService implements OnModuleInit {
       report.orderId ? `Order ID: ${this.escape(report.orderId)}` : '',
       `Čas: ${this.escape(this.date(new Date()))}`,
       ...this.details(report.details),
-      report.stack ? `Stack: <code>${this.escape(this.truncate(report.stack, 900))}</code>` : '',
+      report.stack ? `Stack: \`\`\`${this.escape(this.truncate(report.stack, 900))}\`\`\`` : '',
     ].filter(Boolean).join('\n'));
   }
 
   private enabled(): boolean {
-    return (
-      process.env.TELEGRAM_ENABLED !== 'false' &&
-      Boolean(process.env.TELEGRAM_BOT_TOKEN && process.env.TELEGRAM_CHAT_ID)
-    );
+    if (process.env.SLACK_ENABLED === 'false') return false;
+    const hasBot = Boolean(process.env.SLACK_BOT_TOKEN && process.env.SLACK_CHANNEL);
+    return hasBot || Boolean(process.env.SLACK_WEBHOOK_URL);
   }
 
+  /**
+   * Preferuje Slack Web API (bot token + kanál, rovnaký setup ako ls-marketing-specialist),
+   * fallback je Incoming Webhook.
+   */
   private async send(text: string): Promise<void> {
-    try {
-      const response = await fetch(
-        `https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/sendMessage`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            chat_id: process.env.TELEGRAM_CHAT_ID,
-            text: this.truncate(text, 3900),
-            parse_mode: 'HTML',
-            disable_web_page_preview: true,
-          }),
-        },
-      );
+    const body = this.truncate(text, 3900);
+    const botToken = process.env.SLACK_BOT_TOKEN;
+    const channel = process.env.SLACK_CHANNEL;
 
-      if (!response.ok) {
-        this.logger.warn('Telegram notification failed', {
+    try {
+      const response =
+        botToken && channel
+          ? await fetch('https://slack.com/api/chat.postMessage', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json; charset=utf-8',
+                Authorization: `Bearer ${botToken}`,
+              },
+              body: JSON.stringify({ channel, text: body, unfurl_links: false, unfurl_media: false }),
+            })
+          : await fetch(process.env.SLACK_WEBHOOK_URL as string, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ text: body, unfurl_links: false, unfurl_media: false }),
+            });
+
+      const raw = await response.text();
+      const apiError = this.apiError(raw);
+      if (!response.ok || apiError) {
+        this.logger.warn('Slack notification failed', {
           status: response.status,
-          body: this.truncate(await response.text(), 500),
+          error: apiError,
+          body: this.truncate(raw, 500),
         });
       }
     } catch (error) {
-      this.logger.warn('Telegram notification request failed', {
+      this.logger.warn('Slack notification request failed', {
         error: error instanceof Error ? error.message : String(error),
       });
     }
   }
 
-  private itemLine(item: NonNullable<TelegramOrder['items']>[number], currency: string): string {
-    const line = `• <b>${this.escape(String(item.quantity || 1))}× ${this.escape(item.productName || 'unknown item')}</b> · ${this.escape(this.money(item.priceCents, currency))}/ks`;
+  /** chat.postMessage vracia HTTP 200 aj pri chybe — chyba je v JSON `{ ok: false, error }`. */
+  private apiError(raw: string): string | undefined {
+    try {
+      const parsed = JSON.parse(raw) as { ok?: boolean; error?: string };
+      return parsed.ok === false ? parsed.error || 'unknown_error' : undefined;
+    } catch {
+      return undefined;
+    }
+  }
+
+  private itemLine(item: NonNullable<SlackOrder['items']>[number], currency: string): string {
+    const line = `• *${this.escape(String(item.quantity || 1))}× ${this.escape(item.productName || 'unknown item')}* · ${this.escape(this.money(item.priceCents, currency))}/ks`;
     if (!item.modifiers || typeof item.modifiers !== 'object') return line;
     const modifiers = this.modifierLines(item.modifiers);
     return modifiers.length ? `${line}\n${modifiers.join('\n')}` : line;
   }
 
-  private payment(order: TelegramOrder): string {
+  private payment(order: SlackOrder): string {
     if (order.paymentRef === 'cod:cash') return `hotovosť pri doručení (${this.paymentStatusLabel(order.paymentStatus)})`;
     if (order.paymentRef === 'cod:card') return `karta pri doručení (${this.paymentStatusLabel(order.paymentStatus)})`;
     if (order.paymentRef) return `${order.paymentRef} (${this.paymentStatusLabel(order.paymentStatus)})`;
@@ -186,11 +208,11 @@ export class TelegramNotificationsService implements OnModuleInit {
     });
   }
 
-  private shortOrderLabel(order: TelegramOrder): string {
+  private shortOrderLabel(order: SlackOrder): string {
     return order.orderNumber ? `#${order.orderNumber}` : `#${order.id.slice(0, 8)}`;
   }
 
-  private orderLabel(order: TelegramOrder): string {
+  private orderLabel(order: SlackOrder): string {
     return `${order.orderNumber ? `#${order.orderNumber}` : order.id.slice(0, 8)} (${order.id})`;
   }
 

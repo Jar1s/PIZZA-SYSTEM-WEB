@@ -1,12 +1,12 @@
 name: Health Watchdog
 
 # Uptime watchdog: checks the API and all eight storefronts every ~5 minutes
-# and alerts the ops Telegram chat when anything is down or degraded.
-# Complements the in-app Telegram error reporting, which cannot fire when the
+# and alerts the ops Slack channel when anything is down or degraded.
+# Complements the in-app Slack error reporting, which cannot fire when the
 # whole backend process is dead.
 #
 # Required repo secrets (values live in the Render dashboard, service
-# pizza-ecosystem-api): TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID.
+# pizza-ecosystem-api): SLACK_BOT_TOKEN, SLACK_CHANNEL.
 
 on:
   schedule:
@@ -17,7 +17,7 @@ jobs:
   check:
     runs-on: ubuntu-latest
     # Worst case with retries: 9 endpoints x (20s + 30s + 20s) — keep headroom
-    # so a total outage still reaches the Telegram alert step.
+    # so a total outage still reaches the Slack alert step.
     timeout-minutes: 15
     steps:
       - name: Check endpoints
@@ -76,20 +76,24 @@ jobs:
             echo "status=ok" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Alert Telegram
+      - name: Alert Slack
         if: steps.health.outputs.status == 'down'
         env:
-          BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+          CHANNEL: ${{ secrets.SLACK_CHANNEL }}
           FAILURES: ${{ steps.health.outputs.failures }}
         run: |
-          if [ -z "$BOT_TOKEN" ] || [ -z "$CHAT_ID" ]; then
-            echo "::warning::TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID secrets are not set — cannot alert"
+          if [ -z "$BOT_TOKEN" ] || [ -z "$CHANNEL" ]; then
+            echo "::warning::SLACK_BOT_TOKEN / SLACK_CHANNEL secrets are not set — cannot alert"
             exit 1
           fi
-          curl -s -m 20 "https://api.telegram.org/bot${BOT_TOKEN}/sendMessage" \
-            -d chat_id="${CHAT_ID}" \
-            -d text="🚨 WATCHDOG — výpadok!%0A${FAILURES}Čas: $(date -u '+%H:%M UTC')" \
+          TEXT=":rotating_light: *WATCHDOG — výpadok!*\n${FAILURES}Čas: $(date -u '+%H:%M UTC')"
+          jq -n --arg channel "$CHANNEL" --arg text "$TEXT" \
+            '{channel: $channel, text: $text, unfurl_links: false}' \
+            | curl -s -m 20 -X POST \
+                -H "Authorization: Bearer ${BOT_TOKEN}" \
+                -H 'Content-Type: application/json; charset=utf-8' \
+                --data @- "https://slack.com/api/chat.postMessage" \
             > /dev/null
           # Fail the job so the outage is also visible in the Actions history
           exit 1

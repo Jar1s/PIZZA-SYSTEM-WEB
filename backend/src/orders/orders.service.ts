@@ -20,7 +20,7 @@ import { TenantTheme } from '../types/tenant.types';
 import { appConfig } from '../config/app.config';
 import { OrderResponseSchema } from '../common/schemas/order.schema';
 import { getProductDisplayName } from '../utils/product-name-mapper';
-import { TelegramNotificationsService } from '../notifications/telegram-notifications.service';
+import { SlackNotificationsService } from '../notifications/slack-notifications.service';
 import * as crypto from 'crypto';
 
 // Type definitions for Prisma JSON fields
@@ -442,7 +442,7 @@ export class OrdersService {
     private deliveryAreaCacheService: DeliveryAreaCacheService,
     private orderNumberService: OrderNumberService,
     private jwtService: JwtService,
-    private telegramNotifications: TelegramNotificationsService,
+    private slackNotifications: SlackNotificationsService,
   ) {}
 
   private async notifyStoryousSyncFailure(params: {
@@ -454,7 +454,7 @@ export class OrdersService {
     stack?: string;
   }): Promise<void> {
     try {
-      await this.telegramNotifications.notifyError({
+      await this.slackNotifications.notifyError({
         title: params.title || 'Storyous sync failed',
         message: params.message,
         tenantId: params.tenantId || undefined,
@@ -463,7 +463,7 @@ export class OrdersService {
         stack: params.stack,
       });
     } catch (notifyError) {
-      this.logger.warn('Failed to send Storyous sync failure Telegram notification', {
+      this.logger.warn('Failed to send Storyous sync failure Slack notification', {
         orderId: params.orderId,
         error: notifyError instanceof Error ? notifyError.message : String(notifyError),
       });

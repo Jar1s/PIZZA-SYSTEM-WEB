@@ -7,13 +7,13 @@ import {
   Logger,
 } from '@nestjs/common';
 import { Request, Response } from 'express';
-import { TelegramNotificationsService } from './telegram-notifications.service';
+import { SlackNotificationsService } from './slack-notifications.service';
 
 @Catch()
-export class TelegramExceptionFilter implements ExceptionFilter {
-  private readonly logger = new Logger(TelegramExceptionFilter.name);
+export class SlackExceptionFilter implements ExceptionFilter {
+  private readonly logger = new Logger(SlackExceptionFilter.name);
 
-  constructor(private readonly telegram: TelegramNotificationsService) {}
+  constructor(private readonly slack: SlackNotificationsService) {}
 
   catch(exception: unknown, host: ArgumentsHost): void {
     const ctx = host.switchToHttp();
@@ -25,7 +25,7 @@ export class TelegramExceptionFilter implements ExceptionFilter {
         : HttpStatus.INTERNAL_SERVER_ERROR;
 
     if (status >= HttpStatus.INTERNAL_SERVER_ERROR) {
-      void this.telegram.notifyError({
+      void this.slack.notifyError({
         title: exception instanceof Error ? exception.name : 'Unhandled exception',
         message: exception instanceof Error ? exception.message : String(exception),
         statusCode: status,
@@ -33,7 +33,7 @@ export class TelegramExceptionFilter implements ExceptionFilter {
         path: request.originalUrl || request.url,
         stack: exception instanceof Error ? exception.stack : undefined,
       }).catch((error) => {
-        this.logger.warn('Failed to send Telegram exception report', {
+        this.logger.warn('Failed to send Slack exception report', {
           error: error instanceof Error ? error.message : String(error),
         });
       });

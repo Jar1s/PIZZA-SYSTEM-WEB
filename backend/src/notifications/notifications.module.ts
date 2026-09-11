@@ -1,16 +1,16 @@
 import { Module } from '@nestjs/common';
 import { APP_FILTER } from '@nestjs/core';
-import { TelegramExceptionFilter } from './telegram-exception.filter';
-import { TelegramNotificationsService } from './telegram-notifications.service';
+import { SlackExceptionFilter } from './slack-exception.filter';
+import { SlackNotificationsService } from './slack-notifications.service';
 
 @Module({
   providers: [
-    TelegramNotificationsService,
+    SlackNotificationsService,
     {
       provide: APP_FILTER,
-      useClass: TelegramExceptionFilter,
+      useClass: SlackExceptionFilter,
     },
   ],
-  exports: [TelegramNotificationsService],
+  exports: [SlackNotificationsService],
 })
 export class NotificationsModule {}

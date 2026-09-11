@@ -8,7 +8,7 @@ import { OrdersService } from '../orders/orders.service';
 import { OrderStatusService } from '../orders/order-status.service';
 import { TenantsService } from '../tenants/tenants.service';
 import { DeliveryService } from '../delivery/delivery.service';
-import { TelegramNotificationsService } from '../notifications/telegram-notifications.service';
+import { SlackNotificationsService } from '../notifications/slack-notifications.service';
 import { OrderStatus } from '@pizza-ecosystem/shared';
 
 describe('PaymentsService', () => {
@@ -67,7 +67,7 @@ describe('PaymentsService', () => {
     isAutoDispatchEnabled: jest.fn().mockResolvedValue(true),
   };
 
-  const mockTelegramNotifications = {
+  const mockSlackNotifications = {
     notifyError: jest.fn(),
   };
 
@@ -104,8 +104,8 @@ describe('PaymentsService', () => {
           useValue: mockDeliveryService,
         },
         {
-          provide: TelegramNotificationsService,
-          useValue: mockTelegramNotifications,
+          provide: SlackNotificationsService,
+          useValue: mockSlackNotifications,
         },
       ],
     }).compile();
@@ -122,7 +122,7 @@ describe('PaymentsService', () => {
     jest.clearAllMocks();
     mockOrdersService.tryStartPaymentSession.mockResolvedValue(true);
     mockOrdersService.clearPaymentSessionLock.mockResolvedValue(undefined);
-    mockTelegramNotifications.notifyError.mockResolvedValue(undefined);
+    mockSlackNotifications.notifyError.mockResolvedValue(undefined);
     mockOrdersService.findStalePendingGopayPaymentOrders.mockResolvedValue([]);
   });
 
@@ -473,7 +473,7 @@ describe('PaymentsService', () => {
         'order-123',
         OrderStatus.PAID,
       );
-      expect(mockTelegramNotifications.notifyError).toHaveBeenCalledWith(
+      expect(mockSlackNotifications.notifyError).toHaveBeenCalledWith(
         expect.objectContaining({
           title: 'Wolt dispatch failed after payment',
           message: expect.stringContaining('Delivery service error'),
@@ -568,7 +568,7 @@ describe('PaymentsService', () => {
 
       expect(mockOrdersService.updatePaymentRef).toHaveBeenCalledWith('order-123', 'gopay-123', 'success');
       expect(mockOrderStatusService.updateStatus).toHaveBeenCalledWith('order-123', OrderStatus.PAID);
-      expect(mockTelegramNotifications.notifyError).toHaveBeenCalledWith(
+      expect(mockSlackNotifications.notifyError).toHaveBeenCalledWith(
         expect.objectContaining({
           title: 'Wolt dispatch failed after payment',
           message: expect.stringContaining('Wolt unavailable'),
@@ -731,10 +731,10 @@ describe('PaymentsService', () => {
 
       expect(mockGopayService.refundPayment).toHaveBeenCalledWith('gopay-123', 2500, gopayTenant);
       expect(mockOrdersService.updateRefundStatus).toHaveBeenCalledWith('order-123', 'refund_pending');
-      expect(mockTelegramNotifications.notifyError).not.toHaveBeenCalled();
+      expect(mockSlackNotifications.notifyError).not.toHaveBeenCalled();
     });
 
-    it('should mark refund_failed, notify Telegram and rethrow when GoPay refund fails', async () => {
+    it('should mark refund_failed, notify Slack and rethrow when GoPay refund fails', async () => {
       mockOrdersService.getOrderById.mockResolvedValue(paidOrder);
       mockTenantsService.getTenantById.mockResolvedValue(gopayTenant);
       mockOrdersService.updateRefundStatus.mockResolvedValue(undefined);
@@ -747,7 +747,7 @@ describe('PaymentsService', () => {
         'refund_failed',
         'GoPay is down',
       );
-      expect(mockTelegramNotifications.notifyError).toHaveBeenCalledWith(
+      expect(mockSlackNotifications.notifyError).toHaveBeenCalledWith(
         expect.objectContaining({ orderId: 'order-123' }),
       );
     });
@@ -934,7 +934,7 @@ describe('PaymentsService', () => {
 
       expect(mockOrdersService.updatePaymentRef).toHaveBeenCalledWith('order-123', 'wepay-123', 'success');
       expect(mockOrderStatusService.updateStatus).toHaveBeenCalledWith('order-123', OrderStatus.PAID);
-      expect(mockTelegramNotifications.notifyError).toHaveBeenCalledWith(
+      expect(mockSlackNotifications.notifyError).toHaveBeenCalledWith(
         expect.objectContaining({
           title: 'Wolt dispatch failed after payment',
           message: expect.stringContaining('Wolt create failed'),
