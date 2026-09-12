@@ -76,7 +76,7 @@ export default function OrderHistory({ tenant, isDark = false }: OrderHistoryPro
     return (
       <div className="flex items-center justify-center py-12">
         <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-12 w-12 border-t-4 border-b-4 border-orange-600"></div>
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-t-4 border-b-4" style={{ borderColor: 'var(--color-primary)' }}></div>
           <p className={`mt-4 ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>{t.loading}</p>
         </div>
       </div>
@@ -95,8 +95,8 @@ export default function OrderHistory({ tenant, isDark = false }: OrderHistoryPro
         <p className={`${isDark ? 'text-gray-300' : 'text-gray-600'} text-center max-w-md`}>{t.emptyOrderHistory}</p>
         <button
           onClick={() => router.push(`/?tenant=${tenant}`)}
-          className={`mt-6 px-6 py-3 rounded-full font-semibold ${isDark ? 'bg-gradient-to-r from-[#ff5e00] via-[#ff0066] to-[#ff2d55]' : 'text-white'}`}
-          style={!isDark ? { backgroundColor: 'var(--color-primary)' } : undefined}
+          className={`mt-6 px-6 py-3 rounded-full font-semibold text-white hover:opacity-90`}
+          style={{ backgroundColor: 'var(--color-primary)' }}
         >
           {t.orderNow}
         </button>
