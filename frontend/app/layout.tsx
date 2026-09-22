@@ -1,5 +1,9 @@
 import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
+import {
+  Inter, Bebas_Neue, Pacifico, Poppins, Quicksand, Space_Grotesk,
+  Barlow_Condensed, Cinzel, Fredoka, Raleway, Nunito, Rajdhani,
+  Oswald, Nunito_Sans,
+} from 'next/font/google';
 import './globals.css';
 import { headers } from 'next/headers';
 import { getTenantServer } from '@/lib/server-api';
@@ -12,13 +16,50 @@ import { AnalyticsScripts } from '@/components/AnalyticsScripts';
 // Force dynamic rendering because we use dynamic tenant resolution
 export const dynamic = 'force-dynamic';
 
-// Optimize font loading with display swap and preload
-const inter = Inter({ 
-  subsets: ['latin'],
-  display: 'swap', // Show fallback font immediately, swap when loaded
-  preload: true,
-  variable: '--font-inter',
-});
+// Per-brand font instances — all use `variable` so font-family is
+// controlled via CSS custom property, not hard-coded on <body>.
+const inter          = Inter({ subsets: ['latin'], display: 'swap', variable: '--font-inter' });
+const bebasNeue      = Bebas_Neue({ subsets: ['latin'], weight: '400', display: 'swap', variable: '--font-bebas-neue' });
+const pacifico       = Pacifico({ subsets: ['latin'], weight: '400', display: 'swap', variable: '--font-pacifico' });
+const poppins        = Poppins({ subsets: ['latin'], weight: ['400', '600', '700'], display: 'swap', variable: '--font-poppins' });
+const quicksand      = Quicksand({ subsets: ['latin'], display: 'swap', variable: '--font-quicksand' });
+const spaceGrotesk   = Space_Grotesk({ subsets: ['latin'], display: 'swap', variable: '--font-space-grotesk' });
+const barlowCond     = Barlow_Condensed({ subsets: ['latin'], weight: ['400', '600', '700'], display: 'swap', variable: '--font-barlow-condensed' });
+const cinzel         = Cinzel({ subsets: ['latin'], display: 'swap', variable: '--font-cinzel' });
+const fredoka        = Fredoka({ subsets: ['latin'], display: 'swap', variable: '--font-fredoka' });
+const raleway        = Raleway({ subsets: ['latin'], display: 'swap', variable: '--font-raleway' });
+const nunito         = Nunito({ subsets: ['latin'], display: 'swap', variable: '--font-nunito' });
+const rajdhani       = Rajdhani({ subsets: ['latin'], weight: ['400', '600', '700'], display: 'swap', variable: '--font-rajdhani' });
+const oswald         = Oswald({ subsets: ['latin'], display: 'swap', variable: '--font-oswald' });
+const nunitoSans     = Nunito_Sans({ subsets: ['latin'], display: 'swap', variable: '--font-nunito-sans' });
+
+// Apply all variable classes to <body> so every font is available in the
+// document; the active one is selected via --font-family below.
+const ALL_FONT_VARS = [
+  inter.variable, bebasNeue.variable, pacifico.variable, poppins.variable,
+  quicksand.variable, spaceGrotesk.variable, barlowCond.variable, cinzel.variable,
+  fredoka.variable, raleway.variable, nunito.variable, rajdhani.variable,
+  oswald.variable, nunitoSans.variable,
+].join(' ');
+
+interface FontConfig { cssVar: string; stack: string; }
+const TENANT_FONTS: Record<string, FontConfig> = {
+  pornopizza:       { cssVar: '--font-inter',            stack: 'Inter, sans-serif' },
+  p0rnopizza:       { cssVar: '--font-inter',            stack: 'Inter, sans-serif' },
+  pizzavnudzi:      { cssVar: '--font-bebas-neue',       stack: '"Bebas Neue", sans-serif' },
+  pizzalover:       { cssVar: '--font-pacifico',         stack: 'Pacifico, cursive' },
+  pizzaprefirmy:    { cssVar: '--font-poppins',          stack: 'Poppins, sans-serif' },
+  skinnyb1tchpizza: { cssVar: '--font-quicksand',        stack: 'Quicksand, sans-serif' },
+  ozemp1cpizza:     { cssVar: '--font-space-grotesk',    stack: '"Space Grotesk", sans-serif' },
+  pizzacorner:      { cssVar: '--font-barlow-condensed', stack: '"Barlow Condensed", sans-serif' },
+  pizzaheaven:      { cssVar: '--font-cinzel',           stack: 'Cinzel, serif' },
+  partypizza:       { cssVar: '--font-fredoka',          stack: 'Fredoka, sans-serif' },
+  threesomepizza:   { cssVar: '--font-raleway',          stack: 'Raleway, sans-serif' },
+  healthypizza:     { cssVar: '--font-nunito',           stack: 'Nunito, sans-serif' },
+  zerosugarpizza:   { cssVar: '--font-rajdhani',         stack: 'Rajdhani, sans-serif' },
+  anabolicpizza:    { cssVar: '--font-oswald',           stack: 'Oswald, sans-serif' },
+  mydaypizza:       { cssVar: '--font-nunito-sans',      stack: '"Nunito Sans", sans-serif' },
+};
 
 export function generateViewport() {
   return {
@@ -182,7 +223,9 @@ export default async function RootLayout({
   const isPornopizza = normalizedTenant?.slug?.toLowerCase() === 'pornopizza';
   const primaryColor = isPornopizza ? '#E91E63' : (theme.primaryColor || '#E91E63');
   const secondaryColor = isPornopizza ? '#0F141A' : (theme.secondaryColor || '#0F141A');
-  const fontFamily = theme.fontFamily || 'Inter, sans-serif';
+  const tenantSlug = normalizedTenant?.slug?.toLowerCase() || 'pornopizza';
+  const fontConfig = TENANT_FONTS[tenantSlug] ?? TENANT_FONTS['pornopizza'];
+  const fontFamily = fontConfig.stack;
 
   // Structured Data (JSON-LD)
   // Opening hours come from the tenant theme (admin-managed); the schema uses
@@ -277,12 +320,12 @@ export default async function RootLayout({
               --color-primary: ${primaryColor} !important;
               --color-primary-dark: ${primaryColor === '#E91E63' ? '#C2185B' : '#e65a00'} !important;
               --color-secondary: ${secondaryColor} !important;
-              --font-family: ${fontFamily} !important;
+              --font-family: var(${fontConfig.cssVar}), ${fontFamily} !important;
             }
           `
         }} />
       </head>
-      <body className={inter.className} suppressHydrationWarning>
+      <body className={ALL_FONT_VARS} suppressHydrationWarning>
         <script
           dangerouslySetInnerHTML={{
             __html: `
