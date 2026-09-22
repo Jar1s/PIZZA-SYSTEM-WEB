@@ -112,7 +112,7 @@ export function Header({ tenant }: HeaderProps) {
                 alt={normalizedTenant.name}
                 width={200}
                 height={60}
-                className="h-10 sm:h-12 w-auto max-w-[160px] sm:max-w-[200px] md:max-w-[240px]"
+                className="h-12 sm:h-14 w-auto max-w-[200px] sm:max-w-[260px] md:max-w-[320px]"
                 priority
                 unoptimized={normalizedTenant.theme.logo.includes(' ') || normalizedTenant.theme.logo.includes('%20')}
                 onError={() => {
