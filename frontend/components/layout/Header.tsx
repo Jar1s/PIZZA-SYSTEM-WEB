@@ -98,7 +98,7 @@ export function Header({ tenant }: HeaderProps) {
           <div className="absolute inset-x-0 bottom-0 h-[1px] bg-gradient-to-r from-transparent via-[var(--color-primary)]/70 to-transparent" />
         </div>
       )}
-      <div className="mx-auto flex h-14 sm:h-16 items-center justify-between gap-2 sm:gap-3 md:gap-4 px-3 sm:px-4 md:px-6 lg:px-8">
+      <div className="mx-auto flex h-20 sm:h-24 items-center justify-between gap-2 sm:gap-3 md:gap-4 px-3 sm:px-4 md:px-6 lg:px-8">
         <div className="flex flex-1 items-center gap-4 min-w-0">
           <button
             type="button"
