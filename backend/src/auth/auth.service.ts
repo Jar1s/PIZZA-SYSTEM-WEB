@@ -1,4 +1,5 @@
 import { Injectable, UnauthorizedException, BadRequestException } from '@nestjs/common';
+import { IsString, IsNotEmpty } from 'class-validator';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
 import * as crypto from 'crypto';
@@ -23,8 +24,13 @@ type UserWithPassword = Prisma.UserGetPayload<{
 
 type UserWithoutPassword = Omit<UserWithPassword, 'password'>;
 
-export interface LoginDto {
+export class LoginDto {
+  @IsString()
+  @IsNotEmpty()
   username: string;
+
+  @IsString()
+  @IsNotEmpty()
   password: string;
 }
 
