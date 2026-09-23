@@ -1,7 +1,7 @@
 const { PrismaClient } = require('@prisma/client');
 const p = new PrismaClient();
 const updates = {
-  pizzavnudzi:      '/logos/pizzavnudzi.svg',
+  'pizzavnudzi-sk': '/logos/pizzavnudzi.svg',
   pizzalover:       '/logos/pizzalover.png',
   pizzaprefirmy:    '/logos/pizzaprefirmy.png',
   skinnyb1tchpizza: '/logos/skinnyb1tchpizza.png',
