@@ -224,7 +224,12 @@ export default async function RootLayout({
   const primaryColor = isPornopizza ? '#E91E63' : (theme.primaryColor || '#E91E63');
   const secondaryColor = isPornopizza ? '#0F141A' : (theme.secondaryColor || '#0F141A');
   const tenantSlug = normalizedTenant?.slug?.toLowerCase() || 'pornopizza';
-  const fontConfig = TENANT_FONTS[tenantSlug] ?? TENANT_FONTS['pornopizza'];
+  // DB slugs are not always bare brand names (e.g. 'pizzavnudzi-sk'), so fall
+  // back to the slug with a trailing country/TLD suffix stripped before
+  // defaulting to the house font.
+  const fontSlug = tenantSlug.replace(/-(sk|cz|com|eu)$/, '');
+  const fontConfig =
+    TENANT_FONTS[tenantSlug] ?? TENANT_FONTS[fontSlug] ?? TENANT_FONTS['pornopizza'];
   const fontFamily = fontConfig.stack;
 
   // Structured Data (JSON-LD)
