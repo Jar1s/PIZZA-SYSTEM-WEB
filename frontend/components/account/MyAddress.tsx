@@ -267,7 +267,7 @@ export default function MyAddress({ tenant, isDark = false }: MyAddressProps) {
       <div>
         <h2 className="text-2xl font-bold mb-6">{t.myAddress}</h2>
         <div className="text-center py-8">
-          <div className="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-orange-600"></div>
+          <div className="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2" style={{ borderColor: 'var(--color-primary)' }}></div>
           <p className={`mt-4 ${mutedText}`}>{t.loading}</p>
         </div>
       </div>
@@ -281,8 +281,8 @@ export default function MyAddress({ tenant, isDark = false }: MyAddressProps) {
         {!showAddForm && !editingId && (
           <button
             onClick={() => setShowAddForm(true)}
-            className={`px-4 py-2 rounded-full text-sm font-semibold ${isDark ? 'bg-gradient-to-r from-[#ff5e00] via-[#ff0066] to-[#ff2d55]' : 'text-white'}`}
-            style={!isDark ? { backgroundColor: 'var(--color-primary)' } : undefined}
+            className={`px-4 py-2 rounded-full text-sm font-semibold text-white hover:opacity-90`}
+            style={{ backgroundColor: 'var(--color-primary)' }}
           >
             + {t.addAddress}
           </button>
@@ -367,8 +367,8 @@ export default function MyAddress({ tenant, isDark = false }: MyAddressProps) {
             <div className="flex gap-3 pt-2">
               <button
                 onClick={() => handleSave(editingId || undefined)}
-                className={`px-6 py-2 rounded-full font-semibold ${isDark ? 'bg-gradient-to-r from-[#ff5e00] via-[#ff0066] to-[#ff2d55]' : 'text-white'}`}
-                style={!isDark ? { backgroundColor: 'var(--color-primary)' } : undefined}
+                className={`px-6 py-2 rounded-full font-semibold text-white hover:opacity-90`}
+                style={{ backgroundColor: 'var(--color-primary)' }}
               >
                 {t.save}
               </button>
@@ -393,8 +393,8 @@ export default function MyAddress({ tenant, isDark = false }: MyAddressProps) {
             <p className={`${mutedText} mb-4`}>{t.noAddresses}</p>
             <button
               onClick={() => setShowAddForm(true)}
-              className={`px-6 py-3 rounded-full font-semibold ${isDark ? 'bg-gradient-to-r from-[#ff5e00] via-[#ff0066] to-[#ff2d55]' : 'text-white'}`}
-              style={!isDark ? { backgroundColor: 'var(--color-primary)' } : undefined}
+              className={`px-6 py-3 rounded-full font-semibold text-white hover:opacity-90`}
+              style={{ backgroundColor: 'var(--color-primary)' }}
             >
               + {t.addAddress}
             </button>
