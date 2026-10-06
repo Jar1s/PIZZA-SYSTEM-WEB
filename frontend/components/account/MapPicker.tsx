@@ -337,7 +337,7 @@ export default function MapPicker({ isOpen, onClose, onSelect, initialLocation }
           {!isLoaded && (
             <div className="absolute inset-0 flex items-center justify-center bg-gray-100">
               <div className="text-center">
-                <div className="inline-block animate-spin rounded-full h-12 w-12 border-t-4 border-b-4 border-orange-600"></div>
+                <div className="inline-block animate-spin rounded-full h-12 w-12 border-t-4 border-b-4" style={{ borderColor: 'var(--color-primary)' }}></div>
                 <p className="mt-4 text-gray-600">Načítavam mapu...</p>
                 {!process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY && (
                   <p className="mt-2 text-sm text-red-600">Chýba Google Maps API key v .env.local</p>
