@@ -58,3 +58,6 @@ backups/
 # Playwright artifacts
 frontend/test-results/
 frontend/playwright-report/
+
+# local scratch (API snapshots, write plans)
+.work/

@@ -1,0 +1,1977 @@
+[
+ {
+  "id": "cmlbhjtp0002ary0xjhnte3tk",
+  "brand": "pizzavnudzi-sk",
+  "slug": "basil-pesto",
+  "subHeader": "{\"sk\": \"Zelená záchranka je na ceste\", \"en\": \"Green ambulance, incoming\"}",
+  "displayName": "Pesto 112"
+ },
+ {
+  "id": "cmlbhjux7002zry0xh2duniob",
+  "brand": "pizzavnudzi-sk",
+  "slug": "bon-salami",
+  "subHeader": "{\"sk\": \"Jednoduchý zásah, maximum efektu\", \"en\": \"Swift salami intervention\"}",
+  "displayName": "Salami Zásah"
+ },
+ {
+  "id": "cmlbhjuyy0030ry0x3gdoh1yy",
+  "brand": "pizzavnudzi-sk",
+  "slug": "calimero",
+  "subHeader": "{\"sk\": \"Kód SOS: šunka a kukurica\", \"en\": \"SOS: ham and corn incoming\"}",
+  "displayName": "Calimero SOS"
+ },
+ {
+  "id": "cmlbhjumk002try0x4yzgdol8",
+  "brand": "pizzavnudzi-sk",
+  "slug": "capri",
+  "subHeader": "{\"sk\": \"Hliadka troch ingredientov v akcii\", \"en\": \"Three-topping patrol, en route\"}",
+  "displayName": "Capri Hliadka"
+ },
+ {
+  "id": "cmlbhjv2i0032ry0xet4z14yk",
+  "brand": "pizzavnudzi-sk",
+  "slug": "da-vinci",
+  "subHeader": "{\"sk\": \"Tajný kód: slanina a niva\", \"en\": \"Cracking the blue cheese code\"}",
+  "displayName": "Da Vinci Kód"
+ },
+ {
+  "id": "cmlbhjv610034ry0xu4kjddmk",
+  "brand": "pizzavnudzi-sk",
+  "slug": "diavola",
+  "subHeader": "{\"sk\": \"Alarm aktivovaný, plná pikantnosť\", \"en\": \"Full alarm, maximum heat\"}",
+  "displayName": "Diavola Alarm"
+ },
+ {
+  "id": "cmlbhjv7s0035ry0xrdstmhoz",
+  "brand": "pizzavnudzi-sk",
+  "slug": "fregata",
+  "subHeader": "{\"sk\": \"Celý záchranný tím v akcii\", \"en\": \"Full crew deployed, seven strong\"}",
+  "displayName": "Fregata Tím"
+ },
+ {
+  "id": "cmlbhjv9j0036ry0xd6yy4k15",
+  "brand": "pizzavnudzi-sk",
+  "slug": "gazdovsk-",
+  "subHeader": "{\"sk\": \"Gazdovská záchrana prichádza k vám\", \"en\": \"Country rescue on its way\"}",
+  "displayName": "Gazdovská 112"
+ },
+ {
+  "id": "cmlbhjurv002wry0xavvdbjy3",
+  "brand": "pizzavnudzi-sk",
+  "slug": "hawaii",
+  "subHeader": "{\"sk\": \"Tropická záchrana na cestách\", \"en\": \"Tropical rescue, no questions asked\"}",
+  "displayName": "Hawai Rescue"
+ },
+ {
+  "id": "cmlbhjuto002xry0xnm3pnn1o",
+  "brand": "pizzavnudzi-sk",
+  "slug": "margherita",
+  "subHeader": "{\"sk\": \"Základná záchrana, vždy dostupná\", \"en\": \"First aid: tomato and mozzarella\"}",
+  "displayName": "Margherita Záchrana"
+ },
+ {
+  "id": "cmlbhjvbb0037ry0x6qfen3u1",
+  "brand": "pizzavnudzi-sk",
+  "slug": "mayday",
+  "subHeader": "{\"sk\": \"Mayday, mayday. Obed je v ohrození.\", \"en\": \"Mayday, mayday. Lunch is at risk.\"}",
+  "displayName": "Mayday Kód"
+ },
+ {
+  "id": "cmlbhjtua002dry0x480c1mvm",
+  "brand": "pizzavnudzi-sk",
+  "slug": "med-chilli",
+  "subHeader": "{\"sk\": \"Medová sanitka, ostré liečivo\", \"en\": \"Sweet ambulance, spicy remedy\"}",
+  "displayName": "Medová Sanitka"
+ },
+ {
+  "id": "cmlbhjuvg002yry0xay1um3o2",
+  "brand": "pizzavnudzi-sk",
+  "slug": "picante",
+  "subHeader": "{\"sk\": \"Nástup do terénu, feferóny nabité\", \"en\": \"Deployed hot, peppers loaded\"}",
+  "displayName": "Pikantný Nástup"
+ },
+ {
+  "id": "cmlbhjvd20038ry0xjnb5rjm1",
+  "brand": "pizzavnudzi-sk",
+  "slug": "piv-rska",
+  "subHeader": "{\"sk\": \"Pivárska posádka zachraňuje vás\", \"en\": \"Pub crew rescue mission active\"}",
+  "displayName": "Pivárska Misia"
+ },
+ {
+  "id": "cmlbhjtxu002fry0xos0nevx2",
+  "brand": "pizzavnudzi-sk",
+  "slug": "pollo-crema",
+  "subHeader": "{\"sk\": \"Smotanová záchrana s kuracím\", \"en\": \"Creamy chicken rescue deployed\"}",
+  "displayName": "Pollo Záchrana"
+ },
+ {
+  "id": "cmlbhjv0q0031ry0xsdxr2gw9",
+  "brand": "pizzavnudzi-sk",
+  "slug": "prosciutto",
+  "subHeader": "{\"sk\": \"SOS: šunka je na palube\", \"en\": \"SOS: ham on board\"}",
+  "displayName": "Prosciutto SOS"
+ },
+ {
+  "id": "cmlbhjtfp0026ry0xq9qmmrpu",
+  "brand": "pizzavnudzi-sk",
+  "slug": "prosciutto-crudo",
+  "subHeader": "{\"sk\": \"Crudo a rukola, misia splnená\", \"en\": \"Crudo rescue mission complete\"}",
+  "displayName": "Crudo Misia"
+ },
+ {
+  "id": "cmlbhjv490033ry0xp9py3r25",
+  "brand": "pizzavnudzi-sk",
+  "slug": "prosciutto-funghi",
+  "subHeader": "{\"sk\": \"Výjazd k šampiňónom a šunke\", \"en\": \"Dispatched for ham and mushrooms\"}",
+  "displayName": "Funghi Výjazd"
+ },
+ {
+  "id": "cmlbhjvet0039ry0xdp5jy3hx",
+  "brand": "pizzavnudzi-sk",
+  "slug": "provinciale",
+  "subHeader": "{\"sk\": \"Poľná hliadka, slanina v akcii\", \"en\": \"Field patrol, all loaded up\"}",
+  "displayName": "Provinčná Hliadka"
+ },
+ {
+  "id": "cmlbhjtqs002bry0xwsaof4vo",
+  "brand": "pizzavnudzi-sk",
+  "slug": "quattro-formaggi",
+  "subHeader": "{\"sk\": \"Štyri syry, jeden záchranný zásah\", \"en\": \"Four-cheese rescue, all units go\"}",
+  "displayName": "Misia Štyri Syry"
+ },
+ {
+  "id": "cmlbhjuj2002rry0x4hlu4dkq",
+  "brand": "pizzavnudzi-sk",
+  "slug": "quattro-formaggi-bianco",
+  "subHeader": "{\"sk\": \"Biela sanitka, krémová posila\", \"en\": \"White unit, creamy reinforcement\"}",
+  "displayName": "Bianco Záchrana"
+ },
+ {
+  "id": "cmlbhjuod002ury0xnl9ogy60",
+  "brand": "pizzavnudzi-sk",
+  "slug": "quattro-stagioni",
+  "subHeader": "{\"sk\": \"Štyri sezóny, jeden urgentný výjazd\", \"en\": \"All four seasons, one call\"}",
+  "displayName": "Štyri Sezóny"
+ },
+ {
+  "id": "cmlbhjukt002sry0x4iygrypu",
+  "brand": "pizzavnudzi-sk",
+  "slug": "tuniakov-",
+  "subHeader": "{\"sk\": \"Tuniak a cibuľa zasahujú\", \"en\": \"Tuna unit deployed at sea\"}",
+  "displayName": "Tuniakový Zásah"
+ },
+ {
+  "id": "cmlbhjubz002nry0xab7lxp91",
+  "brand": "pizzavnudzi-sk",
+  "slug": "vegetariana",
+  "subHeader": "{\"sk\": \"Zelené jednotky v plnej akcii\", \"en\": \"Green squad, all deployed\"}",
+  "displayName": "Zelený Zásah"
+ },
+ {
+  "id": "cmlbhjtjj0027ry0xnl2509at",
+  "brand": "pizzavnudzi-sk",
+  "slug": "vyskladaj-si-vlastn-pizzu",
+  "subHeader": "{\"sk\": \"Navrh vlastnú záchrannú misiu\", \"en\": \"Design your own rescue mission\"}",
+  "displayName": "Vlastná Misia"
+ },
+ {
+  "id": "cmtk7nsat004rmwh9z4205f5z",
+  "brand": "pizzalover",
+  "slug": "basil-pesto",
+  "subHeader": "{\"sk\": \"Láska na prvé ochutnanie\", \"en\": \"Love at first bite\"}"
+ },
+ {
+  "id": "cmtk7ntkk005emwh9ha8h5d7y",
+  "brand": "pizzalover",
+  "slug": "bon-salami",
+  "subHeader": "{\"sk\": \"Jednoduchá, ale od srdca\", \"en\": \"Simple and straight from the heart\"}"
+ },
+ {
+  "id": "cmtk7ntme005fmwh9y8qekx1u",
+  "brand": "pizzalover",
+  "slug": "calimero",
+  "subHeader": "{\"sk\": \"Láska na prvú obednú pauzu.\", \"en\": \"Love at first lunch break.\"}"
+ },
+ {
+  "id": "cmtk7nt6c0058mwh9pmltzay3",
+  "brand": "pizzalover",
+  "slug": "capri",
+  "subHeader": "{\"sk\": \"Bozk, čo spája všetko\", \"en\": \"A kiss that brings it all together\"}"
+ },
+ {
+  "id": "cmtk7ntq1005hmwh9adzwjp93",
+  "brand": "pizzalover",
+  "slug": "da-vinci",
+  "subHeader": "{\"sk\": \"Večera pre dvoch\", \"en\": \"Dinner for two\"}"
+ },
+ {
+  "id": "cmtk7nttp005jmwh9zs9ocd7x",
+  "brand": "pizzalover",
+  "slug": "diavola",
+  "subHeader": "{\"sk\": \"Horúca ako prvý pohľad\", \"en\": \"As fiery as falling in love\"}"
+ },
+ {
+  "id": "cmtk7ntvi005kmwh98l1vgacp",
+  "brand": "pizzalover",
+  "slug": "fregata",
+  "subHeader": "{\"sk\": \"Plachty hore, srdce plné\", \"en\": \"Sails up, heart full\"}"
+ },
+ {
+  "id": "cmtk7ntxc005lmwh9qzq6s9lr",
+  "brand": "pizzalover",
+  "slug": "gazdovsk-",
+  "subHeader": "{\"sk\": \"Ako objatie doma\", \"en\": \"Like a warm hug at home\"}"
+ },
+ {
+  "id": "cmtk7ntbx005bmwh9qrumxofs",
+  "brand": "pizzalover",
+  "slug": "hawaii",
+  "subHeader": "{\"sk\": \"Sladká dovolenka dvoch\", \"en\": \"A sweet escape for two\"}"
+ },
+ {
+  "id": "cmtk7ntgx005cmwh9wrr09n0h",
+  "brand": "pizzalover",
+  "slug": "margherita",
+  "subHeader": "{\"sk\": \"Čistá a úprimná ako láska\", \"en\": \"Pure and true like love\"}"
+ },
+ {
+  "id": "cmtk7ntz5005mmwh93qyfl6cr",
+  "brand": "pizzalover",
+  "slug": "mayday",
+  "subHeader": "{\"sk\": \"Každé sústo ťa zaplaví\", \"en\": \"Every bite sweeps you away\"}"
+ },
+ {
+  "id": "cmtk7nsi6004vmwh93v03vjjt",
+  "brand": "pizzalover",
+  "slug": "med-chilli",
+  "subHeader": "{\"sk\": \"Med, chilli a tlkot srdca\", \"en\": \"Honey with a thrill\"}"
+ },
+ {
+  "id": "cmtk7ntir005dmwh9pb7syc81",
+  "brand": "pizzalover",
+  "slug": "picante",
+  "subHeader": "{\"sk\": \"Pikantná ako čarovný pohľad\", \"en\": \"Spicy like a stolen glance\"}"
+ },
+ {
+  "id": "cmtk7nu0y005nmwh9ze4iu9rv",
+  "brand": "pizzalover",
+  "slug": "piv-rska",
+  "subHeader": "{\"sk\": \"Teplá pizza, teplá spoločnosť\", \"en\": \"Good pizza, even better company\"}"
+ },
+ {
+  "id": "cmtk7nslu004xmwh9drbqem9d",
+  "brand": "pizzalover",
+  "slug": "pollo-crema",
+  "subHeader": "{\"sk\": \"Jemná vášeň na tanieri\", \"en\": \"Creamy passion on a plate\"}"
+ },
+ {
+  "id": "cmtk7nto8005gmwh977urhxt4",
+  "brand": "pizzalover",
+  "slug": "prosciutto",
+  "subHeader": "{\"sk\": \"Nežná ako ranný bozk\", \"en\": \"Tender as a morning kiss\"}"
+ },
+ {
+  "id": "cmtk7nrxm004lmwh9z7nzjkf3",
+  "brand": "pizzalover",
+  "slug": "prosciutto-crudo",
+  "subHeader": "{\"sk\": \"Taliansky pohľad cez stôl\", \"en\": \"An Italian glance across the table\"}"
+ },
+ {
+  "id": "cmtk7ntrv005imwh98b20od6r",
+  "brand": "pizzalover",
+  "slug": "prosciutto-funghi",
+  "subHeader": "{\"sk\": \"Spolu chutia lepšie\", \"en\": \"Better together, always\"}"
+ },
+ {
+  "id": "cmtk7nu2s005omwh9j2tbwvoi",
+  "brand": "pizzalover",
+  "slug": "provinciale",
+  "subHeader": "{\"sk\": \"Rustikálna láska plná chuti\", \"en\": \"Rustic love, honest and bold\"}"
+ },
+ {
+  "id": "cmtk7nsco004smwh99ydx95up",
+  "brand": "pizzalover",
+  "slug": "quattro-formaggi",
+  "subHeader": "{\"sk\": \"Štyri druhy lásky v syre\", \"en\": \"Four kinds of love in cheese\"}"
+ },
+ {
+  "id": "cmtk7nt2p0056mwh9yieiycpb",
+  "brand": "pizzalover",
+  "slug": "quattro-formaggi-bianco",
+  "subHeader": "{\"sk\": \"Biela ako svadobné sny\", \"en\": \"White as wedding dreams\"}"
+ },
+ {
+  "id": "cmtk7nt860059mwh9mqi7l9yx",
+  "brand": "pizzalover",
+  "slug": "quattro-stagioni",
+  "subHeader": "{\"sk\": \"Štyri ročné obdobia lásky\", \"en\": \"Four seasons, one love\"}"
+ },
+ {
+  "id": "cmtk7nt4i0057mwh93rnzr974",
+  "brand": "pizzalover",
+  "slug": "tuniakov-",
+  "subHeader": "{\"sk\": \"Morská romance na tanieri\", \"en\": \"A sea romance on your plate\"}"
+ },
+ {
+  "id": "cmtk7nsv60052mwh9twupb5ip",
+  "brand": "pizzalover",
+  "slug": "vegetariana",
+  "subHeader": "{\"sk\": \"Zelená láska bez kompromisov\", \"en\": \"Fresh love, no compromises\"}"
+ },
+ {
+  "id": "cmtk7ns59004omwh9nqfmd0ks",
+  "brand": "pizzalover",
+  "slug": "vyskladaj-si-vlastn-pizzu",
+  "subHeader": "{\"sk\": \"Poskladaj si pizzu snov\", \"en\": \"Build your dream pizza\"}"
+ },
+ {
+  "id": "cmtk7nvhr0085mwh9qaey2y4a",
+  "brand": "pizzaprefirmy",
+  "slug": "basil-pesto",
+  "subHeader": "{\"sk\": \"Agendou je len dobrý obed\", \"en\": \"The only agenda is a great lunch\"}"
+ },
+ {
+  "id": "cmtk7nwpy008smwh9m35k0nl4",
+  "brand": "pizzaprefirmy",
+  "slug": "bon-salami",
+  "subHeader": "{\"sk\": \"Jednoduché rozhodnutie, šéfe\", \"en\": \"Simple call, boss\"}"
+ },
+ {
+  "id": "cmtk7nws6008tmwh9s5e6xrzb",
+  "brand": "pizzaprefirmy",
+  "slug": "calimero",
+  "subHeader": "{\"sk\": \"Vstupná pozícia so šancou rastu\", \"en\": \"Entry level, promotion guaranteed\"}"
+ },
+ {
+  "id": "cmtk7nwej008mmwh9iq3k400q",
+  "brand": "pizzaprefirmy",
+  "slug": "capri",
+  "subHeader": "{\"sk\": \"Výsledky za 30 minút\", \"en\": \"Results in under 30 minutes\"}"
+ },
+ {
+  "id": "cmtk7nwwe008vmwh9bgjm1t9h",
+  "brand": "pizzaprefirmy",
+  "slug": "da-vinci",
+  "subHeader": "{\"sk\": \"Nápady letia, pizza tiež\", \"en\": \"Ideas fly, so does this pizza\"}"
+ },
+ {
+  "id": "cmtk7nx0e008xmwh95en7axon",
+  "brand": "pizzaprefirmy",
+  "slug": "diavola",
+  "subHeader": "{\"sk\": \"Dnes o polnoci, bez výhovoriek\", \"en\": \"Tonight at midnight — no excuses\"}"
+ },
+ {
+  "id": "cmtk7nx2n008ymwh9suzd1wre",
+  "brand": "pizzaprefirmy",
+  "slug": "fregata",
+  "subHeader": "{\"sk\": \"Každý si nájde svoju vec\", \"en\": \"Everyone finds their thing here\"}"
+ },
+ {
+  "id": "cmtk7nx4j008zmwh9r9qla423",
+  "brand": "pizzaprefirmy",
+  "slug": "gazdovsk-",
+  "subHeader": "{\"sk\": \"Recept od zakladateľov\", \"en\": \"Recipe from the founders\"}"
+ },
+ {
+  "id": "cmtk7nwk4008pmwh9icz4g5wi",
+  "brand": "pizzaprefirmy",
+  "slug": "hawaii",
+  "subHeader": "{\"sk\": \"Zaslúžená prestávka od mailu\", \"en\": \"A well-earned break from emails\"}"
+ },
+ {
+  "id": "cmtk7nwm0008qmwh9b90q6y6q",
+  "brand": "pizzaprefirmy",
+  "slug": "margherita",
+  "subHeader": "{\"sk\": \"Základ s.r.o., nič navyše\", \"en\": \"The foundation of every business\"}"
+ },
+ {
+  "id": "cmtk7nx6d0090mwh9mutpd68z",
+  "brand": "pizzaprefirmy",
+  "slug": "mayday",
+  "subHeader": "{\"sk\": \"Krízový plán aj pre žalúdok\", \"en\": \"Crisis plan for the stomach too\"}"
+ },
+ {
+  "id": "cmtk7nvpf0089mwh9pjavvkb5",
+  "brand": "pizzaprefirmy",
+  "slug": "med-chilli",
+  "subHeader": "{\"sk\": \"Kvartálny bonus v každom súste\", \"en\": \"Quarterly bonus in every bite\"}"
+ },
+ {
+  "id": "cmtk7nwny008rmwh9oo8uuz17",
+  "brand": "pizzaprefirmy",
+  "slug": "picante",
+  "subHeader": "{\"sk\": \"Ostrý ako rozhodnutia šéfa\", \"en\": \"Sharp as the boss's decisions\"}"
+ },
+ {
+  "id": "cmtk7nx8h0091mwh9zsf2uwli",
+  "brand": "pizzaprefirmy",
+  "slug": "piv-rska",
+  "subHeader": "{\"sk\": \"Deadline počká. Pizza chladne.\", \"en\": \"Deadlines can wait. Pizza gets cold.\"}"
+ },
+ {
+  "id": "cmtk7nvti008bmwh9ch54wda2",
+  "brand": "pizzaprefirmy",
+  "slug": "pollo-crema",
+  "subHeader": "{\"sk\": \"Pre šéfov s výnimočným vkusom\", \"en\": \"Premium flavour for top performers\"}"
+ },
+ {
+  "id": "cmtk7nwub008umwh91i466w8s",
+  "brand": "pizzaprefirmy",
+  "slug": "prosciutto",
+  "subHeader": "{\"sk\": \"Seniorná voľba bez komplikácií\", \"en\": \"Senior pick, zero complications\"}"
+ },
+ {
+  "id": "cmtk7nv6s007zmwh9ub0x2jz8",
+  "brand": "pizzaprefirmy",
+  "slug": "prosciutto-crudo",
+  "subHeader": "{\"sk\": \"Talianska konferencia na tanieri\", \"en\": \"Italian conference on a plate\"}"
+ },
+ {
+  "id": "cmtk7nwya008wmwh9d9zutqpo",
+  "brand": "pizzaprefirmy",
+  "slug": "prosciutto-funghi",
+  "subHeader": "{\"sk\": \"Projekt odovzdaný v plnej chuti\", \"en\": \"Delivered on time, full flavour\"}"
+ },
+ {
+  "id": "cmtk7nxaf0092mwh9oo4ndslx",
+  "brand": "pizzaprefirmy",
+  "slug": "provinciale",
+  "subHeader": "{\"sk\": \"Chutí rovnako po celom regióne\", \"en\": \"Consistent across every region\"}"
+ },
+ {
+  "id": "cmtk7nvjl0086mwh9wwco79ja",
+  "brand": "pizzaprefirmy",
+  "slug": "quattro-formaggi",
+  "subHeader": "{\"sk\": \"Syry v tíme fungujú inak\", \"en\": \"Four experts, one winning team\"}"
+ },
+ {
+  "id": "cmtk7nwau008kmwh9q7et8xui",
+  "brand": "pizzaprefirmy",
+  "slug": "quattro-formaggi-bianco",
+  "subHeader": "{\"sk\": \"Dress code: smotana a syr\", \"en\": \"Dress code: cream and cheese\"}"
+ },
+ {
+  "id": "cmtk7nwge008nmwh95pttr5um",
+  "brand": "pizzaprefirmy",
+  "slug": "quattro-stagioni",
+  "subHeader": "{\"sk\": \"Štyri štvrťroky v jednej pizzi\", \"en\": \"Four quarters on one pizza\"}"
+ },
+ {
+  "id": "cmtk7nwcp008lmwh97f4a33iu",
+  "brand": "pizzaprefirmy",
+  "slug": "tuniakov-",
+  "subHeader": "{\"sk\": \"Tuniak v dress code\", \"en\": \"Tuna in a suit\"}"
+ },
+ {
+  "id": "cmtk7nw3f008gmwh98i6bdb4d",
+  "brand": "pizzaprefirmy",
+  "slug": "vegetariana",
+  "subHeader": "{\"sk\": \"Zelené benefity pre tím\", \"en\": \"Green perks for the whole team\"}"
+ },
+ {
+  "id": "cmtk7nvc80082mwh9z968m6f5",
+  "brand": "pizzaprefirmy",
+  "slug": "vyskladaj-si-vlastn-pizzu",
+  "subHeader": "{\"sk\": \"Zostav si vlastné KPI\", \"en\": \"Build your own brief\"}"
+ },
+ {
+  "id": "cmtk7o1sr00exmwh9dot4hp5m",
+  "brand": "skinnyb1tchpizza",
+  "slug": "basil-pesto",
+  "subHeader": "{\"sk\": \"Zelená, svieža, neporaziteľná\", \"en\": \"Queens only order the best\"}"
+ },
+ {
+  "id": "cmtk7o2yr00fkmwh902zek2gb",
+  "brand": "skinnyb1tchpizza",
+  "slug": "bon-salami",
+  "subHeader": "{\"sk\": \"Zaslúžila si to, bejby\", \"en\": \"You earned this, babe\"}"
+ },
+ {
+  "id": "cmtk7o30k00flmwh9vw8rqt70",
+  "brand": "skinnyb1tchpizza",
+  "slug": "calimero",
+  "subHeader": "{\"sk\": \"Ľahká ako tvoje nálady\", \"en\": \"Light on guilt, big on taste\"}"
+ },
+ {
+  "id": "cmtk7o2nv00femwh9aqoturdo",
+  "brand": "skinnyb1tchpizza",
+  "slug": "capri",
+  "subHeader": "{\"sk\": \"Bez drám, iba plná chuť\", \"en\": \"Your best self, pizza edition\"}"
+ },
+ {
+  "id": "cmtk7o34700fnmwh91w0791dn",
+  "brand": "skinnyb1tchpizza",
+  "slug": "da-vinci",
+  "subHeader": "{\"sk\": \"Dosiahni ciele v každom súste\", \"en\": \"One bite closer to your goals\"}"
+ },
+ {
+  "id": "cmtk7o37u00fpmwh9q6a3xdr9",
+  "brand": "skinnyb1tchpizza",
+  "slug": "diavola",
+  "subHeader": "{\"sk\": \"Pikantné kalórie sa nepočítajú\", \"en\": \"Spicy calories don't count\"}"
+ },
+ {
+  "id": "cmtk7o39n00fqmwh9dy1ea2sb",
+  "brand": "skinnyb1tchpizza",
+  "slug": "fregata",
+  "subHeader": "{\"sk\": \"Plážová sezóna začína teraz\", \"en\": \"Beach season starts on a plate\"}"
+ },
+ {
+  "id": "cmtk7o3bh00frmwh9zzr5d23i",
+  "brand": "skinnyb1tchpizza",
+  "slug": "gazdovsk-",
+  "subHeader": "{\"sk\": \"Vina? Ani náhodou, sestra\", \"en\": \"Guilt is overrated, honey\"}"
+ },
+ {
+  "id": "cmtk7o2tc00fhmwh9y7bzb5it",
+  "brand": "skinnyb1tchpizza",
+  "slug": "hawaii",
+  "subHeader": "{\"sk\": \"Ananás, šunka a sebavedomie\", \"en\": \"Pineapple, ham, and confidence\"}"
+ },
+ {
+  "id": "cmtk7o2v500fimwh9g88jg0uc",
+  "brand": "skinnyb1tchpizza",
+  "slug": "margherita",
+  "subHeader": "{\"sk\": \"Základná a na to hrdá\", \"en\": \"Basic and unapologetic\"}"
+ },
+ {
+  "id": "cmtk7o3da00fsmwh9ssi1lypl",
+  "brand": "skinnyb1tchpizza",
+  "slug": "mayday",
+  "subHeader": "{\"sk\": \"Poriadny štart bez výhovoriek\", \"en\": \"No more excuses, rise and slay\"}"
+ },
+ {
+  "id": "cmtk7o20300f1mwh9g8a3tchf",
+  "brand": "skinnyb1tchpizza",
+  "slug": "med-chilli",
+  "subHeader": "{\"sk\": \"Med, chilli a žiariš ďalej\", \"en\": \"Honey drizzle, chili fire, glow\"}"
+ },
+ {
+  "id": "cmtk7o2wy00fjmwh9ry4tbh78",
+  "brand": "skinnyb1tchpizza",
+  "slug": "picante",
+  "subHeader": "{\"sk\": \"Leto sa začína s feferónkou\", \"en\": \"Bold, spicy, totally worth it\"}"
+ },
+ {
+  "id": "cmtk7o3f300ftmwh9v6cw12y4",
+  "brand": "skinnyb1tchpizza",
+  "slug": "piv-rska",
+  "subHeader": "{\"sk\": \"Toto cheat day toleruje\", \"en\": \"Cheat day approved, no regrets\"}"
+ },
+ {
+  "id": "cmtk7o23q00f3mwh90chrsrth",
+  "brand": "skinnyb1tchpizza",
+  "slug": "pollo-crema",
+  "subHeader": "{\"sk\": \"Proteínová kráľovná na smotane\", \"en\": \"Protein goals met, queen style\"}"
+ },
+ {
+  "id": "cmtk7o32e00fmmwh9ucf3lgdc",
+  "brand": "skinnyb1tchpizza",
+  "slug": "prosciutto",
+  "subHeader": "{\"sk\": \"Menej je viac, aj tu platí\", \"en\": \"Less is more, darling\"}"
+ },
+ {
+  "id": "cmtk7o1he00ermwh9l7fyxvdj",
+  "brand": "skinnyb1tchpizza",
+  "slug": "prosciutto-crudo",
+  "subHeader": "{\"sk\": \"Talianska štíhlosť na tanieri\", \"en\": \"Lean Italian vibes only\"}"
+ },
+ {
+  "id": "cmtk7o36100fomwh9kej3uvtu",
+  "brand": "skinnyb1tchpizza",
+  "slug": "prosciutto-funghi",
+  "subHeader": "{\"sk\": \"Šampiňóny pre tých, čo makajú\", \"en\": \"Mushrooms for the grinders\"}"
+ },
+ {
+  "id": "cmtk7o3gx00fumwh9y3tni89l",
+  "brand": "skinnyb1tchpizza",
+  "slug": "provinciale",
+  "subHeader": "{\"sk\": \"Plné krivky, plná chuť\", \"en\": \"Full curves, full flavour\"}"
+ },
+ {
+  "id": "cmtk7o1ul00eymwh9cd7ftz9u",
+  "brand": "skinnyb1tchpizza",
+  "slug": "quattro-formaggi",
+  "subHeader": "{\"sk\": \"Štyri syry, žiadna výčitka\", \"en\": \"Four cheeses, zero shame\"}"
+ },
+ {
+  "id": "cmtk7o2k400fcmwh9e3726eft",
+  "brand": "skinnyb1tchpizza",
+  "slug": "quattro-formaggi-bianco",
+  "subHeader": "{\"sk\": \"Čistá estetika, syrová duša\", \"en\": \"Clean aesthetic, cheesy soul\"}"
+ },
+ {
+  "id": "cmtk7o2po00ffmwh90irh492l",
+  "brand": "skinnyb1tchpizza",
+  "slug": "quattro-stagioni",
+  "subHeader": "{\"sk\": \"Štyri chute v správnom pomere\", \"en\": \"Four toppings, one balance\"}"
+ },
+ {
+  "id": "cmtk7o2m200fdmwh90x6kqc8y",
+  "brand": "skinnyb1tchpizza",
+  "slug": "tuniakov-",
+  "subHeader": "{\"sk\": \"Tuniak pre výkon a figúru\", \"en\": \"Lean protein, gym queen approved\"}"
+ },
+ {
+  "id": "cmtk7o2cu00f8mwh99fdsq55t",
+  "brand": "skinnyb1tchpizza",
+  "slug": "vegetariana",
+  "subHeader": "{\"sk\": \"Špenát era je tu, bejby\", \"en\": \"Full salad era, pizza style\"}"
+ },
+ {
+  "id": "cmtk7o1n800eumwh90k58uix9",
+  "brand": "skinnyb1tchpizza",
+  "slug": "vyskladaj-si-vlastn-pizzu",
+  "subHeader": "{\"sk\": \"Poskladaj si svoju víziu\", \"en\": \"Your pizza, your rules, queen\"}"
+ },
+ {
+  "id": "cmtk7o51n00ibmwh99271homo",
+  "brand": "ozemp1cpizza",
+  "slug": "basil-pesto",
+  "subHeader": "{\"sk\": \"Pesto a ricotta, zelená liečba\", \"en\": \"Fresh herbs, doctor's orders\"}"
+ },
+ {
+  "id": "cmtk7o66w00iymwh9b5rak2a8",
+  "brand": "ozemp1cpizza",
+  "slug": "bon-salami",
+  "subHeader": "{\"sk\": \"Závislosť garantovaná prvým sústom\", \"en\": \"Salami: one bite and you're hooked\"}"
+ },
+ {
+  "id": "cmtk7o68p00izmwh90ai4cfym",
+  "brand": "ozemp1cpizza",
+  "slug": "calimero",
+  "subHeader": "{\"sk\": \"Malá dávka, veľký účinok\", \"en\": \"Micro dose, maximum relief\"}"
+ },
+ {
+  "id": "cmtk7o5w700ismwh9f9ovv4q7",
+  "brand": "ozemp1cpizza",
+  "slug": "capri",
+  "subHeader": "{\"sk\": \"Funguje, aj keď neviete prečo\", \"en\": \"Clinical results not guaranteed\"}"
+ },
+ {
+  "id": "cmtk7o6cb00j1mwh94rg63ygt",
+  "brand": "ozemp1cpizza",
+  "slug": "da-vinci",
+  "subHeader": "{\"sk\": \"Komplexná formula pre odvážnych\", \"en\": \"A complex formula for bold palates\"}"
+ },
+ {
+  "id": "cmtk7o6fw00j3mwh9ks0wm3ie",
+  "brand": "ozemp1cpizza",
+  "slug": "diavola",
+  "subHeader": "{\"sk\": \"Akútna dávka pálivého\", \"en\": \"Emergency spice injection\"}"
+ },
+ {
+  "id": "cmtk7o6hn00j4mwh98l3cjuna",
+  "brand": "ozemp1cpizza",
+  "slug": "fregata",
+  "subHeader": "{\"sk\": \"Pohotovostná zmes siedmich zložiek\", \"en\": \"Seven-ingredient urgent response\"}"
+ },
+ {
+  "id": "cmtk7o6jg00j5mwh9iqomjxk1",
+  "brand": "ozemp1cpizza",
+  "slug": "gazdovsk-",
+  "subHeader": "{\"sk\": \"Predpísaná domáca liečba\", \"en\": \"Home therapy, no appointment needed\"}"
+ },
+ {
+  "id": "cmtk7o61k00ivmwh9q19ieskf",
+  "brand": "ozemp1cpizza",
+  "slug": "hawaii",
+  "subHeader": "{\"sk\": \"Tropický liek bez receptu\", \"en\": \"Pineapple therapy, stat\"}"
+ },
+ {
+  "id": "cmtk7o63c00iwmwh9f2my26zg",
+  "brand": "ozemp1cpizza",
+  "slug": "margherita",
+  "subHeader": "{\"sk\": \"Overené generikum bez prísad\", \"en\": \"Tested formula, no additives\"}"
+ },
+ {
+  "id": "cmtk7o6l900j6mwh9dvbuqkdd",
+  "brand": "ozemp1cpizza",
+  "slug": "mayday",
+  "subHeader": "{\"sk\": \"Šesť prísad, jeden akútny stav\", \"en\": \"Six ingredients, critical condition\"}"
+ },
+ {
+  "id": "cmtk7o58t00ifmwh9qjebpxrr",
+  "brand": "ozemp1cpizza",
+  "slug": "med-chilli",
+  "subHeader": "{\"sk\": \"Sladko-pálivá predpísaná kúra\", \"en\": \"Honey and chili on prescription\"}"
+ },
+ {
+  "id": "cmtk7o65400ixmwh9r70vuz9r",
+  "brand": "ozemp1cpizza",
+  "slug": "picante",
+  "subHeader": "{\"sk\": \"Saláma a feferóny bez varovania\", \"en\": \"Spicy salami, unapproved heat\"}"
+ },
+ {
+  "id": "cmtk7o6n200j7mwh9b2mcqx7f",
+  "brand": "ozemp1cpizza",
+  "slug": "piv-rska",
+  "subHeader": "{\"sk\": \"Intravenózna mäsová infúzia\", \"en\": \"Emergency meat infusion\"}"
+ },
+ {
+  "id": "cmtk7o5ce00ihmwh9oeipbkzn",
+  "brand": "ozemp1cpizza",
+  "slug": "pollo-crema",
+  "subHeader": "{\"sk\": \"Kuracia kúra na smotanovom základe\", \"en\": \"Chicken and broccoli treatment plan\"}"
+ },
+ {
+  "id": "cmtk7o6aj00j0mwh9rdj7k6tm",
+  "brand": "ozemp1cpizza",
+  "slug": "prosciutto",
+  "subHeader": "{\"sk\": \"Minimalistická šunková terapia\", \"en\": \"Ham therapy, simply prescribed\"}"
+ },
+ {
+  "id": "cmtk7o4om00i5mwh930wftiyp",
+  "brand": "ozemp1cpizza",
+  "slug": "prosciutto-crudo",
+  "subHeader": "{\"sk\": \"Crudo s rukolou — predpis platný\", \"en\": \"Arugula and crudo on prescription\"}"
+ },
+ {
+  "id": "cmtk7o6e300j2mwh9xaewljrm",
+  "brand": "ozemp1cpizza",
+  "slug": "prosciutto-funghi",
+  "subHeader": "{\"sk\": \"Huby a šunka: klinicky testovaná\", \"en\": \"Mushroom extract, clinically tested\"}"
+ },
+ {
+  "id": "cmtk7o6ov00j8mwh9tq5siqc1",
+  "brand": "ozemp1cpizza",
+  "slug": "provinciale",
+  "subHeader": "{\"sk\": \"Vidieckym doktorom schválená zmes\", \"en\": \"Rural doctor's five-ingredient mix\"}"
+ },
+ {
+  "id": "cmtk7o53f00icmwh98g3s138k",
+  "brand": "ozemp1cpizza",
+  "slug": "quattro-formaggi",
+  "subHeader": "{\"sk\": \"Štyri syry, jedno varovanie\", \"en\": \"Four cheese dependency, diagnosed\"}"
+ },
+ {
+  "id": "cmtk7o5sl00iqmwh9clkvt7m1",
+  "brand": "ozemp1cpizza",
+  "slug": "quattro-formaggi-bianco",
+  "subHeader": "{\"sk\": \"Biela tabletka plná syrového účinku\", \"en\": \"Creamy white formula, no side effects\"}"
+ },
+ {
+  "id": "cmtk7o5xz00itmwh9t2wkwevb",
+  "brand": "ozemp1cpizza",
+  "slug": "quattro-stagioni",
+  "subHeader": "{\"sk\": \"Komplex štyroch sezónnych liečiv\", \"en\": \"Four-season combined treatment\"}"
+ },
+ {
+  "id": "cmtk7o5ue00irmwh9cw7geuky",
+  "brand": "ozemp1cpizza",
+  "slug": "tuniakov-",
+  "subHeader": "{\"sk\": \"Omega-3 priamo z mora\", \"en\": \"Your daily omega fix\"}"
+ },
+ {
+  "id": "cmtk7o5ld00immwh97d0ghuai",
+  "brand": "ozemp1cpizza",
+  "slug": "vegetariana",
+  "subHeader": "{\"sk\": \"Zelená dávka bez kontraindikácií\", \"en\": \"All greens, zero contraindications\"}"
+ },
+ {
+  "id": "cmtk7o4w100i8mwh9a3zfa4ie",
+  "brand": "ozemp1cpizza",
+  "slug": "vyskladaj-si-vlastn-pizzu",
+  "subHeader": "{\"sk\": \"Vlastná diagnóza, vlastný predpis\", \"en\": \"Self-prescribed, custom formula\"}"
+ },
+ {
+  "id": "cmtso9hwi000q6m2vebnz9sx3",
+  "brand": "pizzacorner",
+  "slug": "basil-pesto",
+  "subHeader": "{\"sk\": \"Talianska ulička v každom súste\", \"en\": \"Green vibes from the good side of town\"}"
+ },
+ {
+  "id": "cmtso9j2h001d6m2vz33tutzo",
+  "brand": "pizzacorner",
+  "slug": "bon-salami",
+  "subHeader": "{\"sk\": \"Saláma, čo vládne blokom\", \"en\": \"Salami running this block\"}"
+ },
+ {
+  "id": "cmtso9j4a001e6m2v0sr4bxy6",
+  "brand": "pizzacorner",
+  "slug": "calimero",
+  "subHeader": "{\"sk\": \"Mestský klasik, vždy spoľahlivý\", \"en\": \"The city staple you know and love\"}"
+ },
+ {
+  "id": "cmtso9iri00176m2vqwcezan4",
+  "brand": "pizzacorner",
+  "slug": "capri",
+  "subHeader": "{\"sk\": \"Mestská trojica z rohového stánku\", \"en\": \"Three toppings, one street corner\"}"
+ },
+ {
+  "id": "cmtso9j7w001g6m2vnfryoa4t",
+  "brand": "pizzacorner",
+  "slug": "da-vinci",
+  "subHeader": "{\"sk\": \"Graffiti chutí na každej stene\", \"en\": \"Bold flavours tagged on the block\"}"
+ },
+ {
+  "id": "cmtso9jbj001i6m2vlvo7y1xg",
+  "brand": "pizzacorner",
+  "slug": "diavola",
+  "subHeader": "{\"sk\": \"Priamo z podzemných chodieb\", \"en\": \"Straight from the underground\"}"
+ },
+ {
+  "id": "cmtso9jdd001j6m2vt8gczx5q",
+  "brand": "pizzacorner",
+  "slug": "fregata",
+  "subHeader": "{\"sk\": \"Sedem chutí z centra mesta\", \"en\": \"Seven downtown flavours loaded up\"}"
+ },
+ {
+  "id": "cmtso9jf6001k6m2vxvq55o4k",
+  "brand": "pizzacorner",
+  "slug": "gazdovsk-",
+  "subHeader": "{\"sk\": \"Osvedčená voľba z každého bloku\", \"en\": \"The block OG knows what's good\"}"
+ },
+ {
+  "id": "cmtso9ix0001a6m2v2a5ld514",
+  "brand": "pizzacorner",
+  "slug": "hawaii",
+  "subHeader": "{\"sk\": \"Nočná zmena s tropickým úderom\", \"en\": \"Pineapple hustle on the nightshift\"}"
+ },
+ {
+  "id": "cmtso9iyt001b6m2victi17py",
+  "brand": "pizzacorner",
+  "slug": "margherita",
+  "subHeader": "{\"sk\": \"Základ ulice, základ pizze\", \"en\": \"The street foundation, nothing more\"}"
+ },
+ {
+  "id": "cmtso9jh0001l6m2v54bh59lb",
+  "brand": "pizzacorner",
+  "slug": "mayday",
+  "subHeader": "{\"sk\": \"Nabité ako ulica o polnoci\", \"en\": \"Loaded like the midnight block\"}"
+ },
+ {
+  "id": "cmtso9i3s000u6m2vg9265phr",
+  "brand": "pizzacorner",
+  "slug": "med-chilli",
+  "subHeader": "{\"sk\": \"Sladký hustle s pálivým koncom\", \"en\": \"Sweet streets, hot finish\"}"
+ },
+ {
+  "id": "cmtso9j0n001c6m2vo2oawsta",
+  "brand": "pizzacorner",
+  "slug": "picante",
+  "subHeader": "{\"sk\": \"Zo zadných uličiek, ostrý ako asfalt\", \"en\": \"Backstreet heat, no apologies\"}"
+ },
+ {
+  "id": "cmtso9jit001m6m2vgoq2q3su",
+  "brand": "pizzacorner",
+  "slug": "piv-rska",
+  "subHeader": "{\"sk\": \"Po zatvorení, keď je meso v hre\", \"en\": \"Five meats, afterhours only\"}"
+ },
+ {
+  "id": "cmtso9i7h000w6m2v3vpg3jc7",
+  "brand": "pizzacorner",
+  "slug": "pollo-crema",
+  "subHeader": "{\"sk\": \"Smotanový nočník z mestskej kuchyne\", \"en\": \"Cream and chicken, city-style\"}"
+ },
+ {
+  "id": "cmtso9j63001f6m2vyrnjrbyi",
+  "brand": "pizzacorner",
+  "slug": "prosciutto",
+  "subHeader": "{\"sk\": \"Šunka priamo z kiosku na rohu\", \"en\": \"Corner kiosk, straight-up ham\"}"
+ },
+ {
+  "id": "cmtso9hj4000k6m2vpd9ugm95",
+  "brand": "pizzacorner",
+  "slug": "prosciutto-crudo",
+  "subHeader": "{\"sk\": \"Rukola a crudo, čerstvé ako ráno\", \"en\": \"Arugula and crudo, corner-fresh\"}"
+ },
+ {
+  "id": "cmtso9j9q001h6m2vdonk5gde",
+  "brand": "pizzacorner",
+  "slug": "prosciutto-funghi",
+  "subHeader": "{\"sk\": \"Uličný duo šunky a húb\", \"en\": \"Ham and mushrooms, alley-style\"}"
+ },
+ {
+  "id": "cmtso9jkn001n6m2vhjinuywr",
+  "brand": "pizzacorner",
+  "slug": "provinciale",
+  "subHeader": "{\"sk\": \"Päť ingrediencií, jeden štvrťok\", \"en\": \"Five toppings, one neighbourhood\"}"
+ },
+ {
+  "id": "cmtso9hyb000r6m2vmap9mm0j",
+  "brand": "pizzacorner",
+  "slug": "quattro-formaggi",
+  "subHeader": "{\"sk\": \"Štyri syrové poschodia, jeden blok\", \"en\": \"Four cheeses stacked on one block\"}"
+ },
+ {
+  "id": "cmtso9inv00156m2vwyaagl92",
+  "brand": "pizzacorner",
+  "slug": "quattro-formaggi-bianco",
+  "subHeader": "{\"sk\": \"Biela noc, štyri syrové zastávky\", \"en\": \"White line, four cheese stops\"}"
+ },
+ {
+  "id": "cmtso9itc00186m2v1es6oojk",
+  "brand": "pizzacorner",
+  "slug": "quattro-stagioni",
+  "subHeader": "{\"sk\": \"Každá ulica, iný topping\", \"en\": \"Four streets, four toppings\"}"
+ },
+ {
+  "id": "cmtso9ipo00166m2vah0zx5jt",
+  "brand": "pizzacorner",
+  "slug": "tuniakov-",
+  "subHeader": "{\"sk\": \"Tuniak prerazí každú dopravnú zápchu\", \"en\": \"Tuna cutting through city traffic\"}"
+ },
+ {
+  "id": "cmtso9igj00116m2vvd8gsxnq",
+  "brand": "pizzacorner",
+  "slug": "vegetariana",
+  "subHeader": "{\"sk\": \"Čerstvá zelenina na každom chodníku\", \"en\": \"All-green sidewalk crew\"}"
+ },
+ {
+  "id": "cmtso9hqy000n6m2vnavj1289",
+  "brand": "pizzacorner",
+  "slug": "vyskladaj-si-vlastn-pizzu",
+  "subHeader": "{\"sk\": \"Zostav svoju vlastnú pouličnú legendu\", \"en\": \"Build your own street legend\"}"
+ },
+ {
+  "id": "cmtso9l4700446m2vci29qip5",
+  "brand": "pizzaheaven",
+  "slug": "basil-pesto",
+  "subHeader": "{\"sk\": \"Serafínska zelená harmónia\", \"en\": \"Blessed with basil and grace\"}"
+ },
+ {
+  "id": "cmtso9ma2004r6m2vix0908sk",
+  "brand": "pizzaheaven",
+  "slug": "bon-salami",
+  "subHeader": "{\"sk\": \"Saláma korunovaná svätožiarou\", \"en\": \"Salami crowned with a halo\"}"
+ },
+ {
+  "id": "cmtso9mbv004s6m2vg3ii2hqo",
+  "brand": "pizzaheaven",
+  "slug": "calimero",
+  "subHeader": "{\"sk\": \"Anjelsky jednoduchá, nebesky dobrá\", \"en\": \"Cherub-approved, cloud-light\"}"
+ },
+ {
+  "id": "cmtso9lz4004l6m2vp81083ls",
+  "brand": "pizzaheaven",
+  "slug": "capri",
+  "subHeader": "{\"sk\": \"Ľahká ako oblak nad nebom\", \"en\": \"Light as the softest cloud\"}"
+ },
+ {
+  "id": "cmtso9mfh004u6m2vowfyo91j",
+  "brand": "pizzaheaven",
+  "slug": "da-vinci",
+  "subHeader": "{\"sk\": \"Božsky inšpirovaná kombinácia\", \"en\": \"Divinely crafted, masterfully blessed\"}"
+ },
+ {
+  "id": "cmtso9mj4004w6m2vhz7cti58",
+  "brand": "pizzaheaven",
+  "slug": "diavola",
+  "subHeader": "{\"sk\": \"Padlý anjel s ohnivou dušou\", \"en\": \"Too spicy for paradise\"}"
+ },
+ {
+  "id": "cmtso9mkx004x6m2v6lxq8x78",
+  "brand": "pizzaheaven",
+  "slug": "fregata",
+  "subHeader": "{\"sk\": \"Sedem rajských darov pre dušu\", \"en\": \"Seven gifts from paradise\"}"
+ },
+ {
+  "id": "cmtso9mmr004y6m2v35nym7ph",
+  "brand": "pizzaheaven",
+  "slug": "gazdovsk-",
+  "subHeader": "{\"sk\": \"Požehnaná sila zo šiestich prísad\", \"en\": \"Blessed abundance from the farm\"}"
+ },
+ {
+  "id": "cmtso9m4l004o6m2vdmg64ute",
+  "brand": "pizzaheaven",
+  "slug": "hawaii",
+  "subHeader": "{\"sk\": \"Ananás a šunka z tropického neba\", \"en\": \"Hawaiian sunshine on a cloud\"}"
+ },
+ {
+  "id": "cmtso9m6e004p6m2v61g63n1h",
+  "brand": "pizzaheaven",
+  "slug": "margherita",
+  "subHeader": "{\"sk\": \"Čistá ako anjelské krídla\", \"en\": \"Pure as an angel's wings\"}"
+ },
+ {
+  "id": "cmtso9mok004z6m2vdtii5dga",
+  "brand": "pizzaheaven",
+  "slug": "mayday",
+  "subHeader": "{\"sk\": \"Zázrak v šiestich posvätných vrstvách\", \"en\": \"A heavenly miracle in every bite\"}"
+ },
+ {
+  "id": "cmtso9lbg00486m2vbivrgu5f",
+  "brand": "pizzaheaven",
+  "slug": "med-chilli",
+  "subHeader": "{\"sk\": \"Medový dar bohov s ohnivým koncom\", \"en\": \"Honey from the gods, fire from below\"}"
+ },
+ {
+  "id": "cmtso9m88004q6m2vzuu1vbyg",
+  "brand": "pizzaheaven",
+  "slug": "picante",
+  "subHeader": "{\"sk\": \"Očistcový oheň pre odvážnych\", \"en\": \"The fiery path through purgatory\"}"
+ },
+ {
+  "id": "cmtso9mqe00506m2vhkd8z2nq",
+  "brand": "pizzaheaven",
+  "slug": "piv-rska",
+  "subHeader": "{\"sk\": \"Nebesky hriešny mäsový triumf\", \"en\": \"Heavenly indulgence for the bold\"}"
+ },
+ {
+  "id": "cmtso9lf3004a6m2vtlg0zmh3",
+  "brand": "pizzaheaven",
+  "slug": "pollo-crema",
+  "subHeader": "{\"sk\": \"Smotanová neha s anjelom\", \"en\": \"Angelic cream and tender chicken\"}"
+ },
+ {
+  "id": "cmtso9mdo004t6m2vdiodkjso",
+  "brand": "pizzaheaven",
+  "slug": "prosciutto",
+  "subHeader": "{\"sk\": \"Šunka ako dar z nebeského raja\", \"en\": \"Ham blessed by paradise itself\"}"
+ },
+ {
+  "id": "cmtso9ktb003y6m2v0fdaccv8",
+  "brand": "pizzaheaven",
+  "slug": "prosciutto-crudo",
+  "subHeader": "{\"sk\": \"Nebeský crudo s rukolou a parmezánom\", \"en\": \"Celestial crudo, arugula-kissed\"}"
+ },
+ {
+  "id": "cmtso9mhb004v6m2vdx92759c",
+  "brand": "pizzaheaven",
+  "slug": "prosciutto-funghi",
+  "subHeader": "{\"sk\": \"Duo edenskej záhrady: huby a šunka\", \"en\": \"Mushroom and ham from Eden's garden\"}"
+ },
+ {
+  "id": "cmtso9ms800516m2vlurngupy",
+  "brand": "pizzaheaven",
+  "slug": "provinciale",
+  "subHeader": "{\"sk\": \"Posvätná provincia plná darov\", \"en\": \"Sacred bounty, five blessings\"}"
+ },
+ {
+  "id": "cmtso9l6000456m2vaunhth2n",
+  "brand": "pizzaheaven",
+  "slug": "quattro-formaggi",
+  "subHeader": "{\"sk\": \"Štyri posvätné syry v jedinom nebi\", \"en\": \"Four cheeses ascending to heaven\"}"
+ },
+ {
+  "id": "cmtso9lvg004j6m2vjmmim12r",
+  "brand": "pizzaheaven",
+  "slug": "quattro-formaggi-bianco",
+  "subHeader": "{\"sk\": \"Biela neha štyroch anjelských syrov\", \"en\": \"Four angelic cheeses on a cloud\"}"
+ },
+ {
+  "id": "cmtso9m0x004m6m2vnyhjwztn",
+  "brand": "pizzaheaven",
+  "slug": "quattro-stagioni",
+  "subHeader": "{\"sk\": \"Štyri sezóny, jeden siedmy raj\", \"en\": \"Four seasons up in seventh heaven\"}"
+ },
+ {
+  "id": "cmtso9lxa004k6m2vcm5jmgz8",
+  "brand": "pizzaheaven",
+  "slug": "tuniakov-",
+  "subHeader": "{\"sk\": \"Divinný pozdrav z hlbín mora\", \"en\": \"Tuna blessed by divine waters\"}"
+ },
+ {
+  "id": "cmtso9lo7004f6m2vkm3m53hw",
+  "brand": "pizzaheaven",
+  "slug": "vegetariana",
+  "subHeader": "{\"sk\": \"Svieža zelenina požehnaná nebom\", \"en\": \"Nature's bounty, heaven-blessed\"}"
+ },
+ {
+  "id": "cmtso9kyq00416m2vp91q9hyb",
+  "brand": "pizzaheaven",
+  "slug": "vyskladaj-si-vlastn-pizzu",
+  "subHeader": "{\"sk\": \"Stvor si vlastný rajský recept\", \"en\": \"Create your own slice of heaven\"}"
+ },
+ {
+  "id": "cmjk2i4ef000ca18fx1j04bk5",
+  "brand": "partypizza",
+  "slug": "basil-pesto",
+  "subHeader": "{\"sk\": \"Pesto, čo rozhýbe párty\", \"en\": \"The pesto that starts the party\"}"
+ },
+ {
+  "id": "cmjk2i5pr0011a18ftlej9xkc",
+  "brand": "partypizza",
+  "slug": "bon-salami",
+  "subHeader": "{\"sk\": \"Saláma, čo bije do rytmu\", \"en\": \"Salami that hits the beat\"}"
+ },
+ {
+  "id": "cmjk2i5rn0012a18fyfw8kibj",
+  "brand": "partypizza",
+  "slug": "calimero",
+  "subHeader": "{\"sk\": \"Klasika na každej párty\", \"en\": \"The classic every party needs\"}"
+ },
+ {
+  "id": "cmjk2i5cj000ua18f3slbfrvu",
+  "brand": "partypizza",
+  "slug": "capri",
+  "subHeader": "{\"sk\": \"Chilluj s celým davom\", \"en\": \"Chill out with the whole crew\"}"
+ },
+ {
+  "id": "cmjk2i5xc0015a18fec9qxdw5",
+  "brand": "partypizza",
+  "slug": "da-vinci",
+  "subHeader": "{\"sk\": \"Mix, čo zabaví celý stôl\", \"en\": \"A mix that works the whole table\"}"
+ },
+ {
+  "id": "cmjk2i6150017a18fkzh0e5l9",
+  "brand": "partypizza",
+  "slug": "diavola",
+  "subHeader": "{\"sk\": \"Zapáli každú párty\", \"en\": \"Lights the whole party up\"}"
+ },
+ {
+  "id": "cmjk2i6320018a18fqh8oi8yo",
+  "brand": "partypizza",
+  "slug": "fregata",
+  "subHeader": "{\"sk\": \"Plná loď chutí a zábavy\", \"en\": \"Full of flavour and fun\"}"
+ },
+ {
+  "id": "cmjk2i64z0019a18ffepmof4t",
+  "brand": "partypizza",
+  "slug": "gazdovsk-",
+  "subHeader": "{\"sk\": \"Sýte palivko pre tanečný floor\", \"en\": \"Fuel for the dance floor\"}"
+ },
+ {
+  "id": "cmjk2i5k3000ya18fmrj188ud",
+  "brand": "partypizza",
+  "slug": "hawaii",
+  "subHeader": "{\"sk\": \"Tropický nával dobroty\", \"en\": \"Tropical burst of good vibes\"}"
+ },
+ {
+  "id": "cmjk2i5ly000za18fs064ndwx",
+  "brand": "partypizza",
+  "slug": "margherita",
+  "subHeader": "{\"sk\": \"Jednoduchá a vždy v centre\", \"en\": \"Simple and always in the spotlight\"}"
+ },
+ {
+  "id": "cmjk2i66u001aa18f5lkq65ub",
+  "brand": "partypizza",
+  "slug": "mayday",
+  "subHeader": "{\"sk\": \"Všetci za jednou, jedna za všetkých\", \"en\": \"All in, no one left behind\"}"
+ },
+ {
+  "id": "cmjk2i4vg000la18ffz61r4uw",
+  "brand": "partypizza",
+  "slug": "med-chilli",
+  "subHeader": "{\"sk\": \"Sladko-ostrý hit každej noci\", \"en\": \"Sweet-hot hit of the night\"}"
+ },
+ {
+  "id": "cmjk2i5nv0010a18fhb93wyrp",
+  "brand": "partypizza",
+  "slug": "picante",
+  "subHeader": "{\"sk\": \"Ostrá ako najlepší drop\", \"en\": \"Hot as the best drop\"}"
+ },
+ {
+  "id": "cmjk2i68r001ba18fxqu9vgxp",
+  "brand": "partypizza",
+  "slug": "piv-rska",
+  "subHeader": "{\"sk\": \"Najlepší kamarát na párty\", \"en\": \"Your best mate at the party\"}"
+ },
+ {
+  "id": "cmjk2i4za000na18f82gagohe",
+  "brand": "partypizza",
+  "slug": "pollo-crema",
+  "subHeader": "{\"sk\": \"Krémová hviezda každého bufetu\", \"en\": \"Creamy star of the buffet\"}"
+ },
+ {
+  "id": "cmjk2i5vf0014a18fel35fxdt",
+  "brand": "partypizza",
+  "slug": "prosciutto",
+  "subHeader": "{\"sk\": \"Šunka, čo nikdy nevynechá párty\", \"en\": \"The ham that never misses out\"}"
+ },
+ {
+  "id": "cmjk2i4m0000ga18ffoz610gl",
+  "brand": "partypizza",
+  "slug": "prosciutto-crudo",
+  "subHeader": "{\"sk\": \"Taliansky šarm na každom stole\", \"en\": \"Italian charm for every table\"}"
+ },
+ {
+  "id": "cmjk2i5z90016a18f5vd7bjs7",
+  "brand": "partypizza",
+  "slug": "prosciutto-funghi",
+  "subHeader": "{\"sk\": \"Duo, čo vždy zahrá live\", \"en\": \"The duo that always plays live\"}"
+ },
+ {
+  "id": "cmjk2i6am001ca18fi2xl2jy6",
+  "brand": "partypizza",
+  "slug": "provinciale",
+  "subHeader": "{\"sk\": \"Párty bez kompromisov\", \"en\": \"Party without compromise\"}"
+ },
+ {
+  "id": "cmjk2i4ro000ja18fkv94evg3",
+  "brand": "partypizza",
+  "slug": "quattro-formaggi",
+  "subHeader": "{\"sk\": \"Štyri syry, jedna veľká párty\", \"en\": \"Four cheeses, one big party\"}"
+ },
+ {
+  "id": "cmjk2i58r000sa18fujjexny8",
+  "brand": "partypizza",
+  "slug": "quattro-formaggi-bianco",
+  "subHeader": "{\"sk\": \"Biela edícia syrového šialenstva\", \"en\": \"White edition of cheesy madness\"}"
+ },
+ {
+  "id": "cmjk2i5tj0013a18fyojzu37w",
+  "brand": "partypizza",
+  "slug": "quattro-stagioni",
+  "subHeader": "{\"sk\": \"Štyri chute, jeden nezabudnuteľný večer\", \"en\": \"Four flavours, one night to remember\"}"
+ },
+ {
+  "id": "cmjk2i5ao000ta18fghjfs9xk",
+  "brand": "partypizza",
+  "slug": "tuniakov-",
+  "subHeader": "{\"sk\": \"Morský hosť, čo žúruje s nami\", \"en\": \"Ocean guest at the party\"}"
+ },
+ {
+  "id": "cmjk2i532000pa18fe3nrifzh",
+  "brand": "partypizza",
+  "slug": "vegetariana",
+  "subHeader": "{\"sk\": \"Zelená energia pre celú noc\", \"en\": \"Green energy for the whole night\"}"
+ },
+ {
+  "id": "cmjk2i4cg000ba18fvibqi5z5",
+  "brand": "partypizza",
+  "slug": "vyskladaj-si-vlastn-pizzu",
+  "subHeader": "{\"sk\": \"Tvoja párty, tvoje pravidlá\", \"en\": \"Your party, your rules\"}"
+ },
+ {
+  "id": "cmtk7nynk00bjmwh9i1ry659p",
+  "brand": "threesomepizza",
+  "slug": "basil-pesto",
+  "subHeader": "{\"sk\": \"Trojité bazalkové potešenie\", \"en\": \"Triple basil pleasure\"}"
+ },
+ {
+  "id": "cmtk7nztu00c6mwh90f4hvbh3",
+  "brand": "threesomepizza",
+  "slug": "bon-salami",
+  "subHeader": "{\"sk\": \"Jeden kus, stojí za troch\", \"en\": \"One slice worth sharing by three\"}"
+ },
+ {
+  "id": "cmtk7nzvn00c7mwh9bxox278e",
+  "brand": "threesomepizza",
+  "slug": "calimero",
+  "subHeader": "{\"sk\": \"Tretie koleso? Najlepšie na stole\", \"en\": \"Third wheel? Best one at the table\"}"
+ },
+ {
+  "id": "cmtk7nziw00c0mwh9ao7avyt2",
+  "brand": "threesomepizza",
+  "slug": "capri",
+  "subHeader": "{\"sk\": \"Trio, čo si vždy nájde miesto\", \"en\": \"A trio that always finds its place\"}"
+ },
+ {
+  "id": "cmtk7nzzb00c9mwh98lr0cqpu",
+  "brand": "threesomepizza",
+  "slug": "da-vinci",
+  "subHeader": "{\"sk\": \"Šunka, slanina a niva — trojuholník\", \"en\": \"Ham, bacon, blue cheese — a triangle\"}"
+ },
+ {
+  "id": "cmtk7o02y00cbmwh9zvsiid79",
+  "brand": "threesomepizza",
+  "slug": "diavola",
+  "subHeader": "{\"sk\": \"Triple fire pre odvážnych troch\", \"en\": \"Triple heat for the brave trio\"}"
+ },
+ {
+  "id": "cmtk7o04s00ccmwh9hjlg1rsv",
+  "brand": "threesomepizza",
+  "slug": "fregata",
+  "subHeader": "{\"sk\": \"Sedem ingrediencií — lepšie vo troch\", \"en\": \"Seven toppings — better shared by three\"}"
+ },
+ {
+  "id": "cmtk7o06l00cdmwh9r0cl2o9d",
+  "brand": "threesomepizza",
+  "slug": "gazdovsk-",
+  "subHeader": "{\"sk\": \"Farmárska trojica pre veľký hlad\", \"en\": \"Rustic trio for a serious appetite\"}"
+ },
+ {
+  "id": "cmtk7nzoc00c3mwh9d6sjmlht",
+  "brand": "threesomepizza",
+  "slug": "hawaii",
+  "subHeader": "{\"sk\": \"Šunka, ananás a tretí nečakaný hosť\", \"en\": \"Ham, pineapple and a surprise third\"}"
+ },
+ {
+  "id": "cmtk7nzq700c4mwh9wto9vvzn",
+  "brand": "threesomepizza",
+  "slug": "margherita",
+  "subHeader": "{\"sk\": \"Prvý krát je najlepší vo troch\", \"en\": \"First time is always better as three\"}"
+ },
+ {
+  "id": "cmtk7o08e00cemwh9p9en1tub",
+  "brand": "threesomepizza",
+  "slug": "mayday",
+  "subHeader": "{\"sk\": \"Štyri chute, tri porcie zmizli\", \"en\": \"Four toppings gone between three\"}"
+ },
+ {
+  "id": "cmtk7nyuy00bnmwh959lo42cm",
+  "brand": "threesomepizza",
+  "slug": "med-chilli",
+  "subHeader": "{\"sk\": \"Sladký, ostrý, trojitý zásah\", \"en\": \"Sweet, spicy — triple hit\"}"
+ },
+ {
+  "id": "cmtk7nzs000c5mwh9klzxv949",
+  "brand": "threesomepizza",
+  "slug": "picante",
+  "subHeader": "{\"sk\": \"Ostrý trojuholník, čo páli rovnako\", \"en\": \"A spicy triangle with equal heat\"}"
+ },
+ {
+  "id": "cmtk7o0a800cfmwh9z4857a74",
+  "brand": "threesomepizza",
+  "slug": "piv-rska",
+  "subHeader": "{\"sk\": \"Päť ingrediencií, jedno kolo navyše\", \"en\": \"Five toppings, one more round\"}"
+ },
+ {
+  "id": "cmtk7nyym00bpmwh9cx85tu56",
+  "brand": "threesomepizza",
+  "slug": "pollo-crema",
+  "subHeader": "{\"sk\": \"Krémový trojhráč večera\", \"en\": \"The creamy triple play of the evening\"}"
+ },
+ {
+  "id": "cmtk7nzxi00c8mwh9sfs3neuq",
+  "brand": "threesomepizza",
+  "slug": "prosciutto",
+  "subHeader": "{\"sk\": \"Čistá šunka, najlepšia rozdelená\", \"en\": \"Pure ham, best split three ways\"}"
+ },
+ {
+  "id": "cmtk7nycj00bdmwh9vlsn2hxw",
+  "brand": "threesomepizza",
+  "slug": "prosciutto-crudo",
+  "subHeader": "{\"sk\": \"Talianska rukola, trochu zvedavá\", \"en\": \"Italian arugula, curiously shared\"}"
+ },
+ {
+  "id": "cmtk7o01400camwh9u2o8akb3",
+  "brand": "threesomepizza",
+  "slug": "prosciutto-funghi",
+  "subHeader": "{\"sk\": \"Šampiňóny a šunka hľadajú tretieho\", \"en\": \"Mushrooms and ham looking for a third\"}"
+ },
+ {
+  "id": "cmtk7o0c100cgmwh979d49q88",
+  "brand": "threesomepizza",
+  "slug": "provinciale",
+  "subHeader": "{\"sk\": \"Klebety chutia lepšie vo troch\", \"en\": \"Gossip always tastes better as three\"}"
+ },
+ {
+  "id": "cmtk7nypf00bkmwh9exvf3cvj",
+  "brand": "threesomepizza",
+  "slug": "quattro-formaggi",
+  "subHeader": "{\"sk\": \"Štyri syry sa dohodli na troch\", \"en\": \"Four cheeses, three people, one decision\"}"
+ },
+ {
+  "id": "cmtk7nzf900bymwh981gexo64",
+  "brand": "threesomepizza",
+  "slug": "quattro-formaggi-bianco",
+  "subHeader": "{\"sk\": \"Biela fantázia pre troch snívajúcich\", \"en\": \"A white dream best shared by three\"}"
+ },
+ {
+  "id": "cmtk7nzkq00c1mwh9ddg8d2b3",
+  "brand": "threesomepizza",
+  "slug": "quattro-stagioni",
+  "subHeader": "{\"sk\": \"Štyri ročné obdobia, jedna trojica\", \"en\": \"Four seasons for one perfect trio\"}"
+ },
+ {
+  "id": "cmtk7nzh300bzmwh9v0hkclad",
+  "brand": "threesomepizza",
+  "slug": "tuniakov-",
+  "subHeader": "{\"sk\": \"Morský pokušiteľ pre tých troch\", \"en\": \"Ocean teaser for a trio of fans\"}"
+ },
+ {
+  "id": "cmtk7nz7r00bumwh97otwnakc",
+  "brand": "threesomepizza",
+  "slug": "vegetariana",
+  "subHeader": "{\"sk\": \"Zelené trio s jemným flirtom\", \"en\": \"A green trio with a gentle flirt\"}"
+ },
+ {
+  "id": "cmtk7nyi100bgmwh9mal9iu7a",
+  "brand": "threesomepizza",
+  "slug": "vyskladaj-si-vlastn-pizzu",
+  "subHeader": "{\"sk\": \"Vaše trio, vaše ingrediencie\", \"en\": \"Your trio, your ingredients\"}"
+ },
+ {
+  "id": "cmtso9o7e007i6m2v86jfis11",
+  "brand": "healthypizza",
+  "slug": "basil-pesto",
+  "subHeader": "{\"sk\": \"Svieže bazalkové pesto, plné vitality\", \"en\": \"Fresh basil pesto bursting with vitality\"}"
+ },
+ {
+  "id": "cmtso9pd900856m2vw41c120h",
+  "brand": "healthypizza",
+  "slug": "bon-salami",
+  "subHeader": "{\"sk\": \"Jednoduchá a vyvážená voľba\", \"en\": \"Simple and balanced every time\"}"
+ },
+ {
+  "id": "cmtso9pf200866m2vlsoryren",
+  "brand": "healthypizza",
+  "slug": "calimero",
+  "subHeader": "{\"sk\": \"Šunka a kukurica pre aktívny deň\", \"en\": \"Ham and corn for an active day\"}"
+ },
+ {
+  "id": "cmtso9p2c007z6m2vxdb5k331",
+  "brand": "healthypizza",
+  "slug": "capri",
+  "subHeader": "{\"sk\": \"Záhradná kombinácia plná chutí\", \"en\": \"Garden combo packed with flavour\"}"
+ },
+ {
+  "id": "cmtso9pip00886m2v1ayihtee",
+  "brand": "healthypizza",
+  "slug": "da-vinci",
+  "subHeader": "{\"sk\": \"Bohatá zmes pre energický deň\", \"en\": \"Rich blend for an energetic day\"}"
+ },
+ {
+  "id": "cmtso9pmb008a6m2vwpr4vssc",
+  "brand": "healthypizza",
+  "slug": "diavola",
+  "subHeader": "{\"sk\": \"Ohnivá energia priamo na tanieri\", \"en\": \"Fiery energy straight on your plate\"}"
+ },
+ {
+  "id": "cmtso9po5008b6m2vgegw5d0n",
+  "brand": "healthypizza",
+  "slug": "fregata",
+  "subHeader": "{\"sk\": \"Plná chuti, plná čerstvosti\", \"en\": \"Full of flavour, full of freshness\"}"
+ },
+ {
+  "id": "cmtso9ppy008c6m2vdl9no6mr",
+  "brand": "healthypizza",
+  "slug": "gazdovsk-",
+  "subHeader": "{\"sk\": \"Slanina a cibuľa na poctivý spôsob\", \"en\": \"Bacon and onion the wholesome way\"}"
+ },
+ {
+  "id": "cmtso9p7t00826m2v81bpr19p",
+  "brand": "healthypizza",
+  "slug": "hawaii",
+  "subHeader": "{\"sk\": \"Tropická sviežosť v každom suchu\", \"en\": \"Tropical freshness in every bite\"}"
+ },
+ {
+  "id": "cmtso9p9m00836m2vfhariu02",
+  "brand": "healthypizza",
+  "slug": "margherita",
+  "subHeader": "{\"sk\": \"Čistá a svieža ako nový deň\", \"en\": \"Clean and fresh as a new day\"}"
+ },
+ {
+  "id": "cmtso9prr008d6m2vyfn2tx7v",
+  "brand": "healthypizza",
+  "slug": "mayday",
+  "subHeader": "{\"sk\": \"Vyvážené, čerstvé a plné energie\", \"en\": \"Balanced, fresh and full of energy\"}"
+ },
+ {
+  "id": "cmtso9oen007m6m2vbyi4jjbj",
+  "brand": "healthypizza",
+  "slug": "med-chilli",
+  "subHeader": "{\"sk\": \"Med a chilli v dokonalej rovnováhe\", \"en\": \"Honey and chilli in perfect balance\"}"
+ },
+ {
+  "id": "cmtso9pbf00846m2vk82ccmei",
+  "brand": "healthypizza",
+  "slug": "picante",
+  "subHeader": "{\"sk\": \"Čerstvá ostrosť, čo rozhýbe deň\", \"en\": \"Fresh heat that gets your day going\"}"
+ },
+ {
+  "id": "cmtso9ptk008e6m2vy57bvax3",
+  "brand": "healthypizza",
+  "slug": "piv-rska",
+  "subHeader": "{\"sk\": \"Plná chuť, ľahšia na duši\", \"en\": \"Full flavour, lighter on your mind\"}"
+ },
+ {
+  "id": "cmtso9oi9007o6m2vg6xlhq41",
+  "brand": "healthypizza",
+  "slug": "pollo-crema",
+  "subHeader": "{\"sk\": \"Kuracie prsia a brokolica pre silu\", \"en\": \"Chicken and broccoli for real strength\"}"
+ },
+ {
+  "id": "cmtso9pgv00876m2v0ku9h2gz",
+  "brand": "healthypizza",
+  "slug": "prosciutto",
+  "subHeader": "{\"sk\": \"Iba šunka, nič navyše\", \"en\": \"Just ham, nothing more needed\"}"
+ },
+ {
+  "id": "cmtso9nwh007c6m2v034qh586",
+  "brand": "healthypizza",
+  "slug": "prosciutto-crudo",
+  "subHeader": "{\"sk\": \"Rukola a paradajky v čistej harmónii\", \"en\": \"Arugula and tomatoes in pure harmony\"}"
+ },
+ {
+  "id": "cmtso9pki00896m2v6gar6ds0",
+  "brand": "healthypizza",
+  "slug": "prosciutto-funghi",
+  "subHeader": "{\"sk\": \"Šampiňóny čerstvé ako les po daždi\", \"en\": \"Mushrooms as fresh as forest rain\"}"
+ },
+ {
+  "id": "cmtso9pve008f6m2veb8qnuuu",
+  "brand": "healthypizza",
+  "slug": "provinciale",
+  "subHeader": "{\"sk\": \"Čerstvé ingrediencie od základu\", \"en\": \"Fresh ingredients from the ground up\"}"
+ },
+ {
+  "id": "cmtso9o97007j6m2vrzeca2wh",
+  "brand": "healthypizza",
+  "slug": "quattro-formaggi",
+  "subHeader": "{\"sk\": \"Štyri syry v chutnej rovnováhe\", \"en\": \"Four cheeses in tasty balance\"}"
+ },
+ {
+  "id": "cmtso9oyo007x6m2v0k1mykwk",
+  "brand": "healthypizza",
+  "slug": "quattro-formaggi-bianco",
+  "subHeader": "{\"sk\": \"Jemný krémový základ bez zbytočností\", \"en\": \"Gentle cream base, nothing unnecessary\"}"
+ },
+ {
+  "id": "cmtso9p4600806m2voxbc3ats",
+  "brand": "healthypizza",
+  "slug": "quattro-stagioni",
+  "subHeader": "{\"sk\": \"Štyri sezóny čerstvých ingrediencií\", \"en\": \"Four seasons of fresh ingredients\"}"
+ },
+ {
+  "id": "cmtso9p0i007y6m2vtyn2u0vx",
+  "brand": "healthypizza",
+  "slug": "tuniakov-",
+  "subHeader": "{\"sk\": \"Tuniak a cibuľa v prirodzenej kráse\", \"en\": \"Tuna and onion in natural simplicity\"}"
+ },
+ {
+  "id": "cmtso9ord007t6m2v8n2m6j18",
+  "brand": "healthypizza",
+  "slug": "vegetariana",
+  "subHeader": "{\"sk\": \"Záhrada na tanieri, plná zelene\", \"en\": \"A garden on your plate, all greens\"}"
+ },
+ {
+  "id": "cmtso9o1x007f6m2v4c1jvbbf",
+  "brand": "healthypizza",
+  "slug": "vyskladaj-si-vlastn-pizzu",
+  "subHeader": "{\"sk\": \"Vytvor si svoju čerstvú kombináciu\", \"en\": \"Build your own fresh combination\"}"
+ },
+ {
+  "id": "cmtso9rhg00aw6m2vvg6bagx1",
+  "brand": "zerosugarpizza",
+  "slug": "basil-pesto",
+  "subHeader": "{\"sk\": \"Pesto. Bez kompromisov\", \"en\": \"Pesto. No shortcuts\"}"
+ },
+ {
+  "id": "cmtso9son00bj6m2vmvhe3ezy",
+  "brand": "zerosugarpizza",
+  "slug": "bon-salami",
+  "subHeader": "{\"sk\": \"Saláma. Nič viac\", \"en\": \"Salami. Nothing extra\"}"
+ },
+ {
+  "id": "cmtso9sqh00bk6m2vjyps1uo6",
+  "brand": "zerosugarpizza",
+  "slug": "calimero",
+  "subHeader": "{\"sk\": \"Šunka a kukurica\", \"en\": \"Ham and corn\"}"
+ },
+ {
+  "id": "cmtso9sd200bd6m2vikvdwxza",
+  "brand": "zerosugarpizza",
+  "slug": "capri",
+  "subHeader": "{\"sk\": \"Šunka, kukurica, šampiňóny\", \"en\": \"Ham, corn, mushrooms\"}"
+ },
+ {
+  "id": "cmtso9su400bm6m2vufqnrlw3",
+  "brand": "zerosugarpizza",
+  "slug": "da-vinci",
+  "subHeader": "{\"sk\": \"Niva a olivy. Presne toľko\", \"en\": \"Blue cheese and olives\"}"
+ },
+ {
+  "id": "cmtso9sxr00bo6m2v0g79qoht",
+  "brand": "zerosugarpizza",
+  "slug": "diavola",
+  "subHeader": "{\"sk\": \"Čisté chilli. Merateľné\", \"en\": \"Measured heat. Verified\"}"
+ },
+ {
+  "id": "cmtso9szk00bp6m2vmiufqbrl",
+  "brand": "zerosugarpizza",
+  "slug": "fregata",
+  "subHeader": "{\"sk\": \"Sedem ingrediencií. Žiadne skratky\", \"en\": \"Seven ingredients. No shortcuts\"}"
+ },
+ {
+  "id": "cmtso9t1d00bq6m2vo3nk8jfn",
+  "brand": "zerosugarpizza",
+  "slug": "gazdovsk-",
+  "subHeader": "{\"sk\": \"Slanina, cibuľa, šampiňóny, saláma\", \"en\": \"Bacon, onion, mushrooms, salami\"}"
+ },
+ {
+  "id": "cmtso9six00bg6m2vbm3rjyfe",
+  "brand": "zerosugarpizza",
+  "slug": "hawaii",
+  "subHeader": "{\"sk\": \"Šunka a ananás\", \"en\": \"Ham and pineapple\"}"
+ },
+ {
+  "id": "cmtso9sks00bh6m2vncfs41l6",
+  "brand": "zerosugarpizza",
+  "slug": "margherita",
+  "subHeader": "{\"sk\": \"Základ. Čistý\", \"en\": \"The base. Clean\"}"
+ },
+ {
+  "id": "cmtso9t3700br6m2viwai8h3l",
+  "brand": "zerosugarpizza",
+  "slug": "mayday",
+  "subHeader": "{\"sk\": \"Šesť ingrediencií. Žiadne aditíva\", \"en\": \"Six ingredients. No additives\"}"
+ },
+ {
+  "id": "cmtso9roq00b06m2vs3qmrcx2",
+  "brand": "zerosugarpizza",
+  "slug": "med-chilli",
+  "subHeader": "{\"sk\": \"Med a chilli. Skutočné\", \"en\": \"Honey and chilli. Real\"}"
+ },
+ {
+  "id": "cmtso9smq00bi6m2vvduhu4hx",
+  "brand": "zerosugarpizza",
+  "slug": "picante",
+  "subHeader": "{\"sk\": \"Feferóny a saláma\", \"en\": \"Chilli and salami\"}"
+ },
+ {
+  "id": "cmtso9t5000bs6m2v4a99hfie",
+  "brand": "zerosugarpizza",
+  "slug": "piv-rska",
+  "subHeader": "{\"sk\": \"Päť zložiek. Bez prídavkov\", \"en\": \"Five toppings. No extras\"}"
+ },
+ {
+  "id": "cmtso9rsf00b26m2vbfaca4dm",
+  "brand": "zerosugarpizza",
+  "slug": "pollo-crema",
+  "subHeader": "{\"sk\": \"Kurča a brokolica. Priamo\", \"en\": \"Chicken and broccoli. Straight\"}"
+ },
+ {
+  "id": "cmtso9ssa00bl6m2vawy8ahen",
+  "brand": "zerosugarpizza",
+  "slug": "prosciutto",
+  "subHeader": "{\"sk\": \"Len šunka\", \"en\": \"Just ham\"}"
+ },
+ {
+  "id": "cmtso9r6i00aq6m2vx0ofdt7s",
+  "brand": "zerosugarpizza",
+  "slug": "prosciutto-crudo",
+  "subHeader": "{\"sk\": \"Surové. Autentické\", \"en\": \"Raw. Authentic\"}"
+ },
+ {
+  "id": "cmtso9svx00bn6m2vijksazqy",
+  "brand": "zerosugarpizza",
+  "slug": "prosciutto-funghi",
+  "subHeader": "{\"sk\": \"Šunka a šampiňóny\", \"en\": \"Ham and mushrooms\"}"
+ },
+ {
+  "id": "cmtso9t6t00bt6m2vnmogmxfw",
+  "brand": "zerosugarpizza",
+  "slug": "provinciale",
+  "subHeader": "{\"sk\": \"Šesť surovín. Overené\", \"en\": \"Six ingredients. Verified\"}"
+ },
+ {
+  "id": "cmtso9rj900ax6m2v0mte9soh",
+  "brand": "zerosugarpizza",
+  "slug": "quattro-formaggi",
+  "subHeader": "{\"sk\": \"Štyri syry. Presne štyri\", \"en\": \"Four cheeses. Exactly four\"}"
+ },
+ {
+  "id": "cmtso9s9500bb6m2vuyly9zqd",
+  "brand": "zerosugarpizza",
+  "slug": "quattro-formaggi-bianco",
+  "subHeader": "{\"sk\": \"Smotana a štyri syry\", \"en\": \"Cream and four cheeses\"}"
+ },
+ {
+  "id": "cmtso9sex00be6m2v8oatkj2q",
+  "brand": "zerosugarpizza",
+  "slug": "quattro-stagioni",
+  "subHeader": "{\"sk\": \"Štyri zložky. Štyri chute\", \"en\": \"Four toppings. Four flavours\"}"
+ },
+ {
+  "id": "cmtso9sb000bc6m2vbpm5icg1",
+  "brand": "zerosugarpizza",
+  "slug": "tuniakov-",
+  "subHeader": "{\"sk\": \"Tuniak a cibuľa\", \"en\": \"Tuna and onion\"}"
+ },
+ {
+  "id": "cmtso9s1j00b76m2v5bf3ci4s",
+  "brand": "zerosugarpizza",
+  "slug": "vegetariana",
+  "subHeader": "{\"sk\": \"Iba zelenina\", \"en\": \"Vegetables only\"}"
+ },
+ {
+  "id": "cmtso9rby00at6m2vyft8bwbi",
+  "brand": "zerosugarpizza",
+  "slug": "vyskladaj-si-vlastn-pizzu",
+  "subHeader": "{\"sk\": \"Tvoje ingrediencie. Tvoja voľba\", \"en\": \"Your ingredients. Your choice\"}"
+ },
+ {
+  "id": "cmtso9uou00ea6m2vg5oleld2",
+  "brand": "anabolicpizza",
+  "slug": "basil-pesto",
+  "subHeader": "{\"sk\": \"Zelený boost, plno proteínu\", \"en\": \"Green pump, ricotta-powered\"}"
+ },
+ {
+  "id": "cmtso9vuz00ex6m2v2a5os2fj",
+  "brand": "anabolicpizza",
+  "slug": "bon-salami",
+  "subHeader": "{\"sk\": \"Saláma ide, objem stúpa\", \"en\": \"Pure salami, guaranteed gains\"}"
+ },
+ {
+  "id": "cmtso9vwt00ey6m2vflo648ry",
+  "brand": "anabolicpizza",
+  "slug": "calimero",
+  "subHeader": "{\"sk\": \"Šunka a kukurica po repoch\", \"en\": \"Ham and corn, rep by rep\"}"
+ },
+ {
+  "id": "cmtso9vk100er6m2vm21rzpx6",
+  "brand": "anabolicpizza",
+  "slug": "capri",
+  "subHeader": "{\"sk\": \"Ľahká ako cardio, šampiňóny navyše\", \"en\": \"Cardio fuel with mushrooms\"}"
+ },
+ {
+  "id": "cmtso9w0g00f06m2vtxpaxbf2",
+  "brand": "anabolicpizza",
+  "slug": "da-vinci",
+  "subHeader": "{\"sk\": \"Niva a slanina pod hriadeľom\", \"en\": \"Bacon and blue cheese, deadlift fuel\"}"
+ },
+ {
+  "id": "cmtso9w4400f26m2vwrjmjsy8",
+  "brand": "anabolicpizza",
+  "slug": "diavola",
+  "subHeader": "{\"sk\": \"Pikantný náboj pred tréningom\", \"en\": \"Fire it up before the bar\"}"
+ },
+ {
+  "id": "cmtso9w5x00f36m2v4uhm3b6a",
+  "brand": "anabolicpizza",
+  "slug": "fregata",
+  "subHeader": "{\"sk\": \"Sedem ingredientov, plný flex\", \"en\": \"Seven toppings, full flex\"}"
+ },
+ {
+  "id": "cmtso9w7r00f46m2vrak62pf1",
+  "brand": "anabolicpizza",
+  "slug": "gazdovsk-",
+  "subHeader": "{\"sk\": \"Slanina a saláma na bulku\", \"en\": \"Bulk season, bacon and salami\"}"
+ },
+ {
+  "id": "cmtso9vpi00eu6m2v45akuj4i",
+  "brand": "anabolicpizza",
+  "slug": "hawaii",
+  "subHeader": "{\"sk\": \"Ananás a šunka, zaslúžená odmena\", \"en\": \"Tropical cheat day, well earned\"}"
+ },
+ {
+  "id": "cmtso9vrc00ev6m2vhrch0ca0",
+  "brand": "anabolicpizza",
+  "slug": "margherita",
+  "subHeader": "{\"sk\": \"Základ každého makra\", \"en\": \"Classic base, classic gains\"}"
+ },
+ {
+  "id": "cmtso9w9k00f56m2v5uqrkgik",
+  "brand": "anabolicpizza",
+  "slug": "mayday",
+  "subHeader": "{\"sk\": \"Šunka, vajce a nový rekord\", \"en\": \"Ham, bacon, egg — new PR\"}"
+ },
+ {
+  "id": "cmtso9uw400ee6m2vo48f2vtn",
+  "brand": "anabolicpizza",
+  "slug": "med-chilli",
+  "subHeader": "{\"sk\": \"Med a kura, pump zaručený\", \"en\": \"Honey chicken, guaranteed pump\"}"
+ },
+ {
+  "id": "cmtso9vt500ew6m2vnl3lv7d4",
+  "brand": "anabolicpizza",
+  "slug": "picante",
+  "subHeader": "{\"sk\": \"Feferóny a saláma bez milosti\", \"en\": \"Spicy salami, beast mode on\"}"
+ },
+ {
+  "id": "cmtso9wbe00f66m2vg36jo62q",
+  "brand": "anabolicpizza",
+  "slug": "piv-rska",
+  "subHeader": "{\"sk\": \"Päť ingredientov na regeneráciu\", \"en\": \"Five toppings, rest day refuel\"}"
+ },
+ {
+  "id": "cmtso9uzr00eg6m2v5wzdjsxr",
+  "brand": "anabolicpizza",
+  "slug": "pollo-crema",
+  "subHeader": "{\"sk\": \"Kuracie prsia na smotanovom\", \"en\": \"Chicken on cream, protein max\"}"
+ },
+ {
+  "id": "cmtso9vym00ez6m2vvxdnweye",
+  "brand": "anabolicpizza",
+  "slug": "prosciutto",
+  "subHeader": "{\"sk\": \"Čistá šunka, čisté gainy\", \"en\": \"Clean ham, clean gains\"}"
+ },
+ {
+  "id": "cmtso9uds00e46m2viojvze1u",
+  "brand": "anabolicpizza",
+  "slug": "prosciutto-crudo",
+  "subHeader": "{\"sk\": \"Crudo a rukola pre shredding\", \"en\": \"Arugula and crudo for cuts\"}"
+ },
+ {
+  "id": "cmtso9w2900f16m2v34w1wvfg",
+  "brand": "anabolicpizza",
+  "slug": "prosciutto-funghi",
+  "subHeader": "{\"sk\": \"Šunka a huby, natty základ\", \"en\": \"Natty ham and mushroom stack\"}"
+ },
+ {
+  "id": "cmtso9wd700f76m2vhc4wsb23",
+  "brand": "anabolicpizza",
+  "slug": "provinciale",
+  "subHeader": "{\"sk\": \"Šunka, slanina, kukurica — masívne\", \"en\": \"Ham, bacon, corn — massive load\"}"
+ },
+ {
+  "id": "cmtso9uqo00eb6m2vkrw940w5",
+  "brand": "anabolicpizza",
+  "slug": "quattro-formaggi",
+  "subHeader": "{\"sk\": \"Štyri syry, seriózny objem\", \"en\": \"Four cheeses, serious bulk\"}"
+ },
+ {
+  "id": "cmtso9vge00ep6m2vpf96n8yc",
+  "brand": "anabolicpizza",
+  "slug": "quattro-formaggi-bianco",
+  "subHeader": "{\"sk\": \"Biela rysovačka, štyri syry\", \"en\": \"White cut, four cheese shred\"}"
+ },
+ {
+  "id": "cmtso9vlu00es6m2v84oonbyt",
+  "brand": "anabolicpizza",
+  "slug": "quattro-stagioni",
+  "subHeader": "{\"sk\": \"Štyri prílohy ako štyri série\", \"en\": \"Four-way split on one pizza\"}"
+ },
+ {
+  "id": "cmtso9vi800eq6m2v84yygsiz",
+  "brand": "anabolicpizza",
+  "slug": "tuniakov-",
+  "subHeader": "{\"sk\": \"Tuniak a cibuľa, makro splnené\", \"en\": \"Tuna macros, mission complete\"}"
+ },
+ {
+  "id": "cmtso9v8v00el6m2vlnhd10m0",
+  "brand": "anabolicpizza",
+  "slug": "vegetariana",
+  "subHeader": "{\"sk\": \"Brokolica a špenát, lean fáza\", \"en\": \"All greens, lean season\"}"
+ },
+ {
+  "id": "cmtso9ujc00e76m2v7c41tdtm",
+  "brand": "anabolicpizza",
+  "slug": "vyskladaj-si-vlastn-pizzu",
+  "subHeader": "{\"sk\": \"Navrhni vlastný tréningový plán\", \"en\": \"Design your own gains plan\"}"
+ },
+ {
+  "id": "cmtso9xt600ho6m2vaeuub9a6",
+  "brand": "mydaypizza",
+  "slug": "basil-pesto",
+  "subHeader": "{\"sk\": \"Zelené ráno s bazalkovým pestom\", \"en\": \"Start your morning with pesto\"}"
+ },
+ {
+  "id": "cmtso9yyu00ib6m2v585dv9or",
+  "brand": "mydaypizza",
+  "slug": "bon-salami",
+  "subHeader": "{\"sk\": \"Sobotná saláma bez komplikácií\", \"en\": \"Saturday salami, simply good\"}"
+ },
+ {
+  "id": "cmtso9z0o00ic6m2vloumj8vt",
+  "brand": "mydaypizza",
+  "slug": "calimero",
+  "subHeader": "{\"sk\": \"Šunka a kukurica, pohoda istá\", \"en\": \"Ham and corn, pure chill\"}"
+ },
+ {
+  "id": "cmtso9ynz00i56m2v4xs5amit",
+  "brand": "mydaypizza",
+  "slug": "capri",
+  "subHeader": "{\"sk\": \"Šampiňóny a kukurica cez víkend\", \"en\": \"Weekend mushrooms, no pressure\"}"
+ },
+ {
+  "id": "cmtso9z4a00ie6m2v0sli8xcu",
+  "brand": "mydaypizza",
+  "slug": "da-vinci",
+  "subHeader": "{\"sk\": \"Niva a olivy na voľný deň\", \"en\": \"Blue cheese and olives, day off\"}"
+ },
+ {
+  "id": "cmtso9z7x00ig6m2vbn2dzxhy",
+  "brand": "mydaypizza",
+  "slug": "diavola",
+  "subHeader": "{\"sk\": \"Horúci deň si žiada pálivé\", \"en\": \"Spice up your hottest day\"}"
+ },
+ {
+  "id": "cmtso9z9r00ih6m2vlsadsu41",
+  "brand": "mydaypizza",
+  "slug": "fregata",
+  "subHeader": "{\"sk\": \"Koniec týždňa, plný tanier\", \"en\": \"End of week, full plate\"}"
+ },
+ {
+  "id": "cmtso9zbo00ii6m2vkuno8fs0",
+  "brand": "mydaypizza",
+  "slug": "gazdovsk-",
+  "subHeader": "{\"sk\": \"Nedelná nadielka pre fajnšmekrov\", \"en\": \"Sunday like it should be\"}"
+ },
+ {
+  "id": "cmtso9ytf00i86m2v6umx3vl5",
+  "brand": "mydaypizza",
+  "slug": "hawaii",
+  "subHeader": "{\"sk\": \"Ananás a šunka na dovolenke\", \"en\": \"Every day can be a holiday\"}"
+ },
+ {
+  "id": "cmtso9yv800i96m2van9033vw",
+  "brand": "mydaypizza",
+  "slug": "margherita",
+  "subHeader": "{\"sk\": \"Každodenný základ, vždy správny\", \"en\": \"Your everyday classic slice\"}"
+ },
+ {
+  "id": "cmtso9zdh00ij6m2vwtq5qqx3",
+  "brand": "mydaypizza",
+  "slug": "mayday",
+  "subHeader": "{\"sk\": \"Šunka a vajce, tvoj deň\", \"en\": \"Make today your special day\"}"
+ },
+ {
+  "id": "cmtso9y0e00hs6m2v8ux0ytcg",
+  "brand": "mydaypizza",
+  "slug": "med-chilli",
+  "subHeader": "{\"sk\": \"Med a kura na lenivú nedeľu\", \"en\": \"Sweet and spicy lazy Sunday\"}"
+ },
+ {
+  "id": "cmtso9yx100ia6m2v6lpejsq6",
+  "brand": "mydaypizza",
+  "slug": "picante",
+  "subHeader": "{\"sk\": \"Feferóny pre rušné ráno\", \"en\": \"Spice up your rush hour\"}"
+ },
+ {
+  "id": "cmtso9zfb00ik6m2velhmjozt",
+  "brand": "mydaypizza",
+  "slug": "piv-rska",
+  "subHeader": "{\"sk\": \"Piatok si žiada seriózne mäso\", \"en\": \"Friday calls for serious meat\"}"
+ },
+ {
+  "id": "cmtso9y4100hu6m2vc8ldhwbj",
+  "brand": "mydaypizza",
+  "slug": "pollo-crema",
+  "subHeader": "{\"sk\": \"Smotanové kura na pohodový večer\", \"en\": \"Creamy chicken comfort evening\"}"
+ },
+ {
+  "id": "cmtso9z2h00id6m2vs1qtmr6d",
+  "brand": "mydaypizza",
+  "slug": "prosciutto",
+  "subHeader": "{\"sk\": \"Jednoduchá šunka na obed\", \"en\": \"Quick ham for lunchbreak\"}"
+ },
+ {
+  "id": "cmtso9xi700hi6m2v61q1ffja",
+  "brand": "mydaypizza",
+  "slug": "prosciutto-crudo",
+  "subHeader": "{\"sk\": \"Crudo a rukola na brunch\", \"en\": \"Sunday brunch, Italian style\"}"
+ },
+ {
+  "id": "cmtso9z6400if6m2vat7vwtbe",
+  "brand": "mydaypizza",
+  "slug": "prosciutto-funghi",
+  "subHeader": "{\"sk\": \"Šunka a huby, pohoda doma\", \"en\": \"Mushrooms and ham, cosy day in\"}"
+ },
+ {
+  "id": "cmtso9zh500il6m2vevutuia7",
+  "brand": "mydaypizza",
+  "slug": "provinciale",
+  "subHeader": "{\"sk\": \"Plný tanier pre rodinný deň\", \"en\": \"Family day, everybody's favourite\"}"
+ },
+ {
+  "id": "cmtso9xuz00hp6m2vlx068jgp",
+  "brand": "mydaypizza",
+  "slug": "quattro-formaggi",
+  "subHeader": "{\"sk\": \"Štyri syry na jeden deň\", \"en\": \"Four cheeses, one cheesy day\"}"
+ },
+ {
+  "id": "cmtso9ykc00i36m2v4j2q57gv",
+  "brand": "mydaypizza",
+  "slug": "quattro-formaggi-bianco",
+  "subHeader": "{\"sk\": \"Biely základ, štyri jemné syry\", \"en\": \"White and creamy, four cheeses\"}"
+ },
+ {
+  "id": "cmtso9yps00i66m2vv2urbcdh",
+  "brand": "mydaypizza",
+  "slug": "quattro-stagioni",
+  "subHeader": "{\"sk\": \"Štyri prílohy, štyri nálady\", \"en\": \"Four toppings, every mood covered\"}"
+ },
+ {
+  "id": "cmtso9ym600i46m2v9cgbnz4a",
+  "brand": "mydaypizza",
+  "slug": "tuniakov-",
+  "subHeader": "{\"sk\": \"Utorok patrí tuniakovi\", \"en\": \"Tuesday sorted, tuna on top\"}"
+ },
+ {
+  "id": "cmtso9yd300hz6m2vgfkt4rlp",
+  "brand": "mydaypizza",
+  "slug": "vegetariana",
+  "subHeader": "{\"sk\": \"Brokolica a špenát, zelený deň\", \"en\": \"Greens for any day\"}"
+ },
+ {
+  "id": "cmtso9xno00hl6m2vcss6j6wt",
+  "brand": "mydaypizza",
+  "slug": "vyskladaj-si-vlastn-pizzu",
+  "subHeader": "{\"sk\": \"Tvoj deň, tvoja pizza\", \"en\": \"Your day, your pizza\"}"
+ }
+]
