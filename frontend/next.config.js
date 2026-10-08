@@ -48,6 +48,51 @@ const nextConfig = {
   productionBrowserSourceMaps: false,
   // Disable standalone output for development
   // output: 'standalone',
+
+  // Security headers applied to every route on every tenant domain.
+  //
+  // Content-Security-Policy is deliberately NOT set here yet: the app loads
+  // Google Tag Manager, Google Analytics and the Facebook Pixel via inline
+  // bootstrap snippets, redirects to Adyen for payment, and geocodes addresses
+  // against Nominatim/Photon. A CSP has to enumerate all of those or it breaks
+  // checkout and analytics, so it gets rolled out separately in report-only
+  // mode first.
+  async headers() {
+    return [
+      {
+        source: '/:path*',
+        headers: [
+          // Browsers must honour the declared Content-Type instead of sniffing
+          // it, which is what turns an uploaded "image" into executable script.
+          { key: 'X-Content-Type-Options', value: 'nosniff' },
+          // Clickjacking: nothing may frame our pages. We still frame
+          // googletagmanager ourselves — this header only restricts who may
+          // embed us, not who we may embed.
+          { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
+          // Send the full URL only to ourselves; cross-origin requests
+          // (payment gateway, analytics) see the origin alone.
+          { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+          // None of these APIs are used anywhere in the app (verified: no
+          // navigator.geolocation, no getUserMedia, no PaymentRequest), so
+          // deny them outright. 'payment' stays on self in case a future
+          // gateway integration needs the Payment Request API.
+          {
+            key: 'Permissions-Policy',
+            value: [
+              'camera=()',
+              'microphone=()',
+              'geolocation=()',
+              'usb=()',
+              'magnetometer=()',
+              'accelerometer=()',
+              'gyroscope=()',
+              'payment=(self)',
+            ].join(', '),
+          },
+        ],
+      },
+    ];
+  },
 }
 
 // Only wrap with Sentry if DSN is configured
